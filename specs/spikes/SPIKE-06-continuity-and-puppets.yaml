@@ -1,0 +1,41 @@
+spec_id: "SPIKE-06"
+title: "Shot-Boundary Continuity Scoring and a 2D Puppet Prototype"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: research_spike
+status: DRAFT
+effort: M
+dependencies: []
+summary: >
+  Two time-boxed investigations for StorybookStudio, each with a go/no-go at
+  the end. (1) Continuity: score the last frame of shot A against the first
+  frame of shot B (embedding similarity plus face identity) and surface a low
+  score as a QA issue that requests regeneration through regenerate_shots
+  (FILM-2007); the question is whether the score correlates with what a human
+  calls a continuity break on 30 real shot pairs. (2) Puppets: one layered 2D
+  character in Remotion with idle, talk (phoneme visemes from TTS timings),
+  point and count actions driven by an animate_character call; the question
+  is whether an AI can direct it semantically well enough to carry an
+  explainer segment without hand animation. Neither becomes roadmap work
+  unless its spike passes. Design: the two research notes behind PRD-EDD.md
+  (Part 1 non-goals, R&D track in the Implementation Plan).
+acceptance_criteria: []
+test_plan:
+  unit: []
+  integration: []
+  e2e: []
+open_questions:
+  - "Which embedding model runs locally for continuity (CLIP-class, under 500 MB) and is its licence compatible with a GPL app?"
+  - "Does the puppet prototype need StoryBook's character_details (physical attributes, reference images) as its source of layers, or hand-drawn layers for the spike?"
+notes: >
+  Time boxes: 5 engineer-days for continuity, 10 for the puppet. Each ends
+  with a written finding here and a recommendation of adopt (becomes a spec in
+  phase 20 or a later phase), park, or drop. Continuity, if adopted, extends
+  FILM-2014's visual analyser; the puppet, if adopted, becomes a composition
+  primitive under FILM-2018.
+research_spike:
+  question: "Can shot-boundary continuity be scored reliably enough to drive regeneration, and can a procedurally animated 2D character be directed semantically by an AI for explainer content?"
+  findings: []
+  recommendation: null
+  docs: ["specs/phase-20-storybookstudio/PRD-EDD.md"]
+  poc_path: null

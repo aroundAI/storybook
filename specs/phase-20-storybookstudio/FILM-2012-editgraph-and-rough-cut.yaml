@@ -1,0 +1,83 @@
+spec_id: "FILM-2012"
+title: "EditGraph v1, the Rough-Cut Builder, the Operation Log and Versions"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2011"
+    note: "the pull job hands probed assets to the builder"
+  - spec_id: "FILM-2001"
+    note: "the edit package schema is the builder's input contract"
+  - spec_id: "FILM-2004"
+    note: "brand and policy are written beside the project"
+summary: >
+  The Studio's project format is Velorn's project.comfystudio plus four
+  additive fields (asset.role, asset.semantic, asset.analysis,
+  clip.metadata.semantic/origin, timeline.studio, project.studio), an
+  append-only operation log and named versions. Stock Velorn opens a Studio
+  project and ignores the extra fields; the Studio opens any Velorn project.
+  The project builder is a pure function from (edit package, probed assets,
+  brand, policy) to project JSON that assembles the rough cut: shots on
+  video-1 at their planned times, dialogue per language, music/SFX/ambience
+  on their buses, captions on a captions track, one marker per scene, Veo
+  shot audio ducked under dialogue. Every applied MCP action and every hand
+  edit appends to edits/oplog.jsonl with who, what, why and the inverse; a
+  version is a snapshot plus the op range since; the explain-why report is
+  derived from the log. Design: PRD-EDD.md Part 2 "Project format: EditGraph
+  v1" and Part 1 R-13, R-22, R-24, R-31, R-32.
+acceptance_criteria:
+  - text: "src/studio/contracts/editgraph.schema.js (zod) defines the additive fields: asset {role enum, semantic {scene, shotId, characters[], purpose, emotion, prompt, continuationFrom}, analysis {loudnessLufs, silences[], bpm, keyframes[], semanticsVersion}, languageDependency none|language|locale}; clip.metadata {semantic {scene, shotId, role}, origin {versionId, opId, by ai|user}}; timeline.studio {kind master|variant, variantOf, aspect, language}; project.studio {schema 'editgraph/1', episodeId, currentVersion, audioBuses}; a Velorn sample project without them validates"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "Asset role taxonomy: primary_video, broll, reaction, establishing, generated_video, stock_video, overlay_video, dialogue, voiceover, soundbite, music, ambience, sfx, caption, title, lower_third, logo, image, composition; the builder maps shot → generated_video, dialogue line → dialogue, audio_tracks.type → music|sfx|ambience, character reference → image"
+    met: false
+    reason: "not built"
+  - text: "src/studio/projectBuilder.js (pure, no Electron import) produces a project with one master timeline at the episode's aspect and fps; shots on video-1 at timelineStart else packed by sequence_number; a Dialogue track per language at each line's timelineStart; Music, SFX, Ambience tracks with bus fields and audio_tracks.volume; a captions track from caption segments; a marker per scene named by heading at the scene's first shot; asset folders per scene; semantic on every clip and asset; a ShotAudio track for Veo audio set to duck under dialogue; storybook/package.json, link.json, brand.json, policy.json written beside"
+    met: false
+    reason: "not built"
+  - text: "Builder snapshot tests pass on the three FILM-2001 fixture packages (5, 20, 60 shots with dubbed audio) and the output opens in stock Velorn v0.3.36 without error"
+    met: false
+    reason: "not built"
+  - text: "src/studio/oplog.js wraps runMcpAction and the timeline/assets store mutators: one JSON line per applied operation {op, ts, by ai|user, session, tool, args, inverse, reason, scene, versionId}; preview-only calls are not logged; the file is append-only and fsynced on version boundaries"
+    met: false
+    reason: "not built"
+  - text: "src/studio/versions.js: createVersion(name, {prompt, by}) snapshots the timeline document under edits/snapshots/<id>.json and records {id, name, parent, opRange, createdBy, createdAt, prompt}; restoreVersion(id) loads the snapshot in O(1) and appends a restore op; versions survive restart; Velorn's in-memory undo stays the fast path"
+    met: false
+    reason: "not built"
+  - text: "src/studio/report.js derives the explain-why report for a version from the op log (removed, changed, added per scene with reasons; duration before/after per scene and total; audio changes; QA summary) as JSON (ExplainWhyReportSchema, shared with FILM-2003) and as the text block in the PRD"
+    met: false
+    reason: "not built"
+  - text: "Hand edits are logged with by: user; the AI's next plan re-bases on the current document and never touches a clip whose last origin is user without listing it in the plan (enforced in FILM-2013's compiler, tested here with the log)"
+    met: false
+    reason: "not built"
+  - text: "fileSystem.saveProject no longer overwrites version with '1.0'; it writes project.version = '1.2' with studio.schema 'editgraph/1', and normalizeOpenedProjectData accepts 1.0, 1.1 and 1.2"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Schema: Velorn project validates; Studio fields validate; bad role refused", met: false, reason: "not built"}
+    - {text: "Builder snapshots (3 fixtures); packing rule when timelineStart is null; captions and markers", met: false, reason: "not built"}
+    - {text: "Op log: every write tool appends exactly one line; preview appends none; restore appends a restore op and the document equals the snapshot", met: false, reason: "not built"}
+    - {text: "Report: fixture log → expected JSON and text", met: false, reason: "not built"}
+  integration:
+    - {text: "Open a built project in stock Velorn (packaged, CI job on the fork) and save it; the Studio re-opens it with its fields intact", met: false, reason: "not built"}
+  e2e: []
+open_questions: []
+notes: >
+  Why additive and not a new format: Velorn's stores, exporter and MCP
+  snapshot all read project.comfystudio; a parallel format would fork the
+  whole app. The op log is the durable truth for 'what did the AI change';
+  Velorn's undo stack (timeline history plus projectHistory, max 25) stays
+  for fast interactive undo. Snapshots make restore O(1) so a version is as
+  cheap to return to as to create.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"
+  modules: ["src/studio/contracts/editgraph.schema.js", "src/studio/projectBuilder.js", "src/studio/oplog.js", "src/studio/versions.js", "src/studio/report.js"]
+  files_changed: ["src/services/fileSystem.js (saveProject version)", "src/stores/projectStore.js (normalizeOpenedProjectData)", "src/stores/timelineStore.js (studio fields, bus on tracks)", "src/stores/assetsStore.js (role, semantic, analysis)"]

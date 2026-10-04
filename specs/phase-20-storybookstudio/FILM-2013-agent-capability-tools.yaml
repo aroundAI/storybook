@@ -1,0 +1,92 @@
+spec_id: "FILM-2013"
+title: "Agent Capability Tools and Intent Compilers"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: XL
+dependencies:
+  - spec_id: "FILM-2012"
+    note: "op log, versions, report and the semantic fields the compilers read"
+  - spec_id: "FILM-2011"
+    note: "studio_open_episode, studio_check_updates and job status call the cloud client"
+  - spec_id: "FILM-2010"
+    note: "MCP auth on the local server"
+summary: >
+  The model sees sixteen capability tools, not 129 primitives. The Studio's
+  local MCP server (electron/mcpServer.js, 127.0.0.1:19790) gains a profile
+  switch: agent (default) serves the capability tools; expert serves every
+  Velorn tool as today. Each editing capability is an intent compiler, a plain
+  function (context, scope, params, policy) => ActionPlan, where ActionPlan is
+  Velorn's run_mcp_action_plan shape (up to 50 primitive steps,
+  createCheckpointFirst) plus a reasons[] array aligned to steps. Preview runs
+  the plan through the primitives' own previewOnly path and renders per-scene
+  plan cards; apply creates a version and logs every step with its reason.
+  studio_get_context is the one call the agent makes first: script, scene map,
+  policy, brand, timeline summary, QA state. The in-app agent
+  (src/services/agentTools.js) is pointed at the same profile so Claude
+  Desktop, Claude Code and the built-in agent have identical powers and
+  produce identical cards. Design: PRD-EDD.md Part 2 "Agent interface",
+  Part 1 R-20, R-21, R-23, R-25, R-26.
+acceptance_criteria:
+  - text: "electron/studio/mcpCapabilities.js registers the 16 tools with JSON schemas; GET/POST /mcp?profile=agent (default) lists only them, ?profile=expert lists Velorn's 129 plus the storybook_* lifecycle tools; both require the FILM-2010 bearer"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "Lifecycle: studio_open_episode {episodeId} (starts the FILM-2011 pull, returns jobId), studio_get_job_status {jobId}, studio_check_readiness (media present and probed, codecs, durations, captions available, policy loaded, target duration known → pass or issues), studio_create_version {name}, studio_restore_version {versionId}, studio_deliver {presets[], languages[], confirm:false} (FILM-2017 renders and uploads only when confirm:true after a UI confirmation)"
+    met: false
+    reason: "not built"
+  - text: "Perception: studio_get_context {scope?} returns screenplay scenes with dialogue text, the scene map (scene → clip ids, planned vs actual duration, target), policy, brand summary, timeline summary (tracks, clip count, duration), versions, last QA; studio_search_assets {query, role?, scene?, durationRange?} ranks assets by semantic fields and transcript; studio_review {scope, versionId?} returns the critic's findings (FILM-2014)"
+    met: false
+    reason: "not built"
+  - text: "Editing: studio_edit {intent, scope, params?, previewOnly:true, autoRepair?}, studio_edit_audio {intent balance|duck|normalize|fade, scope}, studio_add_captions {language, style?}, studio_add_graphic {kind, text, at, duration, anchor?} (FILM-2018; VALIDATION_FAILED until then), studio_create_variant {kind short|language|hook, params}, studio_repair {issues[]}, studio_check_updates / studio_apply_updates (FILM-2011 sync)"
+    met: false
+    reason: "not built"
+  - text: "Intent compilers in src/studio/intents/: hit_duration, tighten_pacing, remove_dead_air, open_with_strongest_line, keep_music_under_dialogue, add_broll, emphasize, add_cta, match_brand, reorder_scenes, recut_around_drops; each returns {steps[], reasons[], expected:{durationBefore, durationAfter, perScene[]}} and reads storybook/policy.json; tighten_pacing(scene 3) compiles to find_timeline_items → detect_silence → trim_clips (>0.6 s) → inspect_visible_shots → delete_clips (duplicates) → trim_clips (reactions to policy max) → update_transition (policy max duration)"
+    met: false
+    reason: "not built"
+  - text: "Preview (previewOnly:true) runs every step through the primitive's own previewOnly path, applies nothing, and returns plan cards [{scene, durationBefore, durationAfter, changes:[{text, reason}]}] plus the draft report; apply (previewOnly:false) calls studio_create_version then run_mcp_action_plan with createCheckpointFirst, and each applied step is one op-log line with its reason"
+    met: false
+    reason: "not built"
+  - text: "A plan never includes a step on a clip whose last op-log origin is by:user since the previous plan unless the card lists it under 'touches your edits'; the compiler re-bases on the current document at preview time and again at apply time, and refuses with TARGET_CHANGED if the document changed in between"
+    met: false
+    reason: "not built"
+  - text: "studio_edit with autoRepair:true runs apply → keyframes → QA → studio_repair up to 3 rounds inside one draft version and surfaces only the final cards; intermediate ops stay in the log (FILM-2014 provides QA)"
+    met: false
+    reason: "not built"
+  - text: "Plan cards from an external MCP client and from the in-app agent render in the same AI panel (FILM-2015) through the renderer bridge event studio:plan-proposed"
+    met: false
+    reason: "not built"
+  - text: "src/services/agentTools.js drives the agent profile; a matrix test runs every capability tool from both the in-app agent and an SDK client and asserts identical plan cards for the same fixture and instruction"
+    met: false
+    reason: "not built"
+  - text: "docs/MCP.md documents both profiles, the bearer header and every capability tool; get_mcp_recipes gains a storybook-rough-cut recipe and get_ai_review_passes a script-fidelity pass"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Each compiler on the 20-shot fixture: expected steps and reasons; policy bounds respected; user-edited clips excluded or flagged", met: false, reason: "not built"}
+    - {text: "Scene map and context assembly from a built project", met: false, reason: "not built"}
+    - {text: "Profile switch: agent lists 16, expert lists 129+; bearer required on both", met: false, reason: "not built"}
+  integration:
+    - {text: "SDK client over HTTP: studio_get_context → studio_edit preview → apply → version exists, op log has N lines with reasons, report matches", met: false, reason: "not built"}
+    - {text: "Nightly AI eval: 10 fixture episodes × 5 instructions (incl. the north-star sentence) scored on duration hit rate, QA pass rate, script coverage, revisions, cost; a release may not regress QA pass rate or raise cost over 20%", met: false, reason: "not built"}
+  e2e: []
+open_questions:
+  - "Which model drives the agent and critic (README open question 2). The profile is model-agnostic; the eval harness needs one configured model to produce a baseline."
+notes: >
+  The compilers are deterministic code, not prompts: the model decides which
+  intent and scope, the compiler decides which primitives. That keeps plans
+  reproducible, cheap to preview and easy to test, and lets the eval harness
+  score the model's choices separately from the compiler's correctness.
+  Velorn's MCP_ACTION_PLAN_WRITABLE_TOOLS set gains every studio_* write tool
+  except studio_deliver, which must stay a separate confirmed step.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"
+  mcp_tools: ["studio_open_episode", "studio_get_job_status", "studio_check_readiness", "studio_create_version", "studio_restore_version", "studio_deliver", "studio_get_context", "studio_search_assets", "studio_review", "studio_edit", "studio_edit_audio", "studio_add_captions", "studio_add_graphic", "studio_create_variant", "studio_repair", "studio_check_updates", "studio_apply_updates"]
+  modules: ["electron/studio/mcpCapabilities.js", "src/studio/compile.js", "src/studio/intents/*.js", "src/studio/context.js"]
+  files_changed: ["electron/mcpServer.js (profiles, MCP_ACTION_PLAN_WRITABLE_TOOLS)", "src/services/mcpActions.js (MCP_ACTION_BRIDGE_VERSION bump, scene map, variant handlers)", "src/services/agentTools.js", "docs/MCP.md"]

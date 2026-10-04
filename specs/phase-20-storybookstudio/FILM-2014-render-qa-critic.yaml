@@ -1,0 +1,76 @@
+spec_id: "FILM-2014"
+title: "Preview Render Tiers, Deterministic QA and the Critic"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2012"
+    note: "scene map, semantic fields and the op log the critic reads"
+  - spec_id: "FILM-2013"
+    note: "studio_render_preview, studio_review and studio_repair are its tools"
+summary: >
+  The AI sees its own work. Three render tiers on the user's GPU (keyframes
+  after every applied plan; a 720p scene preview from proxies; an audio-only
+  mix of the buses) feed a deterministic QA pass built from FFmpeg filters and
+  ffprobe (loudness, clipping, black and frozen frames, silence, duration
+  against target, codec, caption timing and safe areas, missing media, script
+  coverage) and a critic with three analysers (pacing, audio, visual and
+  narrative). Every QA issue names the studio_repair intent that fixes it, so
+  repair is a plan, not a prompt. The vision step is the only one that costs
+  tokens; it runs on at most 40 keyframes per review and is skipped when no
+  hosted model is configured. Velorn's export path (hidden worker window,
+  canvas compositing, FFmpeg frame pipe, hardwareExportFfmpeg.js) is reused for
+  every tier. Design: PRD-EDD.md Part 2 "Render, QA and critic pipeline";
+  Part 1 R-23, R-61.
+acceptance_criteria:
+  - text: "electron/studio/previewRender.js renders keyframes (one JPEG per cut and per 2 s, 640 px wide, under cache/kf/) in under 5 s for a 90 s cut on an M1 Air; a scene preview (720p, 24 fps, H.264 fast, from proxies) faster than real time; an audio-only WAV of the bus mix; preview renders bypass the media-preparation queue so a long export never blocks them"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "electron/studio/qa.js runs: ebur128 (integrated loudness and true peak against the preset target, -14 LUFS YouTube, -16 Reels), astats clipping, blackdetect, freezedetect, silencedetect (longer than policy), ffprobe (duration within ±5% of policy.targetDurationSeconds; codec, fps, resolution against the preset), caption cues against the preset's safe rectangles and for overlaps, check_media_health for missing or offline assets, and script coverage (every scene has a clip; every dialogue line is placed or marked cut in the op log)"
+    met: false
+    reason: "not built"
+  - text: "QA output is QaResultSchema {pass, issues:[{type, severity 0-1, timeRange, scene, detail, repairIntent?}]} (shared with FILM-2003); known-bad fixture renders (clipped audio, black frames, out-of-safe-area captions) fail and known-good pass"
+    met: false
+    reason: "not built"
+  - text: "src/studio/critic/pacing.js: shot lengths vs policy, information delivery (dialogue end vs clip end), repeated shots by semantic similarity, cut density per scene; audio.js: dialogue-to-music ratio per segment from bus stems, fades at cuts, abrupt level changes; visual.js: a vision model on keyframes for subject framing, caption overlap and shot-boundary continuity, plus script fidelity from the scene map; each returns issues in the QA shape with severity"
+    met: false
+    reason: "not built"
+  - text: "studio_review {scope, versionId?} runs QA then the critic and returns both; with no hosted model configured the visual analyser is skipped and the result says so; vision is capped at 40 keyframes per review and its token cost is recorded in the op log"
+    met: false
+    reason: "not built"
+  - text: "studio_repair {issues[]} compiles each issue's repairIntent (duck_music, trim_silence, normalize_loudness, move_caption, replace_missing_media, add_fade, re-time) to one action plan with reasons; FILM-2013's autoRepair loop uses it, stops at 3 rounds, and leaves remaining issues as cards"
+    met: false
+    reason: "not built"
+  - text: "Delivery renders (FILM-2017) go through Velorn's media-preparation queue with VideoToolbox on macOS, NVENC on Windows/Linux and x264 fallback; a 1080p 90 s render completes at 1× real time or faster with hardware encode on the reference machines"
+    met: false
+    reason: "not built"
+  - text: "Velorn's export regression runner gains the QA pass over its fixture outputs so a regression in loudness or black frames fails CI"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "QA: each check on a known-bad and a known-good fixture; thresholds from preset and policy", met: false, reason: "not built"}
+    - {text: "Pacing and audio analysers on the 20-shot fixture produce the expected issues; repair compilation per issue type", met: false, reason: "not built"}
+  integration:
+    - {text: "Apply → keyframes → QA → repair → QA passes on a fixture with planted silence and loud music, in under 3 rounds", met: false, reason: "not built"}
+    - {text: "Render timing on the reference machines recorded in the release checklist", met: false, reason: "not built"}
+  e2e: []
+open_questions:
+  - "Vision model for the visual analyser: the same model that drives the agent, or a cheaper dedicated one? Decide with README open question 2."
+notes: >
+  Deterministic first, judgment second: FFmpeg catches most technical failures
+  for free, so the critic's tokens go only to pacing, framing and continuity
+  judgments. Continuity scoring across shot boundaries starts here as a visual
+  issue type; SPIKE-06 decides whether it grows into generation requests.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"
+  modules: ["electron/studio/previewRender.js", "electron/studio/qa.js", "src/studio/critic/pacing.js", "src/studio/critic/audio.js", "src/studio/critic/visual.js", "src/studio/intents/repair.js"]
+  mcp_tools: ["studio_render_preview", "studio_review", "studio_repair"]
+  files_changed: ["electron/mediaPreparation.js (preview bypass)", "scripts/export-regression (QA pass)"]

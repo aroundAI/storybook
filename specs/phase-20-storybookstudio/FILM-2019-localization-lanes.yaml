@@ -1,0 +1,68 @@
+spec_id: "FILM-2019"
+title: "Localization Lanes: One Master Edit, Many Language Renders"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DEFERRED
+effort: L
+dependencies:
+  - spec_id: "FILM-2007"
+    note: "localize_episode produces the dubbed lines the lanes import"
+  - spec_id: "FILM-2016"
+    note: "stems and per-language dialogue buses"
+  - spec_id: "FILM-2017"
+    note: "per-language delivery renders"
+summary: >
+  v2. One master timeline, many languages, no per-language timelines.
+  Dialogue and caption tracks carry a language; every element has
+  languageDependency (none, language, locale); a render selects a language,
+  including tracks that match it or are language-independent and muting the
+  rest. Composition props with languageDependency language take localized
+  strings from the package's dubbed block and refit (Remotion measures text
+  and adjusts font size, wrapping and duration within tolerance, FILM-2018).
+  studio_create_variant {kind: language} imports the dubbed lines StoryBook
+  produced (FILM-2007), places them by timelineStart, re-runs captions for
+  that language, renders per preset and QA-checks language mismatch (whisper
+  language detection on the mix). Design: PRD-EDD.md Part 2 "Audio, captions,
+  compositions and localization" (localization); Part 4 flow 5; Part 1 R-51.
+acceptance_criteria:
+  - text: "Tracks carry language (BCP-47) and elements carry languageDependency; the builder (FILM-2012) sets none on video, music, sfx, ambience and shot audio, language on dialogue and captions"
+    met: false
+    reason: "deferred to v2"
+  - text: "Render selection: export_timeline and export_delivery_batch take a language; tracks whose language matches or is none are included, others muted; captions burned or sidecar in that language"
+    met: false
+    reason: "deferred to v2"
+  - text: "studio_create_variant {kind: language, language} pulls the dubbed block via re-sync (FILM-2011), creates a Dialogue:<lang> track from dubbed_dialogue_lines at timelineStart, runs studio_add_captions for the language, and re-renders compositions with localized strings (FILM-2018)"
+    met: false
+    reason: "deferred to v2"
+  - text: "Localized graphics refit: text measured per language; font size reduced to a floor, then wrapping, then duration extended within 20%; a string that still does not fit is a QA issue 'localized text exceeds container' with the element id"
+    met: false
+    reason: "deferred to v2"
+  - text: "QA language check: whisper language detection on the audio mix of a language render must match the requested language; mismatch is a failing issue"
+    met: false
+    reason: "deferred to v2"
+  - text: "Delivery of EN, HI and ES in 16:9 and 9:16 from one master passes QA on the fixture; episode_renders rows carry each language"
+    met: false
+    reason: "deferred to v2"
+test_plan:
+  unit:
+    - {text: "Track selection per language; refit algorithm on long German and short Japanese strings", met: false, reason: "deferred"}
+  integration:
+    - {text: "Fixture with dubbed HI lines: variant created, captions in Devanagari placed in safe area, render passes language check", met: false, reason: "deferred"}
+  e2e: []
+open_questions:
+  - "Lip-sync drift: dubbed lines longer than the original shot. Extend the shot (speed 0.9 floor) or trim the line? Decide with FILM-2007's dubbing choice."
+notes: >
+  Separating language-independent from language-dependent content is what
+  makes localization a compilation step rather than six edits; the stems from
+  FILM-2016 are what make the mix cheap to rebuild per language.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"
+  mcp_tools: ["studio_create_variant (kind: language)"]
+  modules: ["src/studio/localization/lanes.js", "src/studio/localization/refit.js"]
+  files_changed: ["src/services/exporter.js (language selection)", "src/stores/timelineStore.js (track language)"]

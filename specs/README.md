@@ -70,7 +70,8 @@ specs/
 ├── phase-16-workbook-parity/      # Workbook parity
 ├── phase-17-analytics-provenance/ # Provenance and signal
 ├── phase-18-local-vendor-sandbox/ # Local vendor sandbox
-└── phase-19-dual-ai-mcp/          # Gemini in the app, Claude over MCP
+├── phase-19-dual-ai-mcp/          # Gemini in the app, Claude over MCP
+└── phase-20-storybookstudio/      # The desktop AI editor (Velorn fork): specs for both repos
 ```
 
 Every phase folder's own subdirectories (`database/`, `components/`,

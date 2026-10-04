@@ -1,0 +1,78 @@
+spec_id: "FILM-2015"
+title: "Studio UI: Welcome, Episode Picker, AI Panel, Scene Strip, Review and Deliver"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2011"
+    note: "sign-in, picker data, pull progress, updates"
+  - spec_id: "FILM-2012"
+    note: "versions and the report the review screen shows"
+  - spec_id: "FILM-2013"
+    note: "plan cards and the studio:plan-proposed event"
+summary: >
+  Five surfaces wrap Velorn's editor without changing it: a Welcome screen
+  (Open from StoryBook, recent projects, update badges), an episode picker
+  (project → season → episode with status, size and 'on this machine'), the
+  editor's two additions (an AI panel with the instruction box, per-scene plan
+  cards, Approve / Approve scene / Reject and the report; a scene strip above
+  the timeline with headings and target vs actual duration), a Review screen
+  (two timelines stacked, changed clips highlighted, synced scrub, per-scene
+  accept, 'Why this?' on any clip) and a Deliver screen (preset checklist,
+  per-render QA badge with issues and 'Fix with AI', 'Send to StoryBook' with a
+  confirmation summary, 'Export to file'). The AI panel never blocks the editor;
+  plan cards are the unit of approval; anything leaving the machine shows a
+  confirmation naming the episode, the files, their sizes and the destination.
+  Design: PRD-EDD.md Part 1 "Screens and interaction model"; R-11, R-20, R-24,
+  R-30, R-33, R-62.
+acceptance_criteria:
+  - text: "Welcome (src/components/studio/Welcome.jsx): signed in → 'Open from StoryBook' opens the picker; signed out → sign-in with 'Sign in with StoryBook' (PKCE) and 'Paste a token'; recent projects with an 'Updates available' badge when FILM-2011's sync has a pending plan"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "EpisodePicker.jsx: tree of projects → seasons → episodes from list_projects/list_episodes with status chips (storyboard, generating, editing, ready, published), duration, last changed, estimated size from the package, 'On this machine' when a local project links to it; opening pre-selects from a velorn://open deep link; 'Open' starts the pull with a progress view (phase, files, bytes) and lands in the editor when playable"
+    met: false
+    reason: "not built"
+  - text: "AIPanel.jsx mounted on the editor's right: instruction box, plan cards [{scene, before → after, changes with reasons}], Approve all / Approve scene / Reject, the report view, a 'touches your edits' section when a plan affects user-edited clips; cards arrive via studio:plan-proposed from the in-app agent or an external MCP client alike; the editor stays interactive while a plan is prepared and the plan re-bases before showing"
+    met: false
+    reason: "not built"
+  - text: "SceneStrip.jsx above the timeline: one segment per scene with heading, target vs actual duration (red when over policy tolerance); clicking selects the scene's clips and scopes the next instruction ('tighten this')"
+    met: false
+    reason: "not built"
+  - text: "ReviewScreen.jsx: before and after versions stacked, clips changed in the plan highlighted by origin, synced scrubbing, per-scene accept (restores other scenes from the parent version), 'Why this?' popover reading the report's reason for a clip; keyboard operable"
+    met: false
+    reason: "not built"
+  - text: "DeliverScreen.jsx: presets with per-render status and QA badge, issues listed with 'Fix with AI' (studio_repair), 'Send to StoryBook' opening a confirmation that names the episode, workspace, files and sizes and only then calls studio_deliver confirm:true; 'Export to file' always available offline"
+    met: false
+    reason: "not built"
+  - text: "Project-close and app-quit prompt when a plan is unapproved or a delivery is in flight; a crash during a plan reopens at the last autosave with 'Return to version before plan' offered (FILM-2012 versions)"
+    met: false
+    reason: "not built"
+  - text: "Accessibility: all five surfaces keyboard-navigable, aria-live on plan arrival and QA results, captions and report readable by a screen reader; Velorn's existing editor accessibility unchanged"
+    met: false
+    reason: "not built"
+  - text: "Nothing in the renderer holds a token; every cloud call goes through electronAPI.studio.* IPC (FILM-2011); the MCP snapshot excludes auth state"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Plan card rendering from fixture plans; scene strip durations; confirmation summary content", met: false, reason: "not built"}
+  integration:
+    - {text: "Renderer tests: a plan proposed over the bridge appears as cards; approve calls apply; reject leaves the document unchanged", met: false, reason: "not built"}
+  e2e:
+    - {text: "Packaged app on macOS: sign in with a PAT against local StoryBook, open the 20-shot fixture, run 'make it 90 seconds', approve, review, deliver to file; screenshots in the PR", met: false, reason: "not built"}
+open_questions: []
+notes: >
+  The design rule from Velorn's AGENTS.md holds: preserve simple guided
+  workflows and do not turn routine surfaces into node configuration. The
+  five surfaces are the whole of what a non-editor sees; the full timeline is
+  one click away and unchanged.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: [{component: "Welcome", file: "src/components/studio/Welcome.jsx"}, {component: "EpisodePicker", file: "src/components/studio/EpisodePicker.jsx"}, {component: "AIPanel", file: "src/components/studio/AIPanel.jsx"}, {component: "SceneStrip", file: "src/components/studio/SceneStrip.jsx"}, {component: "ReviewScreen", file: "src/components/studio/ReviewScreen.jsx"}, {component: "DeliverScreen", file: "src/components/studio/DeliverScreen.jsx"}]
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"
+  files_changed: ["src/App.jsx (mount panel and strip)", "electron/preload.js (electronAPI.studio.*)"]

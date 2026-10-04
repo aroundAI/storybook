@@ -1,0 +1,66 @@
+spec_id: "FILM-2016"
+title: "Audio Buses with Ducking and Stems; Brand Captions and Safe Areas"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2012"
+    note: "bus field on tracks and audioBuses on the project"
+  - spec_id: "FILM-2004"
+    note: "brand caption style and policy ducking values"
+summary: >
+  Sound and captions become things the AI can reason about. Audio tracks carry
+  a bus (dialogue, music, sfx, ambience) summed into a master with a limiter;
+  ducking is a sidechain from the dialogue bus onto the music bus, applied at
+  preview as Web Audio gain automation on Velorn's mixer graph and at export
+  as FFmpeg sidechaincompress; bus stems export separately so localization
+  (FILM-2019) can swap dialogue without remixing. Captions keep Velorn's local
+  whisper.cpp path and gain a brand caption preset (font, size, colours,
+  background, position, max chars per line, emphasis words) and safe-area
+  rules per aspect ratio, checked by QA (FILM-2014). Design: PRD-EDD.md Part 2
+  "Audio, captions, compositions and localization"; Part 1 R-41, R-42.
+acceptance_criteria:
+  - text: "src/studio/audio/buses.js: tracks have bus dialogue|music|sfx|ambience|shotaudio; project.studio.audioBuses holds per-bus gain, the music bus's duckUnder: dialogue with duckDb from policy (default -8), attack 120 ms, release 400 ms, and master {limiterLufs from the preset}; the builder (FILM-2012) sets buses on pull"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "Preview: audioMixerGraph.js routes tracks through bus gain nodes; ducking is a gain automation driven by the dialogue bus's envelope (analyser node), audible in the editor within one frame of a dialogue clip starting"
+    met: false
+    reason: "not built"
+  - text: "Export: the FFmpeg mix (export:mixAudio, audioEq.mjs) builds per-bus submixes, applies sidechaincompress from dialogue onto music with the same parameters, a loudnorm pass to the preset's LUFS on master, and can write stems (dialogue per language, music, sfx, ambience, shotaudio) as separate WAVs beside the render"
+    met: false
+    reason: "not built"
+  - text: "studio_edit_audio intents compile to primitives and bus changes: balance (per-segment dialogue-to-music ratio to policy, via set_clip_audio and bus gain), duck (enable or adjust duckDb), normalize (bus and master targets), fade (set_clip_audio envelopes at cuts); each with reasons"
+    met: false
+    reason: "not built"
+  - text: "src/studio/captions/style.js applies BrandSchema.captionStyle (FILM-2004) to the captions clip's style (Velorn's live captions on a role:'captions' track) and positions cues inside per-aspect safe rectangles: 16:9 bottom 10% margin; 9:16 above the bottom 25% and clear of the right 15% platform UI; 1:1 bottom 12%"
+    met: false
+    reason: "not built"
+  - text: "studio_add_captions {language, style?} compiles to transcribe_captions (whisper.cpp) → update_caption_cues with the styled, safe-area-placed cues → the QA caption check; emphasis words from the brand preset are styled when present in a cue"
+    met: false
+    reason: "not built"
+  - text: "Loudness after normalize is within ±1 LU of the preset target on the fixture renders; the dialogue bus is never ducked"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Bus routing and ducking parameters from policy; safe-area placement per aspect; emphasis styling", met: false, reason: "not built"}
+  integration:
+    - {text: "Export a fixture with overlapping dialogue and music: ebur128 shows the music drops by duckDb ±1 dB under dialogue; stems sum to the mix within tolerance", met: false, reason: "not built"}
+    - {text: "Captions on a 9:16 variant stay inside the safe rectangle (QA check passes)", met: false, reason: "not built"}
+  e2e: []
+open_questions: []
+notes: >
+  Veo shot audio is a fifth bus (shotaudio) so it can duck under dialogue
+  without being treated as music; the PRD's default is ducking, not muting,
+  with one 'Shot audio' toggle per scene in the UI (FILM-2015 exposes it).
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"
+  modules: ["src/studio/audio/buses.js", "src/studio/captions/style.js", "src/studio/intents/audio.js"]
+  files_changed: ["src/services/audioMixerGraph.js", "electron/audioEq.mjs", "electron/main.js (export:mixAudio stems)", "src/services/timelineAudioMix.js"]

@@ -1,0 +1,59 @@
+spec_id: "FILM-2004"
+title: "Project Brand and Edit Policy"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: M
+dependencies: []
+summary: >
+  Gives the AI editor constraints instead of taste. Two JSONB columns on
+  projects: brand (fonts, colours, caption style, logo, intro/outro asset ids,
+  transition style, music style) and edit_policy (default target duration,
+  min/max shot length, allowed transitions and their max duration, music
+  ducking, captions on/off and style, visual rules). Each has a zod schema with
+  defaults, a settings tab on the project settings page with a live caption
+  preview, and both travel inside the edit package (FILM-2001) so the Studio's
+  intent compilers and caption styler read them. Design: PRD-EDD.md Part 1
+  R-25 and R-44; Part 2 "Agent interface" (edit policy) and "Audio, captions,
+  compositions" (caption style).
+acceptance_criteria:
+  - text: "Migration adds projects.brand jsonb not null default '{}' and projects.edit_policy jsonb not null default '{}'; BrandSchema and EditPolicySchema (zod) in @kit/desktop-integration define every field with a default, and a parse of '{}' yields the full default object"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "BrandSchema: fonts {heading, body}, colors {primary, secondary, background, captionText, captionBackground}, captionStyle {fontSize, position top|center|bottom, maxCharsPerLine, background none|box|outline, emphasis none|color|scale}, logo {assetId, position, opacity}, introAssetId, outroAssetId, transitionStyle cut|dissolve|dip, musicStyle tags[]"
+    met: false
+    reason: "not built"
+  - text: "EditPolicySchema: targetDurationSeconds default from episode target, minShotLength 1.2, maxShotLength 6, transitions {preferred [cut, dissolve], maxDuration 0.4}, music {enabled true, duckUnderDialogue true, duckDb -8}, captions {enabled true, style 'brand'}, visual {avoidRepeatedShots true, avoidExtremeZoom true}, loudnessTargetLufs -14"
+    met: false
+    reason: "not built"
+  - text: "Project settings gains Brand and Edit policy tabs (enhanceAction updates with the schemas, settings.manage permission); the Brand tab renders a caption preview from the current values; logo, intro and outro pick from the project's assets"
+    met: false
+    reason: "not built"
+  - text: "Updating brand or edit_policy bumps the edit package etag (FILM-2001) so an open Studio sees 'brand changed' on re-sync"
+    met: false
+    reason: "not built"
+  - text: "get_project and update_project (FILM-1905) expose and accept brand and editPolicy, validated by the same schemas, so an MCP client can set them"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Schemas: defaults, invalid colours, out-of-range shot lengths, unknown transition refused", met: false, reason: "not built"}
+  integration:
+    - {text: "Server action updates and reads back; a member without settings.manage is refused", met: false, reason: "not built"}
+  e2e:
+    - {text: "Playwright: edit the caption colour, see the preview change, save, reload", met: false, reason: "not built"}
+open_questions: []
+notes: >
+  The schemas are the second shared contract with the fork (after the edit
+  package): storybookstudio/src/studio/contracts/brand.schema.ts and
+  policy.schema.ts are copies checked by the same drift test as FILM-2001.
+feature:
+  database:
+    tables: []
+    columns_added: ["projects.brand jsonb", "projects.edit_policy jsonb"]
+  queries: []
+  actions: [{name: "updateProjectBrandAction", file: "apps/web/app/home/[account]/studio/[projectSlug]/settings/brand/_lib/server/actions.ts"}, {name: "updateProjectEditPolicyAction", file: "apps/web/app/home/[account]/studio/[projectSlug]/settings/edit-policy/_lib/server/actions.ts"}]
+  ui: [{component: "BrandSettings", file: "apps/web/app/home/[account]/studio/[projectSlug]/settings/brand/page.tsx"}, {component: "EditPolicySettings", file: "apps/web/app/home/[account]/studio/[projectSlug]/settings/edit-policy/page.tsx"}]
+  provider_integration: null
+  schemas: ["BrandSchema", "EditPolicySchema"]

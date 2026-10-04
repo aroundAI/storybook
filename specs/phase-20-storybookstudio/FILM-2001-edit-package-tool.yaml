@@ -1,0 +1,87 @@
+spec_id: "FILM-2001"
+title: "Edit Package Tool: One Call That Hands an Episode to the Desktop"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-1904"
+    note: "/api/mcp, withMcpAuth, the tool registry and error contract"
+  - spec_id: "FILM-1905"
+    note: "the read services (episode, screenplay, shots, dialogue, assets) the builder reuses"
+  - spec_id: "FILM-2004"
+    note: "brand and edit policy travel inside the package"
+summary: >
+  Adds get_edit_package (studio:read) to @kit/studio-mcp: one MCP tool that
+  assembles everything StorybookStudio needs to open an episode as a rough cut.
+  The package carries the screenplay's scenes, every non-deleted shot with its
+  timing, trims, transition, prompt, purpose and frames, every dialogue line
+  with its audio, the music/SFX/ambience tracks, caption segments, characters
+  with reference images, shorts candidates, retention hints from analytics,
+  dubbed lines where they exist, and the project's brand and edit policy. Every
+  media reference is a 1-hour presigned R2 GET with sha256, size and MIME type,
+  so the desktop verifies what it downloads and never needs a public bucket.
+  The package has an etag derived from episodes.version and the newest
+  updated_at across its rows; a client passing if_none_match gets
+  {unchanged: true} back. The builder is a pure function over the existing
+  feature services, uses fetchAllRows for every list, and is the one place the
+  rough-cut contract is defined. Design: PRD-EDD.md Part 3 "API: the desktop
+  endpoints" (edit package JSON), corrected to an MCP tool.
+acceptance_criteria:
+  - text: "get_edit_package({episodeId, ifNoneMatch?}) is registered in @kit/studio-mcp with readOnlyHint, requires studio:read, and runs with the principal's RLS client; an episode the user cannot view returns NOT_FOUND"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "The result validates against EditPackageSchema (zod, schema id storybook-edit-package/1) exported from packages/features/desktop-integration; the schema is the contract both repos test against and is copied verbatim into the fork's tests"
+    met: false
+    reason: "not built"
+  - text: "Sources: scenes from episodes.screenplay_data.scenes; shots from shots where deleted_at is null ordered by sequence_number, with timeline_start_seconds, trim_in/out_point, transition_type, prompt, primary_subject, continuation_from_shot_id, first/last frame URLs; dialogue from dialogue_lines with language and timeline_start_seconds; audioTracks from audio_tracks joined to audio_assets (loopable, tags); captions from caption_segments grouped by language; characters from assets type=character joined to character_details; shortsCandidates from shorts; dubbed from dubbed_dialogue_lines; every list read with fetchAllRows"
+    met: false
+    reason: "not built"
+  - text: "Every media entry is {url, sha256, bytes, mime} where url is a presigned GET valid for 3600 s from a new getSignedReadUrl(key, ttlSeconds) on the R2 adapter (and the Supabase adapter's createSignedUrl); sha256 comes from assets.file_hash or is computed once and stored on first request; a missing file yields media: null with a reason, never a broken URL"
+    met: false
+    reason: "not built"
+  - text: "etag = sha1(episodes.version + max(updated_at) over shots, dialogue_lines, audio_tracks, caption_segments, dubbed_dialogue_lines, projects.brand, projects.edit_policy); get_edit_package with a matching ifNoneMatch returns {unchanged: true, etag} and no body; a stale etag returns the full package"
+    met: false
+    reason: "not built"
+  - text: "analyticsHints carries retention drop-offs (timestamp, drop percentage, platform, as-of date) from content_analytics.retention_data for the episode's latest publish when present, else an empty list"
+    met: false
+    reason: "not built"
+  - text: "The brand and editPolicy blocks are the project's columns from FILM-2004, defaults applied, validated by their schemas"
+    met: false
+    reason: "not built"
+  - text: "Package size: a 60-shot episode with two languages serializes under 1 MB; the tool call completes in under 2 s against the local seed (measured in the contract test)"
+    met: false
+    reason: "not built"
+  - text: "The tool writes an mcp_tool_calls row like every other tool (FILM-1904) and never logs a signed URL"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "buildEditPackage on three fixture episodes (5, 20, 60 shots; the 60 with dubbed audio) snapshots to the committed fixtures the fork's project-builder tests also consume", met: false, reason: "not built"}
+    - {text: "etag changes when a shot's video_url changes and when brand changes; unchanged when nothing changes", met: false, reason: "not built"}
+    - {text: "getSignedReadUrl produces a URL that a plain GET fetches within the TTL and 403s after it (R2 adapter test with the local sandbox, FILM-18xx lane)", met: false, reason: "not built"}
+  integration:
+    - {text: "SDK client against /api/mcp with a studio:read PAT: get_edit_package returns a schema-valid package; a studio:render-only token is FORBIDDEN; another team's episode is NOT_FOUND", met: false, reason: "not built"}
+    - {text: "pgTAP: a viewer-role project member can call the tool (read); an outsider cannot", met: false, reason: "not built"}
+  e2e: []
+open_questions:
+  - "Should the package include proxies (a 540p transcode) for very large shots so the Studio can play before the full download lands? Deferred: the Studio builds proxies locally."
+notes: >
+  The package is deliberately a superset of the OpenClaw manifest
+  (packages/features/episodes/src/lib/openclaw-manifest.ts) and of the Visual
+  Studio ZIP export; both can be rebuilt from it later. Public R2 read URLs stay
+  for the web app until the bucket is made private (a separate hardening task);
+  the desktop never relies on them. The schema file is the one artifact shared
+  with the fork: packages/features/desktop-integration/src/edit-package.schema.ts
+  is copied into storybookstudio/src/studio/contracts/edit-package.schema.ts by
+  a script, and a test in each repo fails if the copies differ.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: [{name: "buildEditPackage", purpose: "assemble the package from the feature services with fetchAllRows", file: "packages/features/desktop-integration/src/build-edit-package.ts"}]
+  actions: []
+  ui: []
+  provider_integration: {vendor: "Cloudflare R2", endpoints: ["getSignedReadUrl via @aws-sdk/s3-request-presigner on the S3-compatible API"]}
+  package: {name: "@kit/desktop-integration", path: "packages/features/desktop-integration/"}
+  mcp_tools: ["get_edit_package"]
+  schemas: ["EditPackageSchema (storybook-edit-package/1)"]

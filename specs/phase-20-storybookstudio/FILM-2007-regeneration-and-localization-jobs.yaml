@@ -1,0 +1,65 @@
+spec_id: "FILM-2007"
+title: "Shot Regeneration and Localization Jobs for the Studio"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2001"
+    note: "both jobs change the edit package etag, which is how the Studio notices"
+  - spec_id: "FILM-1909"
+    note: "the render tools and the shot-generation stage these jobs reuse"
+summary: >
+  Two things the Studio asks StoryBook to do because only StoryBook can: make
+  a shot again, and make the episode speak another language. regenerate_shots
+  (studio:render) queues the shot-generation stage for the listed shots with
+  a reason, through the existing generation core, bumping episodes.version so
+  the package etag changes; the Studio's re-sync then offers the new media as
+  a replacement that keeps the clip's position and trims. localize_episode
+  (studio:render) queues dub-episode jobs on the voice worker, one per
+  language, using ElevenLabs Dubbing with background audio preserved (or the
+  existing per-line TTS, README open question 6), writing dubbed_versions and
+  dubbed_dialogue_lines; the package's dubbed block then carries the lines
+  the Studio's language lanes (FILM-2019) need. Both return a job id that
+  get_render_progress (FILM-1909) reports on. Design: PRD-EDD.md Part 3
+  "Workers, jobs and the status machine"; Part 4 flows 3 and 5.
+acceptance_criteria:
+  - text: "regenerate_shots({episodeId, shotIds[], reason}) requires studio:render and member role; opens a generation run (FILM-1903) for the shot-generation stage scoped to those shots in the request context's mode (external for MCP, so the agent writes the shots through the brief path, or server if the team's settings choose it); returns {runId}; shots move to status queued; a regenerated shot's video_url and sha256 change on completion and episodes.version increments"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "A shot with status generating is refused with RUN_IN_PROGRESS; more than 20 shots per call is VALIDATION_FAILED"
+    met: false
+    reason: "not built"
+  - text: "localize_episode({episodeId, languages[]}) requires studio:render; for each language queues a dub-episode job on StorybookVoiceQueue carrying the dialogue stems the Studio uploaded with its master delivery (FILM-2003 captions/stems keys) or, absent stems, the dialogue_lines audio; the voice worker calls ElevenLabs Dubbing (or per-line TTS by project setting), writes dubbed_versions and dubbed_dialogue_lines with timeline_start_seconds, and increments episodes.version"
+    met: false
+    reason: "not built"
+  - text: "Budget and BYOK checks apply exactly as for start_voice_render (FILM-1909); cost lands in llm_usage_analytics/generation_jobs as today"
+    met: false
+    reason: "not built"
+  - text: "get_render_progress reports both job kinds; get_edit_package's etag changes when either completes; the dubbed block lists lines per language with media"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Tool input validation; shot count cap; language code validation (BCP-47 subset ElevenLabs supports)", met: false, reason: "not built"}
+  integration:
+    - {text: "regenerate_shots in external mode opens a run whose brief lists only the given shots; finalize changes the shots' media and the etag (local seed, mocked media)", met: false, reason: "not built"}
+    - {text: "dub-episode handler against the ElevenLabs sandbox (FILM-18xx local vendor sandbox) writes dubbed rows and bumps the version", met: false, reason: "not built"}
+  e2e: []
+open_questions:
+  - "Dubbing API (one call, timing preserved) vs per-line TTS (reuses voices and existing pipeline)? See README open question 6."
+notes: >
+  Neither tool renders video; shots are still produced outside StoryBook (Veo
+  via the manifest, or the OpenClaw path). regenerate_shots re-plans the shot
+  (prompt, frames) and resets its status so the existing upload path or the
+  agent's own video tool fills it; the Studio only cares that the media hash
+  changes.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: {vendor: "ElevenLabs", endpoints: ["Dubbing API (create dubbing, poll, fetch audio per language)"]}
+  mcp_tools: ["regenerate_shots", "localize_episode"]
+  workers: ["apps/web/lambda/llm-worker (shot-regeneration via the generation core)", "apps/web/lambda/voice-worker (dub-episode)"]

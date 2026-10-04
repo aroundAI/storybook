@@ -1,0 +1,64 @@
+spec_id: "FILM-2005"
+title: "The StorybookStudio OAuth Client and \"Open in Studio\""
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1907"
+    note: "the OAuth 2.1 authorization server, mcp_oauth_clients, consent page"
+  - spec_id: "FILM-2002"
+    note: "the editing badge reads the open session"
+summary: >
+  Lets a creator go from an episode page to the desktop app in one click, and
+  sign in without copying a token. StorybookStudio is registered as a
+  pre-registered public OAuth client (client_id storybookstudio) in
+  mcp_oauth_clients with redirect URIs velorn://auth/callback and
+  http://127.0.0.1/callback (any port, the loopback fallback); the Studio runs
+  FILM-1907's authorization-code flow with PKCE S256 and receives the same
+  sbk_at_/sbk_rt_ tokens any MCP client gets. The episode page gains an "Open
+  in Studio" button that launches velorn://open?api=<origin>&episode=<id>, and
+  when no handler answers, a sheet with download links and the "create a
+  token" alternative. Design: PRD-EDD.md Part 3 "Auth" (corrected: reuse
+  FILM-1907) and "Web UI changes".
+acceptance_criteria:
+  - text: "A seed migration inserts the storybookstudio client into mcp_oauth_clients as a public client (no secret, PKCE required) with redirect_uris ['velorn://auth/callback'] and a loopback rule: redirect_uri matching ^http://127\\.0\\.0\\.1:\\d+/callback$ is accepted for this client only (RFC 8252 §7.3); the exact-match rule stays for every other client"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "The consent page names the client 'StorybookStudio' with its icon, shows the team picker and the requested scopes (studio:read, studio:write, studio:render), and on approval redirects to the custom scheme; the browser's 'open app?' prompt is the OS's and is documented with a screenshot"
+    met: false
+    reason: "not built"
+  - text: "Connected apps settings lists a Studio connection with its device name (sent as client_name on registration or token exchange, e.g. 'Shaurya's MacBook'); revoking it logs that device out within one call (FILM-1907's revocation semantics)"
+    met: false
+    reason: "not built"
+  - text: "Episode header and Visual Studio show 'Open in Studio' when the episode is in storyboard, generating, ready or published; the button sets location to velorn://open?api=<encoded origin>&episode=<id> and, if the page is still visible after 2 s, opens a sheet with macOS and Windows download links (config), the token alternative, and 'Learn more'"
+    met: false
+    reason: "not built"
+  - text: "The deep link carries no token and no session: the Studio must sign in itself; the api parameter is the app origin only (the Studio allowlists hosts)"
+    met: false
+    reason: "not built"
+  - text: "A feature flag desktop_integration (account-level, default off) gates the button and the client row's active flag; FILM-2006's rollout flips it"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Redirect URI matcher: loopback accepted only for storybookstudio and only on 127.0.0.1 with a port; a path or host variant refused", met: false, reason: "not built"}
+  integration:
+    - {text: "SDK OAuth flow test: authorize with PKCE for client storybookstudio, code exchange, whoami; a code reused is refused (FILM-1907's guard)", met: false, reason: "not built"}
+  e2e:
+    - {text: "Playwright: the button is present with the flag on, absent with it off; clicking with no handler shows the download sheet", met: false, reason: "not built"}
+open_questions:
+  - "Client name per device: pass as client_name on the token request (non-standard) or register one DCR client per install? Recommended: one pre-registered client, device name as a token-request extension parameter stored on mcp_connections.name."
+notes: >
+  No new OAuth code paths: everything is FILM-1907's server with one more
+  client and one relaxed redirect rule for loopback. The Studio side of the
+  flow (opening the browser, catching the callback, storing tokens) is
+  FILM-2011.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: [{component: "OpenInStudioButton", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/open-in-studio-button.tsx"}, {component: "StudioDownloadSheet", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/studio-download-sheet.tsx"}]
+  provider_integration: null
+  oauth_client: {client_id: "storybookstudio", redirect_uris: ["velorn://auth/callback", "http://127.0.0.1:<port>/callback"], scopes: ["studio:read", "studio:write", "studio:render"]}

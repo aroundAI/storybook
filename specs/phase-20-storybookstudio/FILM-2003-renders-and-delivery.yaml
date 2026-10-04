@@ -1,0 +1,79 @@
+spec_id: "FILM-2003"
+title: "Episode Renders and the Delivery Package"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2002"
+    note: "a render belongs to an edit session; deliver closes it as delivered"
+  - spec_id: "FILM-1904"
+    note: "tool registry, scopes, error contract"
+summary: >
+  The finished cut comes back as a delivery package, not a file. A new
+  episode_renders table records every render the Studio produced (preset,
+  language, aspect, file, duration, thumbnail, captions, QA result). Three MCP
+  tools carry it: request_render_upload returns a presigned R2 PUT for one
+  render; finalize_render records the uploaded file's QA and probe data;
+  deliver_edit takes the session, the render ids, the explain-why report and
+  the episode version the Studio edited, sets final_video_url and
+  master_video_asset_id from the primary render, writes edit_state and the
+  session summary, and moves the episode to ready. The publish page picks
+  renders from the table instead of a manual upload, and Shorts renders appear
+  as publish candidates for vertical platforms. Design: PRD-EDD.md Part 3
+  "Data model changes" (episode_renders), "API" (delivery package), "Workers,
+  jobs and the status machine".
+acceptance_criteria:
+  - text: "Migration creates episode_renders (id, episode_id FK cascade, edit_session_id FK, preset, language default 'en', aspect, file_url, file_path, file_size_bytes, duration_seconds, thumbnail_url, captions_url, qa jsonb default '{}', status uploading|ready|failed|superseded, created_by, created_at) with an index on (episode_id, status); RLS: project members read, the session's user writes"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "request_render_upload({sessionId, preset, language, aspect, bytes, contentType}) (studio:write) validates preset against the fixed list (youtube_16x9, shorts_9x16, tiktok_9x16, reels_9x16, square_1x1, master), inserts a row in status uploading, and returns {renderId, uploadUrl, key} where uploadUrl is a presigned PUT (1 h, exact size and content type) under projects/{projectId}/episodes/{episodeId}/renders/{renderId}.mp4 via the existing presign service"
+    met: false
+    reason: "not built"
+  - text: "finalize_render({renderId, durationSeconds, qa, captionsKey?, thumbnailKey?}) verifies the object exists with the declared size (HEAD on R2), stores the probe and QA data, sets status ready; a missing object sets failed with the reason"
+    met: false
+    reason: "not built"
+  - text: "deliver_edit({sessionId, episodeVersion, renders:[{renderId, primary?}], report, qa}) requires every listed render ready and exactly one primary; refuses with TARGET_CHANGED when episodes.version != episodeVersion (the content changed in StoryBook during the edit), returning the current etag; on success, in one transaction: final_video_url and master_video_asset_id from the primary render, edit_state updated, the session set delivered with the summary and report, previous ready renders of the episode set superseded, episodes.status = 'ready', episodes.version incremented"
+    met: false
+    reason: "not built"
+  - text: "deliver_edit refuses a viewer role (FORBIDDEN) and refuses delivery on a published episode unless the caller is project admin/owner, per README open question 5 (supersede on allow)"
+    met: false
+    reason: "not built"
+  - text: "The report jsonb is validated against ExplainWhyReportSchema (versions[], finalDuration, aiOps, userOps, explain{scenes[]}); the qa jsonb against QaResultSchema ({pass, issues[{type, severity, timeRange, scene, detail}]}); both schemas live in @kit/desktop-integration and are copied into the fork"
+    met: false
+    reason: "not built"
+  - text: "Publish page lists the episode's ready renders by preset and language, defaults the primary to the publish target, and offers 9:16 renders to TikTok, Reels and Shorts targets; the manual upload remains as a fallback"
+    met: false
+    reason: "not built"
+  - text: "Stale uploading renders older than 24 h are set failed by the hourly cron route"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Preset list, delivery package schema, report schema: valid and invalid cases", met: false, reason: "not built"}
+    - {text: "deliver_edit transaction: version mismatch refuses and changes nothing; success sets every field and supersedes older renders", met: false, reason: "not built"}
+  integration:
+    - {text: "SDK client: request → PUT a fixture mp4 to the URL → finalize → deliver; publish page shows the render (Playwright reads it)", met: false, reason: "not built"}
+    - {text: "pgTAP: RLS matrix on episode_renders; status CHECK; a viewer cannot insert", met: false, reason: "not built"}
+  e2e:
+    - {text: "Publish flow with a delivered render reaches the publish worker with the render's URL (mocked platform)", met: false, reason: "not built"}
+open_questions:
+  - "Keep superseded render files in R2 for 30 days then purge via vendor-data-purge, or keep forever? Recommended 30 days."
+notes: >
+  The upload path reuses POST /api/storage/presign's service (exact size and
+  type on R2, 1 h) rather than the route, since the caller is a tool. Thumbnails
+  and captions ride the same presign with their own keys. The Studio always
+  shows a confirmation before calling request_render_upload (FILM-2017); the
+  tool itself cannot know that, so the web app treats a delivery as an
+  explicit user act and records created_by.
+feature:
+  database:
+    tables: ["episode_renders"]
+    columns_added: []
+  queries: [{name: "deliverEdit", purpose: "the one-transaction delivery", file: "packages/features/desktop-integration/src/delivery.service.ts"}]
+  actions: []
+  ui: [{component: "PublishRenderPicker", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/render-picker.tsx"}]
+  provider_integration: {vendor: "Cloudflare R2", endpoints: ["presigned PUT via the existing presign service", "HEAD object on finalize"]}
+  mcp_tools: ["request_render_upload", "finalize_render", "deliver_edit"]
+  schemas: ["DeliveryPackageSchema", "ExplainWhyReportSchema", "QaResultSchema"]
