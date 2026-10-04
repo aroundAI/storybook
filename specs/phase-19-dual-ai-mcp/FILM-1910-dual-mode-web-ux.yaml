@@ -99,7 +99,11 @@ notes: |
   KB-182 (#590).
   E2E: apps/e2e/tests/generation/daily-spend-cap.spec.ts (the Generate
   test needs a server with a model key, E2E_SERVER_HAS_MODEL_KEY=1, since
-  with none LLM_NOT_CONFIGURED is the refusal, as it should be).
+  with none LLM_NOT_CONFIGURED is the refusal, as it should be). Owner
+  decision 2026-10-04: CI's E2E servers (⚫️ Test, 🧬 E2E evidence, 🧬 E2E
+  guards) run with GEMINI_API_KEY=e2e-not-a-real-key and the flag, so the
+  Generate test runs nightly (#597); the no-LLM boot server still
+  starts with every model variable removed.
 
 feature:
   database: null
