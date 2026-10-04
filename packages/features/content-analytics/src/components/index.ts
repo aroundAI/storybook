@@ -192,6 +192,7 @@ export {
 
 // Revenue mix (FILM-1508)
 export { RevenueMixCard, RevenueMixCardSkeleton } from './revenue-mix-card';
+export { EditStyleCard } from './edit-style-card';
 
 // Content taxonomy (FILM-1507)
 export {

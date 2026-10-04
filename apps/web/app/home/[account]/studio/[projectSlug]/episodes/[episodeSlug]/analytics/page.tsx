@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 
 import {
+  EditStyleCard,
   EpisodeSyncStatus,
   RetentionCurveChart,
   RetentionCurveChartSkeleton,
@@ -23,9 +24,11 @@ import {
 import { unwrap } from '@kit/content-analytics/lib/action-result';
 import {
   getEpisodeAnalyticsAction,
+  getEpisodeEditStyleAction,
   getEpisodeRetentionPublishAction,
   getRetentionCurveAction,
 } from '@kit/content-analytics/server/diagnostics-actions';
+import type { EpisodeEditStyleResult } from '@kit/content-analytics/server/diagnostics-service';
 import { PageBody, PageHeader } from '@kit/ui/page';
 import { Skeleton } from '@kit/ui/skeleton';
 
@@ -60,6 +63,14 @@ export default function EpisodeAnalyticsPage() {
   });
 
   const publishId = publishQuery.data?.publishId ?? null;
+
+  // How the episode was cut in StorybookStudio (FILM-2006): shown only once
+  // a delivery exists, beside the retention it can be read against.
+  const editStyleQuery = useQuery({
+    queryKey: ['episode-edit-style', episode.id],
+    queryFn: () =>
+      unwrap(getEpisodeEditStyleAction({ episodeId: episode.id })),
+  });
 
   const curveQuery = useQuery({
     queryKey: ['retention-curve', publishId],
@@ -165,8 +176,50 @@ export default function EpisodeAnalyticsPage() {
             )}
           </section>
         ) : null}
+
+        <EditStyleSection query={editStyleQuery} />
       </PageBody>
     </>
+  );
+}
+
+function EditStyleSection({
+  query,
+}: {
+  query: { isError: boolean; data?: EpisodeEditStyleResult };
+}) {
+  if (query.isError) {
+    return (
+      <p
+        className="mt-6 border-t pt-6 text-sm text-muted-foreground"
+        role="alert"
+        data-test="edit-style-error"
+      >
+        The edit style could not be loaded.
+      </p>
+    );
+  }
+
+  const result = query.data;
+
+  if (!result || result.status !== 'delivered') return null;
+
+  return (
+    <div className="mt-6 border-t pt-6">
+      {result.style ? (
+        <EditStyleCard style={result.style} deliveredAt={result.deliveredAt} />
+      ) : (
+        // Delivered, but the stored report could not be read: say so rather
+        // than vanish, which would read as "never edited in the Studio".
+        <p
+          className="text-sm text-muted-foreground"
+          data-test="edit-style-unreadable"
+        >
+          This episode was delivered from StorybookStudio, but its edit report
+          could not be read.
+        </p>
+      )}
+    </div>
   );
 }
 
