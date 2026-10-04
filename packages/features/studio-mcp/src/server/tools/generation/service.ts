@@ -394,7 +394,14 @@ export class GenerationService {
     });
   }
 
-  async start(input: { stage: StageKey } & StartTargetInput) {
+  /**
+   * `originName` is the tool that opened the run: `regenerate_shots`
+   * (FILM-2007) opens a shots run scoped to some shots through here.
+   */
+  async start(
+    input: { stage: StageKey } & StartTargetInput,
+    originName = 'start_generation',
+  ) {
     const stage = this.stage(input.stage);
     const { target, runTarget } = await resolveStageTarget(
       this.client,
@@ -447,7 +454,7 @@ export class GenerationService {
         },
         {
           kind: 'mcp',
-          name: 'start_generation',
+          name: originName,
           clientName: this.context.principal.clientName,
         },
         this.ctx,

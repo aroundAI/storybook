@@ -108,6 +108,8 @@ describe('the default tool list', () => {
         'get_generation_history',
         // FILM-2001's edit package
         'get_edit_package',
+        'regenerate_shots',
+        'localize_episode',
       ].sort(),
     );
   });
