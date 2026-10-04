@@ -3,7 +3,7 @@ title: "EditGraph v1, the Rough-Cut Builder, the Operation Log and Versions"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-2011"
@@ -35,11 +35,11 @@ acceptance_criteria:
     met: true
     evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/contracts/editgraph.schema.js:9 ASSET_ROLES, :35 STORYBOOK_ROLE_MAP (exported; the builder that applies it is slice B))"
   - text: "src/studio/projectBuilder.js (pure, no Electron import) produces a project with one master timeline at the episode's aspect and fps; shots on video-1 at timelineStart else packed by sequence_number; a Dialogue track per language at each line's timelineStart; Music, SFX, Ambience tracks with bus fields and audio_tracks.volume; a captions track from caption segments; a marker per scene named by heading at the scene's first shot; asset folders per scene; semantic on every clip and asset; a ShotAudio track for Veo audio set to duck under dialogue; storybook/package.json, link.json, brand.json, policy.json written beside"
-    met: false
-    reason: "slice B (the rough-cut builder), in progress on fork branch feat/film-2012-rough-cut-builder; waits for FILM-2001's fixtures (#618)"
+    met: true
+    evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 src/studio/projectBuilder.js:115 buildProject (pure, no Electron, no clock); :286 shots on video-1 at the planned start, else packed by sequenceNumber; :402 one Dialogue track per language, dubs at timingAdjustment as clip speed (:435); :444 Shot audio track linked to its picture; :459-495 Music/SFX/Ambience tracks with bus fields and volume as clip gain; :573 live captions per language; :615 one marker per scene at its first shot; :152 asset folder per scene; :659-676 project.studio.audioBuses, music and shotaudio duck under dialogue (policy duckDb, default -8 dB, attack 120 ms, release 400 ms); :697 storybook/package.json, link.json, brand.json, policy.json written beside, URL signatures stripped; tests/studio/project-builder.test.mjs:23)"
   - text: "Builder snapshot tests pass on the three FILM-2001 fixture packages (5, 20, 60 shots with dubbed audio) and the output opens in stock Velorn v0.3.36 without error"
-    met: false
-    reason: "slice B (the rough-cut builder), in progress on fork branch feat/film-2012-rough-cut-builder; waits for FILM-2001's fixtures (#618)"
+    met: true
+    evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/project-builder.test.mjs:23 snapshots the 5, 20 and 60-shot fixtures (102 KB, 351 KB, 1.48 MB); tests/studio/rough-cut-opens.test.mjs:200 opens each built folder with upstream fdd8255's own openProject (Velorn v0.3.36 stores run in Node, not a packaged app): no error, every clip loads at its built time, stock saveProject writes it, and the fork reopens it as 1.2 with every Studio field intact; :175 runs the fork's entry end to end (write, open, Rough cut version on disk))"
   - text: "src/studio/oplog.js wraps runMcpAction and the timeline/assets store mutators: one JSON line per applied operation {op, ts, by ai|user, session, tool, args, inverse, reason, scene, versionId}; preview-only calls are not logged; the file is append-only and fsynced on version boundaries"
     met: true
     evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/oplog.js:157 wrapMcpActionRunner, :197 attachUserEditLogger, :50 createOpLog; src/services/mcpActions.js:8938; tests/studio/oplog.test.mjs:90 one line per write tool, :112 a preview appends none; tests/studio/edit-log-runtime.test.mjs:139 real stores and handlers)"
@@ -58,16 +58,12 @@ acceptance_criteria:
 test_plan:
   unit:
     - {text: "Schema: Velorn project validates; Studio fields validate; bad role refused", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/editgraph-schema.test.mjs)"}
-    - {text: "Builder snapshots (3 fixtures); packing rule when timelineStart is null; captions and markers", met: false, reason: "slice B (the rough-cut builder)"}
+    - {text: "Builder snapshots (3 fixtures); packing rule when timelineStart is null; captions and markers", met: true, evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/project-builder.test.mjs; 13 builder rules red when removed)"}
     - {text: "Op log: every write tool appends exactly one line; preview appends none; restore appends a restore op and the document equals the snapshot", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/oplog.test.mjs, tests/studio/versions.test.mjs, tests/studio/edit-log-runtime.test.mjs)"}
     - {text: "Report: fixture log → expected JSON and text", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/report.test.mjs)"}
   integration:
-    - {text: "Open a built project in stock Velorn (packaged, CI job on the fork) and save it; the Studio re-opens it with its fields intact", met: false, reason: "slice B (needs a built project)"}
+    - {text: "Open a built project in stock Velorn (packaged, CI job on the fork) and save it; the Studio re-opens it with its fields intact", met: true, evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/rough-cut-opens.test.mjs:200). Met by upstream fdd8255's own stores run in Node (git archive; CI fetches the SHA), not by a packaged app"}
   e2e: []
-remaining:
-  - criterion: "Rough-cut builder (ACs 3, 4) and its snapshot/stock-Velorn tests"
-    reason: "slice B"
-    closed_by: "FILM-2012"
 open_questions: []
 notes: >
   Why additive and not a new format: Velorn's stores, exporter and MCP
@@ -90,6 +86,30 @@ notes: >
   StoryBook. Hand edits made through a component's direct setState are not
   logged. Restore returns the timeline to the version's snapshot (taken at
   creation); its op range is the ops after that point.
+
+  Slice B (aroundAI/storybookstudio#6, squash 4e3c581) recorded and the pin
+  bumped in #622; every criterion is met. The explain-why report schema,
+  qa-result, delivery-package, edit-events and render-presets are now
+  generated .mjs copies of StoryBook's contracts and replace slice A's
+  hand-written report schema; report.js emits style {shotCount, hookType:
+  null} (report.js:222); docs/AI_EDITOR_CONTRACT.md IN1, IN4 and L3 follow;
+  ci.yml and nightly.yml fetch upstream fdd8255 by SHA. Entry point for
+  FILM-2011: openStudioProjectFromPackage(pkg, probedAssets, {projectPath,
+  brand?, policy?, options?}) (editLogRuntime.js:172) returns {projectPath,
+  project, version, warnings, written}; probedAssets is keyed by media key
+  {path, duration, fps, width, height, codecs, hasAudio}, and a missing key
+  becomes an offline asset. Warning codes: media_offline, shot_packed,
+  shot_overlap, clip_shortened, dialogue_start_from_shot,
+  dialogue_without_duration, audio_without_duration, dub_without_line,
+  overlap_lane, captions_empty, scene_without_shots. Caveats: render-presets.ts
+  is not a *.schema.ts, so scripts/sync-studio-contracts.mjs does not copy it
+  although delivery-package.schema.ts imports it (the fork rendered it with
+  the script's own function; the script should include it, a FILM-2001/2003
+  follow-up, or StoryBook's --check misses that file); Velorn's
+  placeLiveCaptions removes every other captions clip when it regenerates, so
+  FILM-2016 and FILM-2019 must handle a second language before calling it.
+  Bug found by the builder tests: volumeToGainDb(0) returned 0 dB instead of
+  the -24 dB floor (fixed).
 feature:
   database: {tables: [], columns_added: []}
   queries: []
@@ -97,5 +117,5 @@ feature:
   ui: []
   provider_integration: null
   repo: "aroundAI/storybookstudio"
-  modules: ["src/studio/contracts/editgraph.schema.js", "src/studio/projectBuilder.js", "src/studio/oplog.js", "src/studio/versions.js", "src/studio/report.js", "src/studio/editLogRuntime.js", "src/studio/documentDiff.js", "src/studio/projectVersion.js", "electron/studio/editsFiles.js"]
-  files_changed: ["electron/main.js", "electron/preload.js", "src/services/mcpActions.js", "src/services/fileSystem.js (saveProject version)", "src/stores/projectStore.js (normalizeOpenedProjectData)", "src/stores/timelineStore.js (studio fields, bus on tracks)", "src/stores/assetsStore.js (role, semantic, analysis)"]
+  modules: ["src/studio/contracts/editgraph.schema.js", "src/studio/projectBuilder.js", "src/studio/oplog.js", "src/studio/versions.js", "src/studio/report.js", "src/studio/openFromPackage.js", "src/studio/editLogRuntime.js", "src/studio/documentDiff.js", "src/studio/projectVersion.js", "electron/studio/editsFiles.js"]
+  files_changed: ["electron/main.js", "electron/preload.js", ".github/workflows/ci.yml", ".github/workflows/nightly.yml", "docs/AI_EDITOR_CONTRACT.md", "src/services/mcpActions.js", "src/services/fileSystem.js (saveProject version)", "src/stores/projectStore.js (normalizeOpenedProjectData)", "src/stores/timelineStore.js (studio fields, bus on tracks)", "src/stores/assetsStore.js (role, semantic, analysis)"]

@@ -684,8 +684,8 @@ StoryBook gets its post-production half: a fork of Velorn, [aroundAI/storybookst
 | FILM-2006 | [edit-record-and-analytics](./phase-20-storybookstudio/FILM-2006-edit-record-and-analytics.yaml) | DRAFT | M | FILM-2002, FILM-2003 |
 | FILM-2007 | [regeneration-and-localization-jobs](./phase-20-storybookstudio/FILM-2007-regeneration-and-localization-jobs.yaml) | DRAFT | L | FILM-2001, FILM-1909 |
 | FILM-2010 | [fork-and-security-baseline](./phase-20-storybookstudio/FILM-2010-fork-and-security-baseline.yaml) | PARTIAL | M | - |
-| FILM-2011 | [cloud-client](./phase-20-storybookstudio/FILM-2011-cloud-client.yaml) | DRAFT | L | FILM-2010, FILM-2001, FILM-2002, FILM-2005 |
-| FILM-2012 | [editgraph-and-rough-cut](./phase-20-storybookstudio/FILM-2012-editgraph-and-rough-cut.yaml) | PARTIAL | L | FILM-2011, FILM-2001, FILM-2004 |
+| FILM-2011 | [cloud-client](./phase-20-storybookstudio/FILM-2011-cloud-client.yaml) | PARTIAL | L | FILM-2010, FILM-2001, FILM-2002, FILM-2005 |
+| FILM-2012 | [editgraph-and-rough-cut](./phase-20-storybookstudio/FILM-2012-editgraph-and-rough-cut.yaml) | DONE | L | FILM-2011, FILM-2001, FILM-2004 |
 | FILM-2013 | [agent-capability-tools](./phase-20-storybookstudio/FILM-2013-agent-capability-tools.yaml) | DRAFT | XL | FILM-2012, FILM-2011, FILM-2010 |
 | FILM-2014 | [render-qa-critic](./phase-20-storybookstudio/FILM-2014-render-qa-critic.yaml) | DRAFT | L | FILM-2012, FILM-2013 |
 | FILM-2015 | [studio-ui](./phase-20-storybookstudio/FILM-2015-studio-ui.yaml) | DRAFT | L | FILM-2011, FILM-2012, FILM-2013 |

@@ -79,7 +79,8 @@ SPIKE-06 (continuity scoring, 2D puppets) — time-boxed, no dependents
 has no dependencies. M1 (pull and rough cut) closes when a 20-shot episode
 opens as a correct rough cut in under two minutes and Claude can tighten it
 with preview and undo, every change in the op log and restorable after a
-restart. M2 (the closed AI loop) closes when "tighten scene 3 to 12 s and fix
+restart. Met 2026-10-04 (FILM-2011, aroundAI/storybookstudio#7): 20-shot fixture
+episode playable in 4.72 s over /api/mcp. M2 (the closed AI loop) closes when "tighten scene 3 to 12 s and fix
 the audio" runs plan → preview → apply → render → QA → revise with no human
 touch and produces a report. M3 (round trip) closes when idea to "Ready to
 publish" happens without a manual file. M4 is v2: compositions, localization,

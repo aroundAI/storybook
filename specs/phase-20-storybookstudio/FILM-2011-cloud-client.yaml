@@ -3,7 +3,7 @@ title: "Cloud Client: Sign-in, Pull, Re-sync and the velorn:// Protocol"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-2010"
@@ -29,39 +29,43 @@ summary: >
   PRD-EDD.md Part 2 "Cloud client" (corrected to an MCP client) and Part 4
   flows 1 and 3.
 acceptance_criteria:
-  - text: "electron/studio/auth.js: PAT paste (validated by calling whoami) and PKCE (opens the system browser at /oauth/authorize with S256, catches velorn://auth/callback or a loopback 127.0.0.1:<random port>/callback, exchanges at /oauth/token, refreshes 5 minutes before expiry, rotates refresh tokens); tokens stored via the FILM-2010 secrets module under userData/studio-auth.json keyed by API host; studio:auth-changed emitted"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+  - text: "electron/studio/auth.js: PAT paste (validated by calling whoami) and PKCE (opens the system browser at /oauth/authorize with S256, catches velorn://auth/callback or a loopback 127.0.0.1:<random port>/callback, exchanges at /oauth/token, refreshes 5 minutes before expiry, rotates refresh tokens); tokens stored via the FILM-2010 secrets module under userData/studio-secrets.json keyed by API host; studio:auth-changed emitted"
+    met: true
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/auth.js:116 PAT, :234 PKCE, :318 refresh; live PKCE with a loopback redirect against a running StoryBook in 4.1 s, whoami clientName 'StorybookStudio on M1 test Mac'; refresh rotated both tokens; replaying the old refresh token returned 400 invalid_grant, the connection was revoked and the client showed 'Sign in again'; tests/studio/cloud-auth.test.mjs)"
   - text: "electron/studio/client.js wraps the SDK client: typed callers for whoami, list_projects, list_episodes, get_edit_package, open_edit_session, record_edit_events, close_edit_session, request_render_upload, finalize_render, deliver_edit, regenerate_shots, localize_episode; UNAUTHORIZED → refresh once → surface 'Sign in again'; FORBIDDEN surfaces the role; RATE_LIMITED honours retry_after_s"
-    met: false
-    reason: "not built"
-  - text: "electron/studio/pull.js: open session → get package → plan downloads → concurrency 4 with Range resume → sha256 verify (mismatch re-downloads once, then marks the asset offline) → ffprobe (duration, fps, dimensions, codecs, hasAudio) → project builder → open project; progress events {phase, done, total, bytes} over studio:job-progress; idempotent re-run skips verified files; a 403 on a download re-fetches the package and resumes"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/client.js:65 the client, :72 401 handling (refresh once, then Sign in again); tests/studio/cloud-client.test.mjs)"
+  - text: "electron/studio/pull.js: get package → open session → get package (open_edit_session bumps episodes.version, so the etag changes) → plan downloads → concurrency 4 with Range resume → verify by sha256, or by bytes when sha256 is null (mismatch re-downloads once, then marks the asset offline) → ffprobe (duration, fps, dimensions, codecs, hasAudio) → project builder → open project; progress events {phase, done, total, bytes} over studio:job-progress; idempotent re-run skips verified files; any 4xx on a media GET re-fetches the package and resumes"
+    met: true
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/pull.js:150 runPullJob, download.js:47 downloadFile (Range resume), :111 downloadVerified; tests/studio/cloud-pull.test.mjs, cloud-download.test.mjs)"
   - text: "A 20-shot fixture episode (about 1.5 GB) opens as a rough cut in under 120 s on a 100 Mbps link in the release test; playback is possible before proxies finish"
     met: false
-    reason: "not built"
-  - text: "electron/studio/sync.js polls get_edit_package with ifNoneMatch every 5 minutes while a project is open; on a new etag, diffs shots by sha256 and dialogue by id, downloads changed media under new file names, and emits a replacement plan (replace_clip_with_asset per affected clip) to the AI panel; nothing is applied without approval"
-    met: false
-    reason: "not built"
+    reason: "not measured as worded: the M1 run was on localhost with 81 MB (101 files), not a 100 Mbps link with about 1.5 GB, and 1.5 GB at exactly 100 Mbps is already 120 s of transfer, so the criterion cannot be met as written. The criterion needs restating, for example opens within 120 s plus transfer time at the measured link rate. FILM-2015's packaged end-to-end run is where the timing is re-measured"
+  - text: "electron/studio/sync.js polls get_edit_package with ifNoneMatch every 5 minutes while a project is open; on a new etag, diffs shots by media key and dialogue by id, downloads changed media under new file names, and emits a replacement plan (replace_clip_with_asset per affected clip) to the AI panel; nothing is applied without approval"
+    met: true
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/sync.js:45 checkForUpdates, packageDiff.js:141 buildResyncPlan; live: a regenerated shot gave replace clip-3, a deleted shot gave delete clip-5, a new line gave add on audio-1 at 30.5 s, all previews, project unchanged; tests/studio/cloud-resync.test.mjs, cloud-resync-diff.test.mjs)"
   - text: "electron/studio/events.js batches edit events and sends record_edit_events every 60 s or on delivery; queues locally when offline and flushes on reconnect; close_edit_session on project close"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/events.js:23 createEditEventQueue; tests/studio/cloud-events.test.mjs)"
   - text: "electron/studio/protocol.js: app.setAsDefaultProtocolClient('velorn'), requestSingleInstanceLock, open-url (macOS) and second-instance (Windows/Linux); velorn://open?api=&episode= validates api against an allowlist of StoryBook hosts (config + the signed-in host) and opens the picker with the episode selected; velorn://auth/callback is routed to auth.js; any other path is ignored and logged"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/protocol.js:33 parseVelornUrl, :70 registerVelornProtocol; packaged build: a hostile host was ignored and logged, a real link pre-selected the episode and started no pull; tests/studio/cloud-protocol.test.mjs)"
   - text: "The pull job and sync run in the main process, never over the renderer MCP bridge (which times out at 60 s), and expose status to the local MCP tools studio_get_job_status (FILM-2013)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/jobs.js:10 createJobRegistry, cloud.js:195 openEpisode in the main process)"
 test_plan:
   unit:
-    - {text: "Range resume: a download interrupted at 40% completes with one request for the remainder; sha256 mismatch path", met: false, reason: "not built"}
-    - {text: "Etag diff: changed shot, new dialogue line, removed shot each produce the right plan entries", met: false, reason: "not built"}
-    - {text: "Protocol parsing: hostile api host refused; malformed episode id refused", met: false, reason: "not built"}
+    - {text: "Range resume: a download interrupted at 40% completes with one request for the remainder; sha256 mismatch path", met: true, evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 tests/studio/cloud-download.test.mjs)"}
+    - {text: "Etag diff: changed shot, new dialogue line, removed shot each produce the right plan entries", met: true, evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 tests/studio/cloud-resync-diff.test.mjs)"}
+    - {text: "Protocol parsing: hostile api host refused; malformed episode id refused", met: true, evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 tests/studio/cloud-protocol.test.mjs)"}
   integration:
-    - {text: "Against a local StoryBook (pnpm dev) with a PAT: whoami, open session, package, download fixture media, builder output matches the FILM-2001 fixture snapshot", met: false, reason: "not built"}
-    - {text: "PKCE flow against local StoryBook with the loopback redirect (headless browser drives consent)", met: false, reason: "not built"}
+    - {text: "Against a local StoryBook (pnpm dev) with a PAT: whoami, open session, package, download fixture media, builder output matches the FILM-2001 fixture snapshot", met: true, evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 M1 exit check below: 20-shot fixture episode, 101 files, 81,015,868 bytes, all verified and probed, 0 offline, over /api/mcp with a PAT; 51 tests in tests/studio/cloud-*.test.mjs)"}
+    - {text: "PKCE flow against local StoryBook with the loopback redirect (headless browser drives consent)", met: true, evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/auth.js:234; live PKCE with a loopback redirect in 4.1 s)"}
   e2e: []
+remaining:
+  - criterion: "AC 4: the 20-shot episode opens as a rough cut within a time stated for the link it runs on (restated; 1.5 GB at 100 Mbps is already 120 s of transfer)"
+    reason: "the M1 check ran on localhost with 81 MB, so the criterion as worded was not measured; FILM-2015's packaged end-to-end run re-measures the timing"
+    closed_by: "owner"
 open_questions:
   - "Should the Studio support more than one StoryBook host at once (staging and production)? The token store is keyed by host to allow it; the UI shows one at a time."
 notes: >
@@ -70,6 +74,38 @@ notes: >
   to the Studio with no new server code. Signed URLs expire in an hour; the
   pull job's re-fetch on 403 is what makes multi-hour pulls on slow links
   work.
+
+  Recorded in #622 (aroundAI/storybookstudio#7, fork main c47fbb8). M1 exit
+  check met 2026-10-04 against a running StoryBook over /api/mcp (FILM-2001
+  c538c1f30 and FILM-2005 9da61379a, 20-shot fixture seed with real
+  ffmpeg media, the Studio driven by Playwright with a PAT): click to project
+  open 3.18 s; click to playable 4.72 s (the playhead advanced 1.39 s in
+  1.5 s of play); 101 files, 81,015,868 bytes, all verified and probed, 0
+  offline; timeline of 20 clips on Shots, 40 dialogue, 19 shot audio, music,
+  SFX, ambience, captions, 5 scene markers, 1:49; a re-run skipped 101 of
+  101 files, 0 bytes, in 1.9 s; the web app showed "Editing in Studio"
+  during the session. No token or signed URL in logs, console or the
+  project folder.
+
+  Corrections to the criteria, applied above: tokens live in
+  studio-secrets.json, not studio-auth.json; the diff is by media key, not
+  sha256; a file with a null sha256 is verified by bytes; any 4xx on a media
+  GET re-fetches the package, not only 403; the order is get_edit_package,
+  open_edit_session, get_edit_package, because open_edit_session bumps
+  episodes.version and the etag changes.
+
+  Findings for StoryBook and later specs: the session's package_etag is the
+  etag before open, and deliver_edit compares episodeVersion from open
+  (FILM-2002 and FILM-2003 notes should say which); FILM-1907 revokes the
+  whole connection on a replayed rotated refresh token, which is correct, but
+  two Studio windows racing a refresh would sign each other out, so the
+  fork's single-instance lock and per-origin single-flight refresh prevent
+  it; Velorn refuses to replace an audio clip with a video asset, so a
+  regenerated shot's separate shot-audio clip comes back unresolved from
+  re-sync (FILM-2013 and FILM-2016 handle it); FILM-2005 AC2's OS "Open
+  StorybookStudio?" prompt screenshot is still not captured (the agent
+  session has no Screen Recording permission), so the owner takes it with
+  one click.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
@@ -77,5 +113,5 @@ feature:
   ui: []
   provider_integration: {vendor: "StoryBook", endpoints: ["/api/mcp (Streamable HTTP, FILM-1904)", "/oauth/authorize, /oauth/token (FILM-1907)"]}
   repo: "aroundAI/storybookstudio"
-  modules: ["electron/studio/auth.js", "electron/studio/client.js", "electron/studio/pull.js", "electron/studio/sync.js", "electron/studio/events.js", "electron/studio/protocol.js"]
+  modules: ["electron/studio/auth.js", "electron/studio/client.js", "electron/studio/pull.js", "electron/studio/sync.js", "electron/studio/events.js", "electron/studio/protocol.js", "electron/studio/jobs.js", "electron/studio/cloud.js", "electron/studio/download.js", "electron/studio/packageDiff.js"]
   ipc: ["studio:signIn", "studio:signOut", "studio:listEpisodes", "studio:pull", "studio:jobStatus", "studio:checkUpdates", "studio:auth-changed", "studio:job-progress"]
