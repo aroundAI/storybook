@@ -3,7 +3,7 @@ title: "Delivery Presets, Shorts Reframe and Send to StoryBook"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-2003"
@@ -30,37 +30,44 @@ summary: >
   pipeline" (delivery tier), Part 4 flow 4; Part 1 R-50, R-52, R-60 to R-63.
 acceptance_criteria:
   - text: "src/studio/delivery/presets.js defines the six presets {name, width, height, fps, codec, bitrate, audioCodec, audioLufs, maxDuration, captionPolicy burn|sidecar|none}; export_delivery_batch accepts a preset list and produces one file per preset under renders/<version>/<preset>-<lang>.mp4"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 src/studio/delivery/presets.js:23 DELIVERY_PRESETS, :88 exportSettingsForPreset; electron/mcpServer.js:3764 expandDeliveryPresetTargets (renders/<version>/<preset>-<lang>.mp4); tests/studio/delivery-presets.test.mjs:25)"
   - text: "studio_create_variant {kind: short, source: candidateId | hook | range} duplicates the master into a variant timeline (timeline.studio {kind: variant, variantOf, aspect: 9:16}), trims to the range (shorts candidate start/end, or the hook compiler's pick), applies reframe, re-runs caption placement for 9:16, and reports expected duration against the preset's maxDuration"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 src/studio/intents/variants.js:225 buildShortVariant, :202 placeCaptionsForAspect (FILM-2016's styleCaptionCues); electron/studio/deliver.js:533 createVariant; tests/studio/variant-create.test.mjs:22)"
   - text: "src/studio/reframe.js: detects faces and the primary subject on keyframes (local model, no network), computes a crop path per clip, smooths it (no cut-to-cut jump over 15% of width unless at a cut), and writes it as set_clip_keyframes transforms; set_auto_reframe and set_focal_point are exposed in the expert profile; a clip with no detectable subject centres and flags a QA warning"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 src/studio/reframe.js:129 computeCropPath (15 % rule), :181 reframeClip (reframe_no_subject warning); src/studio/reframeDetect.js:26 detectFaces (local pico cascade, no network); electron/studio/subjectDetect.js:39; electron/mcpServer.js:10632 set_auto_reframe and :10644 set_focal_point (expert); tests/studio/reframe.test.mjs:35)"
   - text: "studio_create_variant {kind: hook, variants: N} produces N alternative first-5-second timelines from the strongest sound bites (FILM-2012 analysis) for StoryBook's hook tests, exported as separate files"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 src/studio/intents/variants.js:274 buildHookVariants; tests/studio/variants.test.mjs:61)"
   - text: "studio_deliver {presets[], languages[], confirm:false} returns a summary (per render: preset, language, estimated size and duration, QA state of the last preview) and performs nothing; confirm:true is accepted only after the Deliver screen's confirmation (the renderer sets a one-time confirmation token the tool must carry), then renders via the media-preparation queue, runs QA per file, uploads with resume via request_render_upload, calls finalize_render per file with QA and probe data, and deliver_edit once with the report and the pulled package's episodeVersion"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 electron/studio/deliver.js:471 studioDeliver, :290 consumeToken, :319 uploadRender (exact bytes and headers, finalize per file), :363 runDelivery (deliver_edit once with the pulled episodeVersion); electron/studio/mcpCapabilities.js:631 the token gate; tests/studio/deliver.test.mjs:72, :102. MET WITH SUBSTITUTION: the renders come from an interim ffmpeg tier (electron/studio/deliveryRender.js) with QA inline in electron/studio/deliveryQa.js until FILM-2014, and they run one at a time, not through the media-preparation queue; both are arguments of createStudioDeliver, so FILM-2014 swaps them in one line)"
   - text: "A TARGET_CHANGED from deliver_edit shows the diff and offers re-sync (FILM-2011) then retry; renders already finalized are reused on retry"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 electron/studio/deliver.js:443 TARGET_CHANGED with the re-sync diff, :494 retry reuses finalized renders; tests/studio/deliver.test.mjs:102)"
   - text: "'Export to file' writes the same presets to a chosen folder with the QA report beside them and needs no sign-in"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 electron/studio/deliver.js:413 writes qa-report.json beside the renders; tests/studio/deliver.test.mjs:208)"
   - text: "Edit events delivered and version_created are recorded (FILM-2011 events) and the session summary matches the report"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 electron/studio/deliver.js:426 qa_run, version_created and delivered events with stable ids; src/studio/delivery/deliveryReport.js:24 buildDeliveryReport; tests/studio/deliver.test.mjs:102 (edit_sessions.summary equals the report))"
 test_plan:
   unit:
-    - {text: "Preset table; reframe smoothing on a synthetic subject path; hook variant selection", met: false, reason: "not built"}
+    - {text: "Preset table; reframe smoothing on a synthetic subject path; hook variant selection", met: true, evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 tests/studio/delivery-presets.test.mjs:25; tests/studio/reframe.test.mjs:35; tests/studio/variants.test.mjs:61; tests/studio/delivery-render.test.mjs:71, :87, :106)"}
   integration:
-    - {text: "Against local StoryBook: deliver two presets for the fixture; episode_renders has two ready rows, episodes.status is ready, final_video_url is the 16:9 render; retry after a planted version bump hits TARGET_CHANGED and succeeds after re-sync", met: false, reason: "not built"}
-    - {text: "QA on each delivered file passes on the fixture; a planted loud music bed fails and 'Fix with AI' repairs it", met: false, reason: "not built"}
+    - {text: "Against local StoryBook: deliver two presets for the fixture; episode_renders has two ready rows, episodes.status is ready, final_video_url is the 16:9 render; retry after a planted version bump hits TARGET_CHANGED and succeeds after re-sync", met: true, evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 tests/studio/deliver.test.mjs:102). M3 exit check met 2026-10-05, headless, fork main-process code against a local StoryBook integration build, 20-shot episode: pull and rough cut 11.4 s; Short variant and reframe 4.0 s (face found on 6/6 keyframes, largest step 0.15, 3 testsrc shots centred and flagged); confirm:true without a token FORBIDDEN; first deliver_edit TARGET_CHANGED (currentVersion 4, expected 3) with 2 renders finalized; the retry done at episodeVersion 4, both renders reused, nothing re-uploaded; whole run 59.4 s. episode_renders has 2 ready rows (youtube_16x9 99.00 s, 149,044,242 B, QA pass, VTT; shorts_9x16 18.00 s, 20,984,975 B, QA pass, 3 reframe warnings); the episode is ready with final_video_url the youtube_16x9 render; edit_sessions.summary matches the report; edit_events hold qa_run x2, version_created and delivered once each; the youtube file measures -14.6 LUFS, -2.6 dBTP, 1920x1080 h264/aac; the publish page lists the renders"}
+    - {text: "QA on each delivered file passes on the fixture; a planted loud music bed fails and 'Fix with AI' repairs it", met: false, reason: "QA passes on each fixture file (inline QA, see above), but the loud-bed case is not run: it needs FILM-2014's critic and studio_repair, and a +18 dB bed passed the inline QA at -14.0 LUFS because loudnorm hides the balance"}
   e2e:
-    - {text: "Packaged app: Deliver screen → confirmation → progress → 'Sent to StoryBook'; the web publish page lists the renders", met: false, reason: "not built"}
+    - {text: "Packaged app: Deliver screen → confirmation → progress → 'Sent to StoryBook'; the web publish page lists the renders", met: false, reason: "not run: the Deliver screen is FILM-2015's; the main-process IPC it calls (deliverSummary, deliverConfirm, deliverStart, deliverRetry, createVariant, chooseExportFolder) is built and tested"}
+remaining:
+  - criterion: "A planted loud music bed fails QA and Fix with AI repairs it"
+    reason: "the render and QA used are interim stand-ins (deliveryRender.js, deliveryQa.js); the critic, the balance check and studio_repair are FILM-2014, which swaps them in as the render and qa arguments of createStudioDeliver"
+    closed_by: "FILM-2014"
+  - criterion: "Packaged app: Deliver screen to Sent to StoryBook"
+    reason: "the main-process delivery and its IPC are built; the Deliver screen and the packaged run are FILM-2015"
+    closed_by: "FILM-2015"
 open_questions:
   - "Burn captions into 9:16 renders by default (platform norms) or sidecar only? Recommended: burn for shorts/tiktok/reels, sidecar for youtube_16x9 and master."
 notes: >
@@ -68,6 +75,24 @@ notes: >
   with confirm:true but without the renderer's one-time confirmation token is
   refused, so an external MCP client cannot upload without the user seeing
   the summary. This is the outward-facing step the PRD singles out.
+
+  Built in aroundAI/storybookstudio#10 (pinned at storybookstudio@69426c2 by
+  #627). Lead defaults taken for the open question: captions are burned on
+  shorts_9x16, tiktok_9x16, reels_9x16 and square_1x1 and sidecar VTT on
+  youtube_16x9 and master; renders run one at a time inside the delivery job;
+  the variants are main-process tools that return FILM-2013's plan-card shape
+  and are not registered intent compilers. One confirmation-token store only
+  (studioMain.deliver.issueConfirmationToken, bound to the summary hash, one
+  use, 10 minutes), which FILM-2015's Deliver screen delegates to. Stand-ins
+  until FILM-2014: the interim renderer (top picture clip with transforms,
+  language audio at linear gain with a -3 dBFS limiter, captions burned or
+  sidecar; no transitions, effects, text or shape clips) and the inline QA
+  (ffprobe, ebur128, a 500 MB cap, reframe warnings as reframe_no_subject at
+  severity 0.3). M3 exit check met 2026-10-05: pull, Short, two renders,
+  deliver_edit (TARGET_CHANGED, then retry), episode ready, the publish page
+  lists the renders, 59.4 s. Follow-up, not in #10: src/studio/intents/variants.js
+  repeats FILM-2013's lineImportance weights and should import them from
+  src/studio/intents/common.js.
 feature:
   database: {tables: [], columns_added: []}
   queries: []

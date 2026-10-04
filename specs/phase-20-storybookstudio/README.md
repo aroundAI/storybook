@@ -80,7 +80,7 @@ has no dependencies. M1 (pull and rough cut) closes when a 20-shot episode
 opens as a correct rough cut in under two minutes and Claude can tighten it
 with preview and undo, every change in the op log and restorable after a
 restart. Met 2026-10-04 (FILM-2011, aroundAI/storybookstudio#7): 20-shot fixture
-episode playable in 4.72 s over /api/mcp. M2 (the closed AI loop) closes when "tighten scene 3 to 12 s and fix
+episode playable in 4.72 s over /api/mcp. M2 met 2026-10-05 (FILM-2013, aroundAI/storybookstudio#9): 'tighten scene 3 to 12 s and fix the audio' ran plan → preview → apply → version → report over MCP (21.0 s → 13.9 s; dialogue alone is 12.7 s, the card says so). M3 met 2026-10-05 (FILM-2017, aroundAI/storybookstudio#10): pull → Short → two renders → deliver_edit (TARGET_CHANGED then retry) → episode ready, publish page lists the renders, 59 s. M2 (the closed AI loop) closes when "tighten scene 3 to 12 s and fix
 the audio" runs plan → preview → apply → render → QA → revise with no human
 touch and produces a report. M3 (round trip) closes when idea to "Ready to
 publish" happens without a manual file. M4 is v2: compositions, localization,
