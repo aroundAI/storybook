@@ -23,4 +23,6 @@ Server-only code goes under `src/server/` and is exported as `./server`.
 - Fixtures for the fork's builder tests: `fixtures/edit-package/{5,20,60}-shots.json`,
   regenerated from `fixtures/edit-package/seed.ts` with
   `UPDATE_FIXTURES=1 pnpm --filter @kit/desktop-integration exec vitest run __tests__/edit-package-fixtures.test.ts`.
-- Copy the contracts into the fork: `node scripts/sync-studio-contracts.mjs`.
+- Copy the contracts into the fork as types-stripped `.mjs`:
+  `node scripts/sync-studio-contracts.mjs` (`--check` to compare). The fork
+  needs `zod` 3.
