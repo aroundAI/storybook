@@ -58,7 +58,7 @@ describe('get_workflow_guide', () => {
 });
 
 describe('the default tool list', () => {
-  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools and the three edit tools, each name once', () => {
+  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools and the three StorybookStudio session tools, each name once', () => {
     const names = defaultTools.map((tool) => tool.name);
 
     expect(new Set(names).size).toBe(names.length);
@@ -89,6 +89,10 @@ describe('the default tool list', () => {
         'edit_scene',
         'edit_shot',
         'edit_dialogue_line',
+        // FILM-2002's StorybookStudio session tools
+        'open_edit_session',
+        'record_edit_events',
+        'close_edit_session',
         // FILM-1906's list, pinned by name in analytics-catalogue.test.ts.
         ...analyticsTools.map((tool) => tool.name),
         'start_generation',
