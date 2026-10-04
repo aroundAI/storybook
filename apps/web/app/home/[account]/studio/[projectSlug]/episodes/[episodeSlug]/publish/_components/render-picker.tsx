@@ -40,8 +40,10 @@ function duration(seconds: number) {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 }
 
-function megabytes(bytes: number) {
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function fileSize(bytes: number) {
+  return bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 interface PublishRenderPickerProps {
@@ -184,7 +186,7 @@ function RenderRow({
         </div>
         <p className="text-sm text-gray-500" data-test="render-facts">
           {render.aspect} · {duration(render.duration_seconds)} ·{' '}
-          {megabytes(render.file_size_bytes)}
+          {fileSize(render.file_size_bytes)}
           {vertical && ' · for TikTok, Reels and YouTube Shorts'}
         </p>
       </div>
