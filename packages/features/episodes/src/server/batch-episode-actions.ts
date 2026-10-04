@@ -30,6 +30,7 @@ import {
   type RegenerateEpisodeOutlineResponse,
   RegenerateEpisodeOutlineSchema,
 } from '../lib/schemas/batch-episode.schema';
+import { insertEpisodesAtNextNumbers } from './episode.service';
 
 /**
  * Generate season episode outlines via LLM (FILM-314)
@@ -198,48 +199,22 @@ const batchCreateEpisodesHandler = enhanceAction(
     const toInsert = data.episodes.filter((ep) => !ep.id);
 
     if (toInsert.length > 0) {
-      // Get next episode number for the project/season
-      let existingEpisodesQuery = client
-        .from('episodes')
-        .select('number')
-        .eq('project_id', data.projectId)
-        .is('deleted_at', null)
-        .order('number', { ascending: false })
-        .limit(1);
-
-      if (data.seasonId) {
-        existingEpisodesQuery = existingEpisodesQuery.eq(
-          'season_id',
-          data.seasonId,
-        );
-      }
-
-      const { data: existingEpisodes } = await existingEpisodesQuery;
-      const nextNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
-
-      const episodesToInsert = toInsert.map((ep: EpisodeOutline, index) =>
-        episodeRowFromOutline(ep, {
-          projectId: data.projectId,
-          seasonId: data.seasonId ?? null,
-          number: nextNumber + index,
-        }),
+      // Numbers run across the whole project, not per season (KB-175)
+      const inserted = await insertEpisodesAtNextNumbers(
+        client,
+        data.projectId,
+        (firstNumber) =>
+          toInsert.map((ep: EpisodeOutline, index) =>
+            episodeRowFromOutline(ep, {
+              projectId: data.projectId,
+              seasonId: data.seasonId ?? null,
+              number: firstNumber + index,
+            }),
+          ),
+        logger,
       );
 
-      // Insert all episodes atomically
-      const { data: inserted, error: insertError } = await client
-        .from('episodes')
-        .insert(episodesToInsert)
-        .select('id, number, title, status');
-
-      if (insertError) {
-        logger.error(
-          { ...ctx, error: insertError },
-          'Failed to batch create episodes',
-        );
-        throw new Error(`Failed to create episodes: ${insertError.message}`);
-      }
-
-      createdEpisodes.push(...(inserted ?? []));
+      createdEpisodes.push(...inserted);
     }
 
     createdEpisodes.sort((a, b) => a.number - b.number);

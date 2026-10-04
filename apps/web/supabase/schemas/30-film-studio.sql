@@ -107,6 +107,8 @@ create index if not exists idx_episodes_project_status on public.episodes(projec
   where deleted_at is null;
 create unique index if not exists idx_episodes_project_slug on public.episodes(project_id, slug)
   where deleted_at is null;
+create unique index if not exists idx_episodes_project_number on public.episodes(project_id, number)
+  where deleted_at is null;
 create index if not exists idx_episodes_slug on public.episodes(slug)
   where deleted_at is null;
 create index if not exists idx_episodes_season on public.episodes(season_id)

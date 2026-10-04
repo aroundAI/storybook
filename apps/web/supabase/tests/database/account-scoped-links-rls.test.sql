@@ -35,7 +35,7 @@ insert into public.project_members (project_id, user_id, role)
          ('b1b1b1b1-0000-4000-8000-000000000031', tests.get_supabase_uid('member'), 'member');
 insert into public.episodes (id, project_id, number, title)
   values ('b1b1b1b1-0000-4000-8000-000000000012', 'b1b1b1b1-0000-4000-8000-000000000011', 1, 'Own'),
-         ('b1b1b1b1-0000-4000-8000-000000000022', 'b1b1b1b1-0000-4000-8000-000000000021', 1, 'Own 2'),
+         ('b1b1b1b1-0000-4000-8000-000000000022', 'b1b1b1b1-0000-4000-8000-000000000021', 2, 'Own 2'),
          ('b1b1b1b1-0000-4000-8000-000000000032', 'b1b1b1b1-0000-4000-8000-000000000031', 1, 'Other');
 insert into public.publishes (id, episode_id, platform, status)
   values ('b1b1b1b1-0000-4000-8000-000000000013', 'b1b1b1b1-0000-4000-8000-000000000012', 'youtube', 'draft'),
