@@ -33,7 +33,7 @@ import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 import { messageUserId, runLlmJob } from './job-boundary';
-import { workerCtx } from './utils/stage-runtime';
+import { installWorkerStageWriters, workerCtx } from './utils/stage-runtime';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient(awsClientOptions('dynamodb'));
@@ -93,7 +93,9 @@ const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
 // The orchestrators' agent loop reaches a model only through the run the job
 // boundary put in scope (FILM-1902): the gateway checks the run before each
 // step and writes the usage row with its id. The agent package sees no model.
+// The orchestrated stages write through their stage writers (KB-184).
 setAgentStepWriter(agentStepWriterForCurrentRun);
+installWorkerStageWriters();
 
 /** The run named by a message, driven through the gateway's backend. */
 function loadWorkerRun(runId: string): Promise<RunHandle | null> {

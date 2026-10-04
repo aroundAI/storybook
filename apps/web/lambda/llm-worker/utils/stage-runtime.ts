@@ -5,10 +5,7 @@
  * which the core never imports), and the run's `write` as the `generate`
  * seam (FILM-1902): the model is reached only through the run the job
  * boundary put in scope, which is checked before every call.
- *
- * Importing this installs the orchestrated stages' writers (KB-184), so
- * `run.write` reaches a stage's orchestrator in every worker path: a job's
- * handler and `executeServerRun` alike.
+
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -29,7 +26,15 @@ import { episodeContextLoader } from './episode-context-loader';
 
 export { episodeContextLoader };
 
-installStageWriters(STAGE_WRITERS);
+/**
+ * The orchestrated stages' writers (KB-184), so `run.write` reaches a
+ * stage's orchestrator in every worker path: a job's handler and
+ * `executeServerRun` alike. Called at boot and by `workerCtx`, never left to
+ * a module's side effect, which a `sideEffects: false` bundle may drop.
+ */
+export function installWorkerStageWriters() {
+  installStageWriters(STAGE_WRITERS);
+}
 
 /**
  * The stage context for the job's run: the worker's client and identity,
@@ -44,6 +49,8 @@ export function workerCtx(
   job: { accountId: string; userId: string },
   run: RunHandle = requireRun('the worker stage context'),
 ): Ctx {
+  installWorkerStageWriters();
+
   return stageCtx(
     run,
     {
