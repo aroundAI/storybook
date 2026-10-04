@@ -55,11 +55,8 @@ test_plan:
   e2e:
     - {text: "FILM-1804's studio flow (ideation → story → screenplay → shots → audio) still passes against the AI sandbox after the worker moves onto the core", met: false, reason: "not met — part D moves shots and audio_cues, which the flow drives, but the sandbox studio-flow spec was not run under the shared database lock in this PR; the worker handler tests compare every write with the recordings instead. Every stage is on the core now (parts A to D); the flow has not been run against it in any of the four PRs, so it is the first thing to run under the lock before FILM-1908 drives a stage from Claude"}
 remaining:
-  - criterion: "commit stamps generation_origin on dialogue_lines"
-    reason: "every other table a commit writes with an origin column is stamped under a run; the dialogue rebuild (stages/shared/dialogue-lines.ts) and the translation inserts still write none (FILM-1903 tracks it)"
-    closed_by: "FILM-1901"
   - criterion: "The model call between prepare and commit is run.write()"
-    reason: "Until the gateway exists the caller supplies `generate: (brief) => Promise<{output, usage}>`; the worker passes executeLLMForLambda (apps/web/lambda/llm-worker/utils/stage-runtime.ts) and the episodes actions pass executeLLM"
+    reason: "Checked 2026-10-04, not yet true for every handler. The worker's stageRunDeps (apps/web/lambda/llm-worker/utils/stage-runtime.ts:67) generates with run.write(brief), which resolves the gateway's writer under the run, for the plain stages. The handlers that pass their own generate still bypass run.write: the orchestrated ones (season-outline, story-ideation, story-generation, shot-generation, audio-cue-generation run an orchestrator whose agent steps write through agentStepWriter(run)) and batch-translate-metadata, which calls executeLLM directly. All are inside the run (the gateway refuses LLM_NO_RUN without one) but are not run.write()"
     closed_by: "FILM-1902"
 open_questions: []
 notes: |
