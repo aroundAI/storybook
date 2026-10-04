@@ -18,6 +18,7 @@ import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
+import { OpenInStudioButton } from '../../_components/open-in-studio-button';
 import { useStageRunLock } from '../../_components/stage-run-bar';
 import { FilterBar } from './filter-bar';
 import { ShortsPanel } from './shorts-panel';
@@ -790,6 +791,8 @@ export function VisualStudioScreen({
                 </span>
               )}
             </div>
+
+            <OpenInStudioButton />
 
             <Button
               variant="outline"

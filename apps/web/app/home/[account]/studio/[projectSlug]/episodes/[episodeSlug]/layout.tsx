@@ -5,7 +5,10 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { AssetRow, mapRowToAsset } from '@kit/assets';
-import { getOpenEditSession } from '@kit/desktop-integration/server';
+import {
+  getOpenEditSession,
+  isDesktopIntegrationEnabled,
+} from '@kit/desktop-integration/server';
 import { STUDIO_SHOT_COLUMNS, shotFromRow } from '@kit/episodes/lib/shot-row';
 import { listOpenExternalRuns } from '@kit/episodes/lib/stage-runs';
 import type {
@@ -27,6 +30,7 @@ import { editingInStudioOf } from './_components/editing-in-studio-badge';
 import { EpisodeContextProvider } from './_components/episode-context-provider';
 import { EpisodeWorkspaceHeader } from './_components/episode-workspace-header';
 import { EpisodeWorkspaceTabs } from './_components/episode-workspace-tabs';
+import { DesktopIntegrationProvider } from './_components/open-in-studio-button';
 import { StageRunBar } from './_components/stage-run-bar';
 
 const getProjectBySlug = cache(async (slug: string) => {
@@ -240,6 +244,11 @@ async function EpisodeWorkspaceLayout({
       })
     : null;
 
+  // "Open in Studio" shows only for a team that turned it on (FILM-2005)
+  const desktopIntegration = project.account_id
+    ? await isDesktopIntegrationEnabled(client, project.account_id)
+    : false;
+
   return (
     <EpisodeContextProvider
       episode={episode}
@@ -252,12 +261,14 @@ async function EpisodeWorkspaceLayout({
       canTakeDown={canTakeDown(takedownRole)}
       initialExternalRuns={externalRuns}
     >
-      <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-[#0A0A0A]">
-        <EpisodeWorkspaceHeader editingInStudio={editingInStudio} />
-        <EpisodeWorkspaceTabs />
-        <StageRunBar />
-        <div className="flex-1 overflow-y-auto">{children}</div>
-      </div>
+      <DesktopIntegrationProvider enabled={desktopIntegration}>
+        <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-[#0A0A0A]">
+          <EpisodeWorkspaceHeader editingInStudio={editingInStudio} />
+          <EpisodeWorkspaceTabs />
+          <StageRunBar />
+          <div className="flex-1 overflow-y-auto">{children}</div>
+        </div>
+      </DesktopIntegrationProvider>
     </EpisodeContextProvider>
   );
 }
