@@ -197,4 +197,62 @@ describe('each fitted prompt honours its brief', () => {
       for (const t of translations) expect(t.title.trim()).not.toBe('');
     }
   });
+
+  it('quality-evaluation/reel-scout: one analysis per scene sent, candidates only among them (KB-184)', () => {
+    const scenes = [{ number: 1 }, { number: 2 }, { number: 3 }];
+    const user = `**Scenes to Evaluate**:\n${JSON.stringify(scenes)}`;
+
+    for (let seed = 0; seed < SEEDS; seed++) {
+      const { sceneAnalyses, topReelCandidates } = reply(
+        'quality-evaluation/reel-scout',
+        user,
+        seed,
+      ) as {
+        sceneAnalyses: Array<{ sceneNumber: number; isReelCandidate: boolean }>;
+        topReelCandidates: number[];
+      };
+      expect(sceneAnalyses.map((a) => a.sceneNumber)).toEqual([1, 2, 3]);
+      expect(topReelCandidates).toEqual(
+        sceneAnalyses
+          .filter((a) => a.isReelCandidate)
+          .map((a) => a.sceneNumber),
+      );
+    }
+  });
+
+  it('scene-shot-generation: shots name the scene’s speakers, its location, and last within the range (KB-184)', () => {
+    const scene = {
+      number: 2,
+      location: 'Pier Nine',
+      dialogue: [
+        { character: 'Maya', text: 'Now.' },
+        { character: 'Dev', text: 'Wait.' },
+      ],
+    };
+    const user = [
+      'Each shot lasts between 4 and 6 seconds',
+      '## CURRENT SCENE CONTENT',
+      JSON.stringify(scene),
+    ].join('\n');
+
+    for (let seed = 0; seed < SEEDS; seed++) {
+      const { shots } = reply('scene-shot-generation', user, seed) as {
+        shots: Array<{
+          characters: string[];
+          duration: number;
+          metadata: { location: string };
+        }>;
+      };
+      expect(shots.length).toBeGreaterThan(0);
+      for (const shot of shots) {
+        for (const name of shot.characters) {
+          expect(['Maya', 'Dev']).toContain(name);
+        }
+        expect(shot.metadata.location).toBe('Pier Nine');
+        expect(Number.isInteger(shot.duration)).toBe(true);
+        expect(shot.duration).toBeGreaterThanOrEqual(4);
+        expect(shot.duration).toBeLessThanOrEqual(6);
+      }
+    }
+  });
 });

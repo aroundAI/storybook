@@ -1,3 +1,5 @@
+import { SHOT_DURATION_LIMITS } from '@kit/prompt-engine/llm-job-payloads';
+
 import { corpus, paragraph } from '../../corpus';
 import type { GenerateContext } from './context';
 
@@ -246,7 +248,7 @@ const reelScout: Fitter = (value, userPrompt) => {
   )
     return value;
   const generated = value.sceneAnalyses.filter(isObject);
-  const sceneAnalyses = numbers.map((sceneNumber, i) => ({
+  const sceneAnalyses: Json[] = numbers.map((sceneNumber, i) => ({
     ...generated[i % Math.max(1, generated.length)],
     sceneNumber,
   }));
@@ -265,6 +267,21 @@ const reelScout: Fitter = (value, userPrompt) => {
  * scene the prompt sent, are set in its location, and last a whole number
  * of seconds inside the range the prompt asks for.
  */
+/**
+ * A whole number of seconds in [min, max], held to the product's shot
+ * limits as a model following the prompt would be; one already inside is
+ * kept.
+ */
+function withinRange(duration: number, asked?: number, askedMax?: number) {
+  if (asked === undefined || askedMax === undefined) return duration;
+  const min = Math.max(SHOT_DURATION_LIMITS.min, asked);
+  const max = Math.min(SHOT_DURATION_LIMITS.max, askedMax);
+  if (min > max) return duration;
+  const whole = Math.round(duration);
+  if (whole >= min && whole <= max) return whole;
+  return Math.min(max, Math.max(min, whole || min));
+}
+
 const sceneShots: Fitter = (value, userPrompt) => {
   const scene = jsonObjectAfter(userPrompt, /## CURRENT SCENE CONTENT/);
   if (!scene || !isObject(value) || !Array.isArray(value.shots)) return value;
@@ -286,13 +303,7 @@ const sceneShots: Fitter = (value, userPrompt) => {
     shots: value.shots.filter(isObject).map((shot) => ({
       ...shot,
       characters: speakers.slice(0, 2),
-      duration:
-        min !== undefined && max !== undefined
-          ? Math.min(
-              max,
-              Math.max(min, Math.round(Number(shot.duration) || min)),
-            )
-          : shot.duration,
+      duration: withinRange(Number(shot.duration), min, max),
       metadata: {
         ...(isObject(shot.metadata) ? shot.metadata : {}),
         ...(location ? { location } : {}),
