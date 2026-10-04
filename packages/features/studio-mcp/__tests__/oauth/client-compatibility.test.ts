@@ -6,6 +6,7 @@ import {
   protectedResourceMetadata,
 } from '../../src/server/oauth/metadata';
 import { createMemoryOAuthStore } from '../../src/server/oauth/store';
+import { createMcpRouteHandlers } from '../../src/server/route-handler';
 
 /**
  * Claude and ChatGPT as they actually present themselves (FILM-1911): both
@@ -174,9 +175,6 @@ describe('browser origins /api/mcp answers by default', () => {
     'a preflight from %s is allowed; another origin gets no CORS headers',
     async (origin) => {
       delete process.env.MCP_ALLOWED_ORIGINS;
-      const { createMcpRouteHandlers } = await import(
-        '../../src/server/route-handler'
-      );
       const { OPTIONS } = createMcpRouteHandlers();
       const preflight = (from: string) =>
         OPTIONS(
