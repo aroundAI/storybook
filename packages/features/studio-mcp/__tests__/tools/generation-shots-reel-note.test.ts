@@ -6,7 +6,7 @@ import {
   episodeFixture,
   fixtureEpisodeContext,
   shotsPartOutputs,
-} from '../../../generation/__tests__/helpers/part-d';
+} from '../../../generation/src/testing/part-d';
 import type { McpToolDefinition } from '../../src/registry';
 import { createGenerationTools } from '../../src/server/tools/generation';
 import { createFakeRunApi, partsResponders } from '../helpers/fake-runs';

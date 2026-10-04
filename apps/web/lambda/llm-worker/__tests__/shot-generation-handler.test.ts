@@ -8,9 +8,9 @@ import {
   tableResponder,
 } from '@kit/generation/testing';
 
-import episodeFixture from '../../../../../packages/features/generation/__tests__/fixtures/shots-episode.json';
-import shotsOutput from '../../../../../packages/features/generation/__tests__/fixtures/shots-model-output.json';
 import shotsOld from '../../../../../packages/features/generation/__tests__/fixtures/shots-old-writes.json';
+import episodeFixture from '../../../../../packages/features/generation/src/testing/fixtures/shots-episode.json';
+import shotsOutput from '../../../../../packages/features/generation/src/testing/fixtures/shots-model-output.json';
 import {
   partOutputsFrom,
   processShotGeneration,

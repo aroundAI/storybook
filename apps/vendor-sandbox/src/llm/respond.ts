@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 
 import type { Rng } from '../rng';
+import { fitToBrief } from './generate/brief-fit';
 import { type Quality, createContext } from './generate/context';
 import {
   type JsonSchema,
@@ -94,7 +95,12 @@ export function respondToPrompt(
       break;
     case 'zod': {
       const schema = zodSchemaOf(prompt);
-      value = generateFromZod(schema, ctx);
+      value = fitToBrief(
+        prompt.key,
+        generateFromZod(schema, ctx),
+        userPrompt,
+        ctx,
+      );
       const checked = schema.safeParse(value);
       if (!checked.success) {
         throw new Error(
@@ -104,8 +110,13 @@ export function respondToPrompt(
       break;
     }
     case 'json-schema':
-      value = generateFromJsonSchema(
-        prompt.template.output?.schema as JsonSchema,
+      value = fitToBrief(
+        prompt.key,
+        generateFromJsonSchema(
+          prompt.template.output?.schema as JsonSchema,
+          ctx,
+        ),
+        userPrompt,
         ctx,
       );
       break;
