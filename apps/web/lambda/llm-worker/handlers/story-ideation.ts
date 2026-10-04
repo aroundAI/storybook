@@ -29,6 +29,8 @@ interface StoryIdeationResult {
   success: boolean;
   data: {
     ideas: StoryIdea[];
+    /** The version the ideas were stored at, for Generate Story (KB-186) */
+    episode?: { id: string; version: number };
     metadata: {
       provider: string;
       model: string;
@@ -75,6 +77,7 @@ export async function processStoryIdeation(
     success: true,
     data: {
       ideas: commit.data.ideas,
+      episode: commit.data.episode,
       metadata: {
         provider: 'orchestrator',
         model: 'multi-agent',

@@ -95,8 +95,6 @@ const KNOWN: Record<string, [number, string]> = {
     3,
     ADMIN,
   ],
-  'packages/features/episodes/src/agent/story-orchestrator.ts | episodes | update':
-    [1, ADMIN],
   'packages/features/episodes/src/lib/canon/sequel-system.ts | projects | update':
     [1, DEAD],
   'packages/features/episodes/src/lib/server/mutations/shot-actions.ts | generation_jobs | update':

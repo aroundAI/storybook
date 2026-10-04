@@ -32,6 +32,8 @@ import type {
 interface StoryIdeationWsResult {
   success: boolean;
   data: {
+    /** The version the ideas were stored at (KB-186) */
+    episode?: { id: string; version: number };
     ideas: Array<{
       title: string;
       logline: string;
@@ -133,6 +135,17 @@ export function IdeationPhase({
             visualPotential: idea.visualPotential,
           })),
         });
+
+        // Storing the ideas moved episodes.version; the story phase sends
+        // the version it holds, which the story run is opened against
+        const stored = entry.result.data?.episode;
+        if (stored) {
+          dispatch({
+            type: 'UPDATE_EPISODE_VERSION',
+            episodeId,
+            version: stored.version,
+          });
+        }
       } else if (entry.status === 'error') {
         processedRef.current.add(episodeId);
 

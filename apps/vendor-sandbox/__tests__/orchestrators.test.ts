@@ -208,7 +208,7 @@ describe('the studio orchestrators, against the sandbox', () => {
   });
 
   it.each([undefined, 'documentary', 'movie'] as const)(
-    'story (%s): writes, scores, checks continuity and persists the verdict',
+    'story (%s): writes, scores, checks continuity and returns the verdict for the story commit',
     async (contentType) => {
       const db = emptyDatabase();
       const result = await runStoryOrchestrator(
@@ -238,7 +238,9 @@ describe('the studio orchestrators, against the sandbox', () => {
       expect(result.success, result.error).toBe(true);
       expect(result.storyText?.length).toBeGreaterThan(0);
       expect(typeof result.viralQuality?.overallScore).toBe('number');
-      expect(db.written).toContain('update episodes');
+      // Not written mid-run: an episodes update moves the version the story
+      // run was briefed at, and its commit is refused (KB-188)
+      expect(db.written).not.toContain('update episodes');
 
       const tools = agentTurns('story-orchestrator')
         .map((e) => e.responseSummary ?? '')

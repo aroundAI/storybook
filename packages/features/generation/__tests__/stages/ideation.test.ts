@@ -161,6 +161,12 @@ describe('ideation stage (FILM-1901)', () => {
 
     expect(result.status).toBe('committed');
     expect(result.data.ideas).toEqual(IDEAS);
+    // The version the ideas were stored at, which the page sends with
+    // Generate Story: storing them moved it (KB-186)
+    expect(result.data.episode).toEqual({
+      id: IDS.episodeId,
+      version: (TABLES.episodes as { version: number }).version,
+    });
     expect(db.writes()).toEqual([
       expect.objectContaining({
         table: 'episodes',

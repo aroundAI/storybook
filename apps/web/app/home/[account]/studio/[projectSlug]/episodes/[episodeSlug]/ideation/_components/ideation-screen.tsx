@@ -54,7 +54,14 @@ interface IdeationScreenProps {
   defaultContentStyle?: ContentStyle;
   /** The ideas last generated for the episode, in either mode (episodes.metadata.ideas) */
   storedIdeas?: StoryIdea[];
+  /**
+   * Called when generated ideas arrive, with the episode version they were
+   * stored at: storing them moves episodes.version (KB-186)
+   */
+  onIdeasStored?: (episode?: StoredAt) => void;
 }
+
+type StoredAt = { id: string; version: number };
 
 export function IdeationScreen({
   episodeId,
@@ -65,6 +72,7 @@ export function IdeationScreen({
   defaultDuration = 300,
   defaultContentStyle = 'dialogue-heavy',
   storedIdeas = [],
+  onIdeasStored,
 }: IdeationScreenProps) {
   const { isGenerating, setIsGenerating } = useEpisodeContext();
   const [isPending, _startTransition] = useTransition();
@@ -91,16 +99,19 @@ export function IdeationScreen({
 
   useEffect(() => {
     if (llmStatus === 'success' && llmResult) {
-      const resultData = llmResult as { data?: { ideas: StoryIdea[] } };
+      const resultData = llmResult as {
+        data?: { ideas: StoryIdea[]; episode?: StoredAt };
+      };
       if (resultData.data?.ideas) {
         setIdeas(resultData.data.ideas);
         setHasGenerated(true);
+        onIdeasStored?.(resultData.data.episode);
         toast.success(`Generated ${resultData.data.ideas.length} story ideas`);
       }
     } else if (llmStatus === 'error') {
       toast.error(llmError || 'Failed to generate story ideas');
     }
-  }, [llmStatus, llmResult, llmError]);
+  }, [llmStatus, llmResult, llmError, onIdeasStored]);
 
   const form = useForm({
     resolver: zodResolver(GenerateStoryIdeasSchema),
@@ -122,6 +133,7 @@ export function IdeationScreen({
       if (result.success && result.data) {
         setIdeas(result.data.ideas);
         setHasGenerated(true);
+        onIdeasStored?.();
         toast.success(`Generated ${result.data.ideas.length} story ideas`);
         return { success: true, data: result.data };
       }
