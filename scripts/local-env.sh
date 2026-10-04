@@ -126,6 +126,7 @@ wait_for_clickhouse() {
 case "${1:-}" in
   up)
     echo "==> Supabase"
+    bash "$ROOT/scripts/local-ci/unpin-linked-versions.sh"
     (cd "$ROOT/apps/web" && pnpm exec supabase start)
 
     echo "==> ClickHouse ($CH_IMAGE)"
