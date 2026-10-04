@@ -749,6 +749,8 @@ All under `apps/web/app/api/v1/`, built with `enhanceRouteHandler({auth:'bearer'
 ## Workers, jobs and the status machine
 
 > **Phase 20 correction (2026-10-04):** `POST /regenerate-shots` and `POST /episodes/{id}/localize` are the MCP tools `regenerate_shots` and `localize_episode` (FILM-2007). The jobs and the status machine stand.
+>
+> **FILM-2007 correction (2026-10-04, lead decision 6):** `shot-regeneration` is not a worker job: `regenerate_shots` opens a `shots` run scoped to the listed shots in the request's mode (external over MCP: the agent writes the new plan), queues the shots and clears their video at once, and finalize bumps the version; nothing is rendered. `dub-episode` is per-line TTS, not ElevenLabs Dubbing (README open question 6, lead default): one `translate-dialogue` run translates every language, then a `dub-episode` job per language on `StorybookVoiceQueue` voices each line with its speaker's voice. The Studio uploads no dialogue stems (FILM-2003 carries captions only), so the source is the episode's dialogue lines.
 
 **No new queue is needed for MVP. Delivery is synchronous (the Studio uploads straight to R2), and the existing SQS workers pick up from `ready`.** Two jobs are added in v1 and v2.
 
@@ -841,7 +843,7 @@ Analytics pages gain one card in v2: "Edit style" on the episode analytics page 
 **3. Re-sync after a regeneration (R-14)**
 
 1. Studio polls `GET /edit-package` with `If-None-Match` every 5 minutes while open (304 is cheap).
-2. A 200 with a new `ETag` → `sync.js` diffs shots by `sha256`, lists changed ones in the panel as "2 shots updated in Storybook".
+2. A 200 with a new `ETag` → `sync.js` diffs shots by media `key` (sha256 is rarely recorded, KB-189), lists changed ones in the panel as "2 shots updated in Storybook".
 3. User accepts → changed media downloads under new names → `replace_clip_with_asset` per clip keeps position and trims → new version "Sync from Storybook".
 
 **4. Deliver (R-60 to R-62, R-70)**
@@ -855,7 +857,7 @@ Analytics pages gain one card in v2: "Edit style" on the episode analytics page 
 **5. Localize (R-51, v2)**
 
 1. Studio: `POST /episodes/{id}/localize {languages:['hi','es']}` → Storybook queues `dub-episode` per language on the voice worker.
-2. ElevenLabs Dubbing runs with the dialogue stems the Studio uploaded with the master delivery; results land in `dubbed_versions`; the package `ETag` changes.
+2. The dialogue is translated (one run for every language), then each line is voiced per language with its speaker's ElevenLabs voice (per-line TTS; FILM-2007, README open question 6); results land in `dubbed_versions` and `dubbed_dialogue_lines`; the package `ETag` changes.
 3. Studio re-sync pulls the dubbed lines → `studio_create_variant({kind:'language'})` builds language lanes, refits graphics, renders, QA-checks language mismatch → deliver adds the renders with `language:'hi'`.
 
 **6. Learn (R-71, v2)**
