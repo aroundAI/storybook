@@ -5,12 +5,10 @@ import { expect, test } from '@playwright/test';
 import { mintPersonalAccessToken } from '../utils/mcp';
 import { headerOnlyMp4 } from '../utils/mp4';
 import {
-  ownerToken,
   readRows,
   seedEpisodeWithShot,
   seedProject,
   seedTeamAccount,
-  timedRest,
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
@@ -20,7 +18,7 @@ import { MCP_URL } from './oauth-client';
 /**
  * FILM-2003: StorybookStudio sends a finished cut back over MCP and the
  * publish page offers it. A scripted SDK client, with a personal access
- * token, opens an edit session, requests two render uploads (16:9 and 9:16),
+ * token, opens an edit session (FILM-2002's open_edit_session), requests two render uploads (16:9 and 9:16),
  * PUTs a fixture MP4 to each presigned URL, finalizes them, is told
  * TARGET_CHANGED when the episode changed during the edit, and delivers
  * against the current version. The publish page then lists both renders:
@@ -93,17 +91,6 @@ test.describe('StorybookStudio delivers renders over MCP (FILM-2003)', () => {
     const { episodeId, slug } = await seedEpisodeWithShot(project.id);
     await updateRows('episodes', `id=eq.${episodeId}`, { status: 'ready' });
 
-    // What the Studio does first (FILM-2002): open a session as the user
-    const { data: opened } = await timedRest<{
-      ok: boolean;
-      session: { id: string };
-      episodeVersion: number;
-    }>('POST', '/rest/v1/rpc/open_edit_session', await ownerToken(team), {
-      p_episode_id: episodeId,
-      p_package_etag: 'e2e@v1',
-    });
-    expect(opened.ok).toBe(true);
-
     const token = await mintPersonalAccessToken(team, {
       name: 'StorybookStudio',
       scopes: ['studio:read', 'studio:write'],
@@ -121,6 +108,17 @@ test.describe('StorybookStudio delivers renders over MCP (FILM-2003)', () => {
     const renders: Record<string, string> = {};
 
     try {
+      // What the Studio does first (FILM-2002): open a session
+      const open = await call('open_edit_session', {
+        episodeId,
+        packageEtag: 'e2e@v1',
+      });
+      expect(open.isError, JSON.stringify(open)).toBeFalsy();
+      const opened = {
+        session: { id: open.structuredContent!.sessionId as string },
+        episodeVersion: open.structuredContent!.episodeVersion as number,
+      };
+
       for (const [preset, aspect, width, height] of [
         ['youtube_16x9', '16:9', 1920, 1080],
         ['shorts_9x16', '9:16', 1080, 1920],

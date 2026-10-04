@@ -6,18 +6,15 @@ import {
   openEditSessionTool,
   recordEditEventsTool,
 } from './sessions';
-import { studioRenderTools } from './renders';
 
 /**
- * Phase 20's StorybookStudio tools: the edit session (FILM-2002) and the
- * delivery (FILM-2003). FILM-2001 adds the edit package tool here.
+ * Phase 20's StorybookStudio tools: the edit session (FILM-2002). FILM-2001
+ * and FILM-2003 add the edit package and delivery tools here.
  */
 export const studioTools: McpToolDefinition[] = [
   openEditSessionTool,
   recordEditEventsTool,
   closeEditSessionTool,
-]
-  .map((tool) => tool as unknown as McpToolDefinition)
-  .concat(studioRenderTools);
+].map((tool) => tool as unknown as McpToolDefinition);
 
 export { closeEditSessionTool, openEditSessionTool, recordEditEventsTool };
