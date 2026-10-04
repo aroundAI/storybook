@@ -65,10 +65,11 @@ notes: |
   visible with help text saying so (lead decision 2026-10-03); the column
   is reserved for a future web "Generate with Claude" flow.
 
-  Only five web call sites word the server-off and stage-held refusals
+  Five web call sites worded the server-off and stage-held refusals here
   (screenplay, shot list, both refinements, audio cues); eighteen others
-  still throw them, so production shows a generic sentence there, though
-  no run is left behind. Filed as KB-182, open.
+  threw them, so production showed a generic sentence there, though no run
+  was left behind. Filed as KB-182, fixed in #590: every openRunForJob
+  caller words its refusal.
 
   The restore and cancel actions live in @kit/episodes
   (packages/features/episodes/src/server/run-actions.ts), not

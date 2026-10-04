@@ -277,10 +277,17 @@ export function CreateEpisodeWizard({
         );
 
         if (result.success && result.data) {
-          const msg = autoGenerate
-            ? 'Episode created — story generation started!'
-            : 'Episode created successfully';
-          toast.success(msg);
+          if (result.storyRefusal) {
+            toast.success('Episode created');
+            toast.error(result.storyRefusal);
+          } else {
+            toast.success(
+              autoGenerate
+                ? 'Episode created — story generation started!'
+                : 'Episode created successfully',
+            );
+          }
+
           onOpenChange(false);
 
           // Navigate to the episode

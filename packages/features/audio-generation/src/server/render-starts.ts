@@ -569,11 +569,15 @@ export async function startCueAudioRender(
       .update({ status: 'pending' })
       .eq('id', cueId);
 
+    // Server generation turned off, or the stage already held (KB-182)
+    const { runRefusalMessage } = await import('@kit/ai-gateway');
+
     return {
       success: false,
       status: 'failed',
       error:
-        error instanceof Error ? error.message : 'Failed to queue generation',
+        runRefusalMessage(error) ??
+        (error instanceof Error ? error.message : 'Failed to queue generation'),
     };
   }
 }

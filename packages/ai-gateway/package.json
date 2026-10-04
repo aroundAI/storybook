@@ -16,6 +16,7 @@
   "prettier": "@kit/prettier-config",
   "exports": {
     ".": "./src/index.ts",
+    "./refuse-run-error": "./src/refuse-run-error.ts",
     "./lambda-prompts": "./src/prompts/lambda-registry.ts",
     "./testing": "./src/testing/index.ts"
   },
@@ -24,6 +25,7 @@
     "@kit/agent": "workspace:*",
     "@kit/generation": "workspace:*",
     "@kit/llm": "workspace:*",
+    "@kit/next": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",

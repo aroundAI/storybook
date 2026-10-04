@@ -97,25 +97,35 @@ export const translateDialogueToLanguageAction = enhanceAction(
     logger.info(ctx, 'Processing dialogue translation request');
 
     // Always queue to Lambda for processing
-    const { openRunForJob } = await import('@kit/ai-gateway');
-
-    const run = await openRunForJob(
-      {
-        jobType: 'translate-dialogue',
-        userId: user.id,
-        target,
-        payload: {
-          episodeId: input.episodeId,
-          targetLanguage: input.targetLanguage,
-          preserveTiming: input.preserveTiming,
-          accountId,
-          userId: user.id,
-        },
-        name: 'audio.translateDialogue',
-      },
-      { client: client, accountId: target.accountId, userId: user.id },
+    const { openRunForJob, runRefusalMessage } = await import(
+      '@kit/ai-gateway'
     );
-    await run.dispatch();
+
+    try {
+      const run = await openRunForJob(
+        {
+          jobType: 'translate-dialogue',
+          userId: user.id,
+          target,
+          payload: {
+            episodeId: input.episodeId,
+            targetLanguage: input.targetLanguage,
+            preserveTiming: input.preserveTiming,
+            accountId,
+            userId: user.id,
+          },
+          name: 'audio.translateDialogue',
+        },
+        { client: client, accountId: target.accountId, userId: user.id },
+      );
+      await run.dispatch();
+    } catch (error) {
+      const refusal = runRefusalMessage(error);
+
+      if (!refusal) throw error;
+
+      return { success: false, translatedCount: 0, error: refusal };
+    }
 
     logger.info(ctx, 'Dialogue translation job queued');
     return { success: true, translatedCount: 0, queued: true };

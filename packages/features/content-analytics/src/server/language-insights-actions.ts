@@ -4,6 +4,7 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
@@ -142,7 +143,7 @@ const generateLanguageInsights = enhanceAction(
         name: 'analytics.generateLanguageInsights',
       },
       { client: client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
     await run.dispatch();
 
     return {

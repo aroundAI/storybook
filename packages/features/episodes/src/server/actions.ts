@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
 import type { AssetRow } from '@kit/assets';
 import { mapRowToAsset } from '@kit/assets';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
@@ -288,6 +289,9 @@ const createEpisodeWithContext = enhanceAction(
     });
 
     // 6. Optionally queue story generation immediately
+    let storyQueued = false;
+    let storyRefusal: string | null = null;
+
     if (data.autoGenerateStory && data.hook) {
       try {
         const { openRunForJob } = await import('@kit/ai-gateway');
@@ -319,7 +323,7 @@ const createEpisodeWithContext = enhanceAction(
             name: 'episodes.createEpisode',
           },
           await webRunCtx(client, target.accountId, user.id),
-        );
+        ).catch(refuseRunError);
 
         // Create generation job entry
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -336,12 +340,19 @@ const createEpisodeWithContext = enhanceAction(
         });
 
         await run.dispatch();
+        storyQueued = true;
 
         logger.info(
           { ...ctx, episodeId: episode.id },
           'Story generation queued',
         );
       } catch (queueError) {
+        // The episode exists either way: say why no story was started
+        // (server generation off, the stage held) instead of claiming one
+        if (queueError instanceof ActionRefusal) {
+          storyRefusal = queueError.message;
+        }
+
         logger.warn(
           { ...ctx, error: queueError },
           'Failed to queue story generation (non-fatal)',
@@ -359,7 +370,8 @@ const createEpisodeWithContext = enhanceAction(
       success: true,
       data: episode as unknown as Episode,
       seasonId,
-      autoGenerateQueued: data.autoGenerateStory === true && !!data.hook,
+      autoGenerateQueued: storyQueued,
+      storyRefusal,
     };
   },
   {

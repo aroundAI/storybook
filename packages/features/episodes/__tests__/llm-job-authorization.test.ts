@@ -77,6 +77,7 @@ vi.mock('@kit/ai-gateway', async () => {
   >('../../prompt-engine/src/lib/server/sqs-helper');
 
   return {
+    runRefusalMessage: () => null,
     openRunForJob: async (job: {
       jobType: string;
       userId: string;

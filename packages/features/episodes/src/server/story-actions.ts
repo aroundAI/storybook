@@ -1,5 +1,6 @@
 'use server';
 
+import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
@@ -105,7 +106,7 @@ const generateStoryIdeasHandler = enhanceAction(
         name: 'episodes.generateStoryIdeas',
       },
       await webRunCtx(client, target.accountId, user.id),
-    );
+    ).catch(refuseRunError);
     await run.dispatch();
 
     logger.info(ctx, 'Story ideation job queued');
@@ -232,7 +233,7 @@ const generateFullStory = enhanceAction(
         name: 'episodes.generateStory',
       },
       await webRunCtx(client, target.accountId, user.id),
-    );
+    ).catch(refuseRunError);
 
     // Create generation job entry for tracking
     const jobData = {

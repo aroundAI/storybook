@@ -54,6 +54,7 @@ vi.mock('@kit/supabase/require-user', () => ({
 // The action opens a run for the job (FILM-1903), records the row with its
 // id, then dispatches: 'send' is the dispatch, after the row
 vi.mock('@kit/ai-gateway', () => ({
+  runRefusalMessage: () => null,
   openRunForJob: async (job: { jobType: string; payload: Row }) => ({
     id: 'run-under-test',
     mode: 'server',
