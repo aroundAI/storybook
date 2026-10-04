@@ -1,15 +1,15 @@
+import type { Ctx, EpisodeContextLoader, GenerateFn } from '../types';
+import audioFixture from './fixtures/audio-cues-fixture.json';
+import summaryFixture from './fixtures/episode-summary-fixture.json';
+import factFixture from './fixtures/fact-extraction-fixture.json';
+import episodeFixture from './fixtures/shots-episode.json';
+import shotsOutput from './fixtures/shots-model-output.json';
 import {
   type RecordedWrite,
   type Responder,
   recordCommits,
   tableResponder,
-} from '../../src/testing';
-import type { Ctx, EpisodeContextLoader, GenerateFn } from '../../src/types';
-import audioFixture from '../fixtures/audio-cues-fixture.json';
-import summaryFixture from '../fixtures/episode-summary-fixture.json';
-import factFixture from '../fixtures/fact-extraction-fixture.json';
-import episodeFixture from '../fixtures/shots-episode.json';
-import shotsOutput from '../fixtures/shots-model-output.json';
+} from './index';
 
 export {
   audioFixture,

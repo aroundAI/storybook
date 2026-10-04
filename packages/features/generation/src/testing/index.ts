@@ -253,3 +253,4 @@ export {
   type FakeRunOptions,
   type RunStoreState,
 } from './runs';
+export * from './matrix';

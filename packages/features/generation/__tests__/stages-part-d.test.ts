@@ -19,13 +19,8 @@ import {
 } from '../src';
 import type { ShotsPartOutput } from '../src/stages/shots';
 import { recordingClient, tableResponder } from '../src/testing';
-import type { Brief, PartSpec } from '../src/types';
-import audioOld from './fixtures/audio-cues-old-writes.json';
-import summaryFixture from './fixtures/episode-summary-fixture.json';
-import summaryOld from './fixtures/episode-summary-old.json';
-import factFixture from './fixtures/fact-extraction-fixture.json';
-import factOld from './fixtures/fact-extraction-old-writes.json';
-import shotsOld from './fixtures/shots-old-writes.json';
+import summaryFixture from '../src/testing/fixtures/episode-summary-fixture.json';
+import factFixture from '../src/testing/fixtures/fact-extraction-fixture.json';
 import {
   audioFixture,
   audioPartOutputs,
@@ -36,7 +31,12 @@ import {
   pagedResponder,
   shotsOutput,
   shotsPartOutputs,
-} from './helpers/part-d';
+} from '../src/testing/part-d';
+import type { Brief, PartSpec } from '../src/types';
+import audioOld from './fixtures/audio-cues-old-writes.json';
+import summaryOld from './fixtures/episode-summary-old.json';
+import factOld from './fixtures/fact-extraction-old-writes.json';
+import shotsOld from './fixtures/shots-old-writes.json';
 
 /**
  * FILM-1901 part D: shots, audio_cues, fact_extraction and episode_summary.

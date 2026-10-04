@@ -31,7 +31,7 @@ import {
   factFixture,
   pagedResponder,
   summaryFixture,
-} from './helpers/part-d';
+} from '../src/testing/part-d';
 import { promptVariableProblems } from './helpers/prompt-variables';
 
 // Every buildBrief input, so the registry test below can hold what each
