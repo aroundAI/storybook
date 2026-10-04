@@ -1,0 +1,81 @@
+spec_id: "FILM-2011"
+title: "Cloud Client: Sign-in, Pull, Re-sync and the velorn:// Protocol"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2010"
+    note: "secrets module, protocol registration, MCP auth"
+  - spec_id: "FILM-2001"
+    note: "get_edit_package is what the pull job calls"
+  - spec_id: "FILM-2002"
+    note: "open_edit_session and record_edit_events"
+  - spec_id: "FILM-2005"
+    note: "the OAuth client the PKCE flow uses"
+summary: >
+  Everything that talks to StoryBook lives in the Studio's main process under
+  electron/studio/, and the renderer and the local MCP tools reach it only
+  through studio:* IPC. The client is an MCP client (@modelcontextprotocol/sdk,
+  Streamable HTTP) against /api/mcp: it signs in with a pasted sbk_pat_ token or
+  with FILM-1907's OAuth 2.1 PKCE flow as the storybookstudio client, keeps
+  tokens in safeStorage, opens an edit session, fetches the edit package,
+  downloads its media four at a time with HTTP range resume and sha256
+  verification, probes each file with ffprobe, hands the result to the project
+  builder (FILM-2012), batches edit events, and on a timer checks the package
+  etag to offer re-sync of changed shots. The velorn:// protocol opens the
+  episode picker pre-selected; it never pulls without a click. Design:
+  PRD-EDD.md Part 2 "Cloud client" (corrected to an MCP client) and Part 4
+  flows 1 and 3.
+acceptance_criteria:
+  - text: "electron/studio/auth.js: PAT paste (validated by calling whoami) and PKCE (opens the system browser at /oauth/authorize with S256, catches velorn://auth/callback or a loopback 127.0.0.1:<random port>/callback, exchanges at /oauth/token, refreshes 5 minutes before expiry, rotates refresh tokens); tokens stored via the FILM-2010 secrets module under userData/studio-auth.json keyed by API host; studio:auth-changed emitted"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "electron/studio/client.js wraps the SDK client: typed callers for whoami, list_projects, list_episodes, get_edit_package, open_edit_session, record_edit_events, close_edit_session, request_render_upload, finalize_render, deliver_edit, regenerate_shots, localize_episode; UNAUTHORIZED → refresh once → surface 'Sign in again'; FORBIDDEN surfaces the role; RATE_LIMITED honours retry_after_s"
+    met: false
+    reason: "not built"
+  - text: "electron/studio/pull.js: open session → get package → plan downloads → concurrency 4 with Range resume → sha256 verify (mismatch re-downloads once, then marks the asset offline) → ffprobe (duration, fps, dimensions, codecs, hasAudio) → project builder → open project; progress events {phase, done, total, bytes} over studio:job-progress; idempotent re-run skips verified files; a 403 on a download re-fetches the package and resumes"
+    met: false
+    reason: "not built"
+  - text: "A 20-shot fixture episode (about 1.5 GB) opens as a rough cut in under 120 s on a 100 Mbps link in the release test; playback is possible before proxies finish"
+    met: false
+    reason: "not built"
+  - text: "electron/studio/sync.js polls get_edit_package with ifNoneMatch every 5 minutes while a project is open; on a new etag, diffs shots by sha256 and dialogue by id, downloads changed media under new file names, and emits a replacement plan (replace_clip_with_asset per affected clip) to the AI panel; nothing is applied without approval"
+    met: false
+    reason: "not built"
+  - text: "electron/studio/events.js batches edit events and sends record_edit_events every 60 s or on delivery; queues locally when offline and flushes on reconnect; close_edit_session on project close"
+    met: false
+    reason: "not built"
+  - text: "electron/studio/protocol.js: app.setAsDefaultProtocolClient('velorn'), requestSingleInstanceLock, open-url (macOS) and second-instance (Windows/Linux); velorn://open?api=&episode= validates api against an allowlist of StoryBook hosts (config + the signed-in host) and opens the picker with the episode selected; velorn://auth/callback is routed to auth.js; any other path is ignored and logged"
+    met: false
+    reason: "not built"
+  - text: "The pull job and sync run in the main process, never over the renderer MCP bridge (which times out at 60 s), and expose status to the local MCP tools studio_get_job_status (FILM-2013)"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Range resume: a download interrupted at 40% completes with one request for the remainder; sha256 mismatch path", met: false, reason: "not built"}
+    - {text: "Etag diff: changed shot, new dialogue line, removed shot each produce the right plan entries", met: false, reason: "not built"}
+    - {text: "Protocol parsing: hostile api host refused; malformed episode id refused", met: false, reason: "not built"}
+  integration:
+    - {text: "Against a local StoryBook (pnpm dev) with a PAT: whoami, open session, package, download fixture media, builder output matches the FILM-2001 fixture snapshot", met: false, reason: "not built"}
+    - {text: "PKCE flow against local StoryBook with the loopback redirect (headless browser drives consent)", met: false, reason: "not built"}
+  e2e: []
+open_questions:
+  - "Should the Studio support more than one StoryBook host at once (staging and production)? The token store is keyed by host to allow it; the UI shows one at a time."
+notes: >
+  The SDK client is the same one Claude Desktop uses to reach StoryBook, so
+  every Phase 19 guarantee (RLS JWT, scopes, audit rows, rate limits) applies
+  to the Studio with no new server code. Signed URLs expire in an hour; the
+  pull job's re-fetch on 403 is what makes multi-hour pulls on slow links
+  work.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: {vendor: "StoryBook", endpoints: ["/api/mcp (Streamable HTTP, FILM-1904)", "/oauth/authorize, /oauth/token (FILM-1907)"]}
+  repo: "aroundAI/storybookstudio"
+  modules: ["electron/studio/auth.js", "electron/studio/client.js", "electron/studio/pull.js", "electron/studio/sync.js", "electron/studio/events.js", "electron/studio/protocol.js"]
+  ipc: ["studio:signIn", "studio:signOut", "studio:listEpisodes", "studio:pull", "studio:jobStatus", "studio:checkUpdates", "studio:auth-changed", "studio:job-progress"]

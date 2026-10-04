@@ -1,0 +1,75 @@
+spec_id: "FILM-2018"
+title: "Composition Clips (Remotion render-to-asset), Graphics Primitives and Semantic Effects"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DEFERRED
+effort: XL
+dependencies:
+  - spec_id: "FILM-2013"
+    note: "studio_add_graphic and the effect intents"
+  - spec_id: "FILM-2014"
+    note: "safe-area and overlap QA on rendered graphics"
+  - spec_id: "FILM-2004"
+    note: "brand tokens the primitives read"
+summary: >
+  v2. Graphics by instruction instead of keyframes: a new composition clip
+  type {engine: remotion, compositionId, props, languageDependency} rendered in
+  the main process by @remotion/renderer to an alpha WebM keyed by
+  sha256(compositionId + props), cached under compositions/, and played
+  through Velorn's existing overlay path. Remotion is not a live renderer in
+  the preview; a placeholder shows until the render lands. A graphics
+  primitives package (text, counter, callout, arrow, highlight, lower third,
+  chart, map, timeline, progress bar) reads brand tokens. Semantic effects
+  (punch_in, ken_burns, speed_ramp, freeze_frame, color_grade) are compilers to
+  existing primitives (set_clip_keyframes, set_clip_speed, split_clip,
+  add_glsl_effect) with no new render code. choose_visual_representation lets
+  the agent pick a graphic over footage where a geographic or numeric point is
+  clearer drawn. Deferred until README open question 1 (content type) is
+  answered and Remotion's company license is confirmed. Design: PRD-EDD.md
+  Part 2 "Audio, captions, compositions and localization"; Part 1 R-43, R-45.
+acceptance_criteria:
+  - text: "timelineStore accepts clip type composition with {engine, compositionId, props, propsHash, renderPath, languageDependency}; the exporter composites renderPath as an alpha overlay; the preview shows a placeholder frame until renderPath exists"
+    met: false
+    reason: "deferred to v2"
+  - text: "electron/studio/compositionRenderer.js renders a composition to compositions/<compositionId>-<propsHash>.webm with @remotion/renderer (bundled Chromium), queued one at a time, cached by hash, invalidated when props or brand change; a 4 s counter renders in under 10 s on the reference machine"
+    met: false
+    reason: "deferred to v2"
+  - text: "src/studio/compositions/: Text, Counter, Callout, Arrow, Highlight, LowerThird, Chart, Map, Timeline, ProgressBar, each a Remotion component taking brand tokens and a props schema; a catalogue the agent can read via studio_get_context"
+    met: false
+    reason: "deferred to v2"
+  - text: "studio_add_graphic {kind, text, at, duration, anchor?} creates a composition clip with props validated by the primitive's schema, places it inside the aspect's safe area, and adds a pop SFX from the brand's SFX style when kind is counter or callout; QA checks overlap with captions"
+    met: false
+    reason: "deferred to v2"
+  - text: "Semantic effects punch_in, ken_burns, speed_ramp, freeze_frame, color_grade compile to action plans over set_clip_keyframes, set_clip_speed, split_clip and add_glsl_effect with reasons; exposed as studio_edit intents"
+    met: false
+    reason: "deferred to v2"
+  - text: "choose_visual_representation {sceneOrPoint} returns a ranked list from generated_video, stock_video, archival_image, chart, map, diagram, timeline, text_graphic with a one-line reason each; the agent decides"
+    met: false
+    reason: "deferred to v2"
+  - text: "Remotion company license status recorded in notes before any @remotion/* dependency lands"
+    met: false
+    reason: "deferred to v2"
+test_plan:
+  unit:
+    - {text: "Props schemas per primitive; hash stability; effect compilers", met: false, reason: "deferred"}
+  integration:
+    - {text: "'At 32 s show a counter to 87' produces a composition clip, a cached render, a pop SFX, and passes safe-area QA on 16:9 and 9:16", met: false, reason: "deferred"}
+  e2e: []
+open_questions:
+  - "Remotion license tier for the team size; alternative (plain canvas/SVG renderer in the hidden worker) if cost or Chromium size is a problem."
+notes: >
+  Render-to-asset keeps one live renderer in the preview and makes
+  localization (FILM-2019) a matter of re-rendering compositions whose
+  languageDependency is language with new strings. SPIKE-06's puppet
+  prototype, if it pays off, becomes another composition primitive here.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"
+  mcp_tools: ["studio_add_graphic", "choose_visual_representation"]
+  modules: ["electron/studio/compositionRenderer.js", "src/studio/compositions/*", "src/studio/intents/effects.js"]
+  files_changed: ["src/stores/timelineStore.js (composition clip type)", "src/services/exporter.js (overlay compositing)", "package.json (@remotion/renderer)"]

@@ -1,0 +1,65 @@
+spec_id: "FILM-2006"
+title: "The Edit Record Page and Edit Analytics"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2002"
+    note: "sessions and events are what the page and the fact table show"
+  - spec_id: "FILM-2003"
+    note: "renders and the report"
+summary: >
+  Closes the Learn stage. A new episode page, /edit, shows how the episode was
+  edited: versions on a timeline, final duration against target, AI versus
+  hand changes, the explain-why report, renders per preset and language with
+  QA badges and downloads, the open session (with an admin force-close), and
+  "Re-open in Studio". The analytics-sync lambda rolls edit_sessions.summary
+  into a ClickHouse fact table so content analytics can join edit style (cut
+  density, average shot length, hook type, AI share) to retention, and the
+  episode analytics page gains an Edit style card. This spec also owns the
+  phase's rollout: internal (PAT only, flag on for one workspace), beta
+  (OAuth, opt-in), general. Design: PRD-EDD.md Part 1 R-70 to R-72, Part 3
+  "Web UI changes", Part 4 "Testing, observability and rollout".
+acceptance_criteria:
+  - text: "Route .../episodes/[episodeSlug]/edit renders versions (from the delivered session's report), duration vs target, aiOps/userOps, the report's per-scene changes with reasons, and the renders table (preset, language, duration, QA badge, download via signed URL)"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "An open session shows the editor, device and start time; project admins can force-close it (close_edit_session's logic via a server action), which restores the previous status"
+    met: false
+    reason: "not built"
+  - text: "'Re-open in Studio' launches the deep link (FILM-2005) and the next session's open_edit_session records previousStatus = published when applicable"
+    met: false
+    reason: "not built"
+  - text: "ClickHouse migration adds edit_sessions_fact (episode_id, project_id, account_id, session_id, delivered_at, final_duration, target_duration, ai_ops, user_ops, plans_proposed, plans_approved, cut_count, avg_shot_length, hook_type, languages, presets); analytics-sync upserts it hourly from delivered sessions"
+    met: false
+    reason: "not built"
+  - text: "Episode analytics page shows an Edit style card (cut density, average shot length, hook type, AI share) beside retention when a delivered session exists; the content genome query gains these as optional dimensions"
+    met: false
+    reason: "not built"
+  - text: "Request logs on /api/mcp already carry tool and duration (FILM-1904); a dashboard panel counts get_edit_package, deliver_edit, TARGET_CHANGED refusals and uploading renders older than 24 h, with an alert on the last two"
+    met: false
+    reason: "not built"
+  - text: "Rollout: desktop_integration flag on for one internal workspace (PAT only); then opt-in from workspace settings with OAuth; then default on. Each step's exit metric from the PRD (10 episodes delivered; metrics at 80% of target) is recorded in this spec's notes when passed"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Edit style derivation from a report fixture (cut_count, avg_shot_length, hook_type)", met: false, reason: "not built"}
+  integration:
+    - {text: "analytics-sync against the ClickHouse sandbox inserts one fact row per delivered session and is idempotent", met: false, reason: "not built"}
+  e2e:
+    - {text: "Playwright: the /edit page shows the report and renders after a delivery made over MCP in the same test", met: false, reason: "not built"}
+open_questions: []
+notes: >
+  The page is read-only by design; editing happens in the Studio. The fact
+  table is the only new ClickHouse object in the phase, and it is additive to
+  the content genome (FILM-17xx) rather than a new analysis.
+feature:
+  database: {tables: ["edit_sessions_fact (ClickHouse)"], columns_added: []}
+  queries: [{name: "queryEditStyleByEpisode", purpose: "edit style for the analytics card and genome dimensions", file: "packages/clickhouse/src/queries-edit.ts"}]
+  actions: [{name: "forceCloseEditSessionAction", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/_lib/server/actions.ts"}]
+  ui: [{component: "EditRecordPage", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/page.tsx"}, {component: "EditStyleCard", file: "packages/features/content-analytics/src/components/edit-style-card.tsx"}]
+  provider_integration: null
+  workers: ["apps/web/lambda/analytics-sync (edit_sessions rollup)"]

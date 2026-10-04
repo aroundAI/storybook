@@ -1,0 +1,80 @@
+spec_id: "FILM-2017"
+title: "Delivery Presets, Shorts Reframe and Send to StoryBook"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2003"
+    note: "request_render_upload, finalize_render, deliver_edit"
+  - spec_id: "FILM-2014"
+    note: "delivery renders go through the hardware queue and QA"
+  - spec_id: "FILM-2016"
+    note: "loudness targets per preset; captions in 9:16 safe areas"
+  - spec_id: "FILM-2011"
+    note: "the cloud client performs the uploads"
+summary: >
+  Closes the Deliver stage. Six delivery presets (youtube_16x9, shorts_9x16,
+  tiktok_9x16, reels_9x16, square_1x1, master) define resolution, fps, codec,
+  bitrate, audio codec, loudness target, max duration and caption policy, and
+  drive Velorn's export_delivery_batch. studio_create_variant {kind: short}
+  builds a 9:16 variant timeline from a StoryBook shorts candidate or the
+  agent's own hook pick, with a subject-tracking reframe (face and subject
+  detection on keyframes, a smoothed crop path as transform keyframes) and
+  re-placed captions. studio_deliver renders the chosen presets, QA-checks
+  each file, and after the user confirms a summary naming the episode, files,
+  sizes and destination, uploads through FILM-2003's tools and calls
+  deliver_edit with the report and the episode version; 'Export to file' works
+  with no StoryBook at all. Design: PRD-EDD.md Part 2 "Render, QA and critic
+  pipeline" (delivery tier), Part 4 flow 4; Part 1 R-50, R-52, R-60 to R-63.
+acceptance_criteria:
+  - text: "src/studio/delivery/presets.js defines the six presets {name, width, height, fps, codec, bitrate, audioCodec, audioLufs, maxDuration, captionPolicy burn|sidecar|none}; export_delivery_batch accepts a preset list and produces one file per preset under renders/<version>/<preset>-<lang>.mp4"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "studio_create_variant {kind: short, source: candidateId | hook | range} duplicates the master into a variant timeline (timeline.studio {kind: variant, variantOf, aspect: 9:16}), trims to the range (shorts candidate start/end, or the hook compiler's pick), applies reframe, re-runs caption placement for 9:16, and reports expected duration against the preset's maxDuration"
+    met: false
+    reason: "not built"
+  - text: "src/studio/reframe.js: detects faces and the primary subject on keyframes (local model, no network), computes a crop path per clip, smooths it (no cut-to-cut jump over 15% of width unless at a cut), and writes it as set_clip_keyframes transforms; set_auto_reframe and set_focal_point are exposed in the expert profile; a clip with no detectable subject centres and flags a QA warning"
+    met: false
+    reason: "not built"
+  - text: "studio_create_variant {kind: hook, variants: N} produces N alternative first-5-second timelines from the strongest sound bites (FILM-2012 analysis) for StoryBook's hook tests, exported as separate files"
+    met: false
+    reason: "not built"
+  - text: "studio_deliver {presets[], languages[], confirm:false} returns a summary (per render: preset, language, estimated size and duration, QA state of the last preview) and performs nothing; confirm:true is accepted only after the Deliver screen's confirmation (the renderer sets a one-time confirmation token the tool must carry), then renders via the media-preparation queue, runs QA per file, uploads with resume via request_render_upload, calls finalize_render per file with QA and probe data, and deliver_edit once with the report and the pulled package's episodeVersion"
+    met: false
+    reason: "not built"
+  - text: "A TARGET_CHANGED from deliver_edit shows the diff and offers re-sync (FILM-2011) then retry; renders already finalized are reused on retry"
+    met: false
+    reason: "not built"
+  - text: "'Export to file' writes the same presets to a chosen folder with the QA report beside them and needs no sign-in"
+    met: false
+    reason: "not built"
+  - text: "Edit events delivered and version_created are recorded (FILM-2011 events) and the session summary matches the report"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Preset table; reframe smoothing on a synthetic subject path; hook variant selection", met: false, reason: "not built"}
+  integration:
+    - {text: "Against local StoryBook: deliver two presets for the fixture; episode_renders has two ready rows, episodes.status is ready, final_video_url is the 16:9 render; retry after a planted version bump hits TARGET_CHANGED and succeeds after re-sync", met: false, reason: "not built"}
+    - {text: "QA on each delivered file passes on the fixture; a planted loud music bed fails and 'Fix with AI' repairs it", met: false, reason: "not built"}
+  e2e:
+    - {text: "Packaged app: Deliver screen → confirmation → progress → 'Sent to StoryBook'; the web publish page lists the renders", met: false, reason: "not built"}
+open_questions:
+  - "Burn captions into 9:16 renders by default (platform norms) or sidecar only? Recommended: burn for shorts/tiktok/reels, sidecar for youtube_16x9 and master."
+notes: >
+  Confirmation is enforced in the tool, not only in the UI: studio_deliver
+  with confirm:true but without the renderer's one-time confirmation token is
+  refused, so an external MCP client cannot upload without the user seeing
+  the summary. This is the outward-facing step the PRD singles out.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: {vendor: "StoryBook", endpoints: ["request_render_upload", "finalize_render", "deliver_edit (FILM-2003)"]}
+  repo: "aroundAI/storybookstudio"
+  mcp_tools: ["studio_deliver", "studio_create_variant", "set_auto_reframe", "set_focal_point"]
+  modules: ["src/studio/delivery/presets.js", "src/studio/reframe.js", "src/studio/intents/variants.js", "electron/studio/deliver.js"]
+  files_changed: ["src/services/exporter.js (preset-driven batch)", "electron/mcpServer.js (export_delivery_batch presets)"]

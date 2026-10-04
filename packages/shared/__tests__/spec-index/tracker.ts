@@ -73,6 +73,7 @@ const WORKBOOK = 'Workbook Parity (Ph 16)';
 const PROVENANCE = 'Provenance & Signal (Ph 17)';
 const SANDBOX = 'Vendor Sandbox (Ph 18)';
 const DUAL_AI = 'Dual AI (Ph 19)';
+const STUDIO = 'StorybookStudio (Ph 20)';
 const SHARING = 'Public Sharing';
 
 /**
@@ -146,6 +147,11 @@ export const LAYOUT: Layout = {
       label: '19. Dual AI',
       scope: DUAL_AI,
     },
+    {
+      heading: 'Phase 20: StorybookStudio (the desktop AI editor)',
+      label: '20. StorybookStudio',
+      scope: STUDIO,
+    },
     { heading: 'Spikes', label: 'Spikes', scope: MVP },
     { heading: 'Public Sharing', label: 'Public Sharing', scope: SHARING },
   ],
@@ -160,6 +166,7 @@ export const LAYOUT: Layout = {
     PROVENANCE,
     SANDBOX,
     DUAL_AI,
+    STUDIO,
     SHARING,
   ],
 };

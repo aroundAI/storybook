@@ -1,0 +1,74 @@
+spec_id: "FILM-2002"
+title: "Edit Sessions, Edit Events and the editing Status"
+phase: 20
+phase_name: "StorybookStudio (the desktop AI editor)"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1904"
+    note: "mcp_connections (the device the session belongs to), withMcpAuth, tool registry"
+summary: >
+  StoryBook remembers that an episode is being edited, by whom, on which
+  device, against which version of the content, and what happened during the
+  edit. Two tables (edit_sessions, edit_events), one JSONB column
+  (episodes.edit_state) and three MCP tools: open_edit_session sets the
+  episode's status to editing (the value has existed in the CHECK constraint
+  since the first migration and has never been set) and returns a sessionId;
+  record_edit_events appends batches of plan_proposed, plan_approved,
+  plan_rejected, version_created, qa_run and delivered events; close_edit_session
+  rolls the events into a summary and returns the status to its previous value
+  if nothing was delivered. The web app shows "Editing in Studio by <name>
+  since <time>" on the episode. Design: PRD-EDD.md Part 3 "Data model changes"
+  (edit_sessions, edit_events) and "Workers, jobs and the status machine".
+acceptance_criteria:
+  - text: "Migration creates edit_sessions (id, episode_id FK cascade, user_id FK auth.users, connection_id FK mcp_connections null, package_etag, status open|closed|delivered, started_at, closed_at, delivered_at, summary jsonb) and edit_events (id bigserial, edit_session_id FK cascade, ts, type, data jsonb) with indexes on (episode_id, status) and (edit_session_id, ts); RLS: project members read, the session's user writes"
+    met: false
+    reason: "not built — spec drafted 2026-10-04"
+  - text: "episodes.edit_state jsonb default '{}' is added with a TypeScript interface {sessionId, editedBy, since, lastDeliveredAt, editedIn: 'studio', versions} per the constitution's JSONB rule"
+    met: false
+    reason: "not built"
+  - text: "open_edit_session({episodeId, packageEtag}) (studio:write) requires project role member or above (viewer is FORBIDDEN); creates the row, sets episodes.status = 'editing' only from storyboard|generating|ready|published (from draft|story is VALIDATION_FAILED: nothing to edit), writes edit_state, returns {sessionId, previousStatus}; a second open on an episode with an open session by another user returns RUN_IN_PROGRESS with who and since; by the same user it returns the existing session"
+    met: false
+    reason: "not built"
+  - text: "record_edit_events({sessionId, events[]}) accepts up to 500 events per call, validates each type against the enum and its data against a per-type zod schema, is idempotent on (sessionId, client_event_id), and refuses a closed session with VALIDATION_FAILED"
+    met: false
+    reason: "not built"
+  - text: "close_edit_session({sessionId}) computes summary {versions, finalDuration, aiOps, userOps, plansProposed, plansApproved, qaRuns} from the events, sets status closed, and restores episodes.status to previousStatus when the session delivered nothing (deliver_edit, FILM-2003, sets delivered instead)"
+    met: false
+    reason: "not built"
+  - text: "A session with no event for 24 h is closed by the hourly cron route that already trims mcp_tool_calls, restoring the status the same way; the Studio reopens with a new session"
+    met: false
+    reason: "not built"
+  - text: "Episode header (web) shows an 'Editing in Studio' badge with the editor's name and start time while status is editing and a session is open; the episode list shows the same chip"
+    met: false
+    reason: "not built"
+  - text: "get_episode (FILM-1905) includes edit_state and the open session, so an MCP client can see the editing state without a new tool"
+    met: false
+    reason: "not built"
+test_plan:
+  unit:
+    - {text: "Event schemas: each type's data validated; unknown type refused; batch of 501 refused", met: false, reason: "not built"}
+    - {text: "Summary computation from a fixture event stream", met: false, reason: "not built"}
+  integration:
+    - {text: "pgTAP: RLS matrix for edit_sessions and edit_events (viewer reads, member writes own, outsider nothing); status transitions refuse draft/story", met: false, reason: "not built"}
+    - {text: "SDK client: open → record → close round trip; a second user's open is RUN_IN_PROGRESS; stale session closed by the cron route", met: false, reason: "not built"}
+  e2e:
+    - {text: "Playwright: the badge appears on the episode page after open_edit_session over HTTP and disappears after close", met: false, reason: "not built"}
+open_questions:
+  - "Should an admin be able to force-close another user's session from the web? Recommended yes, in FILM-2006's Edit record page."
+notes: >
+  Sessions are the join key for everything else in this phase: renders
+  (FILM-2003), the Edit record page and ClickHouse fact (FILM-2006), and the
+  Studio's local op log (FILM-2012) all carry sessionId. The status restore on
+  close keeps the existing publish flow untouched: an episode that was
+  published, opened in the Studio and abandoned goes back to published.
+feature:
+  database:
+    tables: ["edit_sessions", "edit_events"]
+    columns_added: ["episodes.edit_state jsonb"]
+  queries: [{name: "summarizeEditSession", purpose: "events → summary", file: "packages/features/desktop-integration/src/edit-sessions.service.ts"}]
+  actions: []
+  ui: [{component: "EditingInStudioBadge", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/editing-in-studio-badge.tsx"}]
+  provider_integration: null
+  mcp_tools: ["open_edit_session", "record_edit_events", "close_edit_session"]

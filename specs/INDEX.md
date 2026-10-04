@@ -668,6 +668,32 @@ The web app keeps generating with Gemini on Vertex AI; the app also serves a rem
 | FILM-1911 | [dual-ai-general-availability](./phase-19-dual-ai-mcp/FILM-1911-dual-ai-general-availability.yaml) | PARTIAL | S | FILM-1907, FILM-1909, FILM-1910 |
 | FILM-1912 | [performance-context](./phase-19-dual-ai-mcp/FILM-1912-performance-context.yaml) | DONE | M | FILM-1911, FILM-1732, FILM-1906 |
 
+### Phase 20: StorybookStudio (the desktop AI editor)
+
+See [phase-20-storybookstudio/README.md](./phase-20-storybookstudio/README.md) for the problem table, the loop, locked decisions and open questions, and the [design document](https://claude.ai/code/artifact/7a69fcdb-7582-4fd2-85df-ae58c15b2b13) (repository copy: [PRD-EDD.md](./phase-20-storybookstudio/PRD-EDD.md)) for the PRD, both EDDs and the diagrams.
+
+StoryBook gets its post-production half: a fork of Velorn, [aroundAI/storybookstudio](https://github.com/aroundAI/storybookstudio), that runs on the creator's computer, pulls an episode as a rough cut over Phase 19's MCP, lets an AI cut it with preview, undo and an explain-why report, checks its own renders, and sends a publish-ready delivery package back. FILM-2001 to FILM-2007 are StoryBook work; FILM-2010 to FILM-2019 are work in the fork.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-2001 | [edit-package-tool](./phase-20-storybookstudio/FILM-2001-edit-package-tool.yaml) | DRAFT | L | FILM-1904, FILM-1905, FILM-2004 |
+| FILM-2002 | [edit-sessions-and-events](./phase-20-storybookstudio/FILM-2002-edit-sessions-and-events.yaml) | DRAFT | M | FILM-1904 |
+| FILM-2003 | [renders-and-delivery](./phase-20-storybookstudio/FILM-2003-renders-and-delivery.yaml) | DRAFT | L | FILM-2002, FILM-1904 |
+| FILM-2004 | [brand-and-edit-policy](./phase-20-storybookstudio/FILM-2004-brand-and-edit-policy.yaml) | DRAFT | M | - |
+| FILM-2005 | [studio-oauth-client-and-open-in-studio](./phase-20-storybookstudio/FILM-2005-studio-oauth-client-and-open-in-studio.yaml) | DRAFT | M | FILM-1907, FILM-2002 |
+| FILM-2006 | [edit-record-and-analytics](./phase-20-storybookstudio/FILM-2006-edit-record-and-analytics.yaml) | DRAFT | M | FILM-2002, FILM-2003 |
+| FILM-2007 | [regeneration-and-localization-jobs](./phase-20-storybookstudio/FILM-2007-regeneration-and-localization-jobs.yaml) | DRAFT | L | FILM-2001, FILM-1909 |
+| FILM-2010 | [fork-and-security-baseline](./phase-20-storybookstudio/FILM-2010-fork-and-security-baseline.yaml) | PARTIAL | M | - |
+| FILM-2011 | [cloud-client](./phase-20-storybookstudio/FILM-2011-cloud-client.yaml) | DRAFT | L | FILM-2010, FILM-2001, FILM-2002, FILM-2005 |
+| FILM-2012 | [editgraph-and-rough-cut](./phase-20-storybookstudio/FILM-2012-editgraph-and-rough-cut.yaml) | DRAFT | L | FILM-2011, FILM-2001, FILM-2004 |
+| FILM-2013 | [agent-capability-tools](./phase-20-storybookstudio/FILM-2013-agent-capability-tools.yaml) | DRAFT | XL | FILM-2012, FILM-2011, FILM-2010 |
+| FILM-2014 | [render-qa-critic](./phase-20-storybookstudio/FILM-2014-render-qa-critic.yaml) | DRAFT | L | FILM-2012, FILM-2013 |
+| FILM-2015 | [studio-ui](./phase-20-storybookstudio/FILM-2015-studio-ui.yaml) | DRAFT | L | FILM-2011, FILM-2012, FILM-2013 |
+| FILM-2016 | [audio-buses-and-captions](./phase-20-storybookstudio/FILM-2016-audio-buses-and-captions.yaml) | DRAFT | M | FILM-2012, FILM-2004 |
+| FILM-2017 | [delivery-and-variants](./phase-20-storybookstudio/FILM-2017-delivery-and-variants.yaml) | DRAFT | L | FILM-2003, FILM-2014, FILM-2016, FILM-2011 |
+| FILM-2018 | [compositions-and-semantic-effects](./phase-20-storybookstudio/FILM-2018-compositions-and-semantic-effects.yaml) | DEFERRED | XL | FILM-2013, FILM-2014, FILM-2004 |
+| FILM-2019 | [localization-lanes](./phase-20-storybookstudio/FILM-2019-localization-lanes.yaml) | DEFERRED | L | FILM-2007, FILM-2016, FILM-2017 |
+
 ### Spikes
 
 | Task ID | Name | Status | Effort | Dependencies |
@@ -677,6 +703,7 @@ The web app keeps generating with Gemini on Vertex AI; the app also serves a rem
 | SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.yaml) | ✅ DONE | S | - |
 | SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.yaml) | ✅ DONE | M | - |
 | SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.yaml) | ✅ DONE | M | - |
+| SPIKE-06 | [continuity-and-puppets](./spikes/SPIKE-06-continuity-and-puppets.yaml) | DRAFT | M | - |
 
 ### Public Sharing
 
