@@ -63,6 +63,7 @@
     "@kit/cms": "workspace:*",
     "@kit/content-analytics": "workspace:*",
     "@kit/database-webhooks": "workspace:*",
+    "@kit/desktop-integration": "workspace:*",
     "@kit/email-templates": "workspace:*",
     "@kit/episodes": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",
