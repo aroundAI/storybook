@@ -8,8 +8,8 @@ import {
   tableResponder,
 } from '@kit/generation/testing';
 
-import fixture from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-fixture.json';
 import audioOld from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-old-writes.json';
+import fixture from '../../../../../packages/features/generation/src/testing/fixtures/audio-cues-fixture.json';
 import {
   cuesByPart,
   processAudioCueGeneration,

@@ -16,13 +16,6 @@ import type {
   TargetType,
 } from '..';
 import {
-  type RecordedCall,
-  type Responder,
-  recordingClient,
-  tableResponder,
-  writesOf,
-} from './index';
-import {
   audioFixture,
   audioPartOutputs,
   episodeFixture,
@@ -32,6 +25,13 @@ import {
   shotsPartOutputs,
   summaryFixture,
 } from './part-d';
+import {
+  type RecordedCall,
+  type Responder,
+  recordingClient,
+  tableResponder,
+  writesOf,
+} from './recording';
 import { TEST_IDS, runStoreResponder, runStoreState } from './runs';
 import { IDS, SNAPSHOT, TABLES, responder as worldRows } from './stage-world';
 

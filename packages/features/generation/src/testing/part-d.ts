@@ -9,7 +9,7 @@ import {
   type Responder,
   recordCommits,
   tableResponder,
-} from './index';
+} from './recording';
 
 export {
   audioFixture,

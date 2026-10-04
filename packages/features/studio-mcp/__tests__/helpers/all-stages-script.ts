@@ -92,7 +92,7 @@ const SHOTS_FIXTURE = JSON.parse(
   readFileSync(
     path.join(
       here,
-      '../../../generation/__tests__/fixtures/shots-model-output.json',
+      '../../../generation/src/testing/fixtures/shots-model-output.json',
     ),
     'utf8',
   ),

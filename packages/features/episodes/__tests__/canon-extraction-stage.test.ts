@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordingClient, tableResponder } from '@kit/generation/testing';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import fixture from '../../generation/__tests__/fixtures/episode-summary-fixture.json';
 import old from '../../generation/__tests__/fixtures/episode-summary-old.json';
+import fixture from '../../generation/src/testing/fixtures/episode-summary-fixture.json';
 import { extractCanonChangesAction } from '../src/server/canon-actions';
 
 /**

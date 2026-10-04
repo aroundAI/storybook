@@ -4,8 +4,8 @@
  * database, and the ids the stages are run against. Test-only.
  */
 import type { EpisodeContextSnapshot } from '../types';
-import type { Responder } from './index';
-import { type RecordedCall, tableResponder } from './index';
+import type { Responder } from './recording';
+import { type RecordedCall, tableResponder } from './recording';
 
 export const IDS = {
   accountId: '11111111-1111-4111-8111-111111111111',
