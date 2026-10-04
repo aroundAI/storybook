@@ -26,7 +26,7 @@ async function AuthCallbackErrorPage(props: AuthCallbackErrorPageProps) {
 
   return (
     <div className={'flex flex-col space-y-4 py-4'}>
-      <Alert variant={'warning'}>
+      <Alert variant={'warning'} data-test={'auth-callback-error'}>
         <AlertTitle>
           <Trans i18nKey={'auth:authenticationErrorAlertHeading'} />
         </AlertTitle>
