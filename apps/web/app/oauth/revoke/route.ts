@@ -19,7 +19,10 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
     const params = await bodyParams(request);
-    await handleRevokeRequest(params, oauthDeps());
+    await handleRevokeRequest(params, {
+      ...oauthDeps(),
+      authorizationHeader: request.headers.get('authorization'),
+    });
 
     return oauthJson({});
   } catch (error) {

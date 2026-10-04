@@ -62,9 +62,19 @@ export async function parseAuthorizeRequest(
     return render('invalid_request', 'client_id is required.');
   }
 
-  const client = await resolveClient(deps.store, clientId, {
-    fetchFn: deps.fetchFn,
-  });
+  let client: OAuthClientRecord | null;
+
+  try {
+    client = await resolveClient(deps.store, clientId, {
+      fetchFn: deps.fetchFn,
+    });
+  } catch (error) {
+    if (error instanceof OAuthError) {
+      return { ok: false, kind: 'render', error };
+    }
+
+    throw error;
+  }
 
   if (!client) {
     return render(

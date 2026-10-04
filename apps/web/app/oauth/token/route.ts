@@ -19,7 +19,10 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
     const params = await bodyParams(request);
-    const tokens = await handleTokenRequest(params, oauthDeps());
+    const tokens = await handleTokenRequest(params, {
+      ...oauthDeps(),
+      authorizationHeader: request.headers.get('authorization'),
+    });
 
     return oauthJson(tokens);
   } catch (error) {

@@ -167,6 +167,36 @@
       "replace": "    false",
       "spec": "tests/mcp/published-clients.spec.ts",
       "grep": "ChatGPT's published client id"
+    },
+    {
+      "name": "1911 CONN U8 the token endpoint ignores a client_assertion or secret it is sent",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/token.ts",
+      "find": "  refusePresentedClientCredentials(params, deps.authorizationHeader);\n\n  const grantType",
+      "replace": "\n  const grantType",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "token endpoint answers invalid_client"
+    },
+    {
+      "name": "1911 CONN U9 the revoke endpoint ignores a client_assertion or Authorization header",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/revoke.ts",
+      "find": "  refusePresentedClientCredentials(params, deps.authorizationHeader);\n\n  const token",
+      "replace": "\n  const token",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "revoke endpoint answers invalid_client"
+    },
+    {
+      "name": "1911 CONN U10 a private_key_jwt-only document is refused without saying why",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "  if (shape.success && !canActAsPublicClient(shape.data)) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "only method is private_key_jwt"
     }
   ]
 }

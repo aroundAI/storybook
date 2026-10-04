@@ -161,6 +161,30 @@ function canActAsPublicClient(metadata: ClientMetadata) {
 }
 
 /**
+ * Clients here never authenticate, so a credential one presents is refused
+ * rather than ignored: a `client_assertion` (private_key_jwt), a
+ * `client_secret`, or an Authorization header (client_secret_basic).
+ * Accepting one unchecked would let a request look authenticated when it
+ * is not (KB-185).
+ */
+export function refusePresentedClientCredentials(
+  params: URLSearchParams,
+  authorizationHeader?: string | null,
+) {
+  if (
+    params.has('client_assertion') ||
+    params.has('client_assertion_type') ||
+    params.has('client_secret') ||
+    authorizationHeader
+  ) {
+    throw new OAuthError(
+      'invalid_client',
+      'StoryBook verifies no client credential: send none, as token_endpoint_auth_method "none", and prove the request with PKCE.',
+    );
+  }
+}
+
+/**
  * The grants a client gets: those it asked for that we issue. Claude's
  * document also lists a JWT-bearer grant, which is dropped, not refused.
  */
@@ -217,8 +241,9 @@ type FetchLike = (
 /**
  * The client for a `client_id`: a stored one, or, when the id is an https
  * URL to a public host, the client described by the metadata document
- * there, fetched once and cached. `null` means "no such client", for
- * every reason: the authorize page shows that and never redirects.
+ * there, fetched once and cached. `null` means "no such client"; a document
+ * whose client can only authenticate throws invalid_client with the reason.
+ * Either way the authorize page shows it and never redirects.
  */
 export async function resolveClient(
   store: OAuthStore,
@@ -319,6 +344,16 @@ async function fetchClientMetadataDocument(
     (body as { client_id?: unknown }).client_id !== url
   ) {
     return null;
+  }
+
+  const shape = ClientMetadataSchema.safeParse(body);
+
+  if (shape.success && !canActAsPublicClient(shape.data)) {
+    // Shown on our page, so the person adding the connector learns why
+    throw new OAuthError(
+      'invalid_client',
+      `This client authenticates only with ${shape.data.token_endpoint_auth_method}; StoryBook accepts public clients, which prove each request with PKCE (token_endpoint_auth_method "none").`,
+    );
   }
 
   try {
