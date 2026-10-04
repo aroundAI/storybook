@@ -1,8 +1,8 @@
 # Phase 20: StorybookStudio — the desktop AI editor
 
 StoryBook gets its post-production half. **StorybookStudio** is a fork of
-[Velorn](https://github.com/VelornLabs/velorn) (an Electron video editor with
-a 130-tool MCP server) that runs on the creator's own computer, pulls a planned
+the upstream GPL-3.0 editor (an Electron video editor with a 130-tool MCP
+server) that runs on the creator's own computer, pulls a planned
 episode from StoryBook, assembles a rough cut, lets an AI cut it with preview,
 undo and an explain-why report, checks its own renders, and sends a
 publish-ready delivery package back. StoryBook stays the content source of
@@ -34,7 +34,7 @@ Measured 2026-10-04 on `main` at `2d99b8334`:
 | What MCP exposes | 60 tools: read, author, generation, analytics, three renders, `get_veo_manifest` | No tool hands over an episode's media for editing, and none accepts a finished video back |
 | Media URLs | R2 with public read URLs (`R2_PUBLIC_URL/...`); presigned PUT for uploads (`/api/storage/presign`) | A desktop download must use signed GETs; the adapter has none yet |
 | Final video | `episodes.final_video_url`, `master_video_asset_id`, set by a manual upload | No record of renders per preset or language, no QA, no edit history |
-| Velorn as shipped (v0.3.36) | 130 MCP tools with `previewOnly`, undo and action plans; local whisper captions; hardware export; **no auth on its MCP server**, an unrestricted `comfystudio://` file protocol, in-memory checkpoints, no deep links, no package import | The editor exists; the connection to a cloud and the AI-native layer do not |
+| The upstream editor as shipped (v0.3.36) | 130 MCP tools with `previewOnly`, undo and action plans; local whisper captions; hardware export; **no auth on its MCP server**, an unrestricted `storybookstudio-file://` file protocol, in-memory checkpoints, no deep links, no package import | The editor exists; the connection to a cloud and the AI-native layer do not |
 
 ## Specs and dependency order
 
@@ -60,12 +60,12 @@ SPIKE-06 (continuity scoring, 2D puppets) — time-boxed, no dependents
 | [FILM-2002](./FILM-2002-edit-sessions-and-events.yaml) | StoryBook | M1 | M | `edit_sessions`, `edit_events`, `episodes.edit_state`; `open_edit_session`, `record_edit_events`, `close_edit_session`; the `editing` status finally set |
 | [FILM-2003](./FILM-2003-renders-and-delivery.yaml) | StoryBook | M3 | L | `episode_renders`; `request_render_upload`, `finalize_render`, `deliver_edit` with the episode version lock; publish page reads renders |
 | [FILM-2004](./FILM-2004-brand-and-edit-policy.yaml) | StoryBook | M0 | M | `projects.brand`, `projects.edit_policy`, their zod schemas and settings tabs |
-| [FILM-2005](./FILM-2005-studio-oauth-client-and-open-in-studio.yaml) | StoryBook | M3 | M | The pre-registered `storybookstudio` OAuth client (`velorn://` and loopback redirects), "Open in Studio" on the episode, "Editing in Studio" badge |
+| [FILM-2005](./FILM-2005-studio-oauth-client-and-open-in-studio.yaml) | StoryBook | M3 | M | The pre-registered `storybookstudio` OAuth client (`storybookstudio://` and loopback redirects), "Open in Studio" on the episode, "Editing in Studio" badge |
 | [FILM-2006](./FILM-2006-edit-record-and-analytics.yaml) | StoryBook | M3 | M | The episode's Edit record page, `edit_sessions_fact` in ClickHouse, the Edit style card |
 | [FILM-2007](./FILM-2007-regeneration-and-localization-jobs.yaml) | StoryBook | M4 | L | `regenerate_shots` and `localize_episode` tools over the existing workers; package ETag changes drive the Studio's re-sync |
-| [FILM-2010](./FILM-2010-fork-and-security-baseline.yaml) | Studio | M0 | M | The fork, naming, upstream remote, `AI_EDITOR_CONTRACT.md`, MCP bearer secret and Origin check, `comfystudio://` allowlist, persisted checkpoints |
-| [FILM-2011](./FILM-2011-cloud-client.yaml) | Studio | M1 | L | Main-process MCP client to StoryBook: token vault (PAT and PKCE), pull job with resume and sha256, re-sync, `velorn://` protocol |
-| [FILM-2012](./FILM-2012-editgraph-and-rough-cut.yaml) | Studio | M1 | L | EditGraph v1 (additive fields on `project.comfystudio`), the project builder's rough-cut rules, the operation log, versions, reports |
+| [FILM-2010](./FILM-2010-fork-and-security-baseline.yaml) | Studio | M0 | M | The fork, naming, upstream remote, `AI_EDITOR_CONTRACT.md`, MCP bearer secret and Origin check, `storybookstudio-file://` allowlist, persisted checkpoints |
+| [FILM-2011](./FILM-2011-cloud-client.yaml) | Studio | M1 | L | Main-process MCP client to StoryBook: token vault (PAT and PKCE), pull job with resume and sha256, re-sync, `storybookstudio://` protocol |
+| [FILM-2012](./FILM-2012-editgraph-and-rough-cut.yaml) | Studio | M1 | L | EditGraph v1 (additive fields on `project.storybookstudio`), the project builder's rough-cut rules, the operation log, versions, reports |
 | [FILM-2013](./FILM-2013-agent-capability-tools.yaml) | Studio | M2 | XL | The `agent` MCP profile: 16 capability tools, intent compilers to action plans over the 130 primitives, the edit policy, the in-app agent on the same profile |
 | [FILM-2014](./FILM-2014-render-qa-critic.yaml) | Studio | M2 | L | Preview render tiers, deterministic QA (FFmpeg), the critic, the apply → QA → repair loop |
 | [FILM-2015](./FILM-2015-studio-ui.yaml) | Studio | M1–M3 | L | Welcome, episode picker, AI panel, scene strip, review screen, deliver screen |
@@ -91,18 +91,18 @@ against them.
 ## How the loop works
 
 **Open.** The user clicks "Open in Studio" on an episode (FILM-2005). The
-Studio opens on `velorn://open`, signs the user in through FILM-1907's OAuth
+Studio opens on `storybookstudio://open`, signs the user in through FILM-1907's OAuth
 server as the pre-registered `storybookstudio` client (or with a pasted
 `sbk_pat_` token), and calls `open_edit_session` then `get_edit_package` over
 `/api/mcp` (FILM-2002, FILM-2001). It downloads the media from the package's
-signed URLs with resume and checksums, writes a normal Velorn project folder
+signed URLs with resume and checksums, writes a normal upstream project folder
 with the rough cut assembled from the shots' timings, dialogue, music and
 captions (FILM-2011, FILM-2012), and the episode shows "Editing in Studio" in
 the web app.
 
 **Cut.** The user types an instruction, or Claude Desktop calls the Studio's
 own local MCP server. The `agent` profile's `studio_edit` compiles the intent
-to a plan over Velorn's primitives, previews it as per-scene cards, and on
+to a plan over the upstream editor's primitives, previews it as per-scene cards, and on
 approval applies it into a new version while the operation log records every
 step with its reason (FILM-2013, FILM-2012). The Studio renders keyframes and
 a scene preview on the local GPU, runs deterministic QA and the critic, and
@@ -138,7 +138,7 @@ and localization jobs).
 
 **StoryBook stores the record of an edit, not the edit.** The timeline lives
 in the Studio's project folder (EditGraph v1, an additive extension of
-Velorn's `project.comfystudio`). StoryBook stores sessions, events, renders,
+the upstream project file, `project.storybookstudio`). StoryBook stores sessions, events, renders,
 QA results and the explain-why report, which is what publishing and analytics
 need. The retired `edit_projects/clips/tracks` tables are not revived.
 
@@ -157,7 +157,7 @@ confirmation that names the episode, the files and the destination. The AI
 never overwrites a hand edit silently.
 
 **Sixteen capability tools over 130 primitives.** The model sees the `agent`
-profile; the `expert` profile keeps every Velorn tool. Intent compilers are
+profile; the `expert` profile keeps every upstream tool. Intent compilers are
 plain functions from context, scope, params and policy to an action plan with
 reasons; the plan runs through the primitives' own preview path.
 
@@ -166,11 +166,11 @@ and analysis run on the user's GPU and are free to repeat. Generation,
 storage, publishing and analytics stay in StoryBook.
 
 **Security before tokens.** The fork's MCP server gets a per-install bearer
-secret and an Origin check, the `comfystudio://` protocol gets a path
+secret and an Origin check, the `storybookstudio-file://` protocol gets a path
 allowlist, checkpoints move to disk, and tokens live only in the main process
 under `safeStorage`, before any StoryBook token is stored (FILM-2010).
 
-**GPL-3.0 stays at arm's length.** The fork is GPL like Velorn and public;
+**GPL-3.0 stays at arm's length.** The fork is GPL like the upstream editor and public;
 StoryBook's server code is a separate program over HTTP. Remotion's company
 license is confirmed before FILM-2018.
 

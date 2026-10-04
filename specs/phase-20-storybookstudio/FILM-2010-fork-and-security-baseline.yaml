@@ -7,12 +7,12 @@ status: PARTIAL
 effort: M
 dependencies: []
 summary: >
-  Forks Velorn into aroundAI/storybookstudio and makes it safe to hold cloud
-  tokens before any other work lands. The fork keeps every Velorn file and
+  Forks the upstream GPL-3.0 editor into aroundAI/storybookstudio and makes it safe to hold cloud
+  tokens before any other work lands. The fork keeps every upstream file and
   adds a studio layer in new modules (electron/studio/, src/studio/), touching
   upstream files only at registration points so monthly upstream merges stay
-  routine. Four security gaps in Velorn v0.3.36 are closed first: the local
-  MCP server has no authentication (loopback only), the comfystudio:// file
+  routine. Four security gaps in the upstream editor v0.3.36 are closed first: the local
+  MCP server has no authentication (loopback only), the storybookstudio-file:// file
   protocol serves any path despite a comment claiming a restriction
   (electron/main.js ~3509), checkpoints live only in memory
   (MCP_PROJECT_CHECKPOINTS), and nothing stores secrets. This spec also
@@ -20,19 +20,19 @@ summary: >
   existing MCP tools to the contract's verbs. Design: PRD-EDD.md Part 2 "Fork
   strategy" and "Security hardening of the fork".
 acceptance_criteria:
-  - text: "Repository aroundAI/storybookstudio exists as a clone of VelornLabs/velorn at fdd8255 (v0.3.36) with upstream as a second remote; the design document is in docs/"
+  - text: "Repository aroundAI/storybookstudio exists as a clone of the upstream GPL-3.0 editor at fdd8255 (v0.3.36) with upstream as a second remote; the design document is in docs/"
     met: true
     evidence: "https://github.com/aroundAI/storybookstudio, commit 233f35f 'Add StorybookStudio PRD and EDD' (docs/STORYBOOKSTUDIO_PRD_EDD.md, docs/images/); transferred from XuryaX 2026-10-04"
-  - text: "User-facing name is StorybookStudio (package.json productName, window titles, about dialog, MCP server name); internal identifiers comfystudio (file extension, protocol scheme, package name, bridge ids) are unchanged, as Velorn's AGENTS.md prescribes for legacy names"
-    met: true
-    evidence: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 package.json:141 productName StorybookStudio; electron/mcpServer.js:10713 serverInfo.name); the internal ids (comfystudio scheme and extension, package name velorn) are unchanged, as docs/UPSTREAM.md, section What we keep apart from upstream lists"
+  - text: "The name is StorybookStudio everywhere a user or another program sees it: package.json productName and name, appId, window titles, the about dialog (the upstream name appears only in its Open-source licenses view, which GPL-3.0 §5 requires), the MCP server name, the deep-link scheme storybookstudio://, the file protocol storybookstudio-file://, the project file project.storybookstudio (the loader still opens the old extension and renames it on save), settings and storage keys"
+    met: false
+    reason: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 package.json:141 productName StorybookStudio; electron/mcpServer.js:10713 serverInfo.name) set the user-facing name and kept the upstream internal identifiers, as the upstream AGENTS.md prescribes for legacy names. The owner reversed that on 2026-10-05 (#632): no upstream name survives in the product or its identifiers. The fork-side rename is the paired StorybookStudio PR, queued with #632; this criterion is met when the pin follows it"
   - text: "docs/AI_EDITOR_CONTRACT.md defines inputs, perception, editing primitives, editing intents, validation and lifecycle; docs/CAPABILITY_MATRIX.md lists every tool in electron/mcpServer.js with one of exists / adapter / build against the contract's verbs"
     met: true
     evidence: "aroundAI/storybookstudio#2 and #4 (storybookstudio@9fa74d2 docs/AI_EDITOR_CONTRACT.md (section 8 safety alignment in #4), docs/CAPABILITY_MATRIX.md, 130 tools: exists 112, adapter 18, build 21; scripts/capability-matrix.mjs --check; tests/studio/capabilityMatrix.test.mjs)"
   - text: "MCP server auth: on first run a 32-byte secret is generated into userData/mcp-secret and every request to 127.0.0.1:19790 must carry Authorization: Bearer <secret>; a request whose Origin or Host is not loopback is rejected 403; Settings shows the secret once with a ready-made `claude mcp add --transport http storybookstudio http://127.0.0.1:19790/mcp --header \"Authorization: Bearer …\"` command"
     met: true
     evidence: "aroundAI/storybookstudio#3 (storybookstudio@9fa74d2 electron/studio/mcpAuth.js:49 bearer 401, non-loopback Host or Origin 403; electron/mcpServer.js:10619 runs the check; electron/main.js:7771 passes the secret; electron/studio/mcpSecret.js:18 32-byte secret in userData/mcp-secret; electron/studio/studioMain.js:27 studio:getMcpConnectCommand feeds src/studio/McpConnectCommands.jsx in Settings; tests/studio/mcpAuth.test.mjs:71 and mcpSecret.test.mjs; live curls 401/401/403/403/200 in the PR body). Deviation: Settings shows the connect command whenever Settings is open, not once"
-  - text: "comfystudio:// resolves only paths under the open project folder, userData and the caches directory; any other path returns 403; the misleading comment is corrected; a test drives a traversal attempt"
+  - text: "storybookstudio-file:// resolves only paths under the open project folder, userData and the caches directory; any other path returns 403; the misleading comment is corrected; a test drives a traversal attempt"
     met: true
     evidence: "aroundAI/storybookstudio#3 (storybookstudio@9fa74d2 electron/studio/protocolAllowlist.js:42 resolveAllowedPath; electron/main.js:3522 the handler answers 403; tests/studio/protocolAllowlist.test.mjs:34 /etc/passwd, :39 ../ traversal, :46 symlink escape refused)"
   - text: "create_project_checkpoint and restore_project_checkpoint persist under <project>/edits/checkpoints/ and survive an app restart; the in-memory map becomes a cache"
@@ -44,27 +44,30 @@ acceptance_criteria:
   - text: "An upstream merge playbook (docs/UPSTREAM.md) describes the monthly merge, the registration-point files that may conflict (main.js, preload.js, mcpServer.js, App.jsx, package.json), and the two patches offered upstream (MCP auth, protocol allowlist)"
     met: true
     evidence: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 docs/UPSTREAM.md last merged head fdd8255, the section Patches we offer upstream, the merge log)"
-  - text: "CI on the fork runs Velorn's existing tests plus tests/studio/*; the package builds for macOS arm64 (the first target) with protocols: [{name: StorybookStudio, schemes: [velorn]}] in electron-builder config"
+  - text: "CI on the fork runs the upstream editor's existing tests plus tests/studio/*; the package builds for macOS arm64 (the first target) with protocols: [{name: StorybookStudio, schemes: [storybookstudio]}] in electron-builder config"
     met: false
-    reason: "half met. aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 .github/workflows/ci.yml) runs on macos-14 the four upstream scripts (test:media-preparation, check:media-preparation, test:export-scheduler, test:rife-hardening) plus test:studio and npm run build, which is vite build only; nightly.yml runs npm test. package.json:227 declares protocols velorn and :235 the mac dmg arm64 target, but only release.yml:410 runs electron-builder --mac, on release, so no CI run on a pull request packages the app"
+    reason: "half met. aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 .github/workflows/ci.yml) runs on macos-14 the four upstream scripts (test:media-preparation, check:media-preparation, test:export-scheduler, test:rife-hardening) plus test:studio and npm run build, which is vite build only; nightly.yml runs npm test. package.json:227 declares the deep-link protocol (renamed storybookstudio by #632's fork pair) and :235 the mac dmg arm64 target, but only release.yml:410 runs electron-builder --mac, on release, so no CI run on a pull request packages the app"
 test_plan:
   unit:
     - {text: "MCP auth: missing, wrong and right bearer; non-loopback Origin refused", met: true, evidence: "aroundAI/storybookstudio#3 (storybookstudio@9fa74d2 tests/studio/mcpAuth.test.mjs)"}
     - {text: "Protocol allowlist: project path allowed, /etc/passwd and ../ traversal refused", met: true, evidence: "aroundAI/storybookstudio#3 (storybookstudio@9fa74d2 tests/studio/protocolAllowlist.test.mjs:34,39)"}
     - {text: "Checkpoints: create, restart (new process), restore equals snapshot", met: true, evidence: "aroundAI/storybookstudio#3 (storybookstudio@9fa74d2 tests/studio/checkpoints.test.mjs:66)"}
   integration:
-    - {text: "Velorn's existing export regression runner still passes on the fork", met: true, evidence: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 .github/workflows/ci.yml runs test:export-scheduler and test:rife-hardening, green on the PR and on main)"}
+    - {text: "the upstream editor's existing export regression runner still passes on the fork", met: true, evidence: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 .github/workflows/ci.yml runs test:export-scheduler and test:rife-hardening, green on the PR and on main)"}
   e2e: []
 remaining:
   - criterion: "CI packages the app for macOS arm64 on a pull request"
     reason: "ci.yml stops at vite build; electron-builder runs only in release.yml on a release"
     closed_by: "FILM-2015"
+  - criterion: "The name is StorybookStudio everywhere a user or another program sees it"
+    reason: "Owner decision 2026-10-05 (#632): the fork renames the deep-link scheme, file protocol, project file extension, package name, appId and storage keys, keeping the upstream name only in the licenses view"
+    closed_by: "FILM-2010"
 open_questions:
   - "Windows at launch (README open question 4) decides whether NVENC and the Windows protocol registration are in this spec's CI matrix."
 notes: >
-  Velorn is GPL-3.0-only, so the fork is GPL and public; StoryBook's server
+  The upstream editor is GPL-3.0-only, so the fork is GPL and public; StoryBook's server
   code is a separate program over HTTP and stays outside the GPL boundary.
-  Velorn's own AGENTS.md rules carry over: preserve simple guided workflows,
+  The upstream editor's own AGENTS.md rules carry over: preserve simple guided workflows,
   keep project files portable, keep generation and editing separate layers,
   and have agent write actions inspect, preview and use the existing
   undo/checkpoint paths. Lead decisions (TEAM_BRIEF_v5): CI is the four upstream
@@ -73,8 +76,8 @@ notes: >
   (part A) and #4 (docs) merged 2026-10-04; the pin follows them in #615. The allowlist also serves
   exact files the app's own windows requested through media:getFileUrl (Welcome
   thumbnails of closed projects); embedded and sign-in pages still get 403
-  (lead accepted). "Caches directory" means Velorn's temp folders
-  comfystudio-shot-audio and comfystudio-caption-audio. docs/MCP.md and
+  (lead accepted). "Caches directory" means the upstream editor's temp folders
+  for shot audio and caption audio. docs/MCP.md and
   .mcp.json carry the bearer through ${STORYBOOKSTUDIO_MCP_TOKEN}. Fork docs follow-up: docs/UPSTREAM.md says the MCP patch generates a per-launch token, but the code persists the secret in userData/mcp-secret. The matrix counts
   130 tools, not 129 (exists 112, adapter 18, build 21).
 feature:

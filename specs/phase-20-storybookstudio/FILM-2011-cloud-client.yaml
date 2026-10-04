@@ -1,5 +1,5 @@
 spec_id: "FILM-2011"
-title: "Cloud Client: Sign-in, Pull, Re-sync and the velorn:// Protocol"
+title: "Cloud Client: Sign-in, Pull, Re-sync and the storybookstudio:// Protocol"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
@@ -24,12 +24,12 @@ summary: >
   downloads its media four at a time with HTTP range resume and sha256
   verification, probes each file with ffprobe, hands the result to the project
   builder (FILM-2012), batches edit events, and on a timer checks the package
-  etag to offer re-sync of changed shots. The velorn:// protocol opens the
+  etag to offer re-sync of changed shots. The storybookstudio:// protocol opens the
   episode picker pre-selected; it never pulls without a click. Design:
   PRD-EDD.md Part 2 "Cloud client" (corrected to an MCP client) and Part 4
   flows 1 and 3.
 acceptance_criteria:
-  - text: "electron/studio/auth.js: PAT paste (validated by calling whoami) and PKCE (opens the system browser at /oauth/authorize with S256, catches velorn://auth/callback or a loopback 127.0.0.1:<random port>/callback, exchanges at /oauth/token, refreshes 5 minutes before expiry, rotates refresh tokens); tokens stored via the FILM-2010 secrets module under userData/studio-secrets.json keyed by API host; studio:auth-changed emitted"
+  - text: "electron/studio/auth.js: PAT paste (validated by calling whoami) and PKCE (opens the system browser at /oauth/authorize with S256, catches storybookstudio://auth/callback or a loopback 127.0.0.1:<random port>/callback, exchanges at /oauth/token, refreshes 5 minutes before expiry, rotates refresh tokens); tokens stored via the FILM-2010 secrets module under userData/studio-secrets.json keyed by API host; studio:auth-changed emitted"
     met: true
     evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/auth.js:116 PAT, :234 PKCE, :318 refresh; live PKCE with a loopback redirect against a running StoryBook in 4.1 s, whoami clientName 'StorybookStudio on M1 test Mac'; refresh rotated both tokens; replaying the old refresh token returned 400 invalid_grant, the connection was revoked and the client showed 'Sign in again'; tests/studio/cloud-auth.test.mjs)"
   - text: "electron/studio/client.js wraps the SDK client: typed callers for whoami, list_projects, list_episodes, get_edit_package, open_edit_session, record_edit_events, close_edit_session, request_render_upload, finalize_render, deliver_edit, regenerate_shots, localize_episode; UNAUTHORIZED → refresh once → surface 'Sign in again'; FORBIDDEN surfaces the role; RATE_LIMITED honours retry_after_s"
@@ -47,9 +47,9 @@ acceptance_criteria:
   - text: "electron/studio/events.js batches edit events and sends record_edit_events every 60 s or on delivery; queues locally when offline and flushes on reconnect; close_edit_session on project close"
     met: true
     evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/events.js:23 createEditEventQueue; tests/studio/cloud-events.test.mjs)"
-  - text: "electron/studio/protocol.js: app.setAsDefaultProtocolClient('velorn'), requestSingleInstanceLock, open-url (macOS) and second-instance (Windows/Linux); velorn://open?api=&episode= validates api against an allowlist of StoryBook hosts (config + the signed-in host) and opens the picker with the episode selected; velorn://auth/callback is routed to auth.js; any other path is ignored and logged"
+  - text: "electron/studio/protocol.js: app.setAsDefaultProtocolClient('storybookstudio'), requestSingleInstanceLock, open-url (macOS) and second-instance (Windows/Linux); storybookstudio://open?api=&episode= validates api against an allowlist of StoryBook hosts (config + the signed-in host) and opens the picker with the episode selected; storybookstudio://auth/callback is routed to auth.js; any other path is ignored and logged"
     met: true
-    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/protocol.js:33 parseVelornUrl, :70 registerVelornProtocol; packaged build: a hostile host was ignored and logged, a real link pre-selected the episode and started no pull; tests/studio/cloud-protocol.test.mjs)"
+    evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/protocol.js:33 the URL parser, :70 the protocol registration, under the scheme's earlier upstream name; packaged build: a hostile host was ignored and logged, a real link pre-selected the episode and started no pull; tests/studio/cloud-protocol.test.mjs). The scheme is storybookstudio:// by owner decision 2026-10-05 (#632, with its fork pair)"
   - text: "The pull job and sync run in the main process, never over the renderer MCP bridge (which times out at 60 s), and expose status to the local MCP tools studio_get_job_status (FILM-2013)"
     met: true
     evidence: "aroundAI/storybookstudio#7 (storybookstudio@c47fbb8 electron/studio/jobs.js:10 createJobRegistry, cloud.js:195 openEpisode in the main process)"
@@ -100,7 +100,7 @@ notes: >
   whole connection on a replayed rotated refresh token, which is correct, but
   two Studio windows racing a refresh would sign each other out, so the
   fork's single-instance lock and per-origin single-flight refresh prevent
-  it; Velorn refuses to replace an audio clip with a video asset, so a
+  it; the upstream editor refuses to replace an audio clip with a video asset, so a
   regenerated shot's separate shot-audio clip comes back unresolved from
   re-sync (FILM-2013 and FILM-2016 handle it); FILM-2005 AC2's OS "Open
   StorybookStudio?" prompt screenshot is still not captured (the agent

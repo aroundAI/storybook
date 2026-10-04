@@ -13,7 +13,7 @@ dependencies:
   - spec_id: "FILM-2013"
     note: "plan cards and the studio:plan-proposed event"
 summary: >
-  Five surfaces wrap Velorn's editor without changing it: a Welcome screen
+  Five surfaces wrap the upstream editor without changing it: a Welcome screen
   (Open from StoryBook, recent projects, update badges), an episode picker
   (project → season → episode with status, size and 'on this machine'), the
   editor's two additions (an AI panel with the instruction box, per-scene plan
@@ -31,7 +31,7 @@ acceptance_criteria:
   - text: "Welcome (src/components/studio/Welcome.jsx): signed in → 'Open from StoryBook' opens the picker; signed out → sign-in with 'Sign in with StoryBook' (PKCE) and 'Paste a token'; recent projects with an 'Updates available' badge when FILM-2011's sync has a pending plan"
     met: true
     evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/components/studio/Welcome.jsx:168 Welcome, :20 SignInForm (browser sign-in and Paste a token), :112 RecentProjects (Updates available badge; a crashed project is listed, :120); tests/studio/ui/components-render.test.mjs:86; tests/studio/ui/picker-and-guards.test.mjs:21. Packaged-app run: signed in with a token against a local StoryBook"
-  - text: "EpisodePicker.jsx: tree of projects → seasons → episodes from list_projects/list_episodes with status chips (storyboard, generating, editing, ready, published), duration, last changed, estimated size from the package, 'On this machine' when a local project links to it; opening pre-selects from a velorn://open deep link; 'Open' starts the pull with a progress view (phase, files, bytes) and lands in the editor when playable"
+  - text: "EpisodePicker.jsx: tree of projects → seasons → episodes from list_projects/list_episodes with status chips (storyboard, generating, editing, ready, published), duration, last changed, estimated size from the package, 'On this machine' when a local project links to it; opening pre-selects from a storybookstudio://open deep link; 'Open' starts the pull with a progress view (phase, files, bytes) and lands in the editor when playable"
     met: true
     evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/components/studio/EpisodePicker.jsx:38 EpisodePicker, :19 ProgressView; src/studio/ui/pickerModel.js:47 buildEpisodeTree, :9 STATUS_CHIPS, :73 packageBytes, :100 jobProgressView; tests/studio/ui/picker-and-guards.test.mjs:21, :45, :55, :74. Packaged app: the 20-shot episode opened in 3.2 s. Deviation: StoryBook returns no season names, so seasons are labelled by number (lead default)"
   - text: "AIPanel.jsx mounted on the editor's right: instruction box, plan cards [{scene, before → after, changes with reasons}], Approve all / Approve scene / Reject, the report view, a 'touches your edits' section when a plan affects user-edited clips; cards arrive via studio:plan-proposed from the in-app agent or an external MCP client alike; the editor stays interactive while a plan is prepared and the plan re-bases before showing"
@@ -49,7 +49,7 @@ acceptance_criteria:
   - text: "Project-close and app-quit prompt when a plan is unapproved or a delivery is in flight; a crash during a plan reopens at the last autosave with 'Return to version before plan' offered (FILM-2012 versions)"
     met: true
     evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/studio/ui/sessionGuard.js:12 pendingWorkPrompt, :34 recoveryOffer; src/components/studio/StudioRoot.jsx:57 PendingWorkPrompt; src/components/studio/AIPanel.jsx:136 RecoveryBanner; src/studio/ui/studioBridge.js:76 the quit request, :93 setPendingWork; electron/studio/studioUi.js:22; tests/studio/ui/picker-and-guards.test.mjs:84, :99; tests/studio/ui/studio-ui-main.test.mjs:25; tests/studio/ui/plan-bridge.test.mjs:199, :248. Packaged app: the quit prompt names the waiting plan; killed mid-plan, the reopened project offers Return to version before plan and it works"
-  - text: "Accessibility: all five surfaces keyboard-navigable, aria-live on plan arrival and QA results, captions and report readable by a screen reader; Velorn's existing editor accessibility unchanged"
+  - text: "Accessibility: all five surfaces keyboard-navigable, aria-live on plan arrival and QA results, captions and report readable by a screen reader; the upstream editor's existing accessibility unchanged"
     met: false
     reason: "aria-live announces plan arrival (src/components/studio/AIPanel.jsx:181; tests/studio/ui/components-render.test.mjs:86; tests/studio/ui/plan-cards.test.mjs:85) and the Review screen takes the keyboard (src/components/studio/ReviewScreen.jsx:194), but no screen reader pass was run and the QA-result announcement is not tested on its own"
   - text: "Nothing in the renderer holds a token; every cloud call goes through electronAPI.studio.* IPC (FILM-2011); the MCP snapshot excludes auth state"
@@ -71,7 +71,7 @@ remaining:
     closed_by: "FILM-2015"
 open_questions: []
 notes: >
-  The design rule from Velorn's AGENTS.md holds: preserve simple guided
+  The design rule from the upstream editor's AGENTS.md holds: preserve simple guided
   workflows and do not turn routine surfaces into node configuration. The
   five surfaces are the whole of what a non-editor sees; the full timeline is
   one click away and unchanged.
@@ -84,7 +84,7 @@ notes: >
   common phrasings to an intent and does not guess the rest. An error
   boundary now wraps every studio surface (src/components/studio/StudioBoundary.jsx:8,
   mounted in src/App.jsx:634, :1049, :1152): a surface that throws no longer
-  unmounts App, which also runs Velorn's MCP action bridge, so MCP calls no
+  unmounts App, which also runs the upstream editor's MCP action bridge, so MCP calls no
   longer time out when a panel fails. The packaged-app run found bugs routed
   elsewhere: a Welcome crashed-project entry and Escape closing the whole
   Review screen (both fixed here), the delivery summary logging a save as an

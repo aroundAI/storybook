@@ -672,7 +672,7 @@ The web app keeps generating with Gemini on Vertex AI; the app also serves a rem
 
 See [phase-20-storybookstudio/README.md](./phase-20-storybookstudio/README.md) for the problem table, the loop, locked decisions and open questions, and the [design document](https://claude.ai/code/artifact/7a69fcdb-7582-4fd2-85df-ae58c15b2b13) (repository copy: [PRD-EDD.md](./phase-20-storybookstudio/PRD-EDD.md)) for the PRD, both EDDs and the diagrams.
 
-StoryBook gets its post-production half: a fork of Velorn, [aroundAI/storybookstudio](https://github.com/aroundAI/storybookstudio), that runs on the creator's computer, pulls an episode as a rough cut over Phase 19's MCP, lets an AI cut it with preview, undo and an explain-why report, checks its own renders, and sends a publish-ready delivery package back. FILM-2001 to FILM-2007 are StoryBook work; FILM-2010 to FILM-2019 are work in the fork.
+StoryBook gets its post-production half: a fork of the upstream GPL-3.0 editor, [aroundAI/storybookstudio](https://github.com/aroundAI/storybookstudio), that runs on the creator's computer, pulls an episode as a rough cut over Phase 19's MCP, lets an AI cut it with preview, undo and an explain-why report, checks its own renders, and sends a publish-ready delivery package back. FILM-2001 to FILM-2007 are StoryBook work; FILM-2010 to FILM-2019 are work in the fork.
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|

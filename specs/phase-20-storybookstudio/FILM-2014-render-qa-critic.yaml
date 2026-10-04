@@ -20,7 +20,7 @@ summary: >
   narrative). Every QA issue names the studio_repair intent that fixes it, so
   repair is a plan, not a prompt. The vision step is the only one that costs
   tokens; it runs on at most 40 keyframes per review and is skipped when no
-  hosted model is configured. Velorn's export path (hidden worker window,
+  hosted model is configured. The upstream editor's export path (hidden worker window,
   canvas compositing, FFmpeg frame pipe, hardwareExportFfmpeg.js) is reused for
   every tier. Design: PRD-EDD.md Part 2 "Render, QA and critic pipeline";
   Part 1 R-23, R-61.
@@ -43,12 +43,12 @@ acceptance_criteria:
   - text: "studio_repair {issues[]} compiles each issue's repairIntent (duck_music, trim_silence, normalize_loudness, move_caption, replace_missing_media, add_fade, re-time) to one action plan with reasons; FILM-2013's autoRepair loop uses it, stops at 3 rounds, and leaves remaining issues as cards"
     met: true
     evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 src/studio/intents/repair.js:95 compile; electron/studio/mcpCapabilities.js:367 reviewRound, :554 the autoRepair loop; tests/studio/repair.test.mjs:134 (one plan for every issue), tests/studio/review-mcp.test.mjs:45 (review, repair previewed and applied into a version, the next review clears it, over MCP), :86 (autoRepair over MCP), tests/studio/review-loop.test.mjs:39"
-  - text: "Delivery renders (FILM-2017) go through Velorn's media-preparation queue with VideoToolbox on macOS, NVENC on Windows/Linux and x264 fallback; a 1080p 90 s render completes at 1× real time or faster with hardware encode on the reference machines"
+  - text: "Delivery renders (FILM-2017) go through the upstream editor's media-preparation queue with VideoToolbox on macOS, NVENC on Windows/Linux and x264 fallback; a 1080p 90 s render completes at 1× real time or faster with hardware encode on the reference machines"
     met: true
     evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 electron/studio/deliveryPath.js:44 render, :77 service.enqueue, :108 check; electron/studio/studioMain.js:68 swaps FILM-2017's render and qa seams for it; electron/mediaPreparation.js:27 the delivery kind; tests/studio/delivery-path.test.mjs:74 (VideoToolbox through the queue, a 94 s 1080p render 7.0x real time: 13.5 s on an M5 Pro), :84 (without hardware the x264 fallback and its reason are reported). NVENC and the reference machines are not measured"
-  - text: "Velorn's export regression runner gains the QA pass over its fixture outputs so a regression in loudness or black frames fails CI"
+  - text: "The upstream editor's export regression runner gains the QA pass over its fixture outputs so a regression in loudness or black frames fails CI"
     met: true
-    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/fixtures/export-scheduler-electron.cjs:84; electron/studio/exportRegressionQa.js:12; tests/studio/export-regression-qa.test.mjs:38 (VELORN_TEST_NATIVE_ENCODE=1 check:export-worker-scheduling runs QA on its native render; a forced-black encode fails with 'Encoded MP4 failed QA: black_frames')"
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/fixtures/export-scheduler-electron.cjs:84; electron/studio/exportRegressionQa.js:12; tests/studio/export-regression-qa.test.mjs:38 (the native-encode test flag on check:export-worker-scheduling runs QA on its native render; a forced-black encode fails with 'Encoded MP4 failed QA: black_frames')"
 test_plan:
   unit:
     - {text: "QA: each check on a known-bad and a known-good fixture; thresholds from preset and policy", met: true, evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/qa.test.mjs:43, :64, :74, :122)"}

@@ -18,7 +18,7 @@ summary: >
   Closes the Deliver stage. Six delivery presets (youtube_16x9, shorts_9x16,
   tiktok_9x16, reels_9x16, square_1x1, master) define resolution, fps, codec,
   bitrate, audio codec, loudness target, max duration and caption policy, and
-  drive Velorn's export_delivery_batch. studio_create_variant {kind: short}
+  drive the upstream editor's export_delivery_batch. studio_create_variant {kind: short}
   builds a 9:16 variant timeline from a StoryBook shorts candidate or the
   agent's own hook pick, with a subject-tracking reframe (face and subject
   detection on keyframes, a smoothed crop path as transform keyframes) and
