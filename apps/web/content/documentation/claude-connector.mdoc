@@ -4,19 +4,6 @@ description: "Let Claude write your ideas, story, screenplay and shots, while St
 publishedAt: 2026-10-03
 order: 5
 status: "published"
-# Markdoc has no comments, so these notes live in the frontmatter, where nothing renders.
-# TODO(screenshot): an episode in the studio with content written by Claude, from a real run
-# TODO(screenshot): the consent page ("wants to connect to StoryBook") with the team list and the three scopes
-# TODO(screenshot): Settings → Connected apps showing the token form and the "Copy your token" dialog
-# TODO(label): FILM-1910 is not built yet. Confirm the exact banner text, the cancel button label, and where Generate is held, then update this section
-# TODO(screenshot): the "Claude is working on this" banner on a stage page, from a real run
-# TODO(label): confirm the badge wording once FILM-1910 ships
-# TODO(screenshot): a screenplay with origin badges, mixing Claude and edited lines
-# TODO(label): confirm the restore action and its location once FILM-1910 ships
-# TODO(screenshot): the restore action and the stage after restoring
-# TODO(label): confirm the settings location and labels once FILM-1910 ships
-# TODO(screenshot): the team AI settings page
-# TODO(screenshot): the Your connections list with one active and one revoked connection, and the revoke confirmation
 ---
 
 ## What the connector does
@@ -35,6 +22,9 @@ The connector lets Claude work inside your StoryBook team. Claude writes the ide
 4. The page reads "Claude wants to connect to StoryBook". Pick the team Claude may work in.
 5. Under **Allow it to**, tick what Claude may do (see the scopes below), then click **Allow**. **Deny** cancels the connection.
 
+
+![The consent page: Claude wants to connect to StoryBook, with the team list and the three scopes, read, write and render, and the Deny and Allow buttons](/images/docs/claude-connector/consent-page.png)
+
 A connection belongs to one team. To let Claude work in a second team, add the connector again and pick the other team.
 
 ### Without sign-in: a personal access token
@@ -44,10 +34,15 @@ Some tools cannot sign in through a browser. For those, create a token yourself.
 1. Open **Settings → Connected apps** in your team.
 2. Under **New personal access token**, give the token a name, such as the device that will use it.
 3. Choose its scopes and click **Create token**.
-4. Copy the token when it appears. **It is shown once.** StoryBook keeps only a fingerprint, so a lost token cannot be shown again. Create a new one instead.
+4. Copy the token when it appears, then click **I have saved it**. **It is shown once.** StoryBook keeps only a fingerprint, so a lost token cannot be shown again. Create a new one instead.
 5. Give the token to your tool as a bearer token in the `Authorization` header.
 
+![Settings, Connected apps: after Create token, the token is shown once with Copy and I have saved it buttons](/images/docs/claude-connector/connected-apps-token.png)
+
 A token works for one team and one person, and can be revoked at any time.
+
+
+![The story page of an episode written by Claude, with the Claude via MCP badge under the stage tabs](/images/docs/claude-connector/studio-written-by-claude.png)
 
 ## What each scope allows
 
@@ -76,19 +71,33 @@ If Claude stops half way, nothing half-written reaches your episode.
 
 ### While Claude is working
 
-The studio page for that stage shows that **Claude is working on this**. While it does, the Generate button for that stage is held, so the web app and Claude cannot overwrite each other. You can cancel the run from the same place.
+The studio page for that stage shows a banner: **Claude is working on this**, followed by what Claude is writing, which app it came from and when it started. While the banner is up, the buttons that start a Gemini generation on that page are paused ("Generating here is paused until it finishes"), so the web app and Claude cannot overwrite each other. Click **Cancel** in the banner to end the run.
+
+![The screenplay page with the Claude is working on this banner and its Cancel button](/images/docs/claude-connector/working-banner.png)
+
 
 ### Who wrote what
 
-Each story, screenplay, shot and dialogue line carries an origin badge: **Gemini**, **Claude via MCP**, or **Edited** once you change it by hand.
+Each story, screenplay, shot and dialogue line carries an origin badge: **Gemini**, **Claude via MCP**, or **Edited** once you change it by hand. The story and screenplay show it as "Written by" under the stage tabs; each shot and dialogue line shows its own.
+
+![The shot list: the first shot is badged Edited, the second Claude via MCP](/images/docs/claude-connector/origin-badges-shots.png)
+
 
 ### Going back
 
-Every time a stage is written, StoryBook keeps the version it replaced. If you prefer what was there before, use **Restore previous version** on that stage.
+Every time a stage is written, StoryBook keeps the version it replaced. If you prefer what was there before, use **Restore previous version**, at the top right of that stage's page, then confirm with **Restore**. **Keep current** closes the dialog. What was there is kept too, so restoring again brings it back. Restore is paused while Claude is writing the stage.
+
+![The Restore the previous version confirmation, with Keep current and Restore buttons](/images/docs/claude-connector/restore-confirm.png)
+
+![The story page after restoring, with a Previous version restored message](/images/docs/claude-connector/restore-after.png)
+
 
 ### Team AI settings
 
-Team owners can choose whether the team allows Gemini generation in the web app, Claude generation over the connector, or both, and which one is the default. Members can see the choice but not change it.
+Open **Settings → AI** in your team. Owners can turn **Allow server generation** (Gemini in the web app) and **Allow external generation (MCP)** (Claude over the connector) on or off, choose the **Default mode**, turn on **Use past episode performance in briefs** (off by default; ideation, story and shot briefs then include what worked in the project's earlier episodes, labelled with sample size), and click **Save AI settings**. At least one must stay on. Members can see the choice but not change it.
+
+![Settings, AI: the two Allow toggles, the Default mode choice, the past episode performance toggle and the Save AI settings button](/images/docs/claude-connector/team-ai-settings.png)
+
 
 ## Revoke access
 
@@ -96,7 +105,13 @@ Team owners can choose whether the team allows Gemini generation in the web app,
 2. Under **Your connections**, find the connection. It shows its scopes, when it was last used, and whether it is active.
 3. Click **Revoke**, then confirm.
 
+![The revoke confirmation over the Your connections list](/images/docs/claude-connector/revoke-confirm.png)
+
+
 Revoking takes effect on Claude's next call. Revoked connections stay in the list, marked **Revoked**, so you have a record.
+
+![Your connections: a personal access token marked Revoked above an OAuth app marked Active with its Revoke button](/images/docs/claude-connector/your-connections.png)
+
 
 **Changing your password revokes every connection you have**, in every team. Add the connector again afterwards.
 

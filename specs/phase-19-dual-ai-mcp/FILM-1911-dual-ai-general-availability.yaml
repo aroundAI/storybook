@@ -21,8 +21,8 @@ summary: >
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
 acceptance_criteria:
   - text: "A user docs page (apps/web/content/documentation) explains adding the connector in Claude, signing in, the scopes, the workflow and revoking access, with screenshots taken from a real run"
-    met: false
-    reason: "not met — page drafted in #578 (apps/web/content/documentation/claude-connector.mdoc); screenshots pending a real run, and the banner, badge, restore and AI-settings labels wait for FILM-1910. Open placeholders are the TODO lines in the page's frontmatter"
+    met: true
+    evidence: "apps/web/content/documentation/claude-connector.mdoc embeds ten screenshots (apps/web/public/images/docs/claude-connector/) from one real run: the consent page, the token shown once, a story written by Claude with its badge, the Claude is working on this banner, the shot list with Edited and Claude via MCP badges, the restore confirmation and the story after restoring, Settings → AI, the revoke confirmation and Your connections with one active and one revoked connection. Every UI label in the page was read off those screens and the four label TODOs are resolved. apps/e2e/tests/mcp/connector-guide-evidence.spec.ts regenerates them (CAPTURE_EVIDENCE=1): a seeded team, the scripted MCP client over a personal access token made on the page, an OAuth grant through the consent page, every stage written over MCP, a second story write for the restore, a run held open for the banner. One value is staged: the Edited badge (one shot's generation_origin set to human, as a hand edit writes it) (#591)"
   - text: "Monitoring panels: calls per tool, error rate by code, p95 by tool, runs by mode and status, expired leases per day"
     met: true
     evidence: "apps/web/app/admin/mcp/page.tsx:41 is the super admin's MCP Connector page (sidebar link, windows of 24 hours, 7 and 30 days) with the five panels and a guard card, read through four SECURITY DEFINER functions that refuse anyone but is_super_admin() at aal2 and return aggregates only (apps/web/supabase/migrations/20261003141814_film-1911-mcp-monitoring.sql:46): admin_mcp_tool_stats (calls, errors, p95 per tool), admin_mcp_error_codes (each code over every call), admin_generation_run_stats (mode, status), admin_expired_leases_per_day (every UTC day of the window, a day with none a measured 0). tests/database/mcp-monitoring.test.sql checks the refusals and every figure against hand-computed values, red with the migration skipped and under three mutations (tooling/mutation-guards/film-1911.json); the four are pinned in definer-functions-inventory.test.sql. apps/e2e/tests/admin/mcp-monitoring.spec.ts:81 reads the figures off the page after seeding (7 calls, 1 error, p95 82 ms over 7 days; 6, 1 and 85 ms over 24 hours; runs and expired leases moving by the 2 it adds), red with a median planted for the p95 (#582)"
@@ -41,9 +41,6 @@ test_plan:
     - {text: "The boot test runs in CI with model variables unset", met: false, reason: "Wired as a step of 🧬 E2E evidence (.github/workflows/workflow.yml), which runs nightly and on dispatch, on that job's build and Supabase; not yet seen passing in a CI run (#582)"}
   e2e: []
 remaining:
-  - criterion: "A user docs page (apps/web/content/documentation) explains adding the connector in Claude, signing in, the scopes, the workflow and revoking access, with screenshots taken from a real run"
-    reason: "The page is drafted (#578); its screenshots need a real run, and FILM-1910's labels fill its TODO lines"
-    closed_by: "FILM-1911"
   - criterion: "The boot test runs in CI with model variables unset"
     reason: "Runs in the nightly 🧬 E2E evidence job; ticked once a run shows it green"
     closed_by: "FILM-1911"
