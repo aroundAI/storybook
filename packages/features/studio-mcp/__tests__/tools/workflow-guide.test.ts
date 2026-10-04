@@ -58,7 +58,7 @@ describe('get_workflow_guide', () => {
 });
 
 describe('the default tool list', () => {
-  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools and the three StorybookStudio session tools, each name once', () => {
+  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools and the Studio tools, each name once', () => {
     const names = defaultTools.map((tool) => tool.name);
 
     expect(new Set(names).size).toBe(names.length);
@@ -106,6 +106,8 @@ describe('the default tool list', () => {
         'get_run',
         'cancel_generation',
         'get_generation_history',
+        // FILM-2001's edit package
+        'get_edit_package',
       ].sort(),
     );
   });

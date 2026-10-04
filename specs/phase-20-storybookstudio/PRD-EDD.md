@@ -688,6 +688,8 @@ All under `apps/web/app/api/v1/`, built with `enhanceRouteHandler({auth:'bearer'
 
 **Edit package** (`storybook-edit-package/1`), built by `packages/features/desktop-integration/src/build-edit-package.ts` with `fetchAllRows` on every query:
 
+> **FILM-2001 correction (2026-10-04, #618):** the shape below is the early sketch. The contract is `EditPackageSchema` in `packages/features/desktop-integration/src/edit-package.schema.ts`, with committed examples in `packages/features/desktop-integration/fixtures/edit-package/`. Differences that matter: the id is `schemaId`; a media entry is `{url, key, sha256, bytes, mime}` (sha256 null with `sha256Reason` where StoryBook recorded none) or `{url: null, mediaReason}`; retention hints are `analyticsHints: {retention: [{timestamp, elapsedRatio, dropPercentage, platform, asOf}], publishId, reason?}` from ClickHouse `video_retention_curves`; the etag is `v<version>-<sha1 of the content>`.
+
 ```json
 { "schema": "storybook-edit-package/1", "etag": "ep_7f3a@v14",
   "project": {"id":"…","name":"…","type":"series","brand":{…},"editPolicy":{…}},
