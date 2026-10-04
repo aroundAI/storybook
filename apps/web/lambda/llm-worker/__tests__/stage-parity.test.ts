@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { withRun } from '@kit/ai-gateway';
+import { createServerWriter, withRun } from '@kit/ai-gateway';
 import {
   type RecordedCall,
   fakeRunHandle,
@@ -293,8 +293,8 @@ type RunClient = NonNullable<
 
 /**
  * The run the handlers write through (FILM-1902): its backend answers the
- * screenplay-refinement brief the way the old Lambda executor stub did, and
- * refuses any other prompt, so a handler reaching the model for something
+ * screenplay-refinement and batch-translate-metadata briefs the way the old
+ * executor stubs did, and refuses any other prompt, so a handler reaching the model for something
  * else fails here.
  */
 function parityRun(commitsThrough?: RunClient) {
@@ -305,21 +305,29 @@ function parityRun(commitsThrough?: RunClient) {
     targetId: IDS.episodeId,
     createdBy: IDS.userId,
     backend: {
-      write: async (_run, brief) => {
-        if (brief.prompt.slug !== 'screenplay-refinement') {
-          throw new Error(`unexpected run.write ${brief.prompt.slug}`);
-        }
+      write: createServerWriter({
+        prompt: async (_run, brief) => {
+          // batch-translate-metadata called executeLLM itself; it writes
+          // through the run now (KB-184), with the same reply
+          if (brief.prompt.slug === 'batch-translate-metadata') {
+            return { output: { translations: METADATA_TRANSLATIONS } };
+          }
 
-        return {
-          output: { screenplay: REFINED_SCREENPLAY },
-          usage: {
-            tokens: 1234,
-            latencyMs: 10,
-            provider: 'gemini',
-            model: 'gemini-test',
-          },
-        };
-      },
+          if (brief.prompt.slug !== 'screenplay-refinement') {
+            throw new Error(`unexpected run.write ${brief.prompt.slug}`);
+          }
+
+          return {
+            output: { screenplay: REFINED_SCREENPLAY },
+            usage: {
+              tokens: 1234,
+              latencyMs: 10,
+              provider: 'gemini',
+              model: 'gemini-test',
+            },
+          };
+        },
+      }),
       dispatch: async () => undefined,
     },
   }).run;
@@ -329,8 +337,6 @@ vi.mock('@kit/ai-gateway', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kit/ai-gateway')>()),
   executeLLM: vi.fn(async (input: { templateSlug: string }) => {
     switch (input.templateSlug) {
-      case 'batch-translate-metadata':
-        return { data: { translations: METADATA_TRANSLATIONS } };
       case 'quality-evaluation/screenplay-quality':
         return {
           data: {
@@ -346,7 +352,7 @@ vi.mock('@kit/ai-gateway', async (importOriginal) => ({
   }),
 }));
 
-vi.mock('../utils/validation-checkpoint', () => ({
+vi.mock('@kit/episodes/lib/canon/validation-checkpoint', () => ({
   runValidationCheckpoint: vi.fn(async () => ({ messages: [] })),
 }));
 

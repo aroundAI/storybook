@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { runValidationCheckpoint } from '../utils/validation-checkpoint';
+import { runValidationCheckpoint } from '@kit/episodes/lib/canon/validation-checkpoint';
 
 const buildMemoryContext = vi.fn();
 vi.mock('@kit/episodes/lib/canon/memory-context-builder', () => ({

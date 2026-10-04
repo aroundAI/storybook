@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { withRun } from '@kit/ai-gateway';
+import { createServerWriter, withRun } from '@kit/ai-gateway';
 import { fakeRunHandle } from '@kit/generation/testing';
 
 import { processSeasonOutline } from '../handlers/season-outline';
@@ -130,7 +130,12 @@ async function outline(metadata: Row, facts: Row[]) {
 
 /** The run the handler runs under (FILM-1903); the orchestrator above is its model. */
 function seasonRun() {
-  return fakeRunHandle({ targetType: 'season', projectId: PROJECT }).run;
+  return fakeRunHandle({
+    targetType: 'season',
+    projectId: PROJECT,
+    // The season's stage writer runs the (mocked) orchestrator
+    backend: { write: createServerWriter(), dispatch: async () => undefined },
+  }).run;
 }
 
 beforeEach(() => {

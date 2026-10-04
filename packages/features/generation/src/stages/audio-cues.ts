@@ -243,6 +243,7 @@ export const audioCuesStage: StageDefinition<
   targetType: 'episode',
   targetSchema: AudioCuesTargetSchema,
   outputSchema: AudioCueGenerationOutputSchema,
+  orchestrated: true,
   jobTracking: {
     jobType: 'audio_cue_generation',
     reference: (target) => ({ type: 'episode', id: target.episodeId }),

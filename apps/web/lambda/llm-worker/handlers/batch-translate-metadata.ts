@@ -4,7 +4,7 @@
  * Translates multiple content items (full videos, shorts groups) across
  * multiple languages in a SINGLE LLM call. The work is the
  * `publish_metadata` stage of `@kit/generation` (FILM-1901): prepare builds
- * the brief, the executor writes, the reply is checked against the stage's
+ * the brief, `run.write` writes it, the reply is checked against the stage's
  * schema, and commit returns every item with its translation or, when the
  * model skipped it, its own text. Nothing is written: the publish draft
  * lives in the publish screen, which receives this result over WebSocket.
@@ -15,8 +15,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
-  type Brief,
-  type GenerateResult,
   type TranslatedPublishItem,
   publishMetadataStage,
   runStage,
@@ -31,18 +29,6 @@ interface BatchTranslateResult {
   data: {
     items: TranslatedPublishItem[];
   };
-}
-
-async function generateWithExecuteLLM(brief: Brief): Promise<GenerateResult> {
-  const { executeLLM } = await import('@kit/ai-gateway');
-
-  const result = await executeLLM<unknown>({
-    templateSlug: brief.prompt.slug,
-    variables: brief.prompt.variables,
-    context: { name: 'batch-translate-metadata', accountId: 'system' },
-  });
-
-  return { output: result.data };
 }
 
 export async function processBatchTranslateMetadata(
@@ -65,7 +51,7 @@ export async function processBatchTranslateMetadata(
         userId: data.userId ?? 'system',
       }),
       { items: data.items },
-      { ...stageRunDeps(), generate: generateWithExecuteLLM },
+      stageRunDeps(),
     );
 
     console.log(

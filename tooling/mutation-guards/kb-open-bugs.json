@@ -4,7 +4,7 @@
     {
       "name": "KB-129 canon extraction records its usage under the project id",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/utils/commit-story-canon.ts",
+      "file": "packages/features/episodes/src/agent/stage-writers/story-canon-facts.ts",
       "find": "        accountId,\n      },\n    });",
       "replace": "        accountId: projectId,\n      },\n    });",
       "cwd": "apps/web",

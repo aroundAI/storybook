@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { withRun } from '@kit/ai-gateway';
+import { createServerWriter, withRun } from '@kit/ai-gateway';
 import { episodeRowFromOutline } from '@kit/generation/episode-rows';
 import {
   type RecordedWrite,
@@ -93,17 +93,19 @@ function parityRun(commitsThrough?: RunClient) {
     targetId: IDS.episodeId,
     createdBy: IDS.userId,
     backend: {
-      write: async (_run, brief) => {
-        if (brief.prompt.slug !== 'season-generation') {
-          throw new Error(`unexpected run.write ${brief.prompt.slug}`);
-        }
+      write: createServerWriter({
+        prompt: async (_run, brief) => {
+          if (brief.prompt.slug !== 'season-generation') {
+            throw new Error(`unexpected run.write ${brief.prompt.slug}`);
+          }
 
-        seen.season_analysis = brief;
-        return {
-          output: SEASON_ANALYSIS_RESULT,
-          usage: { tokens: 10, latencyMs: 5, provider: 'gemini', model: 'g' },
-        };
-      },
+          seen.season_analysis = brief;
+          return {
+            output: SEASON_ANALYSIS_RESULT,
+            usage: { tokens: 10, latencyMs: 5, provider: 'gemini', model: 'g' },
+          };
+        },
+      }),
       dispatch: async () => undefined,
     },
   }).run;

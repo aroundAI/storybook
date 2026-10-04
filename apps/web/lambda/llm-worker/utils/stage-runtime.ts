@@ -5,16 +5,19 @@
  * which the core never imports), and the run's `write` as the `generate`
  * seam (FILM-1902): the model is reached only through the run the job
  * boundary put in scope, which is checked before every call.
+
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { requireRun } from '@kit/ai-gateway';
+import { installStageWriters, requireRun } from '@kit/ai-gateway';
+import { STAGE_WRITERS } from '@kit/episodes/agent/stage-writers';
 import {
   type Brief,
   type Ctx,
   type GenerateResult,
   type RunHandle,
   type RunStageDeps,
+  type WriteScope,
   stageCtx,
 } from '@kit/generation';
 import type { Database } from '@kit/supabase/database';
@@ -22,6 +25,16 @@ import type { Database } from '@kit/supabase/database';
 import { episodeContextLoader } from './episode-context-loader';
 
 export { episodeContextLoader };
+
+/**
+ * The orchestrated stages' writers (KB-184), so `run.write` reaches a
+ * stage's orchestrator in every worker path: a job's handler and
+ * `executeServerRun` alike. Called at boot and by `workerCtx`, never left to
+ * a module's side effect, which a `sideEffects: false` bundle may drop.
+ */
+export function installWorkerStageWriters() {
+  installStageWriters(STAGE_WRITERS);
+}
 
 /**
  * The stage context for the job's run: the worker's client and identity,
@@ -36,6 +49,8 @@ export function workerCtx(
   job: { accountId: string; userId: string },
   run: RunHandle = requireRun('the worker stage context'),
 ): Ctx {
+  installWorkerStageWriters();
+
   return stageCtx(
     run,
     {
@@ -52,8 +67,12 @@ export function workerCtx(
 /** The server writer, through the run in scope: `run.write(brief)`. */
 export async function generateWithLambda(
   brief: Brief,
+  scope?: WriteScope,
 ): Promise<GenerateResult> {
-  return requireRun(`writing ${brief.stage}:${brief.part.key}`).write(brief);
+  return requireRun(`writing ${brief.stage}:${brief.part.key}`).write(
+    brief,
+    scope,
+  );
 }
 
 /**
@@ -64,7 +83,7 @@ export function stageRunDeps(
   run: RunHandle = requireRun('running a stage'),
 ): RunStageDeps {
   return {
-    generate: (brief) => run.write(brief),
+    generate: (brief, scope) => run.write(brief, scope),
     runId: run.id,
     beforeCommit: () => run.assertTargetUnchanged(),
     run: (usage) => run.toGenerationRun(usage),

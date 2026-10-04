@@ -13,6 +13,7 @@ import type {
   GenerationRun,
   GenerationUsage,
   RevisionSnapshot,
+  WriteScope,
 } from '../types';
 import { RunError } from './errors';
 import { toRevisionSnapshot } from './revisions';
@@ -146,7 +147,7 @@ export class RunHandle {
    * written here; the agent submits the part, and the caller gets the
    * brief back as AWAITING_SUBMISSION.
    */
-  async write(brief: Brief): Promise<GenerateResult> {
+  async write(brief: Brief, scope?: WriteScope): Promise<GenerateResult> {
     if (this.row.mode === 'external') {
       throw new RunError(
         'AWAITING_SUBMISSION',
@@ -160,7 +161,7 @@ export class RunHandle {
     await this.renewLease();
     this.requireOpen('write');
 
-    return backend.write(this, { ...brief, runId: this.row.id });
+    return backend.write(this, { ...brief, runId: this.row.id }, scope);
   }
 
   /** Queues this run for the worker. Refuses anything but an open server run. */

@@ -7,14 +7,13 @@
  *   - strict: errors block generation (throws)
  *   - flexible: errors are logged as warnings, generation continues
  */
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Ctx } from '@kit/generation';
 
 import {
   validatePlotSkeleton,
   validateSceneBlocks,
-} from '@kit/episodes/lib/canon/continuity-validator';
-import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
-import type { Database } from '@kit/supabase/database';
+} from './continuity-validator';
+import { buildMemoryContext } from './memory-context-builder';
 
 // Re-export types consumers need
 export type EnforcementLevel = 'strict' | 'flexible';
@@ -29,7 +28,7 @@ export interface ValidationCheckpointConfig {
   /** Episode number for the memory context scope */
   episodeNumber: number;
   /** Supabase client for database access */
-  supabase: SupabaseClient<Database>;
+  supabase: Ctx['client'];
 }
 
 export interface ValidationCheckpointResult {

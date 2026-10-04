@@ -6,6 +6,7 @@ import {
   applyCommit,
   applyPlanThroughClient,
   eq,
+  isUniqueViolation,
   ref,
 } from '../src';
 import { fakeRunHandle, recordingClient, tableResponder } from '../src/testing';
@@ -280,5 +281,37 @@ describe('RunHandle.applyCommit: apply_generation_commit’s answers', () => {
         /rolled back: .*violates check constraint/,
       ),
     });
+  });
+
+  it('a unique violation from the commit is recognised, and nothing else is (KB-175)', async () => {
+    const { run } = fakeRunHandle({
+      fallback: () => ({
+        error: {
+          code: '23505',
+          message:
+            'duplicate key value violates unique constraint "episodes_project_number_unique"',
+        },
+      }),
+    });
+
+    const failure = await run
+      .applyCommit(twoWrites, { finalize: true })
+      .catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ code: 'COMMIT_FAILED' });
+    expect(isUniqueViolation(failure)).toBe(true);
+
+    const other = fakeRunHandle({
+      fallback: () => ({
+        error: { code: '23514', message: 'violates check constraint' },
+      }),
+    });
+    expect(
+      isUniqueViolation(
+        await other.run
+          .applyCommit(twoWrites, { finalize: true })
+          .catch((error: unknown) => error),
+      ),
+    ).toBe(false);
   });
 });

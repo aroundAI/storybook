@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { withRun } from '@kit/ai-gateway';
+import { createServerWriter, withRun } from '@kit/ai-gateway';
 import { fakeRunHandle } from '@kit/generation/testing';
 
 import { P, expectSanitised, fakeClient } from './helpers/injected-rows';
@@ -87,7 +87,7 @@ vi.mock('../utils/job-tracking', () => ({
   markJobCompleted: vi.fn(async () => undefined),
   markJobFailed: vi.fn(async () => undefined),
 }));
-vi.mock('../utils/validation-checkpoint', () => ({
+vi.mock('@kit/episodes/lib/canon/validation-checkpoint', () => ({
   runValidationCheckpoint: vi.fn(async () => ({ messages: [] })),
 }));
 
@@ -108,13 +108,15 @@ const recordingRun = () =>
     targetId: IDS.episodeId,
     createdBy: IDS.userId,
     backend: {
-      write: async (_run, brief) => {
-        seen[brief.prompt.slug] = {
-          templateSlug: brief.prompt.slug,
-          variables: brief.prompt.variables,
-        };
-        throw STOP;
-      },
+      write: createServerWriter({
+        prompt: async (_run, brief) => {
+          seen[brief.prompt.slug] = {
+            templateSlug: brief.prompt.slug,
+            variables: brief.prompt.variables,
+          };
+          throw STOP;
+        },
+      }),
       dispatch: async () => undefined,
     },
   }).run;

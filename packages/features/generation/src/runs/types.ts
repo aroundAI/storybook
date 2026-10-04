@@ -18,6 +18,7 @@ import type {
   GenerationMode,
   StageKey,
   TargetType,
+  WriteScope,
 } from '../types';
 import type { RunHandle } from './run-handle';
 
@@ -130,7 +131,11 @@ export interface RunRow {
  * the queue. An external run uses neither.
  */
 export interface RunBackend {
-  write(run: RunHandle, brief: Brief): Promise<GenerateResult>;
+  write(
+    run: RunHandle,
+    brief: Brief,
+    scope?: WriteScope,
+  ): Promise<GenerateResult>;
   dispatch(run: RunHandle): Promise<void>;
 }
 

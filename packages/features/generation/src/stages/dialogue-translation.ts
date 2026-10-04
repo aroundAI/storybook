@@ -323,6 +323,7 @@ export const dialogueTranslationStage: StageDefinition<
   targetType: 'episode',
   targetSchema: DialogueTranslationTargetSchema,
   outputSchema: DialogueTranslationPartOutputSchema,
+  orchestrated: true,
 
   async parts(ctx, target) {
     const inputs = await loadDialogueTranslationInputs(ctx, target);

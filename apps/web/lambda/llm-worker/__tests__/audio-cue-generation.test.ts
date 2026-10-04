@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { withRun } from '@kit/ai-gateway';
+import { createServerWriter, withRun } from '@kit/ai-gateway';
+import { cuesByPart } from '@kit/episodes/agent/stage-writers';
 import {
   type RecordingClient,
   fakeRunHandle,
@@ -10,10 +11,7 @@ import {
 
 import audioOld from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-old-writes.json';
 import fixture from '../../../../../packages/features/generation/src/testing/fixtures/audio-cues-fixture.json';
-import {
-  cuesByPart,
-  processAudioCueGeneration,
-} from '../handlers/audio-cue-generation';
+import { processAudioCueGeneration } from '../handlers/audio-cue-generation';
 
 type Cue = Parameters<typeof cuesByPart>[0][number];
 const cues = fixture.cues as Cue[];
@@ -68,9 +66,11 @@ function audioRun(commitsThrough?: RecordingClient['client']) {
     targetId: fixture.ids.episodeId,
     createdBy: fixture.ids.userId,
     backend: {
-      write: async () => {
-        throw new Error('the audio_cues run writes through its orchestrator');
-      },
+      write: createServerWriter({
+        prompt: async () => {
+          throw new Error('the audio_cues run writes through its orchestrator');
+        },
+      }),
       dispatch: async () => undefined,
     },
   }).run;

@@ -195,3 +195,31 @@ export async function applyCommit(
 
   return applyPlanThroughClient(ctx.client, plan);
 }
+
+/**
+ * A write refused by a unique index (Postgres 23505), whether it came back
+ * from the run's apply_generation_commit (the PostgREST error is the
+ * RunError's cause) or from a write through the client (its message).
+ */
+export function isUniqueViolation(error: unknown): boolean {
+  for (let e: unknown = error; e; ) {
+    if (typeof e !== 'object') return false;
+    const { code, message, details } = e as {
+      code?: unknown;
+      message?: unknown;
+      details?: { cause?: unknown };
+    };
+
+    if (code === '23505') return true;
+    if (
+      typeof message === 'string' &&
+      message.includes('duplicate key value violates unique constraint')
+    ) {
+      return true;
+    }
+
+    e = details?.cause ?? (e as { cause?: unknown }).cause;
+  }
+
+  return false;
+}

@@ -61,7 +61,7 @@ export async function runStage<TTarget, TOut, TData>(
       brief.runId = deps.runId;
       lastBrief = brief;
 
-      const generated = await deps.generate(brief);
+      const generated = await deps.generate(brief, { ctx, target });
 
       if (generated.usage) {
         usage = usage

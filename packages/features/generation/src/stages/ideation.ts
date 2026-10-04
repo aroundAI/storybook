@@ -101,6 +101,7 @@ export const ideationStage: StageDefinition<
   targetType: 'episode',
   targetSchema: IdeationTargetSchema,
   outputSchema: IdeationStageOutputSchema,
+  orchestrated: true,
 
   async parts() {
     return [singlePart('ideas', 'The story ideas')];

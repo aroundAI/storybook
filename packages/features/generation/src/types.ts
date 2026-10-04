@@ -275,6 +275,13 @@ export interface StageDefinition<TTarget, TOut, TData = unknown> {
   targetSchema: z.ZodType<TTarget, z.ZodTypeDef, unknown>;
   outputSchema: z.ZodType<TOut, z.ZodTypeDef, unknown>;
   jobTracking?: JobTracking<TTarget>;
+  /**
+   * Server mode writes this stage through an orchestrator, not the brief's
+   * one prompt, whose reply is not the stage's shape (KB-184). The
+   * gateway's server writer then runs the stage writer installed for it
+   * (`@kit/episodes/agent/stage-writers`) and refuses without one.
+   */
+  orchestrated?: true;
   parts(ctx: Ctx, target: TTarget): Promise<PartSpec[]>;
   /**
    * `earlier` holds the outputs this run has already accepted, in part
@@ -313,4 +320,17 @@ export interface GenerateResult {
   diagnostics?: Record<string, unknown>;
 }
 
-export type GenerateFn = (brief: Brief) => Promise<GenerateResult>;
+/**
+ * What runStage hands the writer beside each brief: the stage's `Ctx` and
+ * the target it is running. The plain server writer needs only the brief;
+ * an orchestrated stage's writer (KB-184) reads the target and the client.
+ */
+export interface WriteScope {
+  ctx: Ctx;
+  target: unknown;
+}
+
+export type GenerateFn = (
+  brief: Brief,
+  scope?: WriteScope,
+) => Promise<GenerateResult>;

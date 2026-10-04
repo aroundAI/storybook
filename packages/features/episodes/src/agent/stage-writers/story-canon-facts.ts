@@ -2,26 +2,27 @@
  * Canon facts for a story, in server mode (FILM-1901, criterion 9).
  *
  * The `story` stage's output carries an optional `canonFacts` block. An
- * external agent submits it with the story; here, in the worker, this
+ * external agent submits it with the story; in server mode this
  * extracts it from the written story with the `canon-extraction` prompt,
  * the second model call the story handler always made. It runs inside the
- * handler's generate step, so `commitStoryCanon` (`@kit/generation/canon`)
+ * story's stage writer (KB-184), so `commitStoryCanon` (`@kit/generation/canon`)
  * stores what it is given and never calls a model itself.
  *
  * Non-fatal: a failed extraction returns null and the story is still
  * committed, without threads or episode memory, as before.
  */
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-import { type CanonExtraction, CanonExtractionSchema } from '@kit/generation';
-import type { Database } from '@kit/supabase/database';
+import {
+  type CanonExtraction,
+  CanonExtractionSchema,
+  type Ctx,
+} from '@kit/generation';
 
 export interface ExtractCanonFactsInput {
   projectId: string;
   /** The account the job's LLM usage is recorded on (KB-129). */
   accountId: string;
   storyContent?: string;
-  supabase: SupabaseClient<Database>;
+  supabase: Ctx['client'];
 }
 
 /** Stories shorter than this carry nothing worth extracting. */
