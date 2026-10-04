@@ -2,6 +2,8 @@
 
 import { useTransition } from 'react';
 
+import Image from 'next/image';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
@@ -55,6 +57,8 @@ export interface ConsentTeam {
   id: string;
   name: string;
   slug: string;
+  /** False when the client needs a setting the team has off (FILM-2005). */
+  available: boolean;
 }
 
 /**
@@ -68,6 +72,8 @@ export function ConsentForm(props: {
   query: string;
   clientName: string;
   clientId: string;
+  /** StorybookStudio: shown with its icon, for teams that turned it on. */
+  desktopClient: boolean;
   metadataUrl: string | null;
   redirectHost: string;
   scopes: McpScope[];
@@ -80,7 +86,7 @@ export function ConsentForm(props: {
     resolver: zodResolver(ApproveConsentSchema),
     defaultValues: {
       query: props.query,
-      accountId: props.teams[0]?.id ?? '',
+      accountId: props.teams.find((team) => team.available)?.id ?? '',
       scopes: props.scopes,
     },
   });
@@ -118,13 +124,24 @@ export function ConsentForm(props: {
   return (
     <Card data-test="oauth-consent">
       <CardHeader>
+        {props.desktopClient ? (
+          <Image
+            src="/images/storybookstudio-icon.png"
+            alt=""
+            width={48}
+            height={48}
+            className="rounded-xl"
+            data-test="oauth-consent-client-icon"
+          />
+        ) : null}
         <CardTitle data-test="oauth-consent-client">
           {props.clientName} wants to connect to StoryBook
         </CardTitle>
         <CardDescription className="space-y-1">
           <span className="block">
             It will act as {props.userEmail ?? 'you'} in the team you choose,
-            and will be sent back to <code>{props.redirectHost}</code>.
+            and will be sent back to{' '}
+            <code className="break-all">{props.redirectHost}</code>.
           </span>
           {props.metadataUrl ? (
             <span className="block text-xs">
@@ -158,14 +175,25 @@ export function ConsentForm(props: {
                       {props.teams.map((team) => (
                         <label
                           key={team.id}
-                          className="flex items-center gap-3 rounded-md border p-3"
+                          className="flex items-center gap-3 rounded-md border p-3 has-[:disabled]:opacity-60"
                         >
                           <RadioGroupItem
                             value={team.id}
+                            disabled={!team.available}
                             data-test={`oauth-consent-team-${team.slug}`}
                           />
-                          <span className="text-sm font-medium">
-                            {team.name}
+                          <span className="space-y-0.5">
+                            <span className="block text-sm font-medium">
+                              {team.name}
+                            </span>
+                            {team.available ? null : (
+                              <span
+                                className="block text-xs text-muted-foreground"
+                                data-test={`oauth-consent-team-off-${team.slug}`}
+                              >
+                                {props.clientName} is turned off for this team
+                              </span>
+                            )}
                           </span>
                         </label>
                       ))}
@@ -235,7 +263,9 @@ export function ConsentForm(props: {
             </Button>
             <Button
               type="submit"
-              disabled={isPending || props.teams.length === 0}
+              disabled={
+                isPending || !props.teams.some((team) => team.available)
+              }
               data-test="oauth-consent-approve"
             >
               {isPending ? 'Connecting…' : 'Allow'}

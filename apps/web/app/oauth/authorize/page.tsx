@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { teamsWithDesktopIntegration } from '@kit/desktop-integration/server';
+import { requiresDesktopIntegration } from '@kit/studio-mcp/desktop-client';
 import { parseAuthorizeRequest } from '@kit/studio-mcp/server';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -13,6 +15,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 import { oauthDeps } from '../_lib/server/oauth-route';
 import { AuthorizeError } from './_components/authorize-error';
 import { ConsentForm } from './_components/consent-form';
+import { DesktopIntegrationOff } from './_components/desktop-integration-off';
 
 /**
  * `GET /oauth/authorize` (FILM-1907): the consent page.
@@ -96,17 +99,44 @@ async function AuthorizePage(props: PageProps) {
     );
   }
 
+  // StorybookStudio connects only to a team that turned it on (FILM-2005)
+  const desktopOnly = requiresDesktopIntegration(
+    parsed.request.client.clientId,
+  );
+  const desktopTeams = desktopOnly
+    ? await teamsWithDesktopIntegration(
+        client,
+        memberships.map((team) => team.id),
+      )
+    : null;
+
+  if (desktopTeams && desktopTeams.size === 0) {
+    return (
+      <DesktopIntegrationOff
+        clientName={parsed.request.client.clientName}
+        teams={memberships}
+      />
+    );
+  }
+
   return (
     <ConsentForm
       query={query}
       clientName={parsed.request.client.clientName}
       clientId={parsed.request.client.clientId}
+      desktopClient={desktopOnly}
       metadataUrl={parsed.request.client.metadataUrl}
       redirectHost={
-        new URL(parsed.request.redirectUri).host || parsed.request.redirectUri
+        desktopOnly
+          ? parsed.request.redirectUri
+          : new URL(parsed.request.redirectUri).host ||
+            parsed.request.redirectUri
       }
       scopes={parsed.request.scopes}
-      teams={memberships}
+      teams={memberships.map((team) => ({
+        ...team,
+        available: !desktopTeams || desktopTeams.has(team.id),
+      }))}
       userEmail={auth.data.email ?? null}
     />
   );
