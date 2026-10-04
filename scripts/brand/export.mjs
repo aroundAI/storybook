@@ -163,6 +163,14 @@ write(
     .webp({ quality: 88 })
     .toBuffer(),
 );
+// Behind the Studio's StoryBook Welcome screen (no text: the page sets its own).
+write(
+  join(STUDIO, 'welcome-bg.webp'),
+  await sharp(svg('background-wave.svg'), { density: 300 })
+    .resize(2560, 1440)
+    .webp({ quality: 86 })
+    .toBuffer(),
+);
 write(
   join(STUDIO, 'loader-256.png'),
   await render('social-avatar.svg', 256, 256),

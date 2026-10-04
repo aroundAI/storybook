@@ -30,7 +30,7 @@ episodes, are unrelated. This kit is StoryBook's own identity.
 | App icons | `app-icon-dark.svg` (default), `app-icon-light.svg`, `app-icon-mono.svg` | Full-bleed 1024 squares. The export applies the macOS squircle and shadow. iOS and Android mask the square themselves. |
 | Favicon | `favicon.svg` | Browser tabs. It drops the perforations, which disappear below 32 px. |
 | Social avatar | `social-avatar.svg` | Profile pictures. It is safe inside a circular crop. |
-| Studio art | `splash-studio.svg`, `hero-studio.svg`, `wordmark-studio*.svg`, `background-wave.svg` | StorybookStudio's splash window, its welcome screen, and the product name. |
+| Studio art | `splash-studio.svg`, `hero-studio.svg`, `wordmark-studio*.svg`, `background-wave.svg` | StorybookStudio's splash window, its welcome screens, and the product name. |
 
 The monogram is an S whose top corner folds back like a page and whose lower
 bowl is punched like film stock. Keep both details. Do not redraw the mark,
