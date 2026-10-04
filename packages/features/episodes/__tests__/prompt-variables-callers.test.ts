@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SERVER_GENERATION_OFF_REFUSAL } from '@kit/ai-gateway';
+import { RunError } from '@kit/generation';
 import { loadAndRenderPrompt } from '@kit/prompt-engine/server';
 
 /**
@@ -13,6 +15,7 @@ const calls = vi.hoisted(
   () =>
     [] as Array<{ templateSlug: string; variables: Record<string, unknown> }>,
 );
+const refused = vi.hoisted(() => ({ error: null as Error | null }));
 
 vi.mock('@kit/ai-gateway', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@kit/ai-gateway')>();
@@ -27,25 +30,29 @@ vi.mock('@kit/ai-gateway', async (importOriginal) => {
     },
     // The sidebar's description is written through a run (FILM-1902): the
     // fake run records the brief's prompt the way the executor stub does
-    openRun: async () => ({
-      id: 'run-under-test',
-      mode: 'server',
-      write: async (brief: {
-        prompt: { slug: string; variables: Record<string, unknown> };
-      }) => {
-        calls.push({
-          templateSlug: brief.prompt.slug,
-          variables: brief.prompt.variables,
-        });
-        return { output: { description: 'A tall detective.' } };
-      },
-      complete: async () => undefined,
-      fail: async () => undefined,
-      toGenerationRun: () => ({
+    openRun: async () => {
+      if (refused.error) throw refused.error;
+
+      return {
+        id: 'run-under-test',
         mode: 'server',
-        origin: { kind: 'server', at: new Date().toISOString() },
-      }),
-    }),
+        write: async (brief: {
+          prompt: { slug: string; variables: Record<string, unknown> };
+        }) => {
+          calls.push({
+            templateSlug: brief.prompt.slug,
+            variables: brief.prompt.variables,
+          });
+          return { output: { description: 'A tall detective.' } };
+        },
+        complete: async () => undefined,
+        fail: async () => undefined,
+        toGenerationRun: () => ({
+          mode: 'server',
+          origin: { kind: 'server', at: new Date().toISOString() },
+        }),
+      };
+    },
   };
 });
 
@@ -68,6 +75,7 @@ async function rendered() {
 
 beforeEach(() => {
   calls.length = 0;
+  refused.error = null;
 });
 
 describe('the season outliner (KB-126)', () => {
@@ -170,5 +178,28 @@ describe('extracting one asset’s description (KB-126)', () => {
       data: { description: 'A tall detective.' },
     });
     expect(await rendered()).toContain('Known role: the accountant');
+  });
+
+  it('leaves the description empty and says in words why no model ran (KB-182)', async () => {
+    const { extractDescriptionAction } = await import(
+      '../src/lib/server/mutations/asset-link-actions'
+    );
+    refused.error = new RunError('SERVER_GENERATION_DISABLED', 'internal');
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await extractDescriptionAction({
+      name: 'Maya Chen',
+      type: 'character',
+      storyContext: 'Maya Chen, 34, works late on the 40th floor.',
+    });
+
+    expect(result).toEqual({
+      success: true,
+      data: { description: '', refusal: SERVER_GENERATION_OFF_REFUSAL },
+    });
+
+    error.mockRestore();
   });
 });

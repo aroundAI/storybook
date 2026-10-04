@@ -129,6 +129,8 @@ export function SidebarAssetList({
           toast.success(
             parts.length > 0 ? parts.join(', ') : 'All assets are up to date',
           );
+          const refusal = (result.data as { refusal?: string }).refusal;
+          if (refusal) toast.warning(refusal);
           refetch();
           onAssetCreated?.();
         }
@@ -367,6 +369,7 @@ function CreateAssetDialog({
   const [isExtracting, setIsExtracting] = useState(false);
   const [isCreating, startCreating] = useTransition();
   const [hasExtracted, setHasExtracted] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   // Radix calls onOpenChange only for the dialog's own interactions, never
   // when the parent sets `open`, so the extraction on open has to follow the
@@ -380,12 +383,14 @@ function CreateAssetDialog({
     if (!nextOpen) {
       setDescription('');
       setHasExtracted(false);
+      setRefusal(null);
     }
     onOpenChange(nextOpen);
   };
 
   const extractDescription = async () => {
     setIsExtracting(true);
+    setRefusal(null);
     try {
       const result = await extractDescriptionAction({
         name,
@@ -396,6 +401,9 @@ function CreateAssetDialog({
       });
       if (result.success && result.data.description) {
         setDescription(result.data.description);
+      }
+      if (result.success && result.data.refusal) {
+        setRefusal(result.data.refusal);
       }
       setHasExtracted(true);
     } catch {
@@ -480,6 +488,14 @@ function CreateAssetDialog({
                 rows={4}
                 className="resize-none text-xs"
               />
+            )}
+            {refusal && !isExtracting && (
+              <p
+                className="mt-1 text-xs text-destructive"
+                data-test="asset-description-refusal"
+              >
+                {refusal}
+              </p>
             )}
           </div>
 

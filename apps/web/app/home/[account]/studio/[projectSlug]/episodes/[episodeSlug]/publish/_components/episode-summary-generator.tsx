@@ -87,6 +87,7 @@ export function EpisodeSummaryGenerator({
   >([]);
   const [hasExtracted, setHasExtracted] = useState(false);
   const [committed, setCommitted] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [memory, setMemory] = useState<
     Pick<
       Awaited<ReturnType<typeof extractCanonChangesAction>>,
@@ -106,6 +107,7 @@ export function EpisodeSummaryGenerator({
 
     setIsExtracting(true);
     setCommitted(false);
+    setRefusal(null);
     try {
       const result = await extractCanonChangesAction({
         projectId,
@@ -114,6 +116,12 @@ export function EpisodeSummaryGenerator({
       });
 
       if (result) {
+        // The fallback summary is still shown; the user is told why no model
+        // wrote it
+        if (result.refusal) {
+          setRefusal(result.refusal);
+          toast.error(result.refusal);
+        }
         setSummary(result.episodeSummary);
         setSentimentScore(result.sentimentScore);
         setMemory({
@@ -218,6 +226,12 @@ export function EpisodeSummaryGenerator({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {refusal && (
+          <p className="text-sm text-destructive" data-test="canon-refusal">
+            {refusal}
+          </p>
+        )}
+
         {/* Episode Summary */}
         <div>
           <label className="mb-2 block text-sm font-medium">
