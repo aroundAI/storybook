@@ -1,6 +1,6 @@
 {
   "schemaId": "storybook-edit-package/1",
-  "etag": "v7-bc5cca6a7b4812a365fbd720a713b804134b8fbe",
+  "etag": "v7-bac454caad0d3a5a005377b2a3c6ed4362b33caa",
   "generatedAt": "2026-10-04T12:00:00.000Z",
   "urlsExpireAt": "2026-10-04T13:00:00.000Z",
   "project": {
@@ -2529,7 +2529,8 @@
       "position": "bottom",
       "maxCharsPerLine": 32,
       "background": "box",
-      "emphasis": "none"
+      "emphasis": "none",
+      "emphasisWords": []
     },
     "logo": {
       "assetId": null,
@@ -2565,7 +2566,9 @@
       "avoidRepeatedShots": true,
       "avoidExtremeZoom": true
     },
-    "loudnessTargetLufs": -14
+    "loudnessTargetLufs": -14,
+    "allowDialogueCuts": "ask",
+    "maxSilenceSeconds": 1.5
   },
   "analyticsHints": {
     "retention": [],

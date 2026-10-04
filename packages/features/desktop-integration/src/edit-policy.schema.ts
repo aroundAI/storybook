@@ -13,6 +13,9 @@ import { z } from 'zod';
 
 export const POLICY_TRANSITIONS = ['cut', 'dissolve', 'dip'] as const;
 export const POLICY_CAPTION_STYLES = ['brand', 'plain'] as const;
+export const POLICY_DIALOGUE_CUTS = ['never', 'ask', 'allow'] as const;
+
+export const MAX_SILENCE_SECONDS_LIMIT = 10;
 
 export const SHOT_LENGTH_MIN_SECONDS = 0.5;
 export const SHOT_LENGTH_MAX_SECONDS = 30;
@@ -72,6 +75,18 @@ export const EditPolicyObjectSchema = z.object({
   captions: PolicyCaptionsSchema.default({}),
   visual: PolicyVisualSchema.default({}),
   loudnessTargetLufs: z.number().min(-31).max(-5).default(-14),
+  /**
+   * May the AI drop spoken dialogue to hit the target duration? `ask` =
+   * the creator approves each drop in the plan; `never` and `allow` decide
+   * without asking.
+   */
+  allowDialogueCuts: z.enum(POLICY_DIALOGUE_CUTS).default('ask'),
+  /** Seconds; a silence longer than this fails the QA pass. */
+  maxSilenceSeconds: z
+    .number()
+    .positive()
+    .max(MAX_SILENCE_SECONDS_LIMIT)
+    .default(1.5),
 });
 
 export const EditPolicySchema = EditPolicyObjectSchema.refine(

@@ -99,6 +99,10 @@ export const EditPolicyPatchSchema = z
     visual: PolicyVisualSchema.partial(),
     loudnessTargetLufs:
       EditPolicyObjectSchema.shape.loudnessTargetLufs.removeDefault(),
+    allowDialogueCuts:
+      EditPolicyObjectSchema.shape.allowDialogueCuts.removeDefault(),
+    maxSilenceSeconds:
+      EditPolicyObjectSchema.shape.maxSilenceSeconds.removeDefault(),
   })
   .partial()
   .strict();

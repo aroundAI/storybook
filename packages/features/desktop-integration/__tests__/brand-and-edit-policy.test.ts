@@ -30,6 +30,7 @@ describe('BrandSchema', () => {
         maxCharsPerLine: 32,
         background: 'box',
         emphasis: 'none',
+        emphasisWords: [],
       },
       logo: { assetId: null, position: 'top-right', opacity: 0.8 },
       introAssetId: null,
@@ -97,6 +98,8 @@ describe('EditPolicySchema', () => {
       captions: { enabled: true, style: 'brand' },
       visual: { avoidRepeatedShots: true, avoidExtremeZoom: true },
       loudnessTargetLufs: -14,
+      allowDialogueCuts: 'ask',
+      maxSilenceSeconds: 1.5,
     });
     expect(EDIT_POLICY_DEFAULTS).toEqual(EditPolicySchema.parse({}));
   });
@@ -136,6 +139,88 @@ describe('EditPolicySchema', () => {
     expect(EditPolicySchema.safeParse({ music: { duckDb: 3 } }).success).toBe(
       false,
     );
+  });
+});
+
+describe('dialogue cuts, silence and emphasis words (FILM-2004)', () => {
+  it.each(['never', 'ask', 'allow'])('accepts allowDialogueCuts %j', (v) => {
+    expect(
+      EditPolicySchema.parse({ allowDialogueCuts: v }).allowDialogueCuts,
+    ).toBe(v);
+  });
+
+  it.each([{ allowDialogueCuts: 'always' }, { allowDialogueCuts: true }])(
+    'refuses the dialogue-cut setting %j',
+    (input) => {
+      const result = EditPolicySchema.safeParse(input);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.path).toEqual(['allowDialogueCuts']);
+    },
+  );
+
+  it.each([0, -1, 10.5])(
+    'refuses maxSilenceSeconds %j',
+    (maxSilenceSeconds) => {
+      const result = EditPolicySchema.safeParse({ maxSilenceSeconds });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.path).toEqual(['maxSilenceSeconds']);
+    },
+  );
+
+  it('accepts a silence of 10 seconds, the ceiling', () => {
+    expect(
+      EditPolicySchema.parse({ maxSilenceSeconds: 10 }).maxSilenceSeconds,
+    ).toBe(10);
+  });
+
+  it('parses a row stored before these fields existed, with the defaults', () => {
+    const { allowDialogueCuts, maxSilenceSeconds, ...oldPolicy } =
+      EDIT_POLICY_DEFAULTS;
+    const { emphasisWords, ...oldCaptionStyle } = BRAND_DEFAULTS.captionStyle;
+    const oldBrand = { ...BRAND_DEFAULTS, captionStyle: oldCaptionStyle };
+
+    expect([allowDialogueCuts, maxSilenceSeconds, emphasisWords]).toEqual([
+      'ask',
+      1.5,
+      [],
+    ]);
+    expect(readStoredEditPolicy(oldPolicy)).toEqual({
+      value: EDIT_POLICY_DEFAULTS,
+      issues: [],
+    });
+    expect(readStoredBrand(oldBrand)).toEqual({
+      value: BRAND_DEFAULTS,
+      issues: [],
+    });
+  });
+
+  it('refuses an empty emphasis word and more than 50 words', () => {
+    expect(
+      BrandSchema.safeParse({ captionStyle: { emphasisWords: [''] } }).success,
+    ).toBe(false);
+    expect(
+      BrandSchema.safeParse({
+        captionStyle: {
+          emphasisWords: Array.from({ length: 51 }, (_, i) => `w${i}`),
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('patches the new fields without resetting the others', () => {
+    expect(
+      EditPolicyPatchSchema.parse({
+        allowDialogueCuts: 'never',
+        maxSilenceSeconds: 2,
+      }),
+    ).toEqual({ allowDialogueCuts: 'never', maxSilenceSeconds: 2 });
+    expect(
+      applyBrandPatch(BRAND_DEFAULTS, {
+        captionStyle: { emphasisWords: ['free'] },
+      }).captionStyle,
+    ).toEqual({ ...BRAND_DEFAULTS.captionStyle, emphasisWords: ['free'] });
   });
 });
 
