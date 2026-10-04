@@ -1,5 +1,5 @@
 #!/bin/bash
-# db-reset.sh: `supabase db reset`, retried once when the CLI's own setup
+# db-reset.sh: the pinned `supabase db reset` (pnpm exec, never the PATH CLI), retried once when the CLI's own setup
 # races a service that connects while the database is being recreated. It
 # fails with LegacyDbSetupError ("error running container: exit 1") and the
 # db logs FATAL: role "postgres" does not exist. Seen twice in ~60 resets on
@@ -10,7 +10,7 @@ set -u
 out=$(mktemp)
 trap 'rm -f "$out"' EXIT
 for attempt in 1 2; do
-  supabase db reset 2>&1 | tee "$out"
+  pnpm exec supabase db reset 2>&1 | tee "$out"
   rc=${PIPESTATUS[0]}
   [ "$rc" -eq 0 ] && exit 0
   if [ "$attempt" -eq 1 ] && grep -q LegacyDbSetupError "$out"; then
