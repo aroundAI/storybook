@@ -60,6 +60,7 @@ describe('team AI settings (FILM-1910)', () => {
       externalGenerationEnabled: false,
       defaultMode: 'external',
       performanceContextEnabled: true,
+      desktopIntegrationEnabled: false,
       dailyLlmSpendCap: '',
     });
 
@@ -82,6 +83,31 @@ describe('team AI settings (FILM-1910)', () => {
     });
     expect(stale.success).toBe(false);
     expect(stale.error?.issues[0]?.path).toEqual(['performanceContextEnabled']);
+  });
+
+  it('keeps StorybookStudio off by default, and requires a stated value (FILM-2005)', () => {
+    expect(AI_SETTINGS_DEFAULTS.desktopIntegrationEnabled).toBe(false);
+
+    const stale = AiSettingsFormSchema.safeParse({
+      serverGenerationEnabled: true,
+      externalGenerationEnabled: true,
+      defaultMode: 'server',
+      performanceContextEnabled: false,
+      dailyLlmSpendCap: '',
+    });
+    expect(stale.success).toBe(false);
+    expect(stale.error?.issues.map((issue) => issue.path)).toEqual([
+      ['desktopIntegrationEnabled'],
+    ]);
+
+    const on = AiSettingsFormSchema.safeParse({
+      ...toFormValues(AI_SETTINGS_DEFAULTS),
+      desktopIntegrationEnabled: true,
+    });
+    expect(on.success).toBe(true);
+    expect(on.data && fromFormValues(on.data).desktopIntegrationEnabled).toBe(
+      true,
+    );
   });
 });
 

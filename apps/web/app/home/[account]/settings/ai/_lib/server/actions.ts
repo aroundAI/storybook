@@ -56,12 +56,13 @@ export const updateAccountAiSettingsAction = returnRefusals(
             external_generation_enabled: settings.externalGenerationEnabled,
             default_mode: settings.defaultMode,
             performance_context_enabled: settings.performanceContextEnabled,
+            desktop_integration_enabled: settings.desktopIntegrationEnabled,
             daily_llm_spend_cap_usd: settings.dailyLlmSpendCapUsd,
           },
           { onConflict: 'account_id' },
         )
         .select(
-          'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled, daily_llm_spend_cap_usd',
+          'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled, desktop_integration_enabled, daily_llm_spend_cap_usd',
         )
         .maybeSingle();
 
@@ -90,6 +91,7 @@ export const updateAccountAiSettingsAction = returnRefusals(
         externalGenerationEnabled: data.external_generation_enabled,
         defaultMode: data.default_mode,
         performanceContextEnabled: data.performance_context_enabled,
+        desktopIntegrationEnabled: data.desktop_integration_enabled,
         dailyLlmSpendCapUsd: data.daily_llm_spend_cap_usd,
       });
     },
