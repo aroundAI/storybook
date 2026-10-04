@@ -80,7 +80,12 @@ notes: >
   of the fields it uses. The rollup is in runAnalyticsSyncJob (the lambda
   calls the sync route), not in the lambda. The genome reads edit style
   through queryEditStyleForVideos, beside querySegmentVideoMeasures, so the
-  shared segment SQL is unchanged. Open question (FILM-2002) "may an admin
+  shared segment SQL is unchanged. The cut figures and the hook come from
+  ExplainWhyReport.style (FILM-2003, lead decision 2026-10-04 22:50): the
+  fork fills style.shotCount from the delivered cut's picture clips
+  (FILM-2012/2013) and style.hookType from the open_with_strongest_line
+  intent (FILM-2013), both pending on the fork side; until then a delivery
+  carries no style and the card says "Not recorded". Open question (FILM-2002) "may an admin
   force-close from the web?": the recommended yes, as built.
   Rollout plan (PRD Part 4), each step the owner's, recorded here when its
   exit metric passes: 1. internal: desktop_integration on for one workspace,
