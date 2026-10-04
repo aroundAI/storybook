@@ -71,7 +71,7 @@ const AUDIO_TRACK_COLUMNS =
 const SHORT_COLUMNS =
   'id, start_seconds, end_seconds, duration_seconds, viral_score, hook_type, title, source_shot_id, status';
 const DUBBED_LINE_COLUMNS =
-  'id, dubbed_version_id, original_dialogue_id, translated_text, timing_adjustment, duration_seconds, status, audio_url';
+  'id, dubbed_version_id, original_dialogue_id, translated_text, timing_adjustment, timeline_start_seconds, duration_seconds, status, audio_url';
 
 const ALL_CHARACTERS = 'all characters';
 

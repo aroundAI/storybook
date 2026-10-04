@@ -305,6 +305,7 @@ export function seedFixture(
       original_dialogue_id: line.id,
       translated_text: HINDI_LINES[index % HINDI_LINES.length]!,
       timing_adjustment: index % 2 === 0 ? 1 : 1.1,
+      timeline_start_seconds: line.timeline_start_seconds,
       duration_seconds: 1.8,
       status: line.audio_url ? 'voiced' : 'pending',
       audio_url: line.audio_url

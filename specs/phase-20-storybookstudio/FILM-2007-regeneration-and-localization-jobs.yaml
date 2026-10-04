@@ -42,7 +42,7 @@ acceptance_criteria:
     evidence: "#623: the start runs start_voice_render's checks before anything is written (localize-starts.ts:158 writable episode, :199 a voice per speaker, :205 a TTS model) and opens the translation through the gateway (:75 openRunForJob), so the daily LLM spend cap, server mode and model availability refuse there; the voice is rendered on the account's own ElevenLabs key (dub-runtime.ts, getAccountElevenLabsApiKey) as every voice job is. Cost: the translation is an LLM run, recorded in llm_usage_analytics as every one is (the contract test reads 5 rows for the team); the TTS cost is recorded per line (generation_metadata.costCents, dub-episode.ts:400) and per language (dubbed_versions.metadata.localization.costCents), as the voice worker records a line's today. Voice has no generation_jobs row today and gets none. __tests__/localize-starts.test.ts asserts each refusal writes and spends nothing"
   - text: "get_render_progress reports both job kinds; get_edit_package's etag changes when either completes; the dubbed block lists lines per language with media"
     met: true
-    evidence: "#623: packages/features/studio-mcp/src/server/tools/render/status.ts:100 (localization: each dubbed language with lines by status, cost, error; regeneration: each run with its shots), returned at :350. Contract test: get_render_progress lists the committed regeneration run with both shots, and es and hi ready; the etag changes at the re-plan, at its finalize and when each dub completes (currentEditPackageEtag and get_edit_package agree); the dubbed block lists es and hi with 10 lines each. Dub audio is stored where the source line's audio is (the audio bucket, inside the episode folder), and the package signs it for its own episode only: desktop-integration/__tests__/dubbed-audio-media.test.ts. Mutation guards R5, L1 red"
+    evidence: "#623: packages/features/studio-mcp/src/server/tools/render/status.ts:100 (localization: each dubbed language with lines by status, cost, error; regeneration: each run with its shots), returned at :350. Contract test: get_render_progress lists the committed regeneration run with both shots, and es and hi ready; the etag changes at the re-plan, at its finalize and when each dub completes (currentEditPackageEtag and get_edit_package agree); the dubbed block lists es and hi with 10 lines each. Dub audio is stored where the source line's audio is (the audio bucket, inside the episode folder), and the package signs it for its own episode only: desktop-integration/__tests__/dubbed-audio-media.test.ts. Each dubbed line also carries timelineStartSeconds (lead decision, additive to FILM-2001's contract: edit-package.schema.ts DubbedLineSchema, build-edit-package.ts dubbed(), load-edit-package.ts DUBBED_LINE_COLUMNS; the 60-shot fixture regenerated), covered by the etag: desktop-integration/__tests__/dubbed-timeline.test.ts; scripts/sync-studio-contracts.mjs --check reports 3 contracts match against the regenerated fork copies. Mutation guards R5, L1 red"
 test_plan:
   unit:
     - {text: "Tool input validation; shot count cap; language code validation (BCP-47 subset ElevenLabs supports)", met: true, evidence: "#623: packages/features/studio-mcp/__tests__/tools/studio-jobs.test.ts (13 tests: cap, repeat, generating, FORBIDDEN, NOT_FOUND, pt-BR, en, xx, HI, a repeat, refusal mapping); generation/__tests__/shots-regeneration.test.ts (6); audio-generation/__tests__/localize-starts.test.ts (6, the language set ar de es fr hi ja ko pt zh, bn refused); apps/web/lambda/voice-worker/__tests__/dub-episode.test.ts (6); apps/web/lambda/llm-worker/__tests__/translate-dialogue-languages.test.ts (3)"}
@@ -61,6 +61,16 @@ notes: >
   the lead default, and the owner may switch to ElevenLabs Dubbing later
   (dubbed_versions.metadata.localization.method records which made a dub, and
   the message's source block is where a stems source would go).
+
+
+  Lead decisions (2026-10-04, approving t2007's design; TEAM_BRIEF_v5
+  decision 6 and its follow-up): the shots stage is reused with an optional
+  regenerate target; runs opened over MCP are always external; a shot's
+  status and video_url are set through the caller's RLS client, not the
+  commit allowlist; one translate-dialogue run carries additionalLanguages;
+  the voice worker re-queues itself to wait and to continue; the new
+  nullable dubbed_dialogue_lines.timeline_start_seconds column; and the edit
+  package's dubbed lines carry it as timelineStartSeconds.
 
 
   Corrections to the draft, from the code: (1) a stage commit may not write a
@@ -87,10 +97,10 @@ notes: >
 
   For FILM-2019's language lanes: get_edit_package's dubbed[] has one entry
   per language with lines ordered as the source dialogue; each line's
-  dialogueId names its source line, whose timelineStartSeconds in the
-  package's dialogue[] is where the dub starts (the same value is stored on
-  dubbed_dialogue_lines.timeline_start_seconds, which the package does not
-  carry yet); timingAdjustment (0.5 to 2) is the dub's length over the source
+  timelineStartSeconds is where the dub starts (its source line's start
+  when it was voiced; null when that line had none, in which case the
+  source line's dialogue[].timelineStartSeconds via dialogueId is the
+  fallback); timingAdjustment (0.5 to 2) is the dub's length over the source
   line's, the speed that fits it; audio is a media entry like the source
   line's, keyed by its stored key. A language is complete when its dubbed
   version's status is ready (get_render_progress localization[]).
