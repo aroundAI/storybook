@@ -155,11 +155,21 @@
       "grep": "never a redirect"
     },
     {
-      "name": "OAUTH E2 revoking from Connected apps leaves the access token working",
-      "kind": "e2e",
+      "name": "OAUTH U13 the own verifier ignores a revoked connection when the token row is live",
+      "kind": "unit",
       "file": "packages/features/studio-mcp/src/server/own-verifier.ts",
       "find": "      if (data.revoked_at || connection.revoked_at) {",
       "replace": "      if (data.revoked_at) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/verifier-contract.test.ts",
+      "pattern": "once its connection is revoked"
+    },
+    {
+      "name": "OAUTH E2 revoking from Connected apps writes nothing, so the access token keeps working",
+      "kind": "e2e",
+      "file": "packages/features/studio-mcp/src/server/personal-access-tokens.ts",
+      "find": "    .update({ revoked_at: new Date().toISOString() })",
+      "replace": "    .update({ name: undefined })",
       "spec": "tests/mcp/oauth-consent.spec.ts",
       "grep": "Connected apps lists and revokes the grant"
     }

@@ -258,4 +258,35 @@ describe('own verifier: only bearer credentials', () => {
 
     expect(await verifier.verify(pat)).toMatchObject({ ok: true });
   });
+
+  it('a live token is refused as revoked once its connection is revoked', async () => {
+    const rows = new Map<string, Record<string, unknown>>();
+    const admin = fakeAdmin(rows);
+    const verifier = createOwnTokenVerifier(admin, () => NOW, {
+      resource: RESOURCE,
+    });
+    const token = `sbk_at_${randomBytes(32).toString('base64url')}`;
+
+    rows.set(hashToken(token), {
+      token_hash: hashToken(token),
+      kind: 'access',
+      audience: RESOURCE,
+      expires_at: new Date(NOW.getTime() + 3600_000).toISOString(),
+      revoked_at: null,
+      connection: {
+        id: CONNECTION,
+        user_id: USER,
+        account_id: TEAM,
+        kind: 'oauth',
+        name: 'Claude',
+        scopes: ['studio:read'],
+        revoked_at: NOW.toISOString(),
+      },
+    });
+
+    expect(await verifier.verify(token)).toEqual({
+      ok: false,
+      reason: 'revoked',
+    });
+  });
 });
