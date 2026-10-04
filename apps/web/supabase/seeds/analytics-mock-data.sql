@@ -107,22 +107,22 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Season 2 Episodes (7)
 INSERT INTO public.episodes (id, project_id, season_id, number, title, description, status, duration_seconds, thumbnail_url) VALUES
-('e2010101-0101-0101-0101-010101010101', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 1, 'Dark Horizons', 'The shadow realm begins to bleed into the mortal world', 'published', 1480, 'https://picsum.photos/seed/ep9/1280/720'),
-('e2020202-0202-0202-0202-020202020202', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 2, 'Betrayal', 'A trusted ally reveals their true allegiance', 'published', 1520, 'https://picsum.photos/seed/ep10/1280/720'),
-('e2030303-0303-0303-0303-030303030303', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 3, 'The Lost City', 'An expedition to a forgotten city uncovers powerful artifacts', 'published', 1560, 'https://picsum.photos/seed/ep11/1280/720'),
-('e2040404-0404-0404-0404-040404040404', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 4, 'Bonds Tested', 'Internal conflict threatens to tear the team apart', 'published', 1440, 'https://picsum.photos/seed/ep12/1280/720'),
-('e2050505-0505-0505-0505-050505050505', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 5, 'The Shadow King', 'The main antagonist is finally revealed in all their terrifying glory', 'published', 1600, 'https://picsum.photos/seed/ep13/1280/720'),
-('e2060606-0606-0606-0606-060606060606', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 6, 'Sacrifice', 'A devastating loss changes everything', 'published', 1500, 'https://picsum.photos/seed/ep14/1280/720'),
-('e2070707-0707-0707-0707-070707070707', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 7, 'Season Finale: Rising', 'Against all odds, hope is rekindled as the heroes prepare for war', 'published', 1850, 'https://picsum.photos/seed/ep15/1280/720')
+('e2010101-0101-0101-0101-010101010101', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 9, 'Dark Horizons', 'The shadow realm begins to bleed into the mortal world', 'published', 1480, 'https://picsum.photos/seed/ep9/1280/720'),
+('e2020202-0202-0202-0202-020202020202', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 10, 'Betrayal', 'A trusted ally reveals their true allegiance', 'published', 1520, 'https://picsum.photos/seed/ep10/1280/720'),
+('e2030303-0303-0303-0303-030303030303', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 11, 'The Lost City', 'An expedition to a forgotten city uncovers powerful artifacts', 'published', 1560, 'https://picsum.photos/seed/ep11/1280/720'),
+('e2040404-0404-0404-0404-040404040404', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 12, 'Bonds Tested', 'Internal conflict threatens to tear the team apart', 'published', 1440, 'https://picsum.photos/seed/ep12/1280/720'),
+('e2050505-0505-0505-0505-050505050505', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 13, 'The Shadow King', 'The main antagonist is finally revealed in all their terrifying glory', 'published', 1600, 'https://picsum.photos/seed/ep13/1280/720'),
+('e2060606-0606-0606-0606-060606060606', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 14, 'Sacrifice', 'A devastating loss changes everything', 'published', 1500, 'https://picsum.photos/seed/ep14/1280/720'),
+('e2070707-0707-0707-0707-070707070707', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '22222222-2222-2222-2222-222222222222', 15, 'Season Finale: Rising', 'Against all odds, hope is rekindled as the heroes prepare for war', 'published', 1850, 'https://picsum.photos/seed/ep15/1280/720')
 ON CONFLICT (id) DO NOTHING;
 
 -- Season 3 Episodes (5)
 INSERT INTO public.episodes (id, project_id, season_id, number, title, description, status, duration_seconds, thumbnail_url) VALUES
-('e3010101-0101-0101-0101-010101010101', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 1, 'The Gathering Storm', 'Forces assemble for the final confrontation', 'published', 1520, 'https://picsum.photos/seed/ep16/1280/720'),
-('e3020202-0202-0202-0202-020202020202', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 2, 'Into the Darkness', 'The heroes infiltrate the shadow realm', 'published', 1580, 'https://picsum.photos/seed/ep17/1280/720'),
-('e3030303-0303-0303-0303-030303030303', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 3, 'Last Stand', 'The final battle begins with everything at stake', 'published', 1650, 'https://picsum.photos/seed/ep18/1280/720'),
-('e3040404-0404-0404-0404-040404040404', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 4, 'Breaking Point', 'The tide of battle shifts dramatically', 'ready', 1700, 'https://picsum.photos/seed/ep19/1280/720'),
-('e3050505-0505-0505-0505-050505050505', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 5, 'Series Finale: Dawn', 'The epic conclusion to The Chronicles', 'ready', 2100, 'https://picsum.photos/seed/ep20/1280/720')
+('e3010101-0101-0101-0101-010101010101', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 16, 'The Gathering Storm', 'Forces assemble for the final confrontation', 'published', 1520, 'https://picsum.photos/seed/ep16/1280/720'),
+('e3020202-0202-0202-0202-020202020202', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 17, 'Into the Darkness', 'The heroes infiltrate the shadow realm', 'published', 1580, 'https://picsum.photos/seed/ep17/1280/720'),
+('e3030303-0303-0303-0303-030303030303', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 18, 'Last Stand', 'The final battle begins with everything at stake', 'published', 1650, 'https://picsum.photos/seed/ep18/1280/720'),
+('e3040404-0404-0404-0404-040404040404', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 19, 'Breaking Point', 'The tide of battle shifts dramatically', 'ready', 1700, 'https://picsum.photos/seed/ep19/1280/720'),
+('e3050505-0505-0505-0505-050505050505', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '33333333-3333-3333-3333-333333333333', 20, 'Series Finale: Dawn', 'The epic conclusion to The Chronicles', 'ready', 2100, 'https://picsum.photos/seed/ep20/1280/720')
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================================
