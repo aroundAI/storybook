@@ -61,9 +61,11 @@ const PERSON = /^[A-Z][\p{L}'’-]+(?: [A-Z][\p{L}'’-]+){0,3}$/u;
  */
 export function castFromPrompt(userPrompt: string) {
   const names: string[] = [];
+  const places = new Set(locationsFromPrompt(userPrompt));
   const add = (value: string) => {
     const name = value.trim().replace(/[.*]+$/, '');
-    if (PERSON.test(name) && !names.includes(name)) names.push(name);
+    if (PERSON.test(name) && !names.includes(name) && !places.has(name))
+      names.push(name);
   };
   for (const m of userPrompt.matchAll(/^\s*Name:\s*(.+)$/gm)) add(m[1]!);
   for (const m of userPrompt.matchAll(/^\s*- \*\*([^*]+)\*\* \(/gm)) add(m[1]!);
@@ -76,6 +78,41 @@ export function castFromPrompt(userPrompt: string) {
   return names.slice(0, 8);
 }
 
+/**
+ * The places a prompt names, in the forms the context builders write them:
+ * `**Locations**: A, B` on one line, or a `**Locations**:` heading over
+ * `- **X** (setting)` / `- X: description` bullets. A reply sets its scenes
+ * in these - a stage checks every scene's location against the episode's -
+ * so they replace the random cast's places.
+ */
+export function locationsFromPrompt(userPrompt: string) {
+  const places: string[] = [];
+  const add = (value: string) => {
+    const place = value
+      .trim()
+      .replace(/^\*\*|\*\*$/g, '')
+      .trim();
+    if (place && place.length <= 80 && !places.includes(place))
+      places.push(place);
+  };
+  const lines = userPrompt.split('\n');
+  lines.forEach((line, i) => {
+    const heading = /^\s*\**Locations\**:\s*\**\s*(.*)$/i.exec(line);
+    if (!heading) return;
+    const inline = heading[1]!.trim();
+    if (inline) {
+      for (const part of inline.split(',')) add(part);
+      return;
+    }
+    for (const bullet of lines.slice(i + 1)) {
+      const item = /^\s*- (?:\*\*([^*]+)\*\*|([^:(]+))/.exec(bullet);
+      if (!item) break;
+      add(item[1] ?? item[2]!);
+    }
+  });
+  return places.slice(0, 8);
+}
+
 export function createContext(
   rng: Rng,
   userPrompt: string,
@@ -84,6 +121,8 @@ export function createContext(
   const cast = drawCast(rng);
   const named = castFromPrompt(userPrompt);
   if (named.length > 0) cast.people = named;
+  const places = locationsFromPrompt(userPrompt);
+  if (places.length > 0) cast.locations = places;
 
   return {
     rng,
