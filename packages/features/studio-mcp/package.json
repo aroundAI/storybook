@@ -15,6 +15,7 @@
   "prettier": "@kit/prettier-config",
   "exports": {
     ".": "./src/index.ts",
+    "./desktop-client": "./src/desktop-client.ts",
     "./request-context": "./src/request-context.ts",
     "./scopes": "./src/scopes.ts",
     "./server": "./src/server/index.ts"

@@ -1,0 +1,80 @@
+{
+  "feature": "FILM-2005 StorybookStudio OAuth client and Open in Studio",
+  "mutations": [
+    {
+      "name": "STUDIO U1 the loopback rule applies to every client",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  if (client.clientId !== STORYBOOKSTUDIO_CLIENT_ID) return false;\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/storybookstudio-client.test.ts",
+      "pattern": "keeps the exact-match rule for every other client"
+    },
+    {
+      "name": "STUDIO U2 the Studio's loopback accepts any host and path",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  /^http:\\/\\/127\\.0\\.0\\.1:([1-9]\\d{0,4})\\/callback$/;",
+      "replace": "  /^http:\\/\\/[^/]+:([1-9]\\d{0,4})\\/.*$/;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/storybookstudio-client.test.ts",
+      "pattern": "refuses"
+    },
+    {
+      "name": "STUDIO U3 the device name on the token request is ignored",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/token.ts",
+      "find": "      deviceName(params.get('client_name')) ??\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/storybookstudio-client.test.ts",
+      "pattern": "names the connection after the device"
+    },
+    {
+      "name": "STUDIO U4 control characters reach the connection name",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/token.ts",
+      "find": "    .replace(/[\\p{Cc}\\p{Cf}]/gu, ' ')\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/storybookstudio-client.test.ts",
+      "pattern": "control characters never reach the name"
+    },
+    {
+      "name": "STUDIO U5 the deep link carries the whole URL it was given",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/open-in-studio.ts",
+      "find": "  const api = new URL(origin).origin;",
+      "replace": "  const api = origin;",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/open-in-studio.test.ts",
+      "pattern": "reduces whatever it is given to the origin"
+    },
+    {
+      "name": "STUDIO U6 Open in Studio shows with the team's setting off",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/open-in-studio-button.tsx",
+      "find": "  if (!enabled || !canOpenInStudio(episode.status)) return null;",
+      "replace": "  if (!canOpenInStudio(episode.status)) return null;",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/__tests__/open-in-studio-button.test.tsx",
+      "pattern": "is absent while the team has the Studio off"
+    },
+    {
+      "name": "STUDIO DB1 the storybookstudio client is not seeded",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/film-2005-storybookstudio-client.test.sql",
+      "sql": "delete from public.mcp_authorization_codes where client_id = 'storybookstudio'; delete from public.mcp_oauth_clients where client_id = 'storybookstudio';"
+    },
+    {
+      "name": "STUDIO E1 a team with the Studio off can still approve its consent",
+      "kind": "e2e",
+      "file": "apps/web/app/oauth/authorize/_lib/server/consent-actions.ts",
+      "find": "        requiresDesktopIntegration(parsed.request.client.clientId) &&\n",
+      "replace": "        requiresDesktopIntegration(parsed.request.client.clientId) && false &&\n",
+      "spec": "tests/mcp/oauth-storybookstudio.spec.ts",
+      "grep": "consent needs the team to have it on"
+    }
+  ]
+}

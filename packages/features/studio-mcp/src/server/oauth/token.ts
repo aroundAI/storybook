@@ -147,7 +147,10 @@ async function exchangeAuthorizationCode(
     userId: grant.userId,
     accountId: grant.accountId,
     clientId: grant.clientId,
-    name: client?.clientName ?? grant.clientId,
+    name:
+      deviceName(params.get('client_name')) ??
+      client?.clientName ??
+      grant.clientId,
     scopes: grant.scopes,
   });
 
@@ -233,6 +236,31 @@ async function refreshTokens(
     rotatedFrom: presentedHash,
     now,
   });
+}
+
+/** `mcp_connections.name` holds 1 to 100 characters. */
+export const MAX_CONNECTION_NAME_LENGTH = 100;
+
+/**
+ * The `client_name` extension parameter of a code exchange (FILM-2005): the
+ * name of the device a desktop client signs in from ("Shaurya's MacBook"),
+ * so one pre-registered client shows one connection per machine. Control
+ * and format characters become spaces, whitespace collapses, and it is cut
+ * to the column's length; `null` (blank or absent) falls back to the
+ * client's registered name.
+ */
+function deviceName(value: string | null) {
+  const cleaned = (value ?? '')
+    .replace(/[\p{Cc}\p{Cf}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return null;
+
+  return Array.from(cleaned)
+    .slice(0, MAX_CONNECTION_NAME_LENGTH)
+    .join('')
+    .trim();
 }
 
 /** A refresh may ask for fewer scopes than the grant, never more. */

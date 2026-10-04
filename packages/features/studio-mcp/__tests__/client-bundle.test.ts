@@ -138,37 +138,45 @@ describe('KB-180: client bundles stay free of node builtins', () => {
     expect(violations).toEqual([]);
   });
 
-  it('the scopes subpath reaches no node builtin and no server-only module', () => {
-    const seen = new Set<string>();
-    const problems: string[] = [];
+  it.each([
+    ['scopes', 'scopes.ts'],
+    // FILM-2005: the StorybookStudio client id, for the connected-apps list
+    ['desktop-client', 'desktop-client.ts'],
+  ])(
+    'the %s subpath reaches no node builtin and no server-only module',
+    (_name, entry) => {
+      const seen = new Set<string>();
+      const problems: string[] = [];
 
-    const visit = (file: string) => {
-      if (seen.has(file)) return;
-      seen.add(file);
+      const visit = (file: string) => {
+        if (seen.has(file)) return;
+        seen.add(file);
 
-      const source = parse(file, readFileSync(file, 'utf8'));
+        const source = parse(file, readFileSync(file, 'utf8'));
 
-      for (const from of valueImports(source)) {
-        if (from.startsWith('node:') || from === 'server-only') {
-          problems.push(`${relative(SRC, file)} imports ${from}`);
-        } else if (from.startsWith('.')) {
-          const target = resolve(dirname(file), from);
-          visit(`${target}.ts`);
+        for (const from of valueImports(source)) {
+          if (from.startsWith('node:') || from === 'server-only') {
+            problems.push(`${relative(SRC, file)} imports ${from}`);
+          } else if (from.startsWith('.')) {
+            const target = resolve(dirname(file), from);
+            visit(`${target}.ts`);
+          }
         }
-      }
-    };
+      };
 
-    visit(join(SRC, 'scopes.ts'));
+      visit(join(SRC, entry));
 
-    expect(problems).toEqual([]);
-    expect([...seen].map((file) => relative(SRC, file))).toEqual(['scopes.ts']);
-  });
+      expect(problems).toEqual([]);
+      expect([...seen].map((file) => relative(SRC, file))).toEqual([entry]);
+    },
+  );
 
-  it('the package exposes the client-safe scopes subpath', () => {
+  it('the package exposes the client-safe subpaths', () => {
     const pkg = JSON.parse(
       readFileSync(resolve(__dirname, '../package.json'), 'utf8'),
     ) as { exports: Record<string, string> };
 
     expect(pkg.exports['./scopes']).toBe('./src/scopes.ts');
+    expect(pkg.exports['./desktop-client']).toBe('./src/desktop-client.ts');
   });
 });

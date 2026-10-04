@@ -7,6 +7,10 @@ import { useRouter } from 'next/navigation';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import type { McpConnectionSummary } from '@kit/studio-mcp';
 import {
+  STORYBOOKSTUDIO_CLIENT_ID,
+  STORYBOOKSTUDIO_CLIENT_NAME,
+} from '@kit/studio-mcp/desktop-client';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -106,8 +110,18 @@ function ConnectionRow(props: {
 
   return (
     <TableRow data-test="mcp-connection-row" data-connection-id={connection.id}>
-      <TableCell className="font-medium" data-test="mcp-connection-name">
-        {connection.name}
+      <TableCell className="font-medium">
+        <span className="block" data-test="mcp-connection-name">
+          {connection.name}
+        </span>
+        {connection.clientId === STORYBOOKSTUDIO_CLIENT_ID ? (
+          <span
+            className="block text-xs font-normal text-muted-foreground"
+            data-test="mcp-connection-desktop-app"
+          >
+            {STORYBOOKSTUDIO_CLIENT_NAME} desktop app
+          </span>
+        ) : null}
       </TableCell>
       <TableCell>{KIND_LABEL[connection.kind]}</TableCell>
       <TableCell>

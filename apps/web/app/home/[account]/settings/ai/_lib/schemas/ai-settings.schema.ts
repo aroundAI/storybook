@@ -10,6 +10,11 @@ export const AiSettingsSchema = z.object({
   /** FILM-1912: briefs carry past-episode performance; off by default */
   performanceContextEnabled: z.boolean(),
   /**
+   * FILM-2005: the team uses StorybookStudio, which shows "Open in Studio"
+   * on its episodes and lets members sign the desktop app in; off by default
+   */
+  desktopIntegrationEnabled: z.boolean(),
+  /**
    * USD a UTC day of Gemini spend through the web app before Generate is
    * refused; null is no cap (owner decision 2026-10-03). Never MCP work,
    * never renders.
@@ -24,6 +29,7 @@ export const AI_SETTINGS_DEFAULTS: AiSettings = {
   externalGenerationEnabled: true,
   defaultMode: 'server',
   performanceContextEnabled: false,
+  desktopIntegrationEnabled: false,
   dailyLlmSpendCapUsd: null,
 };
 

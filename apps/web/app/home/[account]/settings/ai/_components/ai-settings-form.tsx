@@ -232,6 +232,35 @@ export function AiSettingsForm({
 
         <FormField
           control={form.control}
+          name="desktopIntegrationEnabled"
+          render={({ field }) => (
+            <FormItem className="rounded-lg border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">
+                    Edit in StorybookStudio
+                  </FormLabel>
+                  <FormDescription>
+                    Episodes show &ldquo;Open in Studio&rdquo;, and members can
+                    sign the StorybookStudio desktop app in to this team. Off by
+                    default.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    disabled={disabled}
+                    data-test="ai-settings-desktop-integration"
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </div>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="dailyLlmSpendCap"
           render={({ field }) => (
             <FormItem className="rounded-lg border p-4">

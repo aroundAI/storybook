@@ -40,6 +40,7 @@ export type Database = {
           created_at: string
           daily_llm_spend_cap_usd: number | null
           default_mode: string
+          desktop_integration_enabled: boolean
           external_generation_enabled: boolean
           performance_context_enabled: boolean
           server_generation_enabled: boolean
@@ -50,6 +51,7 @@ export type Database = {
           created_at?: string
           daily_llm_spend_cap_usd?: number | null
           default_mode?: string
+          desktop_integration_enabled?: boolean
           external_generation_enabled?: boolean
           performance_context_enabled?: boolean
           server_generation_enabled?: boolean
@@ -60,6 +62,7 @@ export type Database = {
           created_at?: string
           daily_llm_spend_cap_usd?: number | null
           default_mode?: string
+          desktop_integration_enabled?: boolean
           external_generation_enabled?: boolean
           performance_context_enabled?: boolean
           server_generation_enabled?: boolean

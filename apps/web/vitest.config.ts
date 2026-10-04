@@ -434,6 +434,10 @@ export default defineConfig({
         __dirname,
         '../../packages/ui/src/shadcn/input.tsx',
       ),
+      '@kit/ui/sheet': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/sheet.tsx',
+      ),
       '@kit/ui/tabs': path.resolve(
         __dirname,
         '../../packages/ui/src/shadcn/tabs.tsx',

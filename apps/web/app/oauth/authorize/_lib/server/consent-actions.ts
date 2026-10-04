@@ -2,9 +2,11 @@
 
 import 'server-only';
 
+import { isDesktopIntegrationEnabled } from '@kit/desktop-integration/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { requiresDesktopIntegration } from '@kit/studio-mcp/desktop-client';
 import {
   OAuthError,
   denialLocation,
@@ -18,6 +20,9 @@ import {
   ApproveConsentSchema,
   DenyConsentSchema,
 } from '../schemas/consent.schema';
+
+const DESKTOP_INTEGRATION_OFF =
+  'StorybookStudio is turned off for that team. A team owner turns it on in Settings → AI.';
 
 const STALE =
   'This authorization request is no longer valid. Start again from your MCP client.';
@@ -53,6 +58,13 @@ export const approveConsentAction = returnRefusals(
 
       if (member !== true) {
         throw new ActionRefusal('You are not a member of that team.');
+      }
+
+      if (
+        requiresDesktopIntegration(parsed.request.client.clientId) &&
+        !(await isDesktopIntegrationEnabled(client, data.accountId))
+      ) {
+        throw new ActionRefusal(DESKTOP_INTEGRATION_OFF);
       }
 
       try {

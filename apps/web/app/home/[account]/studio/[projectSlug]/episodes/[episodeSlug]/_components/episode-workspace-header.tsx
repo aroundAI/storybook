@@ -16,6 +16,7 @@ import {
 } from './editing-in-studio-badge';
 import { useEpisodeContext } from './episode-context-provider';
 import { IssueSummaryBadge } from './issue-summary-popover';
+import { OpenInStudioButton } from './open-in-studio-button';
 import { QuickActionsMenu } from './quick-actions-menu';
 import { StudioSwitcher } from './studio-switcher';
 
@@ -90,6 +91,7 @@ export function EpisodeWorkspaceHeader({
         </div>
 
         <div className="flex items-center gap-1.5">
+          <OpenInStudioButton />
           <StudioSwitcher />
           <QuickActionsMenu
             episodeId={episode.id}

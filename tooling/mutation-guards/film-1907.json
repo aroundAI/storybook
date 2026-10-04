@@ -15,8 +15,8 @@
       "name": "OAUTH U2 the redirect URI is matched loosely at /oauth/authorize",
       "kind": "unit",
       "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
-      "find": "  if (!redirectUri || !client.redirectUris.includes(redirectUri)) {",
-      "replace": "  if (!redirectUri || !client.redirectUris.some((uri) => redirectUri.startsWith(uri))) {",
+      "find": "  if (client.redirectUris.includes(uri)) return true;",
+      "replace": "  if (client.redirectUris.some((registered) => uri.startsWith(registered))) return true;",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/oauth/authorize-and-token.test.ts",
       "pattern": "not registered exactly"
@@ -149,7 +149,7 @@
       "name": "OAUTH E1 the consent page redirects to an unregistered redirect URI",
       "kind": "e2e",
       "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
-      "find": "  if (!redirectUri || !client.redirectUris.includes(redirectUri)) {",
+      "find": "  if (!redirectUri || !isRegisteredRedirectUri(client, redirectUri)) {",
       "replace": "  if (!redirectUri) {",
       "spec": "tests/mcp/oauth-consent.spec.ts",
       "grep": "never a redirect"

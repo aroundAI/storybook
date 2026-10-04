@@ -21,6 +21,12 @@ export {
 export type { McpPrincipal } from './principal';
 export type { McpConnectionSummary } from './connections';
 export {
+  STORYBOOKSTUDIO_CLIENT_ID,
+  STORYBOOKSTUDIO_CLIENT_NAME,
+  STORYBOOKSTUDIO_REDIRECT_URI,
+  requiresDesktopIntegration,
+} from './desktop-client';
+export {
   defineTool,
   isWriteTool,
   type McpToolAnnotations,

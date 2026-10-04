@@ -10,3 +10,4 @@ export * from './render-presets';
 export * from './qa-result.schema';
 export * from './explain-why-report.schema';
 export * from './delivery-package.schema';
+export * from './open-in-studio';

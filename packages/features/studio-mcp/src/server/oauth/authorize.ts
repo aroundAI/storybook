@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
+import { STORYBOOKSTUDIO_CLIENT_ID } from '../../desktop-client';
 import { MCP_SCOPES, type McpScope, McpScopeSchema } from '../../scopes';
 import { hashToken } from '../token';
 import { resolveClient } from './clients';
@@ -48,7 +49,8 @@ export interface AuthorizeDeps {
 
 /**
  * Validates the query of `GET /oauth/authorize` before anything is shown:
- * a known client, an exactly registered redirect URI, `response_type=code`,
+ * a known client, an exactly registered redirect URI (or StorybookStudio's
+ * loopback), `response_type=code`,
  * PKCE with S256, scopes from the catalogue, and a `resource` (RFC 8707),
  * when given, that is this deployment's MCP URL.
  */
@@ -88,7 +90,7 @@ export async function parseAuthorizeRequest(
     requestedRedirect ??
     (client.redirectUris.length === 1 ? client.redirectUris[0]! : null);
 
-  if (!redirectUri || !client.redirectUris.includes(redirectUri)) {
+  if (!redirectUri || !isRegisteredRedirectUri(client, redirectUri)) {
     return render(
       'invalid_redirect_uri',
       'The redirect URI is not one this client registered.',
@@ -166,6 +168,32 @@ export async function parseAuthorizeRequest(
       issuer: deps.issuer,
     },
   };
+}
+
+/**
+ * StorybookStudio's loopback fallback (FILM-2005, RFC 8252 §7.3): the
+ * desktop app listens on a port it picks for one sign-in, so the port is
+ * any, and everything else is fixed: http, the IPv4 literal, `/callback`,
+ * no query or fragment.
+ */
+const STUDIO_LOOPBACK_REDIRECT =
+  /^http:\/\/127\.0\.0\.1:([1-9]\d{0,4})\/callback$/;
+
+/**
+ * Whether `uri` is one the client registered: character for character for
+ * every client, plus, for the StorybookStudio client alone, a loopback
+ * callback on any valid port.
+ */
+export function isRegisteredRedirectUri(
+  client: Pick<OAuthClientRecord, 'clientId' | 'redirectUris'>,
+  uri: string,
+) {
+  if (client.redirectUris.includes(uri)) return true;
+  if (client.clientId !== STORYBOOKSTUDIO_CLIENT_ID) return false;
+
+  const port = STUDIO_LOOPBACK_REDIRECT.exec(uri)?.[1];
+
+  return port !== undefined && Number(port) <= 65535;
 }
 
 /** `null` for an unknown scope; the default set for no scope at all. */
