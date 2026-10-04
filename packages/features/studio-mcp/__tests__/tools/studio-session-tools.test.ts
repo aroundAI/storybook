@@ -66,13 +66,20 @@ const qa = (n: number) => ({
 
 describe('the StorybookStudio session tools', () => {
   it('are three studio:write tools, none read-only or destructive', () => {
-    expect(studioTools.map((tool) => tool.name)).toEqual([
+    // studioTools also holds the other Studio tools (FILM-2001's
+    // get_edit_package is studio:read); these are the session ones.
+    const sessionNames = [
       'open_edit_session',
       'record_edit_events',
       'close_edit_session',
-    ]);
+    ];
+    const sessions = studioTools.filter((tool) =>
+      sessionNames.includes(tool.name),
+    );
 
-    for (const tool of studioTools) {
+    expect(sessions.map((tool) => tool.name)).toEqual(sessionNames);
+
+    for (const tool of sessions) {
       expect(tool.scope).toBe('studio:write');
       expect(tool.annotations.readOnlyHint).toBe(false);
       expect(tool.annotations.destructiveHint).toBe(false);
