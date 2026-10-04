@@ -32,6 +32,16 @@
       "pattern": "gives a reason for every slot it cannot sign"
     },
     {
+      "name": "M1b keyInTarget no longer confines what is signed",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/server/resolve-media.ts",
+      "find": "  if (!isOwnKey(bucket, key, options)) return missing('outside_project');",
+      "replace": "",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/resolve-media.test.ts",
+      "pattern": "refuses a foreign key"
+    },
+    {
       "name": "M2 a signed read URL ignores the TTL it was asked for",
       "kind": "unit",
       "file": "packages/features/storage/src/adapters/s3-presign.ts",

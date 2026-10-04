@@ -331,6 +331,21 @@ export async function loadEditPackageSources(
   };
 }
 
+/**
+ * The episode's current edit-package etag, as get_edit_package would return
+ * it, or null when the caller cannot see the episode. Reads the same rows
+ * under the same RLS and signs nothing, so FILM-2003's deliver_edit can
+ * answer TARGET_CHANGED with the etag the Studio should re-sync to.
+ */
+export async function currentEditPackageEtag(
+  client: Client,
+  input: { accountId: string; episodeId: string },
+): Promise<string | null> {
+  const sources = await loadEditPackageSources(client, input);
+
+  return sources ? editPackageEtag(sources) : null;
+}
+
 export type GetEditPackageResult =
   | { status: 'not_found' }
   | { status: 'unchanged'; etag: string }

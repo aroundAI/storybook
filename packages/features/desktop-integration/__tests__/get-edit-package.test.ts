@@ -5,7 +5,10 @@ import type { StorageAdapter } from '@kit/storage';
 import { fixtureStorage } from '../fixtures/edit-package/build-fixture';
 import { FIXTURES, seedFixture } from '../fixtures/edit-package/seed';
 import { EditPackageSchema } from '../src/edit-package.schema';
-import { getEditPackage } from '../src/server/load-edit-package';
+import {
+  currentEditPackageEtag,
+  getEditPackage,
+} from '../src/server/load-edit-package';
 
 vi.mock('@kit/content-analytics/server/diagnostics-service', () => ({
   getEpisodeRetentionCurveService: vi.fn(async () => {
@@ -247,5 +250,28 @@ describe('getEditPackage', () => {
     expect(
       result.status === 'package' && result.editPackage.analyticsHints,
     ).toEqual({ retention: [], publishId: null, reason: 'unavailable' });
+  });
+
+  it('currentEditPackageEtag is the etag get_edit_package returns, and null when unseen', async () => {
+    const { seed, tables } = seedTables();
+    const full = await getEditPackage(fakeClient(tables), {
+      accountId: seed.accountId,
+      episodeId: seed.sources.episode.id,
+      storage: spyStorage(seed).storage,
+      readRetention,
+    });
+
+    expect(
+      await currentEditPackageEtag(fakeClient(tables), {
+        accountId: seed.accountId,
+        episodeId: seed.sources.episode.id,
+      }),
+    ).toBe(full.status === 'package' ? full.editPackage.etag : 'none');
+    expect(
+      await currentEditPackageEtag(fakeClient(tables), {
+        accountId: '00000000-0000-4000-8000-000000000000',
+        episodeId: seed.sources.episode.id,
+      }),
+    ).toBeNull();
   });
 });

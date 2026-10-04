@@ -9,9 +9,10 @@ import { EditPolicySchema } from './edit-policy.schema';
  * (FILM-2011) downloads its media and the project builder (FILM-2012) turns
  * it into a timeline.
  *
- * This file is a shared contract with StorybookStudio: it is copied into
- * `storybookstudio/src/studio/contracts/` with `brand.schema.ts` and
- * `edit-policy.schema.ts`, its only imports. Keep it zod-only, never rename
+ * This file is a shared contract with StorybookStudio:
+ * `scripts/sync-studio-contracts.mjs` writes it, with its types stripped, to
+ * `storybookstudio/src/studio/contracts/edit-package.schema.mjs` beside
+ * `brand.schema.mjs` and `edit-policy.schema.mjs`, its only imports. Keep it zod-only, never rename
  * an export, and bump EDIT_PACKAGE_SCHEMA_ID for a change an old reader
  * would misread.
  *
@@ -57,14 +58,22 @@ export const MediaReasonSchema = z.enum(MEDIA_REASONS);
  */
 export const SHA256_REASONS = ['not_recorded'] as const;
 
-/** One downloadable object. */
+/**
+ * One downloadable object.
+ *
+ * How a client checks and diffs media (FILM-2011):
+ * - `key` is the object's stable identity. It is the same while the file is
+ *   the same and new when the file is replaced (StoryBook writes new media
+ *   under new keys), so re-sync diffs media by `key`, never by `url`, which
+ *   changes on every call.
+ * - Verify a download by `sha256` when it is set, else by `bytes`. Most
+ *   entries have `sha256: null` with `sha256Reason: 'not_recorded'` until
+ *   StoryBook records hashes at write time (KB-189).
+ */
 export const MediaRefSchema = z.object({
   /** A presigned GET, valid for EDIT_PACKAGE_URL_TTL_SECONDS from generatedAt. */
   url: z.string().url(),
-  /**
-   * The object's storage key (`<bucket>/<path>`). Stable while the file is
-   * the same, and new when it is replaced, so a client diffs media by it.
-   */
+  /** `<bucket>/<path>`: the stable identity to diff by (see above). */
   key: z.string().min(1),
   /** Lower-case hex SHA-256 of the object, when StoryBook recorded one. */
   sha256: z
