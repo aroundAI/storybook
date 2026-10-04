@@ -47,6 +47,8 @@ select results_eq(
        ('public.bulk_reset_episodes_to_stage'),
        -- predicate about the caller: service role, or can_write_project of the run's project, or the caller's team membership when it has none; a personal account refused (FILM-1903, KB-99)
        ('public.can_drive_generation_run'),
+       -- the session's user ('client'), a project owner/admin ('admin'), or the service role ('stale'); restores previous_status via kit.end_edit_session (FILM-2002)
+       ('public.close_edit_session'),
        -- predicate about the caller
        ('public.can_edit_project'),
        -- the file name's account is the caller, or has_permission settings.manage on it (KB-53)
@@ -96,6 +98,8 @@ select results_eq(
        ('public.is_project_owner'),
        -- requires the caller's own membership of the account
        ('public.is_team_member'),
+       -- project_members owner/admin/member of a live episode; the connection must be the caller's; one open session per episode (FILM-2002)
+       ('public.open_edit_session'),
        -- can_drive_generation_run of the arguments; created_by is the caller unless the service role names the user (FILM-1903)
        ('public.open_generation_run'),
        -- no caller check: answers only whether the project id belongs to the
@@ -106,6 +110,8 @@ select results_eq(
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-113)
        ('public.publish_in_account'),
+       -- the session's user only, and only while the session is open (FILM-2002)
+       ('public.record_edit_events'),
        -- can_drive_generation_run of the run; files the revision under the run's own target (FILM-1903)
        ('public.record_content_revision'),
        -- can_drive_generation_run of the run (FILM-1903)

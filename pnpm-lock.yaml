@@ -1669,6 +1669,9 @@ importers:
 
   packages/features/desktop-integration:
     dependencies:
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
       zod:
         specifier: ^3.25.74
         version: 3.25.76

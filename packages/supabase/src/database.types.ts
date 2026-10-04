@@ -2095,6 +2095,107 @@ export type Database = {
           },
         ]
       }
+      edit_events: {
+        Row: {
+          client_event_id: string
+          data: Json
+          edit_session_id: string
+          id: number
+          received_at: string
+          ts: string
+          type: string
+        }
+        Insert: {
+          client_event_id: string
+          data?: Json
+          edit_session_id: string
+          id?: number
+          received_at?: string
+          ts: string
+          type: string
+        }
+        Update: {
+          client_event_id?: string
+          data?: Json
+          edit_session_id?: string
+          id?: number
+          received_at?: string
+          ts?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_events_edit_session_id_fkey"
+            columns: ["edit_session_id"]
+            isOneToOne: false
+            referencedRelation: "edit_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_sessions: {
+        Row: {
+          close_reason: string | null
+          closed_at: string | null
+          connection_id: string | null
+          delivered_at: string | null
+          episode_id: string
+          id: string
+          last_event_at: string
+          package_etag: string
+          previous_status: string
+          started_at: string
+          status: string
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          close_reason?: string | null
+          closed_at?: string | null
+          connection_id?: string | null
+          delivered_at?: string | null
+          episode_id: string
+          id?: string
+          last_event_at?: string
+          package_etag: string
+          previous_status: string
+          started_at?: string
+          status?: string
+          summary?: Json
+          user_id: string
+        }
+        Update: {
+          close_reason?: string | null
+          closed_at?: string | null
+          connection_id?: string | null
+          delivered_at?: string | null
+          episode_id?: string
+          id?: string
+          last_event_at?: string
+          package_etag?: string
+          previous_status?: string
+          started_at?: string
+          status?: string
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_sessions_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_sessions_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       episode_embeddings: {
         Row: {
           content_hash: string | null
@@ -2359,6 +2460,7 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           duration_seconds: number | null
+          edit_state: Json
           final_video_url: string | null
           generation_origin: Json
           id: string
@@ -2389,6 +2491,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           duration_seconds?: number | null
+          edit_state?: Json
           final_video_url?: string | null
           generation_origin?: Json
           id?: string
@@ -2419,6 +2522,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           duration_seconds?: number | null
+          edit_state?: Json
           final_video_url?: string | null
           generation_origin?: Json
           id?: string
@@ -6460,6 +6564,10 @@ export type Database = {
         Returns: string
       }
       cleanup_expired_oauth_states: { Args: never; Returns: number }
+      close_edit_session: {
+        Args: { p_reason?: string; p_session_id: string; p_summary: Json }
+        Returns: Json
+      }
       commit_canon_changes: {
         Args: {
           p_episode_id: string
@@ -7065,6 +7173,14 @@ export type Database = {
           similarity: number
         }[]
       }
+      open_edit_session: {
+        Args: {
+          p_connection_id?: string
+          p_episode_id: string
+          p_package_etag: string
+        }
+        Returns: Json
+      }
       open_generation_run: {
         Args: {
           p_account_id: string
@@ -7108,6 +7224,10 @@ export type Database = {
       record_content_revision: {
         Args: { p_run_id: string; p_snapshot: Json }
         Returns: string
+      }
+      record_edit_events: {
+        Args: { p_events: Json; p_session_id: string }
+        Returns: Json
       }
       remove_episode_from_threads_touched: {
         Args: { p_episode_id: string; p_project_id: string }
