@@ -1679,9 +1679,15 @@ importers:
       '@kit/prettier-config':
         specifier: workspace:*
         version: link:../../../tooling/prettier
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../supabase
       '@kit/tsconfig':
         specifier: workspace:*
         version: link:../../../tooling/typescript
+      '@supabase/supabase-js':
+        specifier: 2.57.4
+        version: 2.57.4
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
@@ -1967,6 +1973,9 @@ importers:
       '@kit/cache':
         specifier: workspace:*
         version: link:../../cache
+      '@kit/desktop-integration':
+        specifier: workspace:*
+        version: link:../desktop-integration
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
@@ -2276,6 +2285,9 @@ importers:
       '@kit/content-analytics':
         specifier: workspace:*
         version: link:../content-analytics
+      '@kit/desktop-integration':
+        specifier: workspace:*
+        version: link:../desktop-integration
       '@kit/episodes':
         specifier: workspace:*
         version: link:../episodes

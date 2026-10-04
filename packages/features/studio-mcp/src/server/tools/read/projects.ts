@@ -2,6 +2,10 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import {
+  readStoredBrand,
+  readStoredEditPolicy,
+} from '@kit/desktop-integration';
 import { ProjectStatusSchema } from '@kit/projects/schemas';
 import { STUDIO_SETTINGS_KEYS } from '@kit/projects/service';
 
@@ -33,6 +37,8 @@ export interface ProjectRowLike {
   description: string | null;
   status: string | null;
   metadata: unknown;
+  brand?: unknown;
+  edit_policy?: unknown;
   created_at: string | null;
   updated_at: string | null;
   user_role?: string | null;
@@ -67,7 +73,27 @@ export function projectSummary(row: ProjectRowLike) {
 }
 
 export const PROJECT_COLUMNS =
-  'id, account_id, name, slug, description, status, metadata, created_at, updated_at';
+  'id, account_id, name, slug, description, status, metadata, brand, edit_policy, created_at, updated_at';
+
+/**
+ * FILM-2004: the project's brand and edit policy with every default
+ * applied, as the Studio reads them. A stored object that no longer
+ * validates comes back as the defaults, with `issues` saying why.
+ */
+export function brandAndEditPolicy(row: ProjectRowLike) {
+  const brand = readStoredBrand(row.brand);
+  const editPolicy = readStoredEditPolicy(row.edit_policy);
+  const issues = [
+    ...brand.issues.map((issue) => `brand.${issue}`),
+    ...editPolicy.issues.map((issue) => `editPolicy.${issue}`),
+  ];
+
+  return {
+    brand: brand.value,
+    editPolicy: editPolicy.value,
+    ...(issues.length > 0 ? { issues } : {}),
+  };
+}
 
 export const listProjectsTool = defineTool({
   name: 'list_projects',
@@ -127,7 +153,7 @@ export const getProjectTool = defineTool({
   name: 'get_project',
   title: 'Get project',
   description:
-    'One project of the team: its series settings and style, plus how many episodes, characters and locations it has.',
+    'One project of the team: its series settings and style, its brand and edit policy (every default applied), plus how many episodes, characters and locations it has.',
   inputSchema: {
     projectId: z
       .string()
@@ -181,7 +207,11 @@ export const getProjectTool = defineTool({
 
     return {
       text: `Project "${summary.name}" (${summary.status}): ${counts.episodes} episodes, ${counts.characters} characters, ${counts.locations} locations.`,
-      structuredContent: { project: summary, counts },
+      structuredContent: {
+        project: summary,
+        ...brandAndEditPolicy(project),
+        counts,
+      },
     };
   },
 });
