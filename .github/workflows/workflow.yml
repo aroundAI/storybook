@@ -795,6 +795,11 @@ jobs:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: verify
       CLICKHOUSE_DB: default
+      # A fake model key (FILM-1910): it makes the server believe a model is
+      # configured, so the spend-cap Generate refusal runs; that refusal
+      # comes before any call, and nothing here points at a real Gemini.
+      GEMINI_API_KEY: e2e-not-a-real-key
+      E2E_SERVER_HAS_MODEL_KEY: '1'
       PLAYWRIGHT_BASE_URL: http://localhost:3100
       # The server's own address: redirects built from it (a failed platform
       # connect, KB-19) otherwise go to apps/web/.env's localhost:3000, where
@@ -962,6 +967,11 @@ jobs:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: verify
       CLICKHOUSE_DB: default
+      # A fake model key (FILM-1910): it makes the server believe a model is
+      # configured, so the spend-cap Generate refusal runs; that refusal
+      # comes before any call, and nothing here points at a real Gemini.
+      GEMINI_API_KEY: e2e-not-a-real-key
+      E2E_SERVER_HAS_MODEL_KEY: '1'
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       CAPTURE_EVIDENCE: '1'
       CLICKHOUSE_EVIDENCE: '1'
@@ -1128,6 +1138,11 @@ jobs:
       ENABLE_BILLING_TESTS: 'false'
       ENABLE_TEAM_ACCOUNT_TESTS: 'true'
       DO_NOT_TRACK: 1
+      # A fake model key (FILM-1910): it makes the server believe a model is
+      # configured, so the spend-cap Generate refusal runs; that refusal
+      # comes before any call, and nothing here points at a real Gemini.
+      GEMINI_API_KEY: e2e-not-a-real-key
+      E2E_SERVER_HAS_MODEL_KEY: '1'
       TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
     steps:

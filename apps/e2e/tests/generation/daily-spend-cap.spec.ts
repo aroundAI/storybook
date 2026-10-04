@@ -121,8 +121,9 @@ test.describe('Team settings → AI: the daily spend cap', () => {
 test.describe('Generate past the daily spend cap', () => {
   // With no model key the server refuses every server run with
   // LLM_NOT_CONFIGURED (FILM-1911) before it reads the cap, as it should;
-  // CI's E2E server has none. Run against a server started with one, e.g.
-  // GEMINI_API_KEY=e2e-not-a-real-key: the refusal comes before any call.
+  // CI's E2E servers carry GEMINI_API_KEY=e2e-not-a-real-key and the flag
+  // below; locally, start the server with both. The refusal comes before
+  // any call, so the fake key is never sent anywhere.
   test.skip(
     !process.env.E2E_SERVER_HAS_MODEL_KEY,
     'needs a server started with a model key: set E2E_SERVER_HAS_MODEL_KEY=1',
