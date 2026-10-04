@@ -282,7 +282,7 @@ const ShotCardInner = ({
         <p className="line-clamp-3 font-semibold text-gray-800 dark:text-gray-200">
           Action: {shot.description || shot.prompt || 'No description'}
         </p>
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm text-gray-500 dark:text-gray-400">
             Shot {shot.sceneNumber}.{shot.shotNumber}
           </span>
