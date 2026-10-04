@@ -29,8 +29,12 @@ import { fakeClient } from './helpers/injected-rows';
  * run.write (its own generate, a direct executeLLM) is a model call outside
  * the stage's write, and fails here.
  *
- * analytics-insights and language-insights are not stages (FILM-1901
- * notes): they run under server-only keys, which have a run and no brief.
+ * The exceptions are pinned: the server-only run keys, which have a run
+ * and no brief. analytics_insights and language_insights are "not a stage"
+ * (EDD "Every path that reaches an AI model today", rows 15 and 16);
+ * fact_check, the documentary fact checker, is a server-only run kind
+ * (EDD "Database changes", generation_runs.stage); audio_render is the
+ * ElevenLabs render, not a model. A fifth key, or a job of one, fails here.
  */
 
 const STOP = new Error('run.write reached: stage recorded');
@@ -202,6 +206,19 @@ const serverOnlyKeys = StageKeySchema.options.filter(
   (key) => !registry.includes(key),
 );
 
+const SERVER_ONLY_KEYS = [
+  'analytics_insights',
+  'language_insights',
+  'fact_check',
+  'audio_render',
+];
+/** The worker jobs that run under a server-only key, not a stage. */
+const SERVER_ONLY_JOBS = [
+  'analytics-insights',
+  'language-insights',
+  'audio-file-generation',
+];
+
 beforeEach(() => {
   reached.length = 0;
   outside.length = 0;
@@ -212,6 +229,16 @@ beforeEach(() => {
 });
 
 describe('the stages that reach run.write() are the registry (FILM-1902, KB-184)', () => {
+  it('the only keys outside the registry are the pinned server-only ones', () => {
+    expect([...serverOnlyKeys].sort()).toEqual([...SERVER_ONLY_KEYS].sort());
+    expect(
+      Object.entries(STAGE_OF_JOB)
+        .filter(([, stage]) => !registry.includes(stage))
+        .map(([job]) => job)
+        .sort(),
+    ).toEqual([...SERVER_ONLY_JOBS].sort());
+  });
+
   it('every LLM job is a registered stage run here, or a server-only key', () => {
     for (const [job, stage] of Object.entries(STAGE_OF_JOB)) {
       if (registry.includes(stage)) {
