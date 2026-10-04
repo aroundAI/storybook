@@ -177,12 +177,14 @@ notes: |
     the whole connection (RFC 7009 allows both; the grant is what a client
     gives up).
   - Refresh is sliding: a rotation issues a new 30-day refresh token.
-  - A client is public if it can be (#599): Claude's published
+  - A client is public if it can be (KB-185, #599): Claude's published
     document lists a JWT-bearer grant and ChatGPT's prefers private_key_jwt
     while listing none, and the first version refused both, so neither
     client's default sign-in worked. A client that lists none among its
     methods is registered as public with only the grants we issue (RFC 7591
-    §3.2.1); one that can only authenticate is still refused. Every
+    §3.2.1); one that can only authenticate is still refused, and a
+    client credential sent to /oauth/token or /oauth/revoke is refused
+    with invalid_client rather than ignored. Every
     authorization response carries iss (RFC 9207), which is what lets
     ChatGPT use its stable redirect URI (FILM-1911).
 feature:
