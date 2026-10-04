@@ -1,3 +1,6 @@
 [submodule "deployment/config"]
 	path = deployment/config
 	url = git@github.com:aroundAI/storybook-deployment-config.git
+[submodule "storybookstudio"]
+	path = storybookstudio
+	url = git@github.com:aroundAI/storybookstudio.git
