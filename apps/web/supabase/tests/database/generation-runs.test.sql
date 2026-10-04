@@ -199,6 +199,11 @@ select lives_ok(
 -- ------------------------------------------------------------------
 -- Lock 3: a run opened from an MCP connection is external
 -- ------------------------------------------------------------------
+-- the connection a run names must exist (the foreign key, FILM-1903 / FILM-1904)
+insert into public.mcp_connections (id, user_id, account_id, kind, name, scopes)
+values ('19030000-0000-4000-8000-0000000000cc', current_setting('gr.owner')::uuid,
+        current_setting('gr.team')::uuid, 'pat', 'L3 connection', array['studio:read']);
+
 select throws_ok(
   $$ insert into public.generation_runs (account_id, project_id, target_type, target_id, stage, mode, connection_id, created_by)
      values (current_setting('gr.team')::uuid, '19030000-0000-4000-8000-000000000001', 'episode',

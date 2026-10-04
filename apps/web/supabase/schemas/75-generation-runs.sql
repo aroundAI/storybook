@@ -48,8 +48,8 @@ create table public.generation_runs (
   -- registered stage, {kind: 'job', jobType, payload} for a worker job not
   -- yet on the generation core
   input jsonb not null default '{}'::jsonb,
-  -- FK to mcp_connections added once FILM-1904 lands
-  connection_id uuid,
+  -- the connection the run was opened from; null once it is deleted (FILM-1904)
+  connection_id uuid references public.mcp_connections(id) on delete set null,
   job_id uuid references public.generation_jobs(id) on delete set null,
   parent_run_id uuid references public.generation_runs(id) on delete set null,
   error jsonb,
