@@ -91,6 +91,7 @@ import {
   queryPostsAccountsReached,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
+  queryRetentionCurveFetchedAt,
   queryRetentionCurves,
   queryRollingViews,
   querySegmentMembership,
@@ -535,6 +536,31 @@ async function queries() {
   await step('queryRetentionCurve', () =>
     queryRetentionCurve({ videoId: NORMAL }),
   );
+
+  await step('queryRetentionCurveFetchedAt', async () => {
+    // FILM-2001 dates each edit-package hint with this. A video with no
+    // curve is null, not an epoch: "no curve" and "fetched long ago" differ.
+    const fetched = await queryRetentionCurveFetchedAt({ videoId: NORMAL });
+
+    if (
+      !fetched ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(fetched.asOf)
+    ) {
+      throw new Error(
+        `expected an ISO as-of for ${NORMAL}, got ${JSON.stringify(fetched)}`,
+      );
+    }
+
+    if (fetched.platform !== 'youtube') {
+      throw new Error(`expected platform youtube, got ${fetched.platform}`);
+    }
+
+    if ((await queryRetentionCurveFetchedAt({ videoId: ZERO })) !== null) {
+      throw new Error('a video with no curve must have no as-of');
+    }
+
+    return fetched;
+  });
 
   await step('queryRetentionCurves', async () => {
     // The batched form must agree with the single-video one, or the two

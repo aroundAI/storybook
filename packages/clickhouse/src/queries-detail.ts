@@ -133,6 +133,49 @@ export async function queryRetentionCurve(input: {
 }
 
 /**
+ * When one video's retention curve was last fetched, and from which
+ * platform, or null when it has no curve (FILM-2001: the edit package dates
+ * every retention hint). The newest `fetched_at` over the video's points is
+ * the fetch the curve's latest-wins values come from.
+ */
+export async function queryRetentionCurveFetchedAt(input: {
+  videoId: string;
+  /** Bounds the read, as on `queryRetentionCurve`. */
+  projectIds?: string[];
+}): Promise<{ asOf: string; platform: string } | null> {
+  if (!isClickHouseEnabled()) return null;
+
+  const client = getClickHouseClient();
+  const params: Record<string, unknown> = { videoId: input.videoId };
+  const conditions = ['video_id = {videoId: String}'];
+
+  pushProjectScope(conditions, params, input.projectIds);
+
+  const result = await client.query({
+    query: `
+      SELECT
+        formatDateTime(max(fetched_at), '%Y-%m-%dT%H:%i:%SZ', 'UTC') as as_of,
+        argMax(toString(platform), fetched_at) as platform,
+        count() as points
+      FROM video_retention_curves
+      WHERE ${conditions.join(' AND ')}
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const [row] = await result.json<{
+    as_of: string;
+    platform: string;
+    points: string | number;
+  }>();
+
+  return row && Number(row.points) > 0
+    ? { asOf: row.as_of, platform: row.platform }
+    : null;
+}
+
+/**
  * Retention curves for several videos in one request.
  *
  * The single-video `queryRetentionCurve` above is one round trip per video,

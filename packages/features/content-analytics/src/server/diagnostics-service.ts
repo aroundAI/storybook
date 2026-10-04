@@ -3,8 +3,10 @@ import 'server-only';
 import type { z } from 'zod';
 
 import {
+  isClickHouseEnabled,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
+  queryRetentionCurveFetchedAt,
   queryRetentionCurves,
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
@@ -301,4 +303,66 @@ export async function getEpisodeRetentionPublishService(
   }
 
   return { publishId: publishes?.[0]?.id ?? null };
+}
+
+/**
+ * One episode's retention curve as the edit package needs it (FILM-2001),
+ * with "no curve" told apart by its reason:
+ *
+ * - `unmeasured`: ClickHouse is off, so nothing was measured
+ * - `no_published_video`: no published YouTube video to have a curve
+ * - `no_curve`: the video exists and no curve has been fetched yet
+ *
+ * The episode is resolved on the caller's client, as the retention curve
+ * above is: RLS is the gate, and the ClickHouse reads are keyed on a
+ * publish RLS let through.
+ */
+export type EpisodeRetentionCurveResult =
+  | { state: 'unmeasured' }
+  | { state: 'no_published_video' }
+  | { state: 'no_curve'; publishId: string }
+  | {
+      state: 'curve';
+      publishId: string;
+      platform: string;
+      asOf: string;
+      durationSeconds: number | null;
+      points: Array<{ elapsedRatio: number; audienceWatchRatio: number }>;
+    };
+
+export async function getEpisodeRetentionCurveService(
+  client: AnalyticsClient,
+  { episodeId }: EpisodeAnalyticsInput,
+): Promise<EpisodeRetentionCurveResult> {
+  if (!isClickHouseEnabled()) return { state: 'unmeasured' };
+
+  const { publishId } = await getEpisodeRetentionPublishService(client, {
+    episodeId,
+  });
+
+  if (!publishId) return { state: 'no_published_video' };
+
+  const curve = await getRetentionCurveService(client, { publishId });
+  const { data: episode } = await client
+    .from('episodes')
+    .select('project_id')
+    .eq('id', episodeId)
+    .maybeSingle();
+  const fetched = await queryRetentionCurveFetchedAt({
+    videoId: publishId,
+    ...(episode?.project_id && { projectIds: [episode.project_id] }),
+  });
+
+  if (curve.points.length === 0 || !fetched) {
+    return { state: 'no_curve', publishId };
+  }
+
+  return {
+    state: 'curve',
+    publishId,
+    platform: fetched.platform,
+    asOf: fetched.asOf,
+    durationSeconds: curve.duration.known ? curve.duration.seconds : null,
+    points: curve.points,
+  };
 }

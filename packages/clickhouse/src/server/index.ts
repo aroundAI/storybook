@@ -41,6 +41,7 @@ export {
   queryNetSubscribersForVideos,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
+  queryRetentionCurveFetchedAt,
   queryRetentionCurves,
   queryTrafficSources,
 } from '../queries-detail';
