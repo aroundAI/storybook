@@ -31,7 +31,7 @@ acceptance_criteria:
     reason: "retired — limit raised to 2000 in 5ddb6752 (`packages/features/episodes/src/lib/schemas/story.schema.ts:19`)"
   - text: "Genre, audience, style dropdowns work"
     met: false
-    reason: "retired — genre and audience come from the project since the route screen replaced the component (e2d42522); `apps/web/lambda/llm-worker/handlers/story-ideation.ts:80`"
+    reason: "retired — genre and audience come from the project since the route screen replaced the component (e2d42522); `packages/features/episodes/src/agent/stage-writers/ideation.ts:17`"
   - text: "Number of ideas slider works (1-5)"
     met: false
     reason: "unverified — slider bound at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:228`; no Playwright spec drives it"
