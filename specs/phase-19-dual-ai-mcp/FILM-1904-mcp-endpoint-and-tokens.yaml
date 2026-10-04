@@ -24,7 +24,7 @@ summary: >
 acceptance_criteria:
   - text: "apps/web/app/api/mcp/route.ts serves POST with StreamableHTTPServerTransport from @modelcontextprotocol/sdk in stateless mode (no session id, JSON responses); GET and DELETE answer 405"
     met: true
-    evidence: "apps/web/app/api/mcp/route.ts:12; packages/features/studio-mcp/src/server/route-handler.ts:122 (sessionIdGenerator undefined, enableJsonResponse true), :158 (GET/DELETE 405); contract.test.ts 'GET and DELETE are 405' (#558)"
+    evidence: "apps/web/app/api/mcp/route.ts:12; packages/features/studio-mcp/src/server/route-handler.ts:132 (sessionIdGenerator undefined, enableJsonResponse true), :158 (GET/DELETE 405); contract.test.ts 'GET and DELETE are 405' (#558)"
   - text: "A fresh McpServer is built per request from @kit/studio-mcp's registry; nothing is held in memory between calls; it runs on both Vercel and Lambda via OpenNext"
     met: true
     evidence: "packages/features/studio-mcp/src/server/build-server.ts:52 (new McpServer per request), route-handler.ts:114-154 (built, connected, closed inside one POST). The SDK's Node transport is bridged to the Web Request/Response a Next route has (node-adapter.ts), which is what both hosts run; verified on Vercel/Lambda only by construction, no deploy in #558"
