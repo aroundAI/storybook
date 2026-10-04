@@ -3,7 +3,7 @@ title: "Edit Package Tool: One Call That Hands an Episode to the Desktop"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1904"
@@ -22,49 +22,55 @@ summary: >
   dubbed lines where they exist, and the project's brand and edit policy. Every
   media reference is a 1-hour presigned R2 GET with sha256, size and MIME type,
   so the desktop verifies what it downloads and never needs a public bucket.
-  The package has an etag derived from episodes.version and the newest
-  updated_at across its rows; a client passing if_none_match gets
-  {unchanged: true} back. The builder is a pure function over the existing
+  The package has an etag derived from episodes.version and a hash of its
+  own content; a client passing ifNoneMatch gets {unchanged: true} back. The builder is a pure function over the existing
   feature services, uses fetchAllRows for every list, and is the one place the
   rough-cut contract is defined. Design: PRD-EDD.md Part 3 "API: the desktop
   endpoints" (edit package JSON), corrected to an MCP tool.
 acceptance_criteria:
   - text: "get_edit_package({episodeId, ifNoneMatch?}) is registered in @kit/studio-mcp with readOnlyHint, requires studio:read, and runs with the principal's RLS client; an episode the user cannot view returns NOT_FOUND"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "#618: packages/features/studio-mcp/src/server/tools/studio/edit-package.ts:18 (studio:read, readOnlyHint, idempotent, closed world), registered at src/server/tools/index.ts:30; NOT_FOUND :63. Every read is the principal's client (desktop-integration/src/server/load-edit-package.ts:134); the boundary test still finds no admin client under tools/. SDK client against /api/mcp: __tests__/edit-package.contract.test.ts:484 (render-only token FORBIDDEN) and :494 (another team's episode NOT_FOUND), passed in process and against a dev server on port 3303 (lane B)"
   - text: "The result validates against EditPackageSchema (zod, schema id storybook-edit-package/1) exported from packages/features/desktop-integration; the schema is the contract both repos test against and is copied verbatim into the fork's tests"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#618: packages/features/desktop-integration/src/edit-package.schema.ts:285, imports only zod and the two FILM-2004 schemas; getEditPackage parses its own result (load-edit-package.ts:355). scripts/sync-studio-contracts.mjs copies every src/*.schema.ts into storybookstudio/src/studio/contracts/ (--check exits 1 on drift); __tests__/studio-contracts.test.ts:63 fails on a missing or different copy (seen red and green with the submodule checked out; skipped with its reason where it is not, as in CI). The fork commits the copies (FILM-2012)"
   - text: "Sources: scenes from episodes.screenplay_data.scenes; shots from shots where deleted_at is null ordered by sequence_number, with timeline_start_seconds, trim_in/out_point, transition_type, prompt, primary_subject, continuation_from_shot_id, first/last frame URLs; dialogue from dialogue_lines with language and timeline_start_seconds; audioTracks from audio_tracks joined to audio_assets (loopable, tags); captions from caption_segments grouped by language; characters from assets type=character joined to character_details; shortsCandidates from shorts; dubbed from dubbed_dialogue_lines; every list read with fetchAllRows"
+    met: true
+    evidence: "#618: load-edit-package.ts:134 reads each table with fetchAllRows or fetchAllByIds, ordered on a unique column (shots :178); build-edit-package.ts maps them. Characters are the episode's tagged ones (metadata.character_ids, or every project character for the All Characters tag, as the shot generator reads them); dialogue_composite tracks are left out, ambient is named ambience. __tests__/get-edit-package.test.ts asserts every list read is ranged and ordered; the contract test reads 60 shots, 120 lines, 2 x 120 caption segments and 120 dubbed lines back"
+  - text: "Every media entry is {url, key, sha256, bytes, mime} where url is a presigned GET valid for 3600 s from a new getSignedReadUrl(bucket, path, ttlSeconds) on the storage adapters (R2/B2 presign, Supabase createSignedUrl), signed only for keys read out of the caller's rows and lying in the episode's own project or episode folder; sha256 comes from assets.file_hash where recorded, else is null with sha256Reason not_recorded; a slot with nothing to sign yields {url: null, mediaReason}, never a broken URL"
+    met: true
+    evidence: "#618: packages/features/storage/src/types.ts:159 (getSignedReadUrl, stat), adapters/s3-presign.ts:67, r2.ts:206, supabase.ts:138; desktop-integration/src/server/resolve-media.ts:98 (keyInTarget confinement :69, recorded hash :125). Real servers: storage/__tests__/signed-read.s3-local.test.ts:162 on the local R2 sandbox and MinIO, 8/8 (GET and Range GET inside the TTL, refused after a 2 s TTL, forged signature 403). Contract test :330 GETs a signed video and gets its bytes; reasons not_generated, outside_project, missing asserted there and in __tests__/edit-package-fixtures.test.ts"
+  - text: "sha256 is computed once and stored on first request for media StoryBook has not hashed"
     met: false
-    reason: "not built"
-  - text: "Every media entry is {url, sha256, bytes, mime} where url is a presigned GET valid for 3600 s from a new getSignedReadUrl(key, ttlSeconds) on the R2 adapter (and the Supabase adapter's createSignedUrl); sha256 comes from assets.file_hash or is computed once and stored on first request; a missing file yields media: null with a reason, never a broken URL"
-    met: false
-    reason: "not built"
-  - text: "etag = sha1(episodes.version + max(updated_at) over shots, dialogue_lines, audio_tracks, caption_segments, dubbed_dialogue_lines, projects.brand, projects.edit_policy); get_edit_package with a matching ifNoneMatch returns {unchanged: true, etag} and no body; a stale etag returns the full package"
-    met: false
-    reason: "not built"
-  - text: "analyticsHints carries retention drop-offs (timestamp, drop percentage, platform, as-of date) from content_analytics.retention_data for the episode's latest publish when present, else an empty list"
-    met: false
-    reason: "not built"
+    reason: "not built. Only assets.file_hash records a hash, and only master-video uploads write one; shots, dialogue, audio and dubbed media have no assets row. Hashing on request means downloading every object inside a 2 s call, and storing it would give a read-only tool a write surface (lead brief: no admin client; RLS write by a viewer could poison the hash). The package says so per entry (sha256: null, sha256Reason: not_recorded) and FILM-2011 verifies bytes and diffs by key. See remaining"
+  - text: "etag = v<episodes.version>-sha1 over the package's own content (every row field it carries, media by stored URL and recorded hash, brand and edit policy with defaults), excluding signed URLs, timestamps and analytics hints; get_edit_package with a matching ifNoneMatch returns {unchanged: true, etag} and no body; a stale etag returns the full package"
+    met: true
+    evidence: "#618: build-edit-package.ts:624; the comparison precedes any signing or analytics read (load-edit-package.ts:365). __tests__/edit-package-etag.test.ts:29 (shot video_url), :36 (brand), plus policy, a deleted dialogue line, a caption text, a track volume and the version; unchanged across row order, timestamps, signatures and analytics. Contract test :443 against the database: unchanged on the current etag, new after a shot edit and after a brand edit. Mutation guards E1, E2 red"
+  - text: "analyticsHints carries retention drop-offs (timestamp, elapsedRatio, drop percentage, platform, as-of date) read from ClickHouse video_retention_curves for the episode's latest published YouTube video when CLICKHOUSE_ENABLED, else retention [] with reason unmeasured (never 0, never fabricated); an episode with no published video or no fetched curve says so (no_published_video, no_curve), and a failed read says unavailable"
+    met: true
+    evidence: "#618: content-analytics/src/server/diagnostics-service.ts:333 resolves the publish on the caller's client, then reads the curve and packages/clickhouse/src/queries-detail.ts:141 (queryRetentionCurveFetchedAt, 187/187 in verify-queries against ClickHouse 24.8); desktop-integration/src/retention-hints.ts:47 keeps drops of 3 points or more, at most 5. Verified against the running ClickHouse (lane B, 18123): contract test :407 seeds a 21-point curve on a published 300 s video and reads back the hand-computed drops 13.5 at 0 s, 9.5 at 90 s, 11.5 at 210 s; with ClickHouse off it reads unmeasured"
   - text: "The brand and editPolicy blocks are the project's columns from FILM-2004, defaults applied, validated by their schemas"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#618: build-edit-package.ts:590 (readStoredBrand / readStoredEditPolicy); EditPackageSchema embeds BrandSchema and EditPolicySchema. Fixture test 'applies brand and policy defaults'; contract test reads #0EA5E9 and maxShotLength 5 back from the seeded project"
   - text: "Package size: a 60-shot episode with two languages serializes under 1 MB; the tool call completes in under 2 s against the local seed (measured in the contract test)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#618: the 60-shot two-language fixture is 581,631 bytes pretty-printed, and the contract test's package 489,072 bytes compact (edit-package-fixtures.test.ts:54). Tool call through the SDK client on the local seed (60 shots, 600 media entries): 694-826 ms against the dev server on 3303, 385-822 ms in process; the slowest runs, 1.4-3.1 s, came at load average 10-14 on a shared machine. The test asserts the best of three under 2 s (edit-package.contract.test.ts:330)"
   - text: "The tool writes an mcp_tool_calls row like every other tool (FILM-1904) and never logs a signed URL"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#618: the registry's runTool records each call; the tool returns a summary text and turns any failure past the reads into a generic INTERNAL (edit-package.ts). Contract test :501 reads the rows (ok and error, FORBIDDEN and NOT_FOUND) and greps them, the test process's stdout, stderr and console, and the dev server's log for /object/sign/, token=ey and X-Amz-Signature; seen red with the URL logged on purpose"
 test_plan:
   unit:
-    - {text: "buildEditPackage on three fixture episodes (5, 20, 60 shots; the 60 with dubbed audio) snapshots to the committed fixtures the fork's project-builder tests also consume", met: false, reason: "not built"}
-    - {text: "etag changes when a shot's video_url changes and when brand changes; unchanged when nothing changes", met: false, reason: "not built"}
-    - {text: "getSignedReadUrl produces a URL that a plain GET fetches within the TTL and 403s after it (R2 adapter test with the local sandbox, FILM-18xx lane)", met: false, reason: "not built"}
+    - {text: "buildEditPackage on three fixture episodes (5, 20, 60 shots; the 60 with dubbed audio) snapshots to the committed fixtures the fork's project-builder tests also consume", met: true, evidence: "#618: packages/features/desktop-integration/fixtures/edit-package/{5,20,60}-shots.json from fixtures/edit-package/seed.ts; __tests__/edit-package-fixtures.test.ts:38"}
+    - {text: "etag changes when a shot's video_url changes and when brand changes; unchanged when nothing changes", met: true, evidence: "#618: __tests__/edit-package-etag.test.ts:29, :36; red with the etag hashing only the version (5 failed)"}
+    - {text: "getSignedReadUrl produces a URL that a plain GET fetches within the TTL and is refused after it (R2 adapter test with the local sandbox, FILM-18xx lane)", met: true, evidence: "#618: packages/features/storage/__tests__/signed-read.s3-local.test.ts:162 — MinIO 403 AccessDenied, local R2 sandbox (Supabase S3) 400 ExpiredToken; red without the adapter methods (signed-read.test.ts, 10 failed)"}
   integration:
-    - {text: "SDK client against /api/mcp with a studio:read PAT: get_edit_package returns a schema-valid package; a studio:render-only token is FORBIDDEN; another team's episode is NOT_FOUND", met: false, reason: "not built"}
-    - {text: "pgTAP: a viewer-role project member can call the tool (read); an outsider cannot", met: false, reason: "not built"}
+    - {text: "SDK client against /api/mcp with a studio:read PAT: get_edit_package returns a schema-valid package; a studio:render-only token is FORBIDDEN; another team's episode is NOT_FOUND", met: true, evidence: "#618: packages/features/studio-mcp/__tests__/edit-package.contract.test.ts, 7/7 in process and against the dev server on 3303 (lane B, ClickHouse on)"}
+    - {text: "pgTAP: a viewer-role project member can call the tool (read); an outsider cannot", met: true, evidence: "#618: apps/web/supabase/tests/database/edit-package-reads.test.sql:124, :136 — 4/4 via pgthrow; red without the viewer's team membership"}
   e2e: []
+remaining:
+  - criterion: "sha256 is computed once and stored on first request for media StoryBook has not hashed"
+    reason: "Hash media where it is written (shot upload route, voice and audio workers, dubbing), into a checksum StoryBook owns, so the package carries one for every file without a read tool writing anything"
+    closed_by: "unassigned"
 open_questions:
   - "Should the package include proxies (a 540p transcode) for very large shots so the Studio can play before the full download lands? Deferred: the Studio builds proxies locally."
 notes: >
@@ -76,6 +82,24 @@ notes: >
   with the fork: packages/features/desktop-integration/src/edit-package.schema.ts
   is copied into storybookstudio/src/studio/contracts/edit-package.schema.ts by
   a script, and a test in each repo fails if the copies differ.
+
+  Corrections, 2026-10-04 (#618). The original AC4 is split in two: the
+  signed-URL half is met, the hash-on-first-request half is remaining. Lead decision 2 (TEAM_BRIEF_v5): AC6
+  originally read content_analytics.retention_data, which FILM-1201 dropped;
+  the hints come from ClickHouse video_retention_curves through a
+  content-analytics service (studio-mcp may not import @kit/clickhouse).
+  Three corrections from the code, sent to the lead before building: (1) the
+  etag hashes content, because dialogue_lines and audio_tracks have no
+  updated_at and a hard delete moves no timestamp (so it does not depend on
+  projects.updated_at either); (2) the storage interface takes (bucket,
+  path) everywhere, so the method is getSignedReadUrl(bucket, path, ttl),
+  with stat() for size and type; (3) sha256 is only as available as
+  assets.file_hash (see remaining). dubbed_dialogue_lines.timing_adjustment is
+  a 0.5-2 speed factor, so the package names it timingAdjustment, not a time.
+  For FILM-2011: an expired URL is 403 on R2 and MinIO but 400 ExpiredToken on
+  the local Supabase S3 sandbox; treat any 4xx on a media GET as "fetch the
+  package again". A key is stable while the file is, so diff media by key
+  when sha256 is null.
 feature:
   database: {tables: [], columns_added: []}
   queries: [{name: "buildEditPackage", purpose: "assemble the package from the feature services with fetchAllRows", file: "packages/features/desktop-integration/src/build-edit-package.ts"}]
