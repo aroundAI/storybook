@@ -107,6 +107,10 @@ create table public.account_ai_settings (
   default_mode text not null default 'server' check (default_mode in ('server', 'external')),
   -- FILM-1912: briefs carry past-episode performance; off by default
   performance_context_enabled boolean not null default false,
+  -- 2026-10-03: USD a UTC day of server-mode LLM spend; null is no cap
+  daily_llm_spend_cap_usd numeric(12, 2)
+    constraint account_ai_settings_daily_llm_spend_cap_positive
+      check (daily_llm_spend_cap_usd is null or daily_llm_spend_cap_usd > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   -- FILM-1910: never both off, and the default is an allowed mode
@@ -121,6 +125,8 @@ create table public.account_ai_settings (
 
 create index idx_generation_jobs_run on public.generation_jobs (run_id) where run_id is not null;
 create index idx_llm_usage_analytics_run on public.llm_usage_analytics (run_id) where run_id is not null;
+create index idx_llm_usage_analytics_account_created
+  on public.llm_usage_analytics (account_id, created_at);
 
 -- ----------------------------------------------------------------------
 -- The locks that keep Gemini out of external work
@@ -480,3 +486,29 @@ $$;
 
 revoke all on function public.external_run_model_calls(integer) from public, anon, authenticated;
 grant execute on function public.external_run_model_calls(integer) to service_role;
+
+-- The daily spend cap's read (owner decision 2026-10-03): priced spend of
+-- an account's server-mode runs since a time, unpriced calls counted apart.
+-- Service role only; the gateway reads it before opening a server run.
+create or replace function public.llm_spend_since(
+  p_account_id uuid,
+  p_since timestamptz
+)
+returns table (spent_usd numeric, priced_calls integer, unpriced_calls integer)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    sum(u.total_cost),
+    count(u.total_cost)::integer,
+    (count(*) - count(u.total_cost))::integer
+  from public.llm_usage_analytics u
+  join public.generation_runs r on r.id = u.run_id and r.mode = 'server'
+  where u.account_id = p_account_id
+    and u.created_at >= p_since;
+$$;
+
+revoke all on function public.llm_spend_since(uuid, timestamptz) from public, anon, authenticated;
+grant execute on function public.llm_spend_since(uuid, timestamptz) to service_role;

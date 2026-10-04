@@ -1,0 +1,156 @@
+{
+  "feature": "Daily LLM spend cap (owner decision 2026-10-03; FILM-1910, FILM-1902): server-mode web runs only, never MCP or renders",
+  "mutations": [
+    {
+      "name": "CAP1 the cap is never enforced",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/spend-cap.ts",
+      "find": "  if (!spend || (spend.spentUsd ?? 0) < capUsd) return;",
+      "replace": "  if (!spend || true) return;",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "refuses at the cap"
+    },
+    {
+      "name": "CAP2 spend equal to the cap is let through",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/spend-cap.ts",
+      "find": "  if (!spend || (spend.spentUsd ?? 0) < capUsd) return;",
+      "replace": "  if (!spend || (spend.spentUsd ?? 0) <= capUsd) return;",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "refuses at the cap"
+    },
+    {
+      "name": "CAP3 calls of unknown cost refuse on their own",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/spend-cap.ts",
+      "find": "  if (!spend || (spend.spentUsd ?? 0) < capUsd) return;",
+      "replace": "  if (!spend || ((spend.spentUsd ?? 0) < capUsd && spend.unpricedCalls === 0)) return;",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "never refuses on calls of unknown cost alone"
+    },
+    {
+      "name": "CAP4 a spend read that fails refuses the run",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/spend-cap.ts",
+      "find": "      error,\n    );\n    return null;",
+      "replace": "      error,\n    );\n    return { spentUsd: Infinity, pricedCalls: 0, unpricedCalls: 0 };",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "spend cannot be read"
+    },
+    {
+      "name": "CAP5 the refusal hides calls of unknown cost",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/spend-cap.ts",
+      "find": "    spend.unpricedCalls > 0\n      ?",
+      "replace": "    false\n      ?",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "says how many calls have no known cost"
+    },
+    {
+      "name": "CAP6 today is not the UTC day",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/spend-cap.ts",
+      "find": "readDailyLlmSpend(accountId, utcDayStart(now))",
+      "replace": "readDailyLlmSpend(accountId, now)",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "summed today from UTC midnight"
+    },
+    {
+      "name": "CAP7 an external run is capped too",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/backend.ts",
+      "find": "    if (mode === 'server') {\n      if (!serverModelConfigured()) throw modelNotConfigured();",
+      "replace": "    if (mode === 'server' || mode === 'external') {\n      if (!serverModelConfigured()) throw modelNotConfigured();",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "external run with spend over the cap"
+    },
+    {
+      "name": "CAP8 a render goes through the server-run checks",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/backend.ts",
+      "find": "  if (!RENDER_STAGES.has(stage)) {\n    const { mode, settings }",
+      "replace": "  if (true) {\n    const { mode, settings }",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/model-not-configured.test.ts",
+      "pattern": "opens a vendor render"
+    },
+    {
+      "name": "CAP9 the page gets no words for the cap refusal",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/jobs.ts",
+      "find": "  if (isGatewayError(error, 'DAILY_SPEND_CAP_REACHED')) {\n    return error.message;",
+      "replace": "  if (isGatewayError(error, 'DAILY_SPEND_CAP_REACHED')) {\n    return null;",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "words the cap refusal"
+    },
+    {
+      "name": "CAP10 the team's cap is not read",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/store.ts",
+      "find": "    dailyLlmSpendCapUsd: row.daily_llm_spend_cap_usd ?? null,",
+      "replace": "    dailyLlmSpendCapUsd: null,",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/daily-spend-cap.test.ts",
+      "pattern": "refuses at the cap"
+    },
+    {
+      "name": "CAP-DB1 a cap of zero or less is accepted",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/daily-llm-spend-cap.test.sql",
+      "sql": "alter table public.account_ai_settings drop constraint account_ai_settings_daily_llm_spend_cap_positive;"
+    },
+    {
+      "name": "CAP-DB2 a signed-in user may call the spend read",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/daily-llm-spend-cap.test.sql",
+      "sql": "grant execute on function public.llm_spend_since(uuid, timestamptz) to authenticated;"
+    },
+    {
+      "name": "CAP-DB3 usage of external runs is summed",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/daily-llm-spend-cap.test.sql",
+      "sql": "create or replace function public.llm_spend_since(p_account_id uuid, p_since timestamptz) returns table (spent_usd numeric, priced_calls integer, unpriced_calls integer) language sql stable security invoker set search_path = '' as $f$ select sum(u.total_cost), count(u.total_cost)::integer, (count(*) - count(u.total_cost))::integer from public.llm_usage_analytics u join public.generation_runs r on r.id = u.run_id where u.account_id = p_account_id and u.created_at >= p_since; $f$;"
+    },
+    {
+      "name": "CAP-DB4 an unpriced call is summed as 0",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/daily-llm-spend-cap.test.sql",
+      "sql": "create or replace function public.llm_spend_since(p_account_id uuid, p_since timestamptz) returns table (spent_usd numeric, priced_calls integer, unpriced_calls integer) language sql stable security invoker set search_path = '' as $f$ select coalesce(sum(u.total_cost), 0), count(*)::integer, 0 from public.llm_usage_analytics u join public.generation_runs r on r.id = u.run_id and r.mode = 'server' where u.account_id = p_account_id and u.created_at >= p_since; $f$;"
+    },
+    {
+      "name": "CAP-E1 the settings action does not save the cap",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/ai/_lib/server/actions.ts",
+      "find": "            daily_llm_spend_cap_usd: settings.dailyLlmSpendCapUsd,\n",
+      "replace": "",
+      "spec": "tests/generation/daily-spend-cap.spec.ts",
+      "grep": "an owner sets the cap"
+    },
+    {
+      "name": "CAP-E2 a pasted cap loses everything after its thousands separator",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/ai/_lib/schemas/ai-settings.schema.ts",
+      "find": ".replace(/,/g, '')",
+      "replace": ".replace(/,.*$/, '')",
+      "spec": "tests/generation/daily-spend-cap.spec.ts",
+      "grep": "an owner sets the cap"
+    },
+    {
+      "name": "CAP-E3 a member can type in the cap field",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/ai/_components/ai-settings-form.tsx",
+      "find": "                  disabled={disabled}\n                  data-test=\"ai-settings-spend-cap\"",
+      "replace": "                  data-test=\"ai-settings-spend-cap\"",
+      "spec": "tests/generation/daily-spend-cap.spec.ts",
+      "grep": "member sees the cap read-only"
+    }
+  ]
+}

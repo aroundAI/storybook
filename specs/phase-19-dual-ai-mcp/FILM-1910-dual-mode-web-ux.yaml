@@ -86,6 +86,21 @@ notes: |
   The banner and badges are the user's answer to "was this Gemini or
   Claude?"; the same answer is one query on generation_runs and
   generation_origin for analytics (FILM-1912).
+
+  Owner decision 2026-10-03: daily LLM spend cap, web/server mode only
+  (#593). Team settings -> AI has a "Daily Gemini spend cap (USD)"
+  field, account_ai_settings.daily_llm_spend_cap_usd (null is no cap; a
+  CHECK keeps a set cap above zero). Owners edit it, members see it
+  read-only; the action refuses a bad cap as a value. The page says the
+  day is UTC, that running work finishes, and that MCP work and ElevenLabs
+  renders are never capped. Enforcement is the gateway's (FILM-1902
+  notes). No criterion here asked for it, so none is ticked. Production
+  words the refusal on every Generate action, through refuseRunError since
+  KB-182 (#590).
+  E2E: apps/e2e/tests/generation/daily-spend-cap.spec.ts (the Generate
+  test needs a server with a model key, E2E_SERVER_HAS_MODEL_KEY=1, since
+  with none LLM_NOT_CONFIGURED is the refusal, as it should be).
+
 feature:
   database: null
   queries: []

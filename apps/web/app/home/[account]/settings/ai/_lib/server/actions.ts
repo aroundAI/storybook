@@ -14,6 +14,7 @@ import {
   AiSettingsSchema,
   UpdateAccountAiSettingsSchema,
   aiSettingsProblem,
+  spendCapProblem,
 } from '../schemas/ai-settings.schema';
 
 const OWNERS_ONLY = 'Only team owners can change the AI settings.';
@@ -28,7 +29,9 @@ const OWNERS_ONLY = 'Only team owners can change the AI settings.';
 export const updateAccountAiSettingsAction = returnRefusals(
   enhanceAction(
     async ({ accountSlug, ...settings }) => {
-      const problem = aiSettingsProblem(settings);
+      const problem =
+        aiSettingsProblem(settings) ??
+        spendCapProblem(settings.dailyLlmSpendCapUsd);
 
       if (problem) throw new ActionRefusal(problem);
 
@@ -53,11 +56,12 @@ export const updateAccountAiSettingsAction = returnRefusals(
             external_generation_enabled: settings.externalGenerationEnabled,
             default_mode: settings.defaultMode,
             performance_context_enabled: settings.performanceContextEnabled,
+            daily_llm_spend_cap_usd: settings.dailyLlmSpendCapUsd,
           },
           { onConflict: 'account_id' },
         )
         .select(
-          'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled',
+          'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled, daily_llm_spend_cap_usd',
         )
         .maybeSingle();
 
@@ -69,7 +73,7 @@ export const updateAccountAiSettingsAction = returnRefusals(
 
       if (error?.code === '23514') {
         throw new ActionRefusal(
-          'These AI settings are not allowed: keep a mode on, and make the default an allowed mode.',
+          'These AI settings are not allowed: keep a mode on, make the default an allowed mode, and keep any spend cap above $0.',
         );
       }
 
@@ -86,6 +90,7 @@ export const updateAccountAiSettingsAction = returnRefusals(
         externalGenerationEnabled: data.external_generation_enabled,
         defaultMode: data.default_mode,
         performanceContextEnabled: data.performance_context_enabled,
+        dailyLlmSpendCapUsd: data.daily_llm_spend_cap_usd,
       });
     },
     { schema: UpdateAccountAiSettingsSchema, auth: true },

@@ -18,6 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@kit/ui/form';
+import { Input } from '@kit/ui/input';
 import {
   RadioGroup,
   RadioGroupItem,
@@ -29,7 +30,10 @@ import { Switch } from '@kit/ui/switch';
 import {
   type AiSettings,
   AiSettingsFormSchema,
+  type AiSettingsFormValues,
   type GenerationMode,
+  fromFormValues,
+  toFormValues,
 } from '../_lib/schemas/ai-settings.schema';
 import { updateAccountAiSettingsAction } from '../_lib/server/actions';
 
@@ -71,18 +75,21 @@ export function AiSettingsForm({
 
   const form = useForm({
     resolver: zodResolver(AiSettingsFormSchema),
-    defaultValues: settings,
+    defaultValues: toFormValues(settings),
   });
 
   const disabled = !canEdit || isPending;
 
-  const onSubmit = (values: AiSettings) => {
+  const onSubmit = (values: AiSettingsFormValues) => {
     startTransition(async () => {
       try {
         const saved = await unwrap(
-          updateAccountAiSettingsAction({ accountSlug, ...values }),
+          updateAccountAiSettingsAction({
+            accountSlug,
+            ...fromFormValues(values),
+          }),
         );
-        form.reset(saved);
+        form.reset(toFormValues(saved));
         toast.success('AI settings saved');
         router.refresh();
       } catch (error) {
@@ -219,6 +226,39 @@ export function AiSettingsForm({
                   />
                 </FormControl>
               </div>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="dailyLlmSpendCap"
+          render={({ field }) => (
+            <FormItem className="rounded-lg border p-4">
+              <FormLabel className="text-base">
+                Daily Gemini spend cap (USD)
+              </FormLabel>
+              <FormDescription>
+                When the team&apos;s Gemini spend in StoryBook today reaches
+                this, Generate is refused until 00:00 UTC. Leave it empty for no
+                cap. A generation already running finishes, so a day can end a
+                little over.
+              </FormDescription>
+              <FormDescription data-test="ai-settings-spend-cap-scope">
+                Work Claude does through the MCP connector is never capped, and
+                neither are ElevenLabs renders.
+              </FormDescription>
+              <FormControl>
+                <Input
+                  {...field}
+                  inputMode="decimal"
+                  placeholder="No cap"
+                  className="max-w-40"
+                  disabled={disabled}
+                  data-test="ai-settings-spend-cap"
+                />
+              </FormControl>
+              <FormMessage data-test="ai-settings-spend-cap-error" />
             </FormItem>
           )}
         />

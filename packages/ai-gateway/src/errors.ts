@@ -4,7 +4,9 @@ export type GatewayErrorCode =
   /** A model call with no run at all: nothing outside a run reaches a model */
   | 'LLM_NO_RUN'
   /** Server mode on a deployment that holds no key to any model (FILM-1911) */
-  | 'LLM_NOT_CONFIGURED';
+  | 'LLM_NOT_CONFIGURED'
+  /** A server run for a team past its daily LLM spend cap (2026-10-03) */
+  | 'DAILY_SPEND_CAP_REACHED';
 
 /**
  * The gateway's refusal, thrown before any model call. `code` is what the
@@ -22,7 +24,10 @@ export class GatewayError extends Error {
   }
 }
 
-export function isGatewayError(error: unknown, code?: GatewayErrorCode) {
+export function isGatewayError(
+  error: unknown,
+  code?: GatewayErrorCode,
+): error is GatewayError {
   return (
     error instanceof GatewayError && (code === undefined || error.code === code)
   );

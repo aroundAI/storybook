@@ -369,18 +369,22 @@ const SettingsSchema = z.object({
   server_generation_enabled: z.boolean(),
   external_generation_enabled: z.boolean(),
   default_mode: GenerationModeSchema,
+  daily_llm_spend_cap_usd: z.number().positive().nullable().optional(),
 });
 
 export interface AiSettings {
   serverEnabled: boolean;
   externalEnabled: boolean;
   defaultMode: GenerationMode;
+  /** USD a day of server-mode model spend; null is no cap (2026-10-03) */
+  dailyLlmSpendCapUsd: number | null;
 }
 
 export const DEFAULT_AI_SETTINGS: AiSettings = {
   serverEnabled: true,
   externalEnabled: true,
   defaultMode: 'server',
+  dailyLlmSpendCapUsd: null,
 };
 
 /** `account_ai_settings`, or the defaults for a team with no row. */
@@ -391,7 +395,7 @@ export async function readAiSettings(
   const { data, error } = await client
     .from('account_ai_settings')
     .select(
-      'server_generation_enabled, external_generation_enabled, default_mode',
+      'server_generation_enabled, external_generation_enabled, default_mode, daily_llm_spend_cap_usd',
     )
     .eq('account_id', accountId)
     .maybeSingle();
@@ -406,6 +410,7 @@ export async function readAiSettings(
     serverEnabled: row.server_generation_enabled,
     externalEnabled: row.external_generation_enabled,
     defaultMode: row.default_mode,
+    dailyLlmSpendCapUsd: row.daily_llm_spend_cap_usd ?? null,
   };
 }
 

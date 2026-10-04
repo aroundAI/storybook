@@ -187,6 +187,35 @@ notes: |
   a run only exists for a registered stage, and registering a stage gives it
   the external path for free (FILM-1908's generic tools). Forgetting the
   external path therefore fails the matrix test instead of shipping a hole.
+
+  ## Daily LLM spend cap (owner decision 2026-10-03)
+
+  Owner decision 2026-10-03: daily LLM spend cap, web/server mode only
+  (#593). The gateway's openRun reads the team's cap with the mode
+  (resolveRunPolicy, on the caller's client under RLS) and, for a server
+  run that is not a render, sums today's UTC spend before the run row
+  exists: public.llm_spend_since, a SECURITY INVOKER aggregate only the
+  service role may execute, called with the same service-role client
+  recordUsage writes with. It sums llm_usage_analytics.total_cost of the
+  account's server-mode runs; rows with no price (Voyage embeddings, failed
+  calls) are counted apart and named in the refusal, never as 0, and never
+  refuse on their own. At or over the cap: DAILY_SPEND_CAP_REACHED, whose
+  message names the cap, today's spend and the reset (00:00 UTC), worded
+  by runRefusalMessage. A spend read that fails opens the run and logs
+  "daily spend cap not checked": unmeasured is not over.
+
+  External runs (MCP) never reach the check: they make no model call, and
+  the MCP tools open runs through @kit/generation, not the gateway. Renders
+  (audio_render, ElevenLabs) are skipped by stage. There is no per-call or
+  follow-on backstop: a run opened under the cap finishes, with the
+  follow-ons its commit chains (shots -> audio cues, opened by
+  openChildRun), and runs opened together all see the spend from before
+  them, so a day can end over the cap by that work's cost. Refusing a
+  follow-on at dispatch would fail after its parent committed.
+  Tests: packages/ai-gateway/__tests__/daily-spend-cap.test.ts,
+  apps/web/supabase/tests/database/daily-llm-spend-cap.test.sql; guards in
+  tooling/mutation-guards/daily-spend-cap.json.
+
 package:
   package_name: "@kit/ai-gateway"
   path: "packages/ai-gateway/"

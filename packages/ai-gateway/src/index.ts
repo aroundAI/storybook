@@ -17,6 +17,12 @@ export {
   LLM_NOT_CONFIGURED_MESSAGE,
   serverModelConfigured,
 } from './model-availability';
+export {
+  assertUnderDailySpendCap,
+  dailySpendCapMessage,
+  readDailyLlmSpend,
+  type DailySpend,
+} from './spend-cap';
 export { isLambdaEnvironment, type RunMessage } from './dispatch';
 export {
   createServerWriter,

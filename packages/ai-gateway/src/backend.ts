@@ -13,7 +13,7 @@ import {
   type RunTarget,
   type StageKey,
   openRun as openRunWithBackend,
-  resolveRunMode,
+  resolveRunPolicy,
 } from '@kit/generation';
 
 import { sendRunMessage } from './dispatch';
@@ -21,6 +21,7 @@ import {
   modelNotConfigured,
   serverModelConfigured,
 } from './model-availability';
+import { assertUnderDailySpendCap } from './spend-cap';
 import { resolveWriter } from './writers/resolve-writer';
 
 /**
@@ -68,10 +69,11 @@ export function withGateway<T extends RunCtx>(ctx: T): T & RunCtx {
  * `@kit/generation`'s directly, with their request context, since an
  * external run neither writes through a model nor dispatches.
  *
- * On a deployment with no model (FILM-1911), a run that would be server
- * mode is refused with LLM_NOT_CONFIGURED before it is written, so it never
- * holds its target. The mode is resolved first only then, so a deployment
- * with a model pays no extra read.
+ * A run that would be server mode, other than a render, is refused before
+ * it is written, so it never holds its target: with LLM_NOT_CONFIGURED on
+ * a deployment with no model (FILM-1911), and with DAILY_SPEND_CAP_REACHED
+ * for a team past its daily LLM spend cap (2026-10-03). Resolving the mode
+ * here reads the team's settings, which hold the cap.
  */
 export async function openRun(
   stage: StageKey,
@@ -81,12 +83,21 @@ export async function openRun(
 ) {
   const gatewayCtx = withGateway(ctx);
 
-  if (
-    !serverModelConfigured() &&
-    (await resolveRunMode(stage, target.accountId, gatewayCtx)) === 'server' &&
-    !RENDER_STAGES.has(stage)
-  ) {
-    throw modelNotConfigured();
+  if (!RENDER_STAGES.has(stage)) {
+    const { mode, settings } = await resolveRunPolicy(
+      stage,
+      target.accountId,
+      gatewayCtx,
+    );
+
+    if (mode === 'server') {
+      if (!serverModelConfigured()) throw modelNotConfigured();
+
+      await assertUnderDailySpendCap(
+        target.accountId,
+        settings?.dailyLlmSpendCapUsd ?? null,
+      );
+    }
   }
 
   return openRunWithBackend(stage, target, origin, gatewayCtx);

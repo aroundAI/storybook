@@ -5,7 +5,13 @@ export {
   type RunHolder,
 } from './errors';
 export { RunHandle } from './run-handle';
-export { loadRun, openChildRun, openRun, resolveRunMode } from './open-run';
+export {
+  loadRun,
+  openChildRun,
+  openRun,
+  resolveRunMode,
+  resolveRunPolicy,
+} from './open-run';
 export {
   executeServerRun,
   finalizeRun,

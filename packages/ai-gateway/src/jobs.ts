@@ -127,6 +127,11 @@ export function runRefusalMessage(error: unknown): string | null {
     return LLM_NOT_CONFIGURED_MESSAGE;
   }
 
+  // The cap, today's spend and when it resets, in the gateway's words
+  if (isGatewayError(error, 'DAILY_SPEND_CAP_REACHED')) {
+    return error.message;
+  }
+
   return null;
 }
 
