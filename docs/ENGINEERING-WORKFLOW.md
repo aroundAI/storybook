@@ -343,6 +343,20 @@ Check it before believing it: `./scripts/local-env.sh status` prints the
 ClickHouse version, and a page that still shows "no data" for rows you just
 inserted means the server was started without `local.env`.
 
+**A linked project changes the images `supabase start` pulls.** `supabase
+link` (the `db:link:prod` script) writes `apps/web/supabase/.temp/*-version`,
+and the CLI then runs the linked project's storage-api, postgres, postgrest
+and auth instead of its own defaults, and `.temp/storage-migration` pins the
+storage migration target, which an older storage-api refuses to start with
+("Migration drop-bucketid-objname-index not found"). After a link, a local stack ran
+storage-api v1.77.5 where CI runs v1.72.1: typegen emitted ~37 extra
+`storage` lines, and after `db reset` every Storage upload failed with
+`42P10` (no index for `ON CONFLICT (bucket_id, name COLLATE "C") WHERE
+archived_at IS NULL`). `local-env.sh up` and `lane-b.sh up` now run
+`scripts/local-ci/unpin-linked-versions.sh` first; on a stack already
+started, run it, then `supabase stop` and `supabase start`. Do not link a
+checkout you run a local stack from.
+
 **Reset the local database before taking a pgTAP baseline.** Every E2E run
 seeds accounts and never removes them, and a pgTAP suite that took 3 seconds
 on a fresh database took over 13 minutes on one with thousands of seeded

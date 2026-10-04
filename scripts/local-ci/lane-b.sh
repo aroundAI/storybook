@@ -17,6 +17,7 @@ case "${1:-}" in
     echo "==> Supabase (project storybook-b)"
     # Excluded: studio, the edge runtime and the log pipeline. No CI step
     # uses them, and they are a third of the stack's memory.
+    bash "$MAINROOT/scripts/local-ci/unpin-linked-versions.sh"
     (cd "$MAINROOT/apps/web" && "$SB" status >/dev/null 2>&1 || "$SB" start -x studio,edge-runtime,vector,logflare,imgproxy,supavisor)
     echo "==> ClickHouse ($CH_CONTAINER on 18123)"
     if docker ps -a --format '{{.Names}}' | grep -qx "$CH_CONTAINER"; then
