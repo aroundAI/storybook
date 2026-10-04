@@ -31,7 +31,8 @@ values
       'audio/mpeg',
       'audio/wav',
       'audio/ogg',
-      'audio/mp4'
+      'audio/mp4',
+      'text/vtt' -- a Studio render's captions (FILM-2003)
     ]
   );
 
