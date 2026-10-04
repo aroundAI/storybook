@@ -399,13 +399,6 @@ export function createFinalizeRenderTool(
       const captionsKey = sidecarKey(render, input.captionsKey, 'captions');
       const storage = deps.storage(client);
 
-      if (!storage.stat) {
-        throw new McpToolError(
-          'INTERNAL',
-          'The storage provider cannot check an upload.',
-        );
-      }
-
       for (const [field, key] of [
         ['thumbnailKey', thumbnailKey],
         ['captionsKey', captionsKey],
@@ -421,8 +414,8 @@ export function createFinalizeRenderTool(
       );
       const reason = !stored
         ? `No file was uploaded to ${render.file_path}`
-        : stored.size !== render.file_size_bytes
-          ? `The stored file is ${stored.size} bytes; the upload was signed for ${render.file_size_bytes}`
+        : stored.bytes !== render.file_size_bytes
+          ? `The stored file is ${stored.bytes} bytes; the upload was signed for ${render.file_size_bytes}`
           : null;
 
       if (reason) {
@@ -445,7 +438,7 @@ export function createFinalizeRenderTool(
         .update({
           status: 'ready',
           file_url: url(render.file_path),
-          file_size_bytes: stored!.size,
+          file_size_bytes: stored!.bytes,
           duration_seconds: input.durationSeconds,
           qa: input.qa,
           thumbnail_url: url(thumbnailKey),

@@ -5,7 +5,7 @@
       "name": "FILM-2003 U1 finalize accepts a file of another size",
       "kind": "unit",
       "file": "packages/features/studio-mcp/src/server/tools/studio/renders.ts",
-      "find": "        : stored.size !== render.file_size_bytes\n",
+      "find": "        : stored.bytes !== render.file_size_bytes\n",
       "replace": "        : false\n",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/tools/studio-render-tools.test.ts",

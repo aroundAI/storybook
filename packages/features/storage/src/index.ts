@@ -13,7 +13,7 @@ export type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
-  StoredObject,
+  StoredObjectInfo,
   UploadOptions,
   UploadResult,
 } from './types';

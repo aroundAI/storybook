@@ -104,7 +104,7 @@ function fakeStorage(stat: Record<string, number | null> = {}) {
       const size = stat[path];
       return size === undefined || size === null
         ? null
-        : { size, contentType: 'video/mp4' };
+        : { bytes: size, contentType: 'video/mp4' };
     }),
   } as unknown as StorageAdapter & {
     getSignedUploadUrl: ReturnType<typeof vi.fn>;

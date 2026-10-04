@@ -64,9 +64,13 @@ export interface SignedUploadRequest {
   upsert?: boolean;
 }
 
-/** What `stat` reports about a stored file */
-export interface StoredObject {
-  size: number;
+/**
+ * What a HEAD on a stored object says: its size and type.
+ */
+export interface StoredObjectInfo {
+  /** Size in bytes */
+  bytes: number;
+  /** The Content-Type it was stored with, or null when none was recorded */
   contentType: string | null;
 }
 
@@ -134,13 +138,6 @@ export interface StorageAdapter {
   exists(bucket: string, path: string): Promise<boolean>;
 
   /**
-   * The stored size and type of a file, or null when there is none
-   * (FILM-2003: a finalized render must be the size it was signed for).
-   * Every adapter implements it; optional so a test double need not.
-   */
-  stat?(bucket: string, path: string): Promise<StoredObject | null>;
-
-  /**
    * Read a file from storage
    *
    * @param bucket - The bucket/folder name
@@ -148,4 +145,26 @@ export interface StorageAdapter {
    * @returns File data as Buffer, or null if not found
    */
   read(bucket: string, path: string): Promise<Buffer | null>;
+
+  /**
+   * A URL that reads one object with a plain GET until it expires, whether
+   * or not the bucket is public (FILM-2001). The adapter signs with the
+   * app's credentials on R2 and B2, so the caller must have read the key
+   * out of a row the user may see, and confined it to that user's project.
+   *
+   * @param bucket - The bucket/folder name
+   * @param path - Path within the bucket
+   * @param expiresIn - Seconds the URL stays valid
+   */
+  getSignedReadUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number,
+  ): Promise<string>;
+
+  /**
+   * Size and type of a stored object, or null when there is none at `path`.
+   * Throws when the store cannot be asked, so "missing" is never a guess.
+   */
+  stat(bucket: string, path: string): Promise<StoredObjectInfo | null>;
 }

@@ -25,11 +25,16 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
-  StoredObject,
+  StoredObjectInfo,
   UploadOptions,
   UploadResult,
 } from '../types';
-import { createPresignClient, presignPut } from './s3-presign';
+import {
+  createPresignClient,
+  headObject,
+  presignGet,
+  presignPut,
+} from './s3-presign';
 
 export class R2StorageAdapter implements StorageAdapter {
   private s3Client: S3Client;
@@ -45,6 +50,10 @@ export class R2StorageAdapter implements StorageAdapter {
     publicUrl?: string;
     /** Defaults to the account's R2 endpoint. Tests point it at a local S3 server. */
     endpoint?: string;
+    /** Defaults to R2's `auto`. Local Supabase Storage's S3 endpoint signs as `local`. */
+    region?: string;
+    /** Path-style requests, which local S3 servers need. R2 takes either. */
+    forcePathStyle?: boolean;
   }) {
     const accountId = options?.accountId ?? process.env.R2_ACCOUNT_ID;
     const accessKeyId = options?.accessKeyId ?? process.env.R2_ACCESS_KEY_ID;
@@ -64,7 +73,8 @@ export class R2StorageAdapter implements StorageAdapter {
     }
 
     const config = {
-      region: 'auto',
+      region: options?.region ?? 'auto',
+      ...(options?.forcePathStyle && { forcePathStyle: true }),
       endpoint:
         options?.endpoint ?? `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: {
@@ -164,24 +174,6 @@ export class R2StorageAdapter implements StorageAdapter {
     }
   }
 
-  async stat(bucket: string, path: string): Promise<StoredObject | null> {
-    try {
-      const head = await this.s3Client.send(
-        new HeadObjectCommand({
-          Bucket: this.bucketName,
-          Key: `${bucket}/${path}`,
-        }),
-      );
-
-      return {
-        size: head.ContentLength ?? 0,
-        contentType: head.ContentType ?? null,
-      };
-    } catch {
-      return null;
-    }
-  }
-
   async read(bucket: string, path: string): Promise<Buffer | null> {
     const fullPath = `${bucket}/${path}`;
 
@@ -209,6 +201,25 @@ export class R2StorageAdapter implements StorageAdapter {
     } catch {
       return null;
     }
+  }
+
+  async getSignedReadUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number,
+  ): Promise<string> {
+    return presignGet(this.presignClient, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+      expiresIn,
+    });
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObjectInfo | null> {
+    return headObject(this.s3Client, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+    });
   }
 }
 

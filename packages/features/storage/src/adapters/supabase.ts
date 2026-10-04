@@ -12,7 +12,7 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
-  StoredObject,
+  StoredObjectInfo,
   UploadOptions,
   UploadResult,
 } from '../types';
@@ -114,36 +114,6 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     return data.some((file) => file.name === fileName);
   }
 
-  async stat(bucket: string, path: string): Promise<StoredObject | null> {
-    const dirPath = path.split('/').slice(0, -1).join('/');
-    const fileName = path.split('/').pop();
-
-    const { data, error } = await this.client.storage
-      .from(bucket)
-      .list(dirPath, { limit: 100, search: fileName });
-
-    if (error) {
-      throw new Error(`Storage stat failed: ${error.message}`);
-    }
-
-    const file = data.find((entry) => entry.name === fileName);
-
-    if (!file) {
-      return null;
-    }
-
-    const metadata = (file.metadata ?? {}) as {
-      size?: unknown;
-      mimetype?: unknown;
-    };
-
-    return {
-      size: typeof metadata.size === 'number' ? metadata.size : 0,
-      contentType:
-        typeof metadata.mimetype === 'string' ? metadata.mimetype : null,
-    };
-  }
-
   async read(bucket: string, path: string): Promise<Buffer | null> {
     const { data, error } = await this.client.storage
       .from(bucket)
@@ -159,6 +129,49 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     // Convert Blob to Buffer
     const arrayBuffer = await data.arrayBuffer();
     return Buffer.from(arrayBuffer);
+  }
+
+  /**
+   * Signed by Supabase Storage as the client's role: with a user's client,
+   * the bucket's read policy decides whether a URL is issued at all.
+   */
+  async getSignedReadUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number,
+  ): Promise<string> {
+    const { data, error } = await this.client.storage
+      .from(bucket)
+      .createSignedUrl(path, expiresIn);
+
+    if (error || !data) {
+      throw new Error(`Failed to create signed read URL: ${error?.message}`);
+    }
+
+    return data.signedUrl;
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObjectInfo | null> {
+    const { data, error } = await this.client.storage.from(bucket).info(path);
+
+    if (error) {
+      const status = Number(
+        (error as { status?: number; statusCode?: string | number }).status ??
+          (error as { statusCode?: string | number }).statusCode,
+      );
+
+      if (status === 404 || /not found/i.test(error.message)) return null;
+
+      throw new Error(`Storage stat failed: ${error.message}`);
+    }
+
+    return {
+      bytes: Number(data.size ?? data.metadata?.size ?? 0),
+      contentType:
+        data.contentType ??
+        (data.metadata?.mimetype as string | undefined) ??
+        null,
+    };
   }
 }
 

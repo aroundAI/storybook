@@ -25,11 +25,16 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
-  StoredObject,
+  StoredObjectInfo,
   UploadOptions,
   UploadResult,
 } from '../types';
-import { createPresignClient, presignPut } from './s3-presign';
+import {
+  createPresignClient,
+  headObject,
+  presignGet,
+  presignPut,
+} from './s3-presign';
 
 export class B2StorageAdapter implements StorageAdapter {
   private s3Client: S3Client;
@@ -163,24 +168,6 @@ export class B2StorageAdapter implements StorageAdapter {
     }
   }
 
-  async stat(bucket: string, path: string): Promise<StoredObject | null> {
-    try {
-      const head = await this.s3Client.send(
-        new HeadObjectCommand({
-          Bucket: this.bucketName,
-          Key: `${bucket}/${path}`,
-        }),
-      );
-
-      return {
-        size: head.ContentLength ?? 0,
-        contentType: head.ContentType ?? null,
-      };
-    } catch {
-      return null;
-    }
-  }
-
   async read(bucket: string, path: string): Promise<Buffer | null> {
     const fullPath = `${bucket}/${path}`;
 
@@ -208,6 +195,25 @@ export class B2StorageAdapter implements StorageAdapter {
     } catch {
       return null;
     }
+  }
+
+  async getSignedReadUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number,
+  ): Promise<string> {
+    return presignGet(this.presignClient, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+      expiresIn,
+    });
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObjectInfo | null> {
+    return headObject(this.s3Client, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+    });
   }
 }
 

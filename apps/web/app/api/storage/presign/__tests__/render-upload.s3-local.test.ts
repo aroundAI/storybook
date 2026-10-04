@@ -63,7 +63,7 @@ describe.skipIf(!endpoint)('a render upload on a real S3 server', () => {
 
     expect(put.status).toBe(200);
     expect(await adapter.stat('project-assets', key)).toEqual({
-      size: 4096,
+      bytes: 4096,
       contentType: 'video/mp4',
     });
   });

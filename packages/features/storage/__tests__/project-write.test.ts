@@ -43,6 +43,8 @@ function adapterDouble(): StorageAdapter {
     delete: vi.fn(),
     exists: vi.fn(),
     read: vi.fn(),
+    getSignedReadUrl: vi.fn(),
+    stat: vi.fn(),
   };
 }
 
