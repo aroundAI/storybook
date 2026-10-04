@@ -32,7 +32,7 @@ acceptance_criteria:
     evidence: null
   - text: "`generateStoryIdeasAction` calculates cost accurately"
     met: false
-    reason: "no longer true — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:109`); only per-call analytics carry cost"
+    reason: "no longer true — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:81`); only per-call analytics carry cost"
   - text: "`generateStoryIdeasAction` completes within 15 seconds"
     met: false
     reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing of an async agent job; needs a timed run"
@@ -87,7 +87,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "`generateStoryIdeasAction` calculates cost accurately"
-    reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:109`)"
+    reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:81`)"
     closed_by: "unassigned"
   - criterion: "`generateFullStoryAction` handles optimistic locking"
     reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`packages/features/generation/src/stages/story.ts:499`, the story stage's commit since FILM-1901)"
