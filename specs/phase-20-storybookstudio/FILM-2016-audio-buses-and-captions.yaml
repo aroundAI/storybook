@@ -3,7 +3,7 @@ title: "Audio Buses with Ducking and Stems; Brand Captions and Safe Areas"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-2012"
@@ -23,38 +23,63 @@ summary: >
   "Audio, captions, compositions and localization"; Part 1 R-41, R-42.
 acceptance_criteria:
   - text: "src/studio/audio/buses.js: tracks have bus dialogue|music|sfx|ambience|shotaudio; project.studio.audioBuses holds per-bus gain, the music bus's duckUnder: dialogue with duckDb from policy (default -8), attack 120 ms, release 400 ms, and master {limiterLufs from the preset}; the builder (FILM-2012) sets buses on pull"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d src/studio/audio/buses.js:72 defaultAudioBuses (five buses, music and shotaudio duck under dialogue, policy duckDb default -8 dB, attack 120 ms, release 400 ms, master limiter from the preset), :125 validateBusPatch refuses ducking the dialogue bus; src/studio/projectBuilder.js:674 the builder writes the buses on pull; tests/studio/audio-buses.test.mjs:104)"
   - text: "Preview: audioMixerGraph.js routes tracks through bus gain nodes; ducking is a gain automation driven by the dialogue bus's envelope (analyser node), audible in the editor within one frame of a dialogue clip starting"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d src/studio/audio/busGraph.js:21 createStudioBusGraph (bus gain nodes, analyser-driven duck); src/components/AudioLayerRenderer.jsx:251 wires it into the preview; tests/studio/audio-bus-preview.test.mjs:126 the duck starts about 15 ms after a dialogue clip, inside one frame at 24 and 60 fps)"
   - text: "Export: the FFmpeg mix (export:mixAudio, audioEq.mjs) builds per-bus submixes, applies sidechaincompress from dialogue onto music with the same parameters, a loudnorm pass to the preset's LUFS on master, and can write stems (dialogue per language, music, sfx, ambience, shotaudio) as separate WAVs beside the render"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d electron/studio/audioBusMix.mjs:52 buildBusMixGraph (per-bus submixes), :37 sidechainFilters (sidechaincompress from dialogue onto music), :218 runStudioBusMix (two-pass linear loudnorm to the preset LUFS, stems beside the render); electron/main.js:6213 export:mixAudio calls it when the exporter sends studioAudio; src/studio/audio/exportOptions.js and src/components/ExportPanel.jsx send it; tests/studio/audio-bus-export.test.mjs:134, tests/studio/audio-bus-export-handler.test.mjs:76 through the real handler)"
   - text: "studio_edit_audio intents compile to primitives and bus changes: balance (per-segment dialogue-to-music ratio to policy, via set_clip_audio and bus gain), duck (enable or adjust duckDb), normalize (bus and master targets), fade (set_clip_audio envelopes at cuts); each with reasons"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d src/studio/intents/audio.js:240 compileAudioIntent (balance, duck, normalize, fade, each with reasons); tests/studio/intents-audio.test.mjs:88 balance to 12 dB via the music bus and dialogue clip gain)"
   - text: "src/studio/captions/style.js applies BrandSchema.captionStyle (FILM-2004) to the captions clip's style (Velorn's live captions on a role:'captions' track) and positions cues inside per-aspect safe rectangles: 16:9 bottom 10% margin; 9:16 above the bottom 25% and clear of the right 15% platform UI; 1:1 bottom 12%"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d src/studio/captions/style.js:55 captionOverrides applies BrandSchema.captionStyle; src/studio/captions/layout.js:14 SAFE_AREAS per aspect; src/utils/kineticCaptionRenderer.js:932 the subtitle renderer draws inside the safe rectangle; tests/studio/captions-style.test.mjs:176 a 9:16 variant through the real renderer). Margins differ from the draft numbers by lead default, see notes"
   - text: "studio_add_captions {language, style?} compiles to transcribe_captions (whisper.cpp) → update_caption_cues with the styled, safe-area-placed cues → the QA caption check; emphasis words from the brand preset are styled when present in a cue"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d src/studio/intents/captions.js:76 compileCaptionsAfterTranscription (transcribe_captions, then update_caption_cues with styled, placed cues, then the QA hook src/studio/captions/style.js:97 checkCaptionSafeArea); tests/studio/captions-style.test.mjs:99 emphasis words styled; tests/studio/intents-captions.test.mjs:64)"
   - text: "Loudness after normalize is within ±1 LU of the preset target on the fixture renders; the dialogue bus is never ducked"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d tests/studio/audio-bus-export.test.mjs:172 the master lands within 1 LU of the preset target (-13.9 LUFS for -14, -15.9 for -16 on the 20-shot rough cut) and the stems sum to the mix; :134 the dialogue stem is 0.0 dB against the unducked mix)"
 test_plan:
   unit:
-    - {text: "Bus routing and ducking parameters from policy; safe-area placement per aspect; emphasis styling", met: false, reason: "not built"}
+    - {text: "Bus routing and ducking parameters from policy; safe-area placement per aspect; emphasis styling", met: true, evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d tests/studio/audio-buses.test.mjs:104, tests/studio/captions-style.test.mjs:99)"}
   integration:
-    - {text: "Export a fixture with overlapping dialogue and music: ebur128 shows the music drops by duckDb ±1 dB under dialogue; stems sum to the mix within tolerance", met: false, reason: "not built"}
-    - {text: "Captions on a 9:16 variant stay inside the safe rectangle (QA check passes)", met: false, reason: "not built"}
+    - {text: "Export a fixture with overlapping dialogue and music: ebur128 shows the music drops by duckDb ±1 dB under dialogue; stems sum to the mix within tolerance", met: true, evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d tests/studio/audio-bus-export.test.mjs:134 the music stem drops 7.9 to 8.0 dB under dialogue (target 8, tolerance 1), :172 stems sum to the mix with a 58 dB residual; tests/studio/audio-bus-export-handler.test.mjs:76)"}
+    - {text: "Captions on a 9:16 variant stay inside the safe rectangle (QA check passes)", met: true, evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d tests/studio/captions-style.test.mjs:176 real subtitle renderer, tests/studio/intents-captions.test.mjs:64; two languages tests/studio/intents-captions.test.mjs:141, tests/studio/audio-bus-tool.test.mjs)"}
   e2e: []
 open_questions: []
 notes: >
   Veo shot audio is a fifth bus (shotaudio) so it can duck under dialogue
   without being treated as music; the PRD's default is ducking, not muting,
   with one 'Shot audio' toggle per scene in the UI (FILM-2015 exposes it).
+
+  Built in aroundAI/storybookstudio#8 (fork main fdc8f0d), recorded and the
+  pin bumped in #625. Lead defaults taken where the spec was silent: the
+  balance intent targets 12 dB of dialogue over the music bed after ducking
+  (the policy has no ratio field); emphasis words come from
+  studio_add_captions style.emphasisWords or from an unparsed brand
+  captionStyle.emphasisWords (FILM-2004 follow-up: add captionStyle.emphasisWords
+  as string[]); safe areas are 5 % on the sides and top and 8 % on top for
+  9:16, replacing the draft's per-aspect numbers.
+
+  Changes outside the file list: set_master_audio is now routed (it answered
+  Unknown tool); a new expert tool set_audio_buses takes the tool count to
+  131; update_caption_cues takes cues[].globalOverrides and a clip preset;
+  editLogRuntime.timelineDocument carries audioBuses (a FILM-2012 file); the
+  ASR mix hears dialogue and shot audio only.
+
+  Measured on the 20-shot rough cut: the music drops 7.9 to 8.0 dB under
+  dialogue (target 8, tolerance 1); the dialogue bus stays at 0.0 dB; normalize
+  lands at -13.9 LUFS for a -14 target and -15.9 for -16; the stems sum to the
+  mix with a residual 58 dB below it. Every guard was seen red once with its
+  fix reverted (ten red runs, recorded in the fork PR).
+
+  Known limits: the mixer insert-effects export path (OfflineAudioContext
+  stems) does not apply buses; two caption test scripts use a flag that Node
+  25 removed. Ducking and stems run only when the exporter sends studioAudio.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
@@ -62,5 +87,5 @@ feature:
   ui: []
   provider_integration: null
   repo: "aroundAI/storybookstudio"
-  modules: ["src/studio/audio/buses.js", "src/studio/captions/style.js", "src/studio/intents/audio.js"]
-  files_changed: ["src/services/audioMixerGraph.js", "electron/audioEq.mjs", "electron/main.js (export:mixAudio stems)", "src/services/timelineAudioMix.js"]
+  modules: ["src/studio/audio/buses.js", "src/studio/audio/busGraph.js", "src/studio/audio/exportOptions.js", "electron/studio/audioBusMix.mjs", "src/studio/captions/style.js", "src/studio/captions/layout.js", "src/studio/intents/audio.js", "src/studio/intents/captions.js"]
+  files_changed: ["src/services/audioMixerGraph.js", "src/components/AudioLayerRenderer.jsx", "src/components/ExportPanel.jsx", "src/utils/kineticCaptionRenderer.js", "src/studio/projectBuilder.js", "src/studio/editLogRuntime.js", "electron/main.js (export:mixAudio buses and stems)", "electron/mcpServer.js (set_audio_buses, set_master_audio)"]
