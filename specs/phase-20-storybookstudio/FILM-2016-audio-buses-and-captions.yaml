@@ -81,7 +81,7 @@ notes: >
   stems) does not apply buses; two caption test scripts use a flag that Node
   25 removed. Ducking and stems run only when the exporter sends studioAudio.
 
-  Fix in aroundAI/storybookstudio#19 (merged as 35fed06, pinned at
+  Fix in aroundAI/storybookstudio#19 (merged as
   35fed06; the pin is edd4c28 since #630), found in FILM-2015's packaged-app run:
   on a pulled project loudnorm went dynamic and ffmpeg rebuilt its graph with
   no channel layout pinned, so the delivery bus mix failed with 'Audio bus mix
