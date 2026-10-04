@@ -52,6 +52,24 @@ export const ReportAudioChangeSchema = z.object({
   reason: Text,
 });
 
+/**
+ * The content genome's hook_type slug: `content_tags.slug`'s rule
+ * (SlugSchema in packages/features/content-analytics/src/lib/schemas/
+ * taxonomy.schema.ts; delivery-schemas.test.ts keeps the two equal).
+ */
+export const HOOK_TYPE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * The delivered cut's style, for FILM-2006's Edit style card (cut count,
+ * average shot length, AI share). Optional: a report without it reads as
+ * unmeasured, never as zero.
+ */
+export const ReportStyleSchema = z.object({
+  shotCount: z.number().int().min(1),
+  /** The opening's hook, as a genome hook_type slug; null when the Studio did not classify it. */
+  hookType: z.string().min(1).max(80).regex(HOOK_TYPE_SLUG).nullable(),
+});
+
 export const ExplainWhyReportSchema = z.object({
   versions: z.array(ReportVersionSchema).min(1).max(500),
   /** Seconds of the delivered cut. */
@@ -66,8 +84,10 @@ export const ExplainWhyReportSchema = z.object({
     scenes: z.array(ReportSceneSchema).max(500),
     audio: z.array(ReportAudioChangeSchema).max(200).optional(),
   }),
+  style: ReportStyleSchema.optional(),
 });
 
 export type ExplainWhyReport = z.infer<typeof ExplainWhyReportSchema>;
 export type ReportScene = z.infer<typeof ReportSceneSchema>;
 export type ReportChange = z.infer<typeof ReportChangeSchema>;
+export type ReportStyle = z.infer<typeof ReportStyleSchema>;

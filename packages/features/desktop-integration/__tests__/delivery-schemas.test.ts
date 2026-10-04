@@ -1,9 +1,12 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
   DeliveryPackageSchema,
   ExplainWhyReportSchema,
   FinalizeRenderSchema,
+  HOOK_TYPE_SLUG,
   MAX_RENDER_BYTES,
   QaResultSchema,
   RENDER_PRESET_NAMES,
@@ -187,6 +190,50 @@ describe('ExplainWhyReportSchema', () => {
         },
       }).success,
     ).toBe(false);
+  });
+
+  it('takes an optional style block: a report without one still validates', () => {
+    expect(ExplainWhyReportSchema.parse(REPORT).style).toBeUndefined();
+    expect(
+      ExplainWhyReportSchema.safeParse({
+        ...REPORT,
+        style: { shotCount: 24, hookType: 'cold-open' },
+      }).success,
+    ).toBe(true);
+    expect(
+      ExplainWhyReportSchema.safeParse({
+        ...REPORT,
+        style: { shotCount: 24, hookType: null },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('refuses a style with no shots or a hook type that is not a slug', () => {
+    for (const style of [
+      { shotCount: 0, hookType: 'cold-open' },
+      { shotCount: 2.5, hookType: 'cold-open' },
+      { shotCount: 24, hookType: 'Cold Open' },
+      { shotCount: 24 },
+    ]) {
+      expect(
+        ExplainWhyReportSchema.safeParse({ ...REPORT, style }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("uses the content genome's hook_type slug rule", () => {
+    const taxonomy = readFileSync(
+      path.resolve(
+        __dirname,
+        '../../content-analytics/src/lib/schemas/taxonomy.schema.ts',
+      ),
+      'utf8',
+    );
+    const rule = /const SlugSchema = z[\s\S]*?\.regex\(\s*(\/[^\n]*\/),/.exec(
+      taxonomy,
+    )?.[1];
+
+    expect(rule).toBe(String(HOOK_TYPE_SLUG));
   });
 
   it('requires explain.scenes', () => {
