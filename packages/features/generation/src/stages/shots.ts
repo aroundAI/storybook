@@ -23,6 +23,7 @@ import {
   ReelScoutOutputSchema,
   type SceneShot,
   SceneShotGenerationOutputSchema,
+  SceneShotSchema,
   reelNoteFor,
 } from '@kit/prompt-engine/schemas';
 import {
@@ -42,10 +43,12 @@ import { jobCompletedWrite } from '../jobs';
 import { renderPerformanceContext } from '../performance-context';
 import { registerStage } from '../registry';
 import type {
+  Brief,
   CheckError,
   CommitResult,
   Ctx,
   EpisodeContextSnapshot,
+  GenerationRun,
   PartSpec,
   StageDefinition,
 } from '../types';
@@ -56,6 +59,29 @@ const shotSeconds = z
   .number()
   .min(SHOT_DURATION_LIMITS.min)
   .max(SHOT_DURATION_LIMITS.max);
+
+/** The most shots one `regenerate_shots` call may re-plan (FILM-2007). */
+export const SHOT_REGENERATION_MAX = 20;
+
+/**
+ * A re-plan of some of the episode's shots (FILM-2007): one part per listed
+ * shot, and a commit that rewrites those shots in place rather than
+ * replacing the shot list. The shots' status and media are reset by the
+ * caller when it opens the run; the commit allowlist keeps them out of a
+ * stage's reach (FILM-1909).
+ */
+export const ShotsRegenerationSchema = z.object({
+  shotIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(SHOT_REGENERATION_MAX)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'lists a shot twice',
+    }),
+  reason: z.string().trim().min(1).max(500),
+});
+
+export type ShotsRegeneration = z.infer<typeof ShotsRegenerationSchema>;
 
 export const ShotsTargetSchema = z.object({
   episodeId: z.string().uuid(),
@@ -70,6 +96,8 @@ export const ShotsTargetSchema = z.object({
       path: ['max'],
     })
     .default({ ...DEFAULT_SHOT_DURATION }),
+  /** Re-plan only these shots (FILM-2007); absent for a whole shot list */
+  regenerate: ShotsRegenerationSchema.optional(),
 });
 
 export type ShotsTarget = z.infer<typeof ShotsTargetSchema>;
@@ -96,13 +124,31 @@ export const SceneShotsPartOutputSchema =
     sceneNumber: z.number().int().positive(),
   });
 
+/** One re-planned shot, for the `shot:<id>` part of a regeneration. */
+export const RegeneratedShotPartOutputSchema = SceneShotSchema.extend({
+  kind: z.literal('shot'),
+  shotId: z.string().uuid(),
+});
+
+export function shotPartKey(shotId: string) {
+  return `shot:${shotId}`;
+}
+
+export function shotIdOfPart(partKey: string): string | undefined {
+  return /^shot:([0-9a-f-]{36})$/i.exec(partKey)?.[1];
+}
+
 export const ShotsPartOutputSchema = z.discriminatedUnion('kind', [
   ReelScoutPartOutputSchema,
   SceneShotsPartOutputSchema,
+  RegeneratedShotPartOutputSchema,
 ]);
 
 export type ReelScoutPartOutput = z.infer<typeof ReelScoutPartOutputSchema>;
 export type SceneShotsPartOutput = z.infer<typeof SceneShotsPartOutputSchema>;
+export type RegeneratedShotPartOutput = z.infer<
+  typeof RegeneratedShotPartOutputSchema
+>;
 export type ShotsPartOutput = z.infer<typeof ShotsPartOutputSchema>;
 
 /** The most shots one scene may carry; the prompt asks for 3 to 8. */
@@ -466,6 +512,8 @@ export interface ShotsCommitData {
     scenesProcessed: number;
   };
   reelCandidateScenes: number[];
+  /** A regeneration's re-planned shot ids (FILM-2007) */
+  regeneratedShotIds?: string[];
 }
 
 function shortsMetadataFor(
@@ -575,6 +623,393 @@ export function buildShotRows(
   return { rows, totalDuration, shotTypes };
 }
 
+// ---------------------------------------------------------------------------
+// Regeneration (FILM-2007): re-plan the listed shots in place
+// ---------------------------------------------------------------------------
+
+/** A stored shot as a re-plan reads it. */
+export interface RegeneratingShot {
+  id: string;
+  scene_number: number | null;
+  shot_number: number | null;
+  sequence_number: number;
+  scene_description: string | null;
+  prompt: string;
+  duration_seconds: number;
+  camera_direction: string | null;
+  transition_type: string | null;
+  first_frame_description: string | null;
+  last_frame_description: string | null;
+  generation_metadata: Json | null;
+}
+
+const REGENERATING_COLUMNS =
+  'id, scene_number, shot_number, sequence_number, scene_description, prompt, duration_seconds, camera_direction, transition_type, first_frame_description, last_frame_description, generation_metadata';
+
+const regenerating = new WeakMap<
+  Ctx,
+  Map<string, Promise<RegeneratingShot[]>>
+>();
+
+/**
+ * The listed shots of the episode, in sequence order. A shot that is gone
+ * (deleted, or not this episode's) fails the read: a re-plan of it has
+ * nowhere to land.
+ */
+export function loadRegeneratingShots(
+  ctx: Ctx,
+  target: ShotsTarget,
+): Promise<RegeneratingShot[]> {
+  const ids = target.regenerate?.shotIds ?? [];
+
+  return memoPerCtx(
+    regenerating,
+    ctx,
+    `${target.episodeId}:${[...ids].sort().join(',')}`,
+    async () => {
+      const { data, error } = await ctx.client
+        .from('shots')
+        .select(REGENERATING_COLUMNS)
+        .eq('episode_id', target.episodeId)
+        .is('deleted_at', null)
+        .in('id', ids)
+        .order('sequence_number', { ascending: true });
+
+      if (error) throw new Error(`Could not read the shots: ${error.message}`);
+
+      const rows = (data ?? []) as RegeneratingShot[];
+      const found = new Set(rows.map((row) => row.id));
+      const missing = ids.filter((id) => !found.has(id));
+
+      if (missing.length > 0) {
+        throw new Error(
+          `Shot(s) ${missing.join(', ')} are not shots of this episode`,
+        );
+      }
+
+      return rows;
+    },
+  );
+}
+
+function regenerationParts(shots: RegeneratingShot[]): PartSpec[] {
+  return shots.map((shot, index) => ({
+    key: shotPartKey(shot.id),
+    index,
+    total: shots.length,
+    label: `Shot ${shot.shot_number ?? shot.sequence_number} (scene ${shot.scene_number ?? '?'}): re-plan`,
+  }));
+}
+
+function regenerationNote(
+  shot: RegeneratingShot,
+  reason: string,
+  neighbours: {
+    before: RegeneratingShot | null;
+    after: RegeneratingShot | null;
+  },
+) {
+  const describe = (row: RegeneratingShot | null) =>
+    row ? sanitizeForPrompt(row.scene_description ?? row.prompt) : 'none';
+
+  return [
+    'RE-PLAN ONE SHOT. Ignore the instruction to plan the whole scene: return exactly one shot, the replacement for the shot below, as one object (not a list).',
+    `Why it is being re-planned: ${sanitizeForPrompt(reason)}`,
+    `The current plan: ${sanitizeForPrompt(shot.prompt)}`,
+    `The shot before it: ${describe(neighbours.before)}`,
+    `The shot after it: ${describe(neighbours.after)}`,
+    'Keep it in the same scene and close to its current length; fix what the reason names.',
+  ].join('\n');
+}
+
+async function prepareRegeneratedShot(
+  ctx: Ctx,
+  target: ShotsTarget & { regenerate: ShotsRegeneration },
+  part: PartSpec,
+): Promise<Brief> {
+  const episode = await loadShotsEpisode(ctx, target);
+  const shots = await loadRegeneratingShots(ctx, target);
+  const shotId = shotIdOfPart(part.key);
+  const shot = shots.find((row) => row.id === shotId);
+
+  if (!shot) {
+    throw new Error(`Part ${part.key} names no listed shot of this episode`);
+  }
+
+  const context = shotsContext(episode, target);
+  const scene: ShotsScene = episode.scenes.find(
+    (s) => s.number === shot.scene_number,
+  ) ?? {
+    number: shot.scene_number ?? 0,
+    heading: '',
+    location: '',
+    timeOfDay: '',
+    description: shot.scene_description ?? '',
+    action: [],
+    dialogue: [],
+  };
+
+  // Neighbours in the episode, for continuity; read with the shot list
+  const { data: around } = await ctx.client
+    .from('shots')
+    .select(REGENERATING_COLUMNS)
+    .eq('episode_id', target.episodeId)
+    .is('deleted_at', null)
+    .in('sequence_number', [
+      shot.sequence_number - 1,
+      shot.sequence_number + 1,
+    ]);
+  const neighbours = {
+    before:
+      ((around ?? []) as RegeneratingShot[]).find(
+        (row) => row.sequence_number === shot.sequence_number - 1,
+      ) ?? null,
+    after:
+      ((around ?? []) as RegeneratingShot[]).find(
+        (row) => row.sequence_number === shot.sequence_number + 1,
+      ) ?? null,
+  };
+  const note = regenerationNote(shot, target.regenerate.reason, neighbours);
+
+  const brief = buildBrief({
+    stage: 'shots',
+    part,
+    prompt: sceneShotPrompt as PromptFile,
+    variables: {
+      scene_number: scene.number,
+      total_scenes: episode.scenes.length,
+      scene_content: JSON.stringify({
+        number: scene.number,
+        heading: scene.heading,
+        location: scene.location,
+        timeOfDay: scene.timeOfDay,
+        description: scene.description,
+        action: scene.action,
+        dialogue: scene.dialogue,
+      }),
+      episode_metadata: JSON.stringify({
+        title: episode.title,
+        genre: context.genre,
+        targetAudience: context.targetAudience,
+        visualStyle: context.visualStyle,
+        tone: 'balanced',
+      }),
+      characters: context.charactersVeo || 'No characters defined.',
+      locations: context.locationsVeo || 'No locations defined.',
+      previous_scene_summary: '',
+      reel_note: '',
+      recurring_element: context.recurringElements,
+      shot_duration_min: target.shotDuration.min,
+      shot_duration_max: target.shotDuration.max,
+      performance_context: renderPerformanceContext(ctx.performanceContext),
+    },
+    context: {
+      ...context,
+      // Only the scene this shot is in, never the whole screenplay
+      scenes: [scene],
+      scene,
+      regeneration: {
+        shotId: shot.id,
+        shotNumber: shot.shot_number,
+        sequenceNumber: shot.sequence_number,
+        reason: target.regenerate.reason,
+        currentPlan: {
+          description: shot.scene_description,
+          prompt: shot.prompt,
+          durationSeconds: shot.duration_seconds,
+          cameraDirection: shot.camera_direction,
+          transitionType: shot.transition_type,
+          firstFrameDescription: shot.first_frame_description,
+          lastFrameDescription: shot.last_frame_description,
+        },
+        shotBefore: neighbours.before?.scene_description ?? null,
+        shotAfter: neighbours.after?.scene_description ?? null,
+      },
+    },
+    outputSchema: RegeneratedShotPartOutputSchema,
+    constraints: {
+      kind: 'shot',
+      shotId: shot.id,
+      sceneNumber: scene.number,
+      shotsPerPart: 1,
+      shotDuration: target.shotDuration,
+      shotDurationLimits: SHOT_DURATION_LIMITS,
+      characters: episode.context.characterNames ?? [],
+      locations: sceneLocations(scene, episode.context.locationNames ?? []),
+      veoComponents: [...VEO_COMPONENTS, 'timeline', 'avoid'],
+    },
+    targetVersion: episode.version,
+    rubricVariables: {
+      context_hint: `Re-plan of one shot in scene ${scene.number}`,
+    },
+  });
+
+  // The prompt file's example is a whole scene: the wrong shape here
+  return {
+    ...brief,
+    instructions: `${brief.instructions}\n\n${note}`,
+    example: undefined,
+  };
+}
+
+function checkRegeneratedShot(
+  target: ShotsTarget,
+  episode: ShotsEpisode,
+  shots: RegeneratingShot[],
+  out: ShotsPartOutput,
+  part: PartSpec,
+): CheckError[] {
+  const shotId = shotIdOfPart(part.key);
+  const shot = shots.find((row) => row.id === shotId);
+
+  if (!shot) {
+    return [
+      {
+        path: '',
+        code: 'unknown_part',
+        message: `${part.key} is not a shot this run re-plans`,
+      },
+    ];
+  }
+
+  if (out.kind !== 'shot') {
+    return [
+      {
+        path: 'kind',
+        code: 'wrong_part',
+        message: `Part ${part.key} takes one re-planned shot (kind: 'shot')`,
+      },
+    ];
+  }
+
+  const errors: CheckError[] = [];
+
+  if (out.shotId !== shot.id) {
+    errors.push({
+      path: 'shotId',
+      code: 'wrong_shot',
+      message: `This part re-plans shot ${shot.id}, not ${out.shotId}`,
+    });
+  }
+
+  const sceneNumber = shot.scene_number ?? 0;
+  const { kind: _kind, shotId: _shotId, ...sceneShot } = out;
+
+  return [
+    ...errors,
+    ...checkScenePart(
+      target,
+      episode,
+      {
+        kind: 'scene',
+        sceneNumber,
+        shots: [sceneShot],
+        sceneSummary: '',
+        sceneViralScore: 1,
+      },
+      sceneNumber,
+    ).map((error) => ({
+      ...error,
+      path: error.path.replace(/^shots\.0\.?/, ''),
+    })),
+  ];
+}
+
+/**
+ * Rewrites each listed shot's plan in place, keeping its id, scene,
+ * numbers, status and media (the caller already queued it and cleared its
+ * video), merges the new prompt into its metadata beside the regeneration
+ * record, and touches the episode so its version moves and the Studio's
+ * package etag with it. No audio pass follows: the cues stand.
+ */
+async function commitRegeneratedShots(
+  ctx: Ctx,
+  run: GenerationRun,
+  target: ShotsTarget & { regenerate: ShotsRegeneration },
+  outputs: ShotsPartOutput[],
+): Promise<CommitResult<ShotsCommitData>> {
+  const shots = outputs.filter(
+    (out): out is RegeneratedShotPartOutput => out.kind === 'shot',
+  );
+  const now = new Date().toISOString();
+
+  const updates = shots.map((shot) => ({
+    op: 'update' as const,
+    table: 'shots' as const,
+    values: {
+      scene_description: shot.description,
+      prompt: shot.veoPrompt.fullPrompt || shot.description,
+      duration_seconds: wholeShotSeconds(shot.duration),
+      camera_direction: shot.cameraDirection ?? null,
+      transition_type: shot.transitionType ?? null,
+      frame_strategy: shot.frameStrategy ?? null,
+      primary_subject: (shot.primarySubject as Json | undefined) ?? null,
+      first_frame_description: shot.firstFrameDescription ?? null,
+      last_frame_description: shot.lastFrameDescription ?? null,
+      location_area: shot.locationArea ?? null,
+      location_environment_description:
+        shot.locationEnvironmentDescription ?? null,
+      generation_metadata: {
+        shotType: shot.shotType,
+        location: shot.metadata.location,
+        timeOfDay: shot.metadata.timeOfDay,
+        mood: shot.metadata.mood,
+        characters: shot.characters ?? [],
+        veoPrompt: shot.veoPrompt,
+        replannedAt: now,
+        replannedByRunId: run.id ?? null,
+      } as Json,
+      ...(ctx.originColumnsAvailable ? { generation_origin: run.origin } : {}),
+    },
+    // Merged, so the regeneration record the opener wrote stays beside it
+    merge: ['generation_metadata'],
+    match: [
+      eq('id', shot.shotId),
+      eq('episode_id', target.episodeId),
+      is('deleted_at', null),
+    ],
+    requireRows: true,
+  }));
+
+  await applyCommit(ctx, {
+    ops: [
+      ...updates,
+      {
+        op: 'update',
+        table: 'episodes',
+        values: { updated_at: now },
+        match: [eq('id', target.episodeId), is('deleted_at', null)],
+        requireRows: true,
+      },
+    ],
+  });
+
+  logTo(ctx)(
+    `[Shot Regeneration] ${shots.length} shot(s) re-planned in episode ${target.episodeId}: ${target.regenerate.reason}`,
+  );
+
+  return {
+    status: 'committed',
+    data: {
+      totalShots: shots.length,
+      shotsCreated: 0,
+      metadata: {
+        totalDuration: shots.reduce((sum, shot) => sum + shot.duration, 0),
+        shotTypes: { wide: 0, medium: 0, closeUp: 0 },
+        scenesProcessed: 0,
+      },
+      reelCandidateScenes: [],
+      regeneratedShotIds: shots.map((shot) => shot.shotId),
+    },
+  };
+}
+
+function isRegeneration(
+  target: ShotsTarget,
+): target is ShotsTarget & { regenerate: ShotsRegeneration } {
+  return target.regenerate !== undefined;
+}
+
 export const shotsStage: StageDefinition<
   ShotsTarget,
   ShotsPartOutput,
@@ -591,12 +1026,20 @@ export const shotsStage: StageDefinition<
   },
 
   async parts(ctx, target) {
+    if (isRegeneration(target)) {
+      return regenerationParts(await loadRegeneratingShots(ctx, target));
+    }
+
     const episode = await loadShotsEpisode(ctx, target);
 
     return partsFor(episode.scenes);
   },
 
   async prepare(ctx, target, part, earlier) {
+    if (isRegeneration(target)) {
+      return prepareRegeneratedShot(ctx, target, part);
+    }
+
     const episode = await loadShotsEpisode(ctx, target);
     const context = shotsContext(episode, target);
     const sceneNumbers = episode.scenes.map((s) => s.number);
@@ -706,6 +1149,16 @@ export const shotsStage: StageDefinition<
   async check(ctx, target, out, part) {
     const episode = await loadShotsEpisode(ctx, target);
 
+    if (isRegeneration(target)) {
+      return checkRegeneratedShot(
+        target,
+        episode,
+        await loadRegeneratingShots(ctx, target),
+        out,
+        part,
+      );
+    }
+
     if (part.key === REEL_SCOUT_PART) {
       if (out.kind !== 'reel_scout') {
         return [
@@ -746,6 +1199,10 @@ export const shotsStage: StageDefinition<
   },
 
   async commit(ctx, run, target, outputs) {
+    if (isRegeneration(target)) {
+      return commitRegeneratedShots(ctx, run, target, outputs);
+    }
+
     const log = logTo(ctx);
     const episode = await loadShotsEpisode(ctx, target);
     const reelScout = outputs.find(
