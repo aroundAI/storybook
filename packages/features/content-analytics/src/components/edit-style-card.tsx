@@ -1,6 +1,7 @@
 import { Scissors } from 'lucide-react';
 
 import type { EditStyle } from '../lib/edit-style';
+import { formatClock } from '../lib/format';
 
 /**
  * Edit style (FILM-2006, PRD R-72): how the episode's latest delivered
@@ -48,7 +49,7 @@ export function EditStyleCard(props: {
           detail={
             style.cutCount === null
               ? null
-              : `${style.cutCount} ${style.cutCount === 1 ? 'cut' : 'cuts'} in ${formatSeconds(style.finalDuration)}`
+              : `${style.cutCount} ${style.cutCount === 1 ? 'cut' : 'cuts'} in ${formatClock(style.finalDuration)}`
           }
         />
         <Figure
@@ -108,12 +109,4 @@ function Figure(props: {
 
 function formatNumber(value: number) {
   return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
-}
-
-export function formatSeconds(seconds: number) {
-  const whole = Math.round(seconds);
-  const minutes = Math.floor(whole / 60);
-  const rest = String(whole % 60).padStart(2, '0');
-
-  return `${minutes}:${rest}`;
 }

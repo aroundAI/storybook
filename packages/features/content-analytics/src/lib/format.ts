@@ -45,6 +45,16 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
+ * Seconds as a clock, `m:ss`, rounded to the second: a cut's length
+ * (FILM-2006), where `formatDuration`'s minutes would hide the difference.
+ */
+export function formatClock(seconds: number): string {
+  const whole = Math.max(0, Math.round(seconds));
+
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
+/**
  * Formats **US dollars**, whole units.
  *
  * Only for figures that are dollars by construction: ClickHouse's
