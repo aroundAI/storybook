@@ -64,6 +64,12 @@ export interface SignedUploadRequest {
   upsert?: boolean;
 }
 
+/** What `stat` reports about a stored file */
+export interface StoredObject {
+  size: number;
+  contentType: string | null;
+}
+
 /**
  * Unified storage adapter interface
  *
@@ -126,6 +132,13 @@ export interface StorageAdapter {
    * @returns Whether the file exists
    */
   exists(bucket: string, path: string): Promise<boolean>;
+
+  /**
+   * The stored size and type of a file, or null when there is none
+   * (FILM-2003: a finalized render must be the size it was signed for).
+   * Every adapter implements it; optional so a test double need not.
+   */
+  stat?(bucket: string, path: string): Promise<StoredObject | null>;
 
   /**
    * Read a file from storage

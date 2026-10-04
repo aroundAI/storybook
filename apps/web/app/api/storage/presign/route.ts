@@ -110,6 +110,7 @@ const CATEGORY_NOUN: Record<UploadCategory, string> = {
   image: 'images',
   video: 'videos',
   audio: 'audio files',
+  captions: 'caption files',
 };
 
 function megabytes(bytes: number) {

@@ -12,6 +12,7 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
+  StoredObject,
   UploadOptions,
   UploadResult,
 } from '../types';
@@ -111,6 +112,36 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     }
 
     return data.some((file) => file.name === fileName);
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObject | null> {
+    const dirPath = path.split('/').slice(0, -1).join('/');
+    const fileName = path.split('/').pop();
+
+    const { data, error } = await this.client.storage
+      .from(bucket)
+      .list(dirPath, { limit: 100, search: fileName });
+
+    if (error) {
+      throw new Error(`Storage stat failed: ${error.message}`);
+    }
+
+    const file = data.find((entry) => entry.name === fileName);
+
+    if (!file) {
+      return null;
+    }
+
+    const metadata = (file.metadata ?? {}) as {
+      size?: unknown;
+      mimetype?: unknown;
+    };
+
+    return {
+      size: typeof metadata.size === 'number' ? metadata.size : 0,
+      contentType:
+        typeof metadata.mimetype === 'string' ? metadata.mimetype : null,
+    };
   }
 
   async read(bucket: string, path: string): Promise<Buffer | null> {

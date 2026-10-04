@@ -10,6 +10,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from 'fs';
@@ -19,6 +20,7 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
+  StoredObject,
   UploadOptions,
   UploadResult,
 } from '../types';
@@ -113,6 +115,16 @@ export class LocalStorageAdapter implements StorageAdapter {
   async exists(bucket: string, path: string): Promise<boolean> {
     const fullPath = this.getFilePath(bucket, path);
     return existsSync(fullPath);
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObject | null> {
+    const fullPath = this.getFilePath(bucket, path);
+
+    if (!existsSync(fullPath)) {
+      return null;
+    }
+
+    return { size: statSync(fullPath).size, contentType: null };
   }
 
   async read(bucket: string, path: string): Promise<Buffer | null> {

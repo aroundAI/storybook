@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   accountImagePath,
+  episodeRenderCaptionsKey,
+  episodeRenderKey,
+  episodeRenderThumbnailKey,
   episodeThumbnailFolder,
   episodeThumbnailPath,
   isUploadPath,
@@ -36,6 +39,15 @@ describe('every builder produces a path its bucket accepts', () => {
     ['thumbnail', episodeThumbnailPath(EPISODE, 'en', 'jpg', NOW)],
     ['publish video', publishVideoPath(EPISODE, 'en', 'mp4', NOW)],
     ['shot video', shotVideoPath(PROJECT, SHOT, 'mp4', NOW)],
+    ['studio render (FILM-2003)', episodeRenderKey(PROJECT, EPISODE, SHOT)],
+    [
+      'studio render thumbnail',
+      episodeRenderThumbnailKey(PROJECT, EPISODE, SHOT, 'image/webp'),
+    ],
+    [
+      'studio render captions',
+      episodeRenderCaptionsKey(PROJECT, EPISODE, SHOT),
+    ],
   ])('project-assets: %s', (_label, path) => {
     expect(isUploadPath('project-assets', path)).toBe(true);
     expect(isUploadPath('account_image', path)).toBe(false);
@@ -132,5 +144,26 @@ describe('account_image rule', () => {
 
   it('refuses any bucket it has no rule for', () => {
     expect(isUploadPath('reports', `${ACCOUNT}.png`)).toBe(false);
+  });
+});
+
+describe('studio render keys (FILM-2003)', () => {
+  it('are the shape the spec names', () => {
+    expect(episodeRenderKey(PROJECT, EPISODE, SHOT)).toBe(
+      `projects/${PROJECT}/episodes/${EPISODE}/renders/${SHOT}.mp4`,
+    );
+  });
+
+  it.each([
+    // a third id level is not a render folder
+    `projects/${PROJECT}/episodes/${EPISODE}/renders/x/${SHOT}.mp4`,
+    // no episode id
+    `projects/${PROJECT}/episodes/renders/${SHOT}.mp4`,
+    // traversal out of the episode
+    `projects/${PROJECT}/episodes/${EPISODE}/renders/../../x.mp4`,
+    // an episode id that is not hex
+    `projects/${PROJECT}/episodes/not-an-id/renders/${SHOT}.mp4`,
+  ])('refuses %s', (path) => {
+    expect(isUploadPath('project-assets', path)).toBe(false);
   });
 });

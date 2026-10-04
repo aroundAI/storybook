@@ -20,6 +20,7 @@ export type UploadBucket =
  * The path shapes the project uploaders write, each naming its project:
  *   projects/{projectId}/assets/{type}/{filename}
  *   projects/{projectId}/shots/{shotId}/{type}/{filename}
+ *   projects/{projectId}/episodes/{episodeId}/{type}/{filename} (FILM-2003 renders)
  *   episodes/{episodeId}/{type}/{filename}
  * A filename may hold `_`: `sanitizeFilename` emits it and the export dialog
  * names files `export_en_<ts>.mp4`. Before KB-28 it could not, so every
@@ -28,7 +29,7 @@ export type UploadBucket =
  * anywhere.
  */
 const PROJECT_ASSETS_PATH =
-  /^(?!.*\.\.)(?:projects\/[a-f0-9-]+\/(?:assets|shots\/[a-f0-9-]+)|episodes\/[a-f0-9-]+)\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+$/i;
+  /^(?!.*\.\.)(?:projects\/[a-f0-9-]+\/(?:assets|shots\/[a-f0-9-]+|episodes\/[a-f0-9-]+)|episodes\/[a-f0-9-]+)\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+$/i;
 
 /**
  * `{accountId}.{ext}` and nothing else: the `account_image` bucket policy
@@ -154,6 +155,45 @@ export function shotVideoPath(
   now = Date.now(),
 ) {
   return `projects/${projectId}/shots/${shotId}/video/shot-${shotId}-${now}.${ext}`;
+}
+
+/**
+ * The folder StorybookStudio's renders of an episode are uploaded to
+ * (FILM-2003). Under the project, so KB-28's project rule decides who may
+ * write it and KB-123's publish rule accepts its URLs.
+ */
+export function episodeRenderFolder(projectId: string, episodeId: string) {
+  return `projects/${projectId}/episodes/${episodeId}/renders/`;
+}
+
+/** A render's video: one key per render row, named by its id */
+export function episodeRenderKey(
+  projectId: string,
+  episodeId: string,
+  renderId: string,
+) {
+  return `${episodeRenderFolder(projectId, episodeId)}${renderId}.mp4`;
+}
+
+/** A render's thumbnail */
+export function episodeRenderThumbnailKey(
+  projectId: string,
+  episodeId: string,
+  renderId: string,
+  contentType: string,
+) {
+  const ext = IMAGE_EXTENSION[contentType.toLowerCase()] ?? 'jpg';
+
+  return `${episodeRenderFolder(projectId, episodeId)}${renderId}-thumb.${ext}`;
+}
+
+/** A render's sidecar captions (WebVTT) */
+export function episodeRenderCaptionsKey(
+  projectId: string,
+  episodeId: string,
+  renderId: string,
+) {
+  return `${episodeRenderFolder(projectId, episodeId)}${renderId}.vtt`;
 }
 
 /** The extension of a file name, or `fallback` when it has none */

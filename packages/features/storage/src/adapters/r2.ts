@@ -25,6 +25,7 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
+  StoredObject,
   UploadOptions,
   UploadResult,
 } from '../types';
@@ -160,6 +161,24 @@ export class R2StorageAdapter implements StorageAdapter {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObject | null> {
+    try {
+      const head = await this.s3Client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucketName,
+          Key: `${bucket}/${path}`,
+        }),
+      );
+
+      return {
+        size: head.ContentLength ?? 0,
+        contentType: head.ContentType ?? null,
+      };
+    } catch {
+      return null;
     }
   }
 
