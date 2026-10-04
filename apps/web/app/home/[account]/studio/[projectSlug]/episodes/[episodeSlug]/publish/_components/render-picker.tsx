@@ -3,7 +3,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Clapperboard, Smartphone } from 'lucide-react';
 
-import { type RenderPreset, isVerticalRender } from '@kit/desktop-integration';
+import {
+  RENDER_PRESET_LABELS,
+  type RenderPreset,
+  isVerticalRender,
+} from '@kit/desktop-integration';
 import type { ShortsGroup } from '@kit/episodes/types';
 import { LANG_INFO, getLangDisplay } from '@kit/publishing/lib/constants';
 import { Badge } from '@kit/ui/badge';
@@ -21,17 +25,8 @@ import {
   listEpisodeRendersAction,
 } from '../_lib/server/list-episode-renders.action';
 
-const PRESET_LABEL: Record<RenderPreset, string> = {
-  youtube_16x9: 'YouTube 16:9',
-  shorts_9x16: 'YouTube Shorts 9:16',
-  tiktok_9x16: 'TikTok 9:16',
-  reels_9x16: 'Reels 9:16',
-  square_1x1: 'Square 1:1',
-  master: 'Master',
-};
-
 function presetLabel(preset: string) {
-  return PRESET_LABEL[preset as RenderPreset] ?? preset;
+  return RENDER_PRESET_LABELS[preset as RenderPreset] ?? preset;
 }
 
 function duration(seconds: number) {

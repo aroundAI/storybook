@@ -9,6 +9,7 @@ import {
   HOOK_TYPE_SLUG,
   MAX_RENDER_BYTES,
   QaResultSchema,
+  RENDER_PRESET_LABELS,
   RENDER_PRESET_NAMES,
   RenderPresetSchema,
   RequestRenderUploadSchema,
@@ -56,6 +57,13 @@ describe('render presets', () => {
         'youtube_16x9',
       ].sort(),
     );
+  });
+
+  it('names every preset once, for the pages that list renders', () => {
+    expect(Object.keys(RENDER_PRESET_LABELS).sort()).toEqual(
+      [...RENDER_PRESET_NAMES].sort(),
+    );
+    expect(RENDER_PRESET_LABELS.shorts_9x16).toBe('YouTube Shorts 9:16');
   });
 
   it('refuses a preset outside the list', () => {
