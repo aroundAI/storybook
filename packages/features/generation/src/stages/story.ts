@@ -510,13 +510,16 @@ export const storyStage: StageDefinition<
             story_data: storyData as Json,
             status: 'story',
             target_duration_seconds: target.targetDuration,
+            // The server orchestrator's score; stored here, not mid-run,
+            // which moved the version under this run (KB-188)
+            ...(viralQuality && { viral_quality: viralQuality as Json }),
             updated_at: generatedAt,
             // Who wrote it, under its own stage key (FILM-1903, FILM-1908)
             generation_origin: stageOrigin('story', run.origin),
           },
           merge: [ORIGIN_MERGE],
-          // No version filter: the orchestrator writes viral_quality mid-run,
-          // which bumps the version through the trigger (see f64c9648)
+          // No version filter here: the run checks the version
+          // (TARGET_CHANGED) in the same transaction
           match: [eq('id', target.episodeId), is('deleted_at', null)],
           requireRows: true,
           returning: ['id', 'status', 'version'],

@@ -19,7 +19,7 @@
  *
  * After this stage:
  *   - story_data written to DB
- *   - viral_quality written to DB
+ *   - viral_quality returned; the story stage's commit stores it (KB-188)
  *   - episode status → 'story'
  */
 import { runAgent } from '@kit/agent';
@@ -230,25 +230,9 @@ export async function runStoryOrchestrator(
     reelCandidates: [],
   };
 
-  // Persist viral_quality to the episode
-  try {
-    const { error } = await supabase
-      .from('episodes')
-      .update({ viral_quality: viralQuality })
-      .eq('id', input.episodeId);
-
-    if (error) {
-      console.warn(
-        `[Story Orchestrator] Failed to persist viral_quality: ${(error as { message: string }).message}`,
-      );
-    } else {
-      console.log(
-        `[Story Orchestrator] viral_quality persisted. Score: ${viralQuality.overallScore}, Decision: ${viralQuality.decision}`,
-      );
-    }
-  } catch (err) {
-    console.warn('[Story Orchestrator] Persist error (non-fatal):', err);
-  }
+  // Not written here: an episodes update mid-run bumps episodes.version,
+  // and the story run's commit then refuses TARGET_CHANGED. The story
+  // stage's commit stores it with the story, in one transaction (KB-188)
 
   return {
     success: true,
