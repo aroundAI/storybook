@@ -33,7 +33,7 @@ export function DesktopIntegrationProvider(props: {
 /**
  * "Open in Studio" (FILM-2005): shown when the team turned StorybookStudio
  * on and the episode is in storyboard, generating, ready or published.
- * A click hands `velorn://open?api=<origin>&episode=<id>` to the OS; the
+ * A click hands `storybookstudio://open?api=<origin>&episode=<id>` to the OS; the
  * link carries no token or session, so the Studio signs in by itself. If
  * the page is still in front 2 s later, nothing answered, and the download
  * sheet opens.

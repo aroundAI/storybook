@@ -127,7 +127,7 @@ describe('the StorybookStudio redirect rule', () => {
       'a host that starts with the IP',
       'http://127.0.0.1.evil.test:80/callback',
     ],
-    ['another custom-scheme path', 'velorn://auth/callback2'],
+    ['another custom-scheme path', 'storybookstudio://auth/callback2'],
     ['another custom scheme', 'evil://auth/callback'],
   ])('refuses %s, on our page and never as a redirect', async (_label, uri) => {
     const parsed = await parse(store(), STORYBOOKSTUDIO_CLIENT_ID, uri);

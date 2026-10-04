@@ -36,13 +36,13 @@ select is(
 select row_eq(
   $$ select client_name, redirect_uris, metadata_url
        from public.mcp_oauth_clients where client_id = 'storybookstudio' $$,
-  row('StorybookStudio'::text, array['velorn://auth/callback']::text[], null::text),
-  'C1 named StorybookStudio, redirecting to velorn://auth/callback, never described by a fetched document'
+  row('StorybookStudio'::text, array['storybookstudio://auth/callback']::text[], null::text),
+  'C1 named StorybookStudio, redirecting to storybookstudio://auth/callback, never described by a fetched document'
 );
 
 select is(
   pg_temp.affected($$ insert into public.mcp_oauth_clients (client_id, client_name, redirect_uris)
-                     values ('storybookstudio', 'StorybookStudio', array['velorn://auth/callback'])
+                     values ('storybookstudio', 'StorybookStudio', array['storybookstudio://auth/callback'])
                      on conflict (client_id) do nothing $$),
   0,
   'C2 the seed is idempotent: running it again inserts nothing'

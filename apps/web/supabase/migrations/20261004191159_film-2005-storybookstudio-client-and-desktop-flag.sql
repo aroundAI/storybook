@@ -23,7 +23,7 @@
 -- Tests: tests/database/film-2005-storybookstudio-client.test.sql.
 
 insert into public.mcp_oauth_clients (client_id, client_name, redirect_uris)
-values ('storybookstudio', 'StorybookStudio', array['velorn://auth/callback'])
+values ('storybookstudio', 'StorybookStudio', array['storybookstudio://auth/callback'])
 on conflict (client_id) do nothing;
 
 alter table public.account_ai_settings

@@ -17,7 +17,7 @@ import { byTest } from '../utils/visible';
  * FILM-2005: "Open in Studio". An owner turns StorybookStudio on in the
  * team's AI settings; the episode header and Visual Studio then show the
  * button on an episode in storyboard, generating, ready or published. A
- * click hands `velorn://open?api=<origin>&episode=<id>` to the browser,
+ * click hands `storybookstudio://open?api=<origin>&episode=<id>` to the browser,
  * and with no app to answer (as here), the download sheet opens after 2 s.
  *
  * Screenshots: CAPTURE_EVIDENCE=1 EVIDENCE_DIR=<dir>.
@@ -140,7 +140,7 @@ test.describe('Open in Studio (FILM-2005)', () => {
     const link = await buttons.first().getAttribute('data-deep-link');
     const origin = new URL(pageUrl).origin;
     expect(link).toBe(
-      `velorn://open?api=${encodeURIComponent(origin)}&episode=${episode.episodeId}`,
+      `storybookstudio://open?api=${encodeURIComponent(origin)}&episode=${episode.episodeId}`,
     );
     expect(link).not.toMatch(/sbk_|token|session|sb-/i);
 
