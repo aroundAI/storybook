@@ -687,8 +687,8 @@ StoryBook gets its post-production half: a fork of Velorn, [aroundAI/storybookst
 | FILM-2011 | [cloud-client](./phase-20-storybookstudio/FILM-2011-cloud-client.yaml) | PARTIAL | L | FILM-2010, FILM-2001, FILM-2002, FILM-2005 |
 | FILM-2012 | [editgraph-and-rough-cut](./phase-20-storybookstudio/FILM-2012-editgraph-and-rough-cut.yaml) | DONE | L | FILM-2011, FILM-2001, FILM-2004 |
 | FILM-2013 | [agent-capability-tools](./phase-20-storybookstudio/FILM-2013-agent-capability-tools.yaml) | PARTIAL | XL | FILM-2012, FILM-2011, FILM-2010 |
-| FILM-2014 | [render-qa-critic](./phase-20-storybookstudio/FILM-2014-render-qa-critic.yaml) | DRAFT | L | FILM-2012, FILM-2013 |
-| FILM-2015 | [studio-ui](./phase-20-storybookstudio/FILM-2015-studio-ui.yaml) | DRAFT | L | FILM-2011, FILM-2012, FILM-2013 |
+| FILM-2014 | [render-qa-critic](./phase-20-storybookstudio/FILM-2014-render-qa-critic.yaml) | PARTIAL | L | FILM-2012, FILM-2013 |
+| FILM-2015 | [studio-ui](./phase-20-storybookstudio/FILM-2015-studio-ui.yaml) | PARTIAL | L | FILM-2011, FILM-2012, FILM-2013 |
 | FILM-2016 | [audio-buses-and-captions](./phase-20-storybookstudio/FILM-2016-audio-buses-and-captions.yaml) | DONE | M | FILM-2012, FILM-2004 |
 | FILM-2017 | [delivery-and-variants](./phase-20-storybookstudio/FILM-2017-delivery-and-variants.yaml) | PARTIAL | L | FILM-2003, FILM-2014, FILM-2016, FILM-2011 |
 | FILM-2018 | [compositions-and-semantic-effects](./phase-20-storybookstudio/FILM-2018-compositions-and-semantic-effects.yaml) | DEFERRED | XL | FILM-2013, FILM-2014, FILM-2004 |
