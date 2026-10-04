@@ -244,14 +244,17 @@ export async function seedUnmeasuredTeam(): Promise<MonetisationTeam> {
     platform: 'tiktok',
   };
 
-  await insertClickHouse('video_dim', [
-    dim(longVideo, 'long', 'youtube'),
-    dim(shortVideo, 'short', 'tiktok'),
-  ]);
-  await seedVideoMetricsBatch([
-    { video: longVideo, days: [{ ageDays: 5, views: 800 }] },
-    { video: shortVideo, days: [{ ageDays: 5, views: 400 }] },
-  ]);
+  // The ⚫️ Test job runs no ClickHouse, and the reasons come from Postgres.
+  if (process.env.CLICKHOUSE_ENABLED === 'true') {
+    await insertClickHouse('video_dim', [
+      dim(longVideo, 'long', 'youtube'),
+      dim(shortVideo, 'short', 'tiktok'),
+    ]);
+    await seedVideoMetricsBatch([
+      { video: longVideo, days: [{ ageDays: 5, views: 800 }] },
+      { video: shortVideo, days: [{ ageDays: 5, views: 400 }] },
+    ]);
+  }
 
   return {
     team,
