@@ -55,6 +55,7 @@ const INTERNAL_PACKAGES = [
   '@kit/jobs',
   '@kit/storage',
   '@kit/studio-mcp',
+  '@kit/desktop-integration',
 ];
 
 /** @type {import('next').NextConfig} */

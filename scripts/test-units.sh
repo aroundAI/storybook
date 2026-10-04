@@ -51,3 +51,4 @@ pnpm --filter @kit/publishing --fail-if-no-match test
 pnpm --filter @kit/storage --fail-if-no-match test
 pnpm --filter vendor-sandbox --fail-if-no-match test
 pnpm --filter @kit/studio-mcp --fail-if-no-match test
+pnpm --filter @kit/desktop-integration --fail-if-no-match test
