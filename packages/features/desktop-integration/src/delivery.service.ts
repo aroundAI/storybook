@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 
 import type { DeliveryPackage } from './delivery-package.schema';
@@ -10,6 +9,7 @@ import {
   summarizeEditSession,
 } from './edit-sessions.service';
 import type { ExplainWhyReport } from './explain-why-report.schema';
+import { listEditEvents } from './server/edit-sessions';
 
 /**
  * deliverEdit (FILM-2003): the one-transaction delivery. The transaction is
@@ -75,23 +75,6 @@ export type DeliverEditResult = DeliverEditSuccess | DeliverEditRefusal;
 
 type Client = SupabaseClient<Database>;
 
-/** Every event of a session, paged past PostgREST's row cap. */
-export async function readSessionEvents(
-  client: Client,
-  sessionId: string,
-): Promise<StoredEditEvent[]> {
-  return fetchAllRows<StoredEditEvent>(
-    (from, to) =>
-      client
-        .from('edit_events')
-        .select('id, ts, type, data')
-        .eq('edit_session_id', sessionId)
-        .order('id')
-        .range(from, to),
-    'edit_events',
-  );
-}
-
 /**
  * Delivers a validated package as the client's user. Throws only when the
  * database cannot be asked; a refusal is a value.
@@ -100,7 +83,7 @@ export async function deliverEdit(
   client: Client,
   delivery: DeliveryPackage,
 ): Promise<DeliverEditResult> {
-  const events = await readSessionEvents(client, delivery.sessionId);
+  const events = await listEditEvents(client, delivery.sessionId);
   const summary = buildDeliverySummary(events, delivery.report);
 
   const { data, error } = await client.rpc('deliver_edit', {
