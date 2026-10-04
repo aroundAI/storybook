@@ -139,6 +139,19 @@ test.describe('Project brand and edit policy (FILM-2004)', () => {
       captionBackground: '#000000CC',
     });
     expect(second.brand.captionStyle).toMatchObject({ position: 'top' });
+
+    // Emphasis words are comma-separated tags, saved as a list
+    await byTest(page, 'brand-caption-emphasis-words').fill('free, never ,');
+    await byTest(page, 'brand-save').click();
+    await expect(page.getByText('Brand saved')).toBeVisible();
+    await page.reload();
+    await expect(byTest(page, 'brand-caption-emphasis-words')).toHaveValue(
+      'free, never',
+    );
+    await pageShot(page, '10-brand-emphasis-words-saved');
+    expect((await stored(project.id)).brand.captionStyle).toMatchObject({
+      emphasisWords: ['free', 'never'],
+    });
     // The whole object is stored, defaults included
     expect(second.brand).toHaveProperty('transitionStyle', 'cut');
   });
@@ -208,12 +221,29 @@ test.describe('Project brand and edit policy (FILM-2004)', () => {
     // Second submission
     await byTest(page, 'policy-music-duck-db').fill('-12');
     await byTest(page, 'policy-target-duration').fill('300');
+
+    // Dialogue drops default to "ask"; a silence over the ceiling is refused
+    await expect(byTest(page, 'policy-dialogue-cuts')).toContainText(
+      'Ask me for each drop',
+    );
+    await expect(byTest(page, 'policy-max-silence')).toHaveValue('1.5');
+    await byTest(page, 'policy-max-silence').fill('11');
+    await byTest(page, 'edit-policy-save').click();
+    await expect(page.getByText(/less than or equal to 10/i)).toBeVisible();
+    await shot(page, 'edit-policy-settings-form', '09-policy-silence-refused');
+
+    await byTest(page, 'policy-max-silence').fill('2.5');
+    await choose(page, 'policy-dialogue-cuts', 'never');
     await byTest(page, 'edit-policy-save').click();
     await expect(page.getByText('Edit policy saved')).toBeVisible();
 
     await page.reload();
     await expect(byTest(page, 'policy-music-duck-db')).toHaveValue('-12');
     await expect(byTest(page, 'policy-target-duration')).toHaveValue('300');
+    await expect(byTest(page, 'policy-max-silence')).toHaveValue('2.5');
+    await expect(byTest(page, 'policy-dialogue-cuts')).toContainText(
+      'Never drop dialogue',
+    );
     await pageShot(page, '07-policy-after-second-save');
 
     expect((await stored(project.id)).edit_policy).toMatchObject({
@@ -222,6 +252,8 @@ test.describe('Project brand and edit policy (FILM-2004)', () => {
       targetDurationSeconds: 300,
       transitions: { preferred: ['cut', 'dissolve', 'dip'] },
       music: { duckDb: -12, enabled: true },
+      allowDialogueCuts: 'never',
+      maxSilenceSeconds: 2.5,
     });
   });
 
