@@ -60,6 +60,10 @@ describe('the shared contracts', () => {
     const copied = sync.contractFiles();
 
     expect(copied).toEqual(expect.arrayContaining(contracts));
+    // FILM-2003's delivery schema imports it; it is no *.schema.ts file.
+    if (existsSync(join(SOURCE_DIR, 'render-presets.ts'))) {
+      expect(copied).toContain('render-presets.ts');
+    }
     expect(contracts).toEqual(
       expect.arrayContaining([
         'brand.schema.ts',
@@ -78,8 +82,7 @@ describe('the shared contracts', () => {
         // A copy lives alone in contracts/: anything else would not resolve.
         expect(
           spec === 'zod' ||
-            (spec.startsWith('./') &&
-              contracts.includes(`${spec.slice(2)}.ts`)),
+            (spec.startsWith('./') && copied.includes(`${spec.slice(2)}.ts`)),
           `${name} imports ${spec}`,
         ).toBe(true);
       }
@@ -156,7 +159,7 @@ describe('the shared contracts', () => {
     rmSync(SCRATCH, { recursive: true, force: true });
     const written = sync.writeContracts(SCRATCH);
 
-    expect(written).toEqual(contracts);
+    expect(written).toEqual(sync.contractFiles());
     expect(sync.driftedContracts(SCRATCH)).toEqual([]);
 
     const copy = async (name: string) =>
