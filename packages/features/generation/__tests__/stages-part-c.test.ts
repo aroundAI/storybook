@@ -436,6 +436,11 @@ describe('screenplay', () => {
         text: 'Later.',
       }),
     ]);
+    expect(
+      (writes[2]?.payload as Array<{ generation_origin?: unknown }>).map(
+        (row) => row.generation_origin,
+      ),
+    ).toEqual([run.origin, run.origin, run.origin]);
     expect(writes[3]?.payload).toMatchObject({
       status: 'completed',
       output_data: { scenesCreated: 2, dialogueLinesCreated: 3 },
@@ -669,6 +674,31 @@ describe('screenplay_refinement', () => {
       args: ['job_type', 'screenplay-refinement'],
     });
   });
+
+  it('commit stamps the run origin on the rebuilt lines only when the columns exist', async () => {
+    const stamped = client();
+    await screenplayRefinementStage.commit(
+      ctxFor(stamped.client, { originColumnsAvailable: true }),
+      run,
+      target,
+      [refined],
+    );
+    const bare = client();
+    await screenplayRefinementStage.commit(ctxFor(bare.client), run, target, [
+      refined,
+    ]);
+    const rows = (recording: typeof stamped) =>
+      recording
+        .writes()
+        .find((w) => w.table === 'dialogue_lines' && w.op === 'insert')
+        ?.payload as Array<{ generation_origin?: unknown }>;
+
+    expect(rows(stamped).map((row) => row.generation_origin)).toEqual([
+      run.origin,
+      run.origin,
+    ]);
+    expect(rows(bare).every((row) => !('generation_origin' in row))).toBe(true);
+  });
 });
 
 describe('dialogue_translation', () => {
@@ -808,6 +838,39 @@ describe('dialogue_translation', () => {
         status: 'pending',
       }),
     ]);
+  });
+
+  it('commit stamps the run origin on the translated lines only when the columns exist', async () => {
+    const insertOf = async (available: boolean) => {
+      const recording = client();
+      await dialogueTranslationStage.commit(
+        ctxFor(recording.client, { originColumnsAvailable: available }),
+        run,
+        target,
+        [
+          {
+            translations: [
+              { sourceDialogueId: LINE_1, text: 'Houston, responde.' },
+              { sourceDialogueId: LINE_2, text: 'Te escuchamos.' },
+            ],
+          },
+          { translations: [] },
+        ],
+      );
+
+      return recording.writes()[0]?.payload as Array<{
+        generation_origin?: unknown;
+      }>;
+    };
+
+    expect((await insertOf(true)).map((row) => row.generation_origin)).toEqual([
+      run.origin,
+      run.origin,
+      run.origin,
+    ]);
+    expect(
+      (await insertOf(false)).every((row) => !('generation_origin' in row)),
+    ).toBe(true);
   });
 
   it('commit refuses to save a set that is mostly English', async () => {

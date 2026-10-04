@@ -415,7 +415,7 @@ export const dialogueTranslationStage: StageDefinition<
     return errors;
   },
 
-  async commit(ctx, _run, target, outputs) {
+  async commit(ctx, run, target, outputs) {
     const inputs = await loadDialogueTranslationInputs(ctx, target);
     const { linesToTranslate, targetLanguageName } = inputs;
 
@@ -468,6 +468,7 @@ export const dialogueTranslationStage: StageDefinition<
       language: target.targetLanguage,
       source_dialogue_id: line.id,
       status: 'pending',
+      ...(ctx.originColumnsAvailable ? { generation_origin: run.origin } : {}),
     }));
 
     await applyCommit(ctx, {

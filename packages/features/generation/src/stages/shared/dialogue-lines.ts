@@ -6,6 +6,7 @@
  * handlers always did.
  */
 import { type CommitGroup, eq } from '../../commit-plan';
+import type { GenerationOrigin } from '../../types';
 
 export interface DialogueLineRow {
   episode_id: string;
@@ -15,6 +16,7 @@ export interface DialogueLineRow {
   scene_number: number;
   language: string;
   status: string;
+  generation_origin?: GenerationOrigin;
 }
 
 /** The shape of a scene the rebuild reads; the stages' schemas carry more. */
@@ -33,6 +35,7 @@ export function dialogueRowsFromScenes(
   episodeId: string,
   scenes: ReadonlyArray<SceneWithDialogue>,
   characters: Map<string, string>,
+  origin?: GenerationOrigin,
 ): DialogueLineRow[] {
   const rows: DialogueLineRow[] = [];
   let sequenceNumber = 1;
@@ -52,6 +55,7 @@ export function dialogueRowsFromScenes(
         scene_number: sceneNumber,
         language: 'en',
         status: 'pending',
+        ...(origin ? { generation_origin: origin } : {}),
       });
     }
   }

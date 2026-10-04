@@ -202,7 +202,13 @@
         "sequence_number": 1,
         "scene_number": 1,
         "language": "en",
-        "status": "pending"
+        "status": "pending",
+        "generation_origin": {
+          "kind": "server",
+          "runId": "19030000-0000-4000-8000-00000000aaaa",
+          "model": "gemini-test",
+          "at": "2026-10-03T12:00:00.000Z"
+        }
       },
       "filters": []
     },
@@ -216,7 +222,13 @@
         "sequence_number": 2,
         "scene_number": 1,
         "language": "en",
-        "status": "pending"
+        "status": "pending",
+        "generation_origin": {
+          "kind": "server",
+          "runId": "19030000-0000-4000-8000-00000000aaaa",
+          "model": "gemini-test",
+          "at": "2026-10-03T12:00:00.000Z"
+        }
       },
       "filters": []
     },
@@ -230,7 +242,13 @@
         "sequence_number": 3,
         "scene_number": 2,
         "language": "en",
-        "status": "pending"
+        "status": "pending",
+        "generation_origin": {
+          "kind": "server",
+          "runId": "19030000-0000-4000-8000-00000000aaaa",
+          "model": "gemini-test",
+          "at": "2026-10-03T12:00:00.000Z"
+        }
       },
       "filters": []
     },
