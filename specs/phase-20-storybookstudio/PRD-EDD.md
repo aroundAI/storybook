@@ -824,7 +824,7 @@ Analytics pages gain one card in v2: "Edit style" on the episode analytics page 
 3. Studio: `GET /edit-package` → Storybook assembles the package (about 300 ms for 20 shots) with 1-hour signed URLs and an `ETag`.
 4. Studio `pull.js`: downloads 4 at a time with resume, verifies sha256, ffprobes each file, writes `storybook/package.json`.
 5. Studio `projectBuilder.js`: writes `project.comfystudio` (rough cut), `storybook/brand.json`, `policy.json`; opens the project; Velorn's media-preparation queue starts proxies in the background.
-6. Studio `events.js` posts `session_opened`.
+6. Studio `events.js` starts batching edit events (there is no `session_opened` event: `open_edit_session` records the open; FILM-2002).
 
 **2. AI edit (R-20 to R-24, R-30 to R-32)**
 
