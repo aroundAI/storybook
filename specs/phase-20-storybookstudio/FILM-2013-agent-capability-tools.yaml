@@ -84,6 +84,9 @@ remaining:
   - criterion: "Nightly AI eval with a configured model: the baseline run and the QA pass rate"
     reason: "the model run needs the owner to choose the model (README question 2); lead default is @anthropic-ai/sdk on demand with claude-opus-5-5; the QA pass rate needs FILM-2014"
     closed_by: "owner"
+  - criterion: "hit_duration reaches the target on the seeded episode"
+    reason: "in the packaged app 'make it 90 seconds' stops at 97.2 s of 99.0 s: it cuts dead air longer than 0.6 s and never drops shots or lines, and the cards say 'toward the 90.0 s target'. Follow-up task 42: a second tier that proposes clearly flagged dialogue and shot drops, which the creator must approve explicitly (lead default, owner may change)"
+    closed_by: "FILM-2013 follow-up (hit_duration second tier)"
 open_questions:
   - "Which model drives the agent and critic (README open question 2). The profile is model-agnostic; the eval harness needs one configured model to produce a baseline."
 notes: >
