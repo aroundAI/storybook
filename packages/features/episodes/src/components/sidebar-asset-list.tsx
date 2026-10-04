@@ -429,8 +429,6 @@ function CreateAssetDialog({
             linkAssetToEpisodeAction({
               episodeId,
               assetId: result.data.id,
-              assetName: name,
-              assetType: type,
             }),
           );
 

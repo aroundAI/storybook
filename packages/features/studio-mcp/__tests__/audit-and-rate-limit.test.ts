@@ -7,7 +7,11 @@ import {
   recordToolCall,
   redactHeaders,
 } from '../src/server/audit';
-import { checkRateLimits } from '../src/server/rate-limit';
+import {
+  DEFAULT_RATE_LIMITS,
+  checkRateLimits,
+  rateLimitsFromEnv,
+} from '../src/server/rate-limit';
 
 describe('redactHeaders', () => {
   it('replaces every credential header, whatever its casing, and keeps the rest', () => {
@@ -193,5 +197,23 @@ describe('checkRateLimits', () => {
       allowed: true,
     });
     cache.destroy();
+  });
+});
+
+describe('the default rate limits', () => {
+  it('allow 120 calls and 60 writes a minute per connection, enough for a whole episode (KB-183)', () => {
+    expect(DEFAULT_RATE_LIMITS).toEqual({
+      callsPerMinute: 120,
+      writesPerMinute: 60,
+    });
+
+    vi.stubEnv('MCP_RATE_LIMIT_CALLS_PER_MIN', '');
+    vi.stubEnv('MCP_RATE_LIMIT_WRITES_PER_MIN', '');
+
+    try {
+      expect(rateLimitsFromEnv()).toEqual(DEFAULT_RATE_LIMITS);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

@@ -204,6 +204,7 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
             'create_episode',
             'update_episode',
             'upsert_asset',
+            'link_assets_to_episode',
             // FILM-1906's list, pinned by name in analytics-catalogue.test.ts
             ...analyticsTools.map((tool) => tool.name),
             'start_generation',

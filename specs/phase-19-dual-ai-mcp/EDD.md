@@ -167,7 +167,7 @@ IDs are referenced from the task list. MUST items are the Phase 1 scope; SHOULD 
 | NFR-6 | Idempotency | Every write tool takes an idempotency key (run id + part index). A retried submit returns the first result instead of writing twice. |
 | NFR-7 | Concurrency | Optimistic locking on the target (a `version` it was briefed on). A submit against content that changed since the brief is refused with a clear conflict error. |
 | NFR-8 | Cost | External mode adds no LLM spend. Vendor renders keep their existing budget checks; the MCP path cannot bypass them. |
-| NFR-9 | Rate limiting | Per connection and per team limits (e.g. 120 calls/min, 20 writes/min) in the existing cache layer, returning a retry-after hint. |
+| NFR-9 | Rate limiting | Per connection and per team limits (e.g. 120 calls/min, 60 writes/min) in the existing cache layer, returning a retry-after hint. |
 | NFR-10 | Observability | Each tool call is logged with tool name, user, team, connection, duration, result and error code; generation runs are queryable by mode. Tool payloads are not logged in full. |
 | NFR-11 | Hosting | Runs on the existing Next.js deploy (Vercel or Lambda via SST/OpenNext) with no long-lived connection required; stateless Streamable HTTP so any instance can serve any call. |
 | NFR-12 | Vendor agnosticism | Auth for MCP does not depend on one provider's OAuth server feature; it works with `AUTH_PROVIDER=supabase` or `cognito`. |

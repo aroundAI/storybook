@@ -70,11 +70,12 @@ describe('author tools never carry generated-content inputs', () => {
     },
   );
 
-  it('registers exactly the five author tools, all studio:write and not read-only', () => {
+  it('registers exactly the six author tools, all studio:write and not read-only', () => {
     expect(authorTools.map((tool) => tool.name).sort()).toEqual(
       [
         'create_episode',
         'create_project',
+        'link_assets_to_episode',
         'update_episode',
         'update_project',
         'upsert_asset',

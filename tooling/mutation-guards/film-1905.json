@@ -19,7 +19,7 @@
       "replace": "  scope: 'studio:read',\n  annotations: {\n    readOnlyHint: false,\n    destructiveHint: false,\n    idempotentHint: true,\n  },\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireProjectInAccount(client, context.accountId, input.projectId);\n\n    if (input.type === 'character' && input.location) {",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/tools/no-generated-writes.test.ts",
-      "pattern": "five author tools"
+      "pattern": "six author tools"
     },
     {
       "name": "MCP-RW U3 deleted episodes become visible to the read tools",

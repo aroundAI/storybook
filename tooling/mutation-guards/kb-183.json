@@ -1,0 +1,25 @@
+{
+  "feature": "KB-183 an MCP client links a team's existing characters and locations to an episode",
+  "mutations": [
+    {
+      "name": "KB-183 U1 an asset of another project is linked to the episode",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/episode.service.ts",
+      "find": "        asset.project_id !== episode.project_id ||",
+      "replace": "        false ||",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/link-assets.test.ts",
+      "pattern": "another team's asset"
+    },
+    {
+      "name": "KB-183 U2 the default write limit falls back to 20 a minute",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/rate-limit.ts",
+      "find": "  writesPerMinute: 60,",
+      "replace": "  writesPerMinute: 20,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/audit-and-rate-limit.test.ts",
+      "pattern": "the default rate limits"
+    }
+  ]
+}
