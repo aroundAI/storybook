@@ -141,20 +141,32 @@ function AssetSelectField({
   );
 }
 
-function MusicStyleField() {
+function TagsField({
+  name,
+  label,
+  placeholder,
+  description,
+  dataTest,
+}: {
+  name: string;
+  label: string;
+  placeholder: string;
+  description: string;
+  dataTest: string;
+}) {
   const { control } = useFormContext();
 
   return (
     <FormField
       control={control}
-      name="brand.musicStyle"
+      name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Music style</FormLabel>
+          <FormLabel>{label}</FormLabel>
           <FormControl>
             <Input
-              data-test="brand-music-style"
-              placeholder="lo-fi, warm, acoustic"
+              data-test={dataTest}
+              placeholder={placeholder}
               name={field.name}
               ref={field.ref}
               onBlur={field.onBlur}
@@ -169,9 +181,7 @@ function MusicStyleField() {
               }
             />
           </FormControl>
-          <FormDescription>
-            Comma-separated tags the Studio matches when it picks music.
-          </FormDescription>
+          <FormDescription>{description}</FormDescription>
           <FormMessage />
         </FormItem>
       )}
@@ -279,6 +289,13 @@ export function BrandSettingsForm({
                   dataTest="brand-caption-emphasis"
                   options={optionsOf(CAPTION_EMPHASES)}
                 />
+                <TagsField
+                  name="brand.captionStyle.emphasisWords"
+                  label="Emphasis words"
+                  placeholder="free, new, never"
+                  description="Comma-separated, up to 50. Always emphasised in captions."
+                  dataTest="brand-caption-emphasis-words"
+                />
               </CardContent>
             </Card>
 
@@ -377,7 +394,13 @@ export function BrandSettingsForm({
                   dataTest="brand-transition-style"
                   options={optionsOf(TRANSITION_STYLES)}
                 />
-                <MusicStyleField />
+                <TagsField
+                  name="brand.musicStyle"
+                  label="Music style"
+                  placeholder="lo-fi, warm, acoustic"
+                  description="Comma-separated tags the Studio matches when it picks music."
+                  dataTest="brand-music-style"
+                />
               </CardContent>
             </Card>
           </div>
