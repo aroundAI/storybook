@@ -100,7 +100,7 @@ export function CreateEpisodeDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       {triggerButton && (
         <DialogTrigger asChild>
-          <Button>
+          <Button data-test="create-episode-trigger">
             <Plus className="mr-2 h-4 w-4" />
             Create Episode
           </Button>
@@ -123,7 +123,11 @@ export function CreateEpisodeDialog({
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Episode title" {...field} />
+                    <Input
+                      data-test="create-episode-title"
+                      placeholder="Episode title"
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>
                     Give your episode a descriptive title
@@ -159,7 +163,11 @@ export function CreateEpisodeDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                data-test="create-episode-submit"
+                disabled={isSubmitting}
+              >
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}

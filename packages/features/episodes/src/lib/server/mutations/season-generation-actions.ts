@@ -11,6 +11,7 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { insertEpisodesAtNextNumbers } from '../../../server/episode.service';
 import {
   AnalyzeSeasonSchema,
   GenerateSeasonEpisodesSchema,
@@ -324,84 +325,83 @@ export const generateSeasonEpisodesAction = enhanceAction(
       );
 
       // 5. Create Episodes (linked to season)
-      const episodesToInsert = data.episodes.map((ep) => {
-        // Handle both naming conventions from LLM output
-        const charNames = ep.characterNames || ep.character_names || [];
-        const locNames = ep.locationNames || ep.location_names || [];
+      // The outline numbers its episodes from 1 within the season; they are
+      // numbered across the project, in the outline's order (KB-175)
+      const outlined = [...data.episodes].sort((a, b) => a.number - b.number);
 
-        const characterIds =
-          (charNames
-            .map((name) => finalCharacterMap[name])
-            .filter(Boolean) as string[]) ?? [];
+      const buildEpisodeRows = (firstNumber: number) =>
+        outlined.map((ep, index) => {
+          const number = firstNumber + index;
+          // Handle both naming conventions from LLM output
+          const charNames = ep.characterNames || ep.character_names || [];
+          const locNames = ep.locationNames || ep.location_names || [];
 
-        const locationIds =
-          (locNames
-            .map((name) => finalLocationMap[name])
-            .filter(Boolean) as string[]) ?? [];
+          const characterIds =
+            (charNames
+              .map((name) => finalCharacterMap[name])
+              .filter(Boolean) as string[]) ?? [];
 
-        // Use synopsis as primary description, fallback to legacy description
-        const description = ep.synopsis || '';
+          const locationIds =
+            (locNames
+              .map((name) => finalLocationMap[name])
+              .filter(Boolean) as string[]) ?? [];
 
-        // Build premise from beats if synopsis is empty
-        const buildPremiseFromBeats = () => {
-          if (ep.beats && ep.beats.length > 0) {
-            return ep.beats.map((b) => `${b.label}: ${b.content}`).join(' | ');
-          }
-          return description;
-        };
+          // Use synopsis as primary description, fallback to legacy description
+          const description = ep.synopsis || '';
 
-        return {
-          project_id: data.projectId,
-          season_id: seasonId,
-          number: ep.number,
-          title: ep.title,
-          slug: generateEpisodeSlug(ep.number, ep.title),
-          description,
-          status: 'draft',
-          story_data: {
-            // Synopsis as primary premise
-            premise: ep.synopsis || buildPremiseFromBeats(),
-            // Store flexible beats array (preserves original labels)
-            beats: ep.beats || [],
-            // Store moral if present
-            moral: ep.moral || null,
-            // Store signature line (catchphrase) if present
-            signature_line: ep.signature_line || null,
-            // Store tags for genre/mood
-            tags: ep.tags || [],
-          },
-          metadata: {
-            character_ids: characterIds,
-            location_ids: locationIds,
-            // Store names for immediate display in episode header (before story/screenplay)
-            character_names: charNames,
-            location_names: locNames,
-            season_premise: data.premise,
-            season_tone: data.tone || null,
-            target_audience: data.targetAudience || null,
-          },
-        };
-      });
+          // Build premise from beats if synopsis is empty
+          const buildPremiseFromBeats = () => {
+            if (ep.beats && ep.beats.length > 0) {
+              return ep.beats
+                .map((b) => `${b.label}: ${b.content}`)
+                .join(' | ');
+            }
+            return description;
+          };
 
-      if (episodesToInsert.length === 0) {
+          return {
+            project_id: data.projectId,
+            season_id: seasonId,
+            number,
+            title: ep.title,
+            slug: generateEpisodeSlug(number, ep.title),
+            description,
+            status: 'draft',
+            story_data: {
+              // Synopsis as primary premise
+              premise: ep.synopsis || buildPremiseFromBeats(),
+              // Store flexible beats array (preserves original labels)
+              beats: ep.beats || [],
+              // Store moral if present
+              moral: ep.moral || null,
+              // Store signature line (catchphrase) if present
+              signature_line: ep.signature_line || null,
+              // Store tags for genre/mood
+              tags: ep.tags || [],
+            },
+            metadata: {
+              character_ids: characterIds,
+              location_ids: locationIds,
+              // Store names for immediate display in episode header (before story/screenplay)
+              character_names: charNames,
+              location_names: locNames,
+              season_premise: data.premise,
+              season_tone: data.tone || null,
+              target_audience: data.targetAudience || null,
+            },
+          };
+        });
+
+      if (outlined.length === 0) {
         return { success: true as const, count: 0, seasonId };
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: episodeError } = await (client as any)
-        .from('episodes')
-        .insert(episodesToInsert);
-
-      if (episodeError) {
-        console.error(
-          '[Season Generate] Episode creation failed:',
-          episodeError,
-        );
-        return {
-          success: false as const,
-          error: `Failed to create episodes: ${episodeError.message}`,
-        };
-      }
+      const inserted = await insertEpisodesAtNextNumbers(
+        client,
+        data.projectId,
+        buildEpisodeRows,
+        logger,
+      );
 
       revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
       revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
@@ -409,7 +409,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
       return {
         success: true as const,
         seasonId,
-        count: episodesToInsert.length,
+        count: inserted.length,
         createdCharacters: Object.keys(createdCharacterIds).length,
         createdLocations: Object.keys(createdLocationIds).length,
       };

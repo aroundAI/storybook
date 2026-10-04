@@ -305,12 +305,11 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
           }),
         ).rejects.toThrow(/greater than or equal to 60/);
 
-        // The same number and title again: the slug is what the database
-        // keeps unique per project. A different title with the same number
-        // is accepted today, by the web too (KB-175).
+        // The number is what the database keeps unique per project (KB-175),
+        // whatever the title.
         const numberTaken = await call('create_episode', {
           projectId: project.id,
-          title: 'Written over MCP',
+          title: 'A different title',
           number: 1,
         });
         expect(numberTaken.isError).toBe(true);

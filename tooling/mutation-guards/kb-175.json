@@ -1,0 +1,31 @@
+{
+  "feature": "KB-175 an episode number is unique per project",
+  "mutations": [
+    {
+      "name": "KB-175 U1 a batch create stops retrying when a concurrent create took its numbers",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/episode.service.ts",
+      "find": "    if (error.code !== '23505') {",
+      "replace": "    if (true) {",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/episode-number-conflicts.test.ts",
+      "pattern": "reads it again on a clash"
+    },
+    {
+      "name": "KB-175 U2 a chosen number that is taken is no longer refused by name",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/episode.service.ts",
+      "find": "  if (input.number && lastError?.code === '23505') {",
+      "replace": "  if (false && input.number && lastError?.code === '23505') {",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/episode-number-conflicts.test.ts",
+      "pattern": "refuses a chosen number that is taken"
+    },
+    {
+      "name": "KB-175 D1 the unique number index is dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-number-unique.test.sql",
+      "sql": "drop index public.idx_episodes_project_number;"
+    }
+  ]
+}

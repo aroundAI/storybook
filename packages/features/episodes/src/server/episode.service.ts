@@ -42,14 +42,68 @@ export type InsertEpisodeResult =
 
 const MAX_RETRIES = 3;
 
+export interface InsertedEpisodeRow {
+  id: string;
+  number: number;
+  title: string;
+  status: string;
+}
+
+/**
+ * Inserts several episodes in one statement, numbered from the project's
+ * next free number. A concurrent create can take that number between the
+ * read and the insert; the database refuses the whole statement (23505,
+ * KB-175) and the numbers are read again. `buildRows` gets the first number
+ * and returns rows numbered from it. Throws when every attempt clashed.
+ */
+export async function insertEpisodesAtNextNumbers(
+  client: Client,
+  projectId: string,
+  buildRows: (
+    firstNumber: number,
+  ) => Database['public']['Tables']['episodes']['Insert'][],
+  log: { warn: (ctx: unknown, msg: string) => void } = { warn: () => {} },
+): Promise<InsertedEpisodeRow[]> {
+  let lastMessage = 'Unknown error';
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const { data: top } = await client
+      .from('episodes')
+      .select('number')
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .order('number', { ascending: false })
+      .limit(1);
+
+    const { data, error } = await client
+      .from('episodes')
+      .insert(buildRows((top?.[0]?.number ?? 0) + 1))
+      .select('id, number, title, status');
+
+    if (!error) {
+      return data ?? [];
+    }
+
+    lastMessage = error.message;
+
+    if (error.code !== '23505') {
+      break;
+    }
+
+    log.warn({ attempt, error }, 'Episode number conflict, retrying');
+  }
+
+  throw new Error(`Failed to create episodes: ${lastMessage}`);
+}
+
 export async function insertEpisode(
   client: Client,
   input: InsertEpisodeInput,
   log: { warn: (ctx: unknown, msg: string) => void } = { warn: () => {} },
 ): Promise<InsertEpisodeResult> {
   // Auto-assign episode number with retry logic for race conditions. The
-  // database has a unique constraint (unique_episode_number_per_project), so
-  // an auto-assigned number that clashes is picked again.
+  // database keeps a project's live numbers unique (idx_episodes_project_number,
+  // KB-175), so an auto-assigned number that clashes is picked again.
   let lastError: { code?: string; message?: string } | null = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
