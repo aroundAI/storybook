@@ -35,8 +35,8 @@ import {
 } from './oauth-client';
 
 /**
- * The screenshots in the "Connect Claude" guide
- * (apps/web/content/documentation/claude-connector.mdoc, FILM-1911), from
+ * The screenshots in the "Connect Claude or ChatGPT" guide
+ * (apps/web/content/documentation/ai-connector.mdoc, FILM-1911), from
  * one real run: a team is seeded through the API, Claude's side is the
  * scripted MCP client the contract test uses, and every page is the app's
  * own. Not a guard: the specs it reuses hold those. Skipped unless

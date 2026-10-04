@@ -1,4 +1,5 @@
 import { hashToken } from '../token';
+import { refusePresentedClientCredentials } from './clients';
 import { OAuthError } from './errors';
 import type { OAuthStore } from './store';
 
@@ -10,8 +11,14 @@ import type { OAuthStore } from './store';
  */
 export async function handleRevokeRequest(
   params: URLSearchParams,
-  deps: { store: OAuthStore; now?: () => Date },
+  deps: {
+    store: OAuthStore;
+    authorizationHeader?: string | null;
+    now?: () => Date;
+  },
 ): Promise<void> {
+  refusePresentedClientCredentials(params, deps.authorizationHeader);
+
   const token = params.get('token');
 
   if (!token) throw new OAuthError('invalid_request', 'token is required.');

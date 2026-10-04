@@ -51,6 +51,7 @@ export const updatePublishNote = defineTool({
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: false,
+    openWorldHint: false,
   },
   async handler(input, context) {
     await requireOwnedPublish(context, input.publishId);
@@ -77,6 +78,7 @@ export const assignPublishTags = defineTool({
     readOnlyHint: false,
     destructiveHint: true,
     idempotentHint: true,
+    openWorldHint: false,
   },
   async handler(input, context) {
     await requireOwnedPublish(context, input.publishId);
@@ -103,6 +105,7 @@ export const createExperiment = defineTool({
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: false,
+    openWorldHint: false,
   },
   async handler(input, context) {
     if (input.projectId) {
@@ -138,6 +141,7 @@ export const startExperiment = defineTool({
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: false,
+    openWorldHint: false,
   },
   async handler(input, context) {
     await requireOwnedRow(
@@ -169,6 +173,7 @@ export const concludeExperiment = defineTool({
     readOnlyHint: false,
     destructiveHint: true,
     idempotentHint: false,
+    openWorldHint: false,
   },
   async handler(input, context) {
     await requireOwnedRow(
@@ -200,6 +205,7 @@ export const abandonExperiment = defineTool({
     readOnlyHint: false,
     destructiveHint: true,
     idempotentHint: false,
+    openWorldHint: false,
   },
   async handler(input, context) {
     await requireOwnedRow(

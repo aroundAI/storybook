@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import { type McpScope, McpScopeSchema } from '../../scopes';
 import { hashToken } from '../token';
+import { refusePresentedClientCredentials } from './clients';
 import { OAuthError } from './errors';
 import { verifyPkce } from './pkce';
 import { resourceMatches } from './resource';
@@ -25,6 +26,8 @@ export interface TokenDeps {
   store: OAuthStore;
   /** The configured MCP resource URL every token is bound to. */
   resource: string;
+  /** The request's Authorization header, which a public client never sends. */
+  authorizationHeader?: string | null;
   now?: () => Date;
 }
 
@@ -45,6 +48,8 @@ export async function handleTokenRequest(
   params: URLSearchParams,
   deps: TokenDeps,
 ): Promise<TokenResponse> {
+  refusePresentedClientCredentials(params, deps.authorizationHeader);
+
   const grantType = params.get('grant_type');
 
   switch (grantType) {

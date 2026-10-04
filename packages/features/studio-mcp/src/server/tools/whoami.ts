@@ -20,6 +20,7 @@ export const whoamiTool = defineTool({
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
+    openWorldHint: false,
   },
   async handler(_input, context) {
     const { principal, accountId } = context;

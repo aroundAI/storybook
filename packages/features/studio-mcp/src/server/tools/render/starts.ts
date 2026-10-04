@@ -34,11 +34,12 @@ export const webRenderStarts: RenderStartDeps = {
   startCueAudioRender,
 };
 
-/** A vendor render costs money: never read-only, never idempotent. */
+/** A vendor render calls ElevenLabs and costs money: never read-only, never idempotent, open world. */
 const RENDER = {
   readOnlyHint: false,
   destructiveHint: false,
   idempotentHint: false,
+  openWorldHint: true,
 } as const;
 
 /** What the web shows as a refusal; anything else the core returned is a fault. */

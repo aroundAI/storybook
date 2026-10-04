@@ -118,7 +118,7 @@ IDs are referenced from the task list. MUST items are the Phase 1 scope; SHOULD 
 | ID | Requirement | Priority |
 | --- | --- | --- |
 | FR-1 | StoryBook serves a remote MCP endpoint over Streamable HTTP at a stable public URL (e.g. `https://app.<domain>/api/mcp`). | MUST |
-| FR-2 | A user adds it in Claude Desktop or claude.ai as a custom connector and signs in with their StoryBook account through OAuth 2.1 (authorization code + PKCE), with Dynamic Client Registration and Claude's published client identity both supported. | MUST |
+| FR-2 | A user adds it in Claude Desktop, claude.ai or ChatGPT (developer mode) as a custom connector and signs in with their StoryBook account through OAuth 2.1 (authorization code + PKCE), with Dynamic Client Registration and Claude's and ChatGPT's published client identities supported (FILM-1911, owner 2026-10-04). | MUST |
 | FR-3 | Every MCP call acts as that user, inside one team account they choose at consent time, with the same RLS and role checks as the web app. | MUST |
 | FR-4 | Users see and revoke their connected clients from account settings; revocation takes effect on the next call. | MUST |
 | FR-5 | A personal access token sent as a request header works as a fallback for clients without OAuth and for local testing. | SHOULD |
@@ -171,7 +171,7 @@ IDs are referenced from the task list. MUST items are the Phase 1 scope; SHOULD 
 | NFR-10 | Observability | Each tool call is logged with tool name, user, team, connection, duration, result and error code; generation runs are queryable by mode. Tool payloads are not logged in full. |
 | NFR-11 | Hosting | Runs on the existing Next.js deploy (Vercel or Lambda via SST/OpenNext) with no long-lived connection required; stateless Streamable HTTP so any instance can serve any call. |
 | NFR-12 | Vendor agnosticism | Auth for MCP does not depend on one provider's OAuth server feature; it works with `AUTH_PROVIDER=supabase` or `cognito`. |
-| NFR-13 | Compatibility | Works with Claude Desktop, claude.ai and the Claude mobile apps via the connector, and with any MCP client implementing the 2025-06-18 spec or later. Uses tools as the primary surface, because client support for resources and prompts varies. |
+| NFR-13 | Compatibility | Works with Claude Desktop, claude.ai, the Claude mobile apps and ChatGPT via the connector, and with any MCP client implementing the 2025-06-18 spec or later. Uses tools as the primary surface, because client support for resources and prompts varies. |
 | NFR-14 | Reversibility | Every commit keeps the previous version of what it replaced, so an agent's work can be rolled back from the web. |
 
 ## High-level design
@@ -396,7 +396,7 @@ Every analytics view a user can open in the web app gets a read tool, so the age
 - `apps/web/app/api/mcp/route.ts` handles `POST` (and `GET`/`DELETE` returning 405) with `StreamableHTTPServerTransport` from `@modelcontextprotocol/sdk` in **stateless mode** (`sessionIdGenerator: undefined`, `enableJsonResponse: true`). A fresh `McpServer` is built per request from the tool registry; nothing lives in memory between calls, which suits Lambda via OpenNext and Vercel alike.
 - The route sits outside `enhanceRouteHandler` (that wrapper is cookie-only) and uses a new `withMcpAuth` wrapper: bearer token → connection → user, team, scopes.
 - Credentials never travel as tool arguments; they live only in the `Authorization` header, keeping the OAuth roles separate.
-- CORS allows `https://claude.ai`; the endpoint is public internet, as connectors require.
+- CORS allows `https://claude.ai` and `https://chatgpt.com` (both clients call from their servers; FILM-1911); the endpoint is public internet, as connectors require.
 - Local development uses **MCP Inspector** against `http://localhost:3000/api/mcp`; the contract test is the SDK's own client (`packages/features/studio-mcp/__tests__/contract.test.ts`), and the E2E suite drives the same calls with a token it creates (FILM-1904).
 - The SDK's transport speaks Node's `IncomingMessage`/`ServerResponse`; a Next route has a Web `Request`. `@kit/studio-mcp`'s `node-adapter` bridges them for the JSON-response mode (FILM-1904).
 
@@ -405,7 +405,7 @@ Every analytics view a user can open in the web app gets a read tool, so the age
 Claude's connector supports OAuth with Claude's published client identity, automatic registration (DCR), or a client the server pre-registers, and also fixed request headers. We implement all of these with one small authorization server.
 
 1. Claude calls `/api/mcp` without a token and gets `401` with `WWW-Authenticate: Bearer resource_metadata="https://app/.well-known/oauth-protected-resource"`.
-2. Claude reads protected-resource metadata, then authorization-server metadata (`/.well-known/oauth-authorization-server`), and registers via `/oauth/register` (DCR) or presents its client metadata document URL.
+2. Claude or ChatGPT reads protected-resource metadata, then authorization-server metadata (`/.well-known/oauth-authorization-server`), and registers via `/oauth/register` (DCR) or presents its client metadata document URL.
 3. Claude opens `/oauth/authorize` with PKCE. The user signs in with the normal StoryBook login (any `AUTH_PROVIDER`), picks a team, and approves scopes on a consent page.
 4. `/oauth/token` exchanges the code for a 1-hour access token and a rotating 30-day refresh token, audience-bound to the MCP URL. Both are random opaque strings stored as SHA-256 hashes.
 5. On every call `withMcpAuth` resolves the token to an `mcp_connections` row and mints a 5-minute Supabase JWT (`sub`=user, `role`=authenticated) signed with the project JWT secret, so every query runs under RLS as that user. No service-role client is reachable from MCP tools, except the existing worker queue helpers that already authorise their targets.

@@ -86,6 +86,7 @@ const EDIT = {
   readOnlyHint: false,
   destructiveHint: false,
   idempotentHint: true,
+  openWorldHint: false,
 } as const;
 
 type EditableEpisode = EpisodeRef & {

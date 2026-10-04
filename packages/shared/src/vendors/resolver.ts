@@ -216,8 +216,19 @@ export function ignoredVendorOverrides(env: Env = process.env) {
  * Storage's S3 endpoint). Unlike a vendor, they have no fixed origin to fall
  * back to, so outside the sandbox there is no override at all and the SDK
  * resolves as it always has.
+ *
+ * `clientdocs` is not AWS: the MCP OAuth server's client metadata
+ * documents (Claude's, ChatGPT's), which the sandbox serves from the copies
+ * committed with the tests so E2E never depends on claude.ai or chatgpt.com
+ * (FILM-1911, KB-185).
  */
-export const LOCAL_SERVICES = ['sqs', 'dynamodb', 'apigateway', 'r2'] as const;
+export const LOCAL_SERVICES = [
+  'sqs',
+  'dynamodb',
+  'apigateway',
+  'r2',
+  'clientdocs',
+] as const;
 
 export type LocalService = (typeof LOCAL_SERVICES)[number];
 

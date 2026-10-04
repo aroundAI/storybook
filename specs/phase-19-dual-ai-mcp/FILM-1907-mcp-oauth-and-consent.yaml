@@ -153,8 +153,8 @@ notes: |
 
   Claude Desktop by URL (criterion 13):
   1. Deploy the branch to a public URL (NEXT_PUBLIC_SITE_URL set to it).
-  2. In Claude: Settings → Connectors → Add custom connector → paste
-     `<site>/api/mcp`. Claude reads the two discovery documents, registers
+  2. In Claude: Customize → Connectors → Add custom connector → paste
+     `<site>/api/mcp` (the menu moved from Settings; #599). Claude reads the two discovery documents, registers
      (DCR) or presents its client metadata document, and opens
      `<site>/oauth/authorize`.
   3. Sign in with the StoryBook account (MFA if enabled), choose the team,
@@ -177,6 +177,18 @@ notes: |
     the whole connection (RFC 7009 allows both; the grant is what a client
     gives up).
   - Refresh is sliding: a rotation issues a new 30-day refresh token.
+  - A client is public if it can be (KB-185, #599): Claude's published
+    document lists a JWT-bearer grant and ChatGPT's prefers private_key_jwt
+    while listing none, and the first version refused both, so neither
+    client's default sign-in worked. A client that lists none among its
+    methods is registered as public with only the grants we issue (RFC 7591
+    §3.2.1); one that can only authenticate is still refused, and a
+    client credential sent to /oauth/token or /oauth/revoke is refused
+    with invalid_client rather than ignored. A document's cached copy is
+    fetched again once it is a day old, keeping the copy if that fails.
+    Every
+    authorization response carries iss (RFC 9207), which is what lets
+    ChatGPT use its stable redirect URI (FILM-1911).
 feature:
   database:
     tables: ["mcp_oauth_clients", "mcp_authorization_codes"]

@@ -19,6 +19,7 @@ const READ_ONLY = {
   readOnlyHint: true,
   destructiveHint: false,
   idempotentHint: true,
+  openWorldHint: false,
 } as const;
 
 const SCENE_PAGING = `${PAGING_NOTE} The unit is the scene: one page holds whole scenes.`;

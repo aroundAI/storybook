@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { z } from 'zod';
 
+import { localServiceUrl } from '@kit/shared/vendors';
+
 import { OAuthError } from './errors';
 import type { OAuthClientRecord, OAuthStore } from './store';
 
@@ -11,8 +13,8 @@ import type { OAuthClientRecord, OAuthStore } from './store';
  * - Dynamic Client Registration (RFC 7591): `POST /oauth/register` with the
  *   client's metadata; we mint a `client_id` and store the metadata.
  * - A client metadata document: the client's `client_id` is an https URL
- *   that serves its metadata as JSON (Claude's published identity works
- *   this way). The first `/oauth/authorize` with that id fetches the
+ *   that serves its metadata as JSON (Claude's and ChatGPT's published
+ *   identities work this way). The first `/oauth/authorize` with that id fetches the
  *   document once, validates it and caches it with `metadata_url` set.
  *
  * The one thing a client is held to afterwards is its `redirect_uris`:
@@ -22,6 +24,8 @@ import type { OAuthClientRecord, OAuthStore } from './store';
 export const CLIENT_ID_PREFIX = 'sbk_client_';
 
 const MAX_DOCUMENT_BYTES = 64 * 1024;
+/** A cached document older than this is fetched again (KB-185). */
+export const CLIENT_DOCUMENT_TTL_MS = 24 * 60 * 60 * 1000;
 const DOCUMENT_TIMEOUT_MS = 5_000;
 
 const ALLOWED_GRANT_TYPES = ['authorization_code', 'refresh_token'] as const;
@@ -31,6 +35,7 @@ const ClientMetadataSchema = z.object({
   client_name: z.string().trim().min(1).max(200).optional(),
   client_uri: z.string().url().optional(),
   token_endpoint_auth_method: z.string().optional(),
+  token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
   grant_types: z.array(z.string()).optional(),
   response_types: z.array(z.string()).optional(),
   scope: z.string().optional(),
@@ -109,23 +114,21 @@ export function validateClientMetadata(body: unknown): ClientMetadata & {
     }
   }
 
-  if (
-    metadata.token_endpoint_auth_method &&
-    metadata.token_endpoint_auth_method !== 'none'
-  ) {
+  if (!canActAsPublicClient(metadata)) {
     throw new OAuthError(
       'invalid_client_metadata',
-      'Only public clients are registered here: token_endpoint_auth_method must be "none".',
+      'Only public clients are registered here: token_endpoint_auth_method must be "none", or token_endpoint_auth_methods_supported must include it.',
     );
   }
 
-  for (const grant of metadata.grant_types ?? []) {
-    if (!(ALLOWED_GRANT_TYPES as readonly string[]).includes(grant)) {
-      throw new OAuthError(
-        'invalid_client_metadata',
-        `grant_type ${grant} is not supported: authorization_code and refresh_token are.`,
-      );
-    }
+  if (
+    metadata.grant_types &&
+    !metadata.grant_types.includes('authorization_code')
+  ) {
+    throw new OAuthError(
+      'invalid_client_metadata',
+      'grant_types must include authorization_code; refresh_token is the only other grant issued.',
+    );
   }
 
   for (const type of metadata.response_types ?? []) {
@@ -142,6 +145,57 @@ export function validateClientMetadata(body: unknown): ClientMetadata & {
     client_name:
       metadata.client_name ?? new URL(metadata.redirect_uris[0]!).hostname,
   };
+}
+
+/**
+ * Whether the client can redeem a code with PKCE alone. ChatGPT's document
+ * prefers `private_key_jwt` but lists `none` among the methods it supports,
+ * so it is registered as public, as RFC 7591 §3.2.1 lets a server do. A
+ * client that can only authenticate is refused: no secret or key is ever
+ * accepted here.
+ */
+function canActAsPublicClient(metadata: ClientMetadata) {
+  const method = metadata.token_endpoint_auth_method;
+
+  return (
+    !method ||
+    method === 'none' ||
+    (metadata.token_endpoint_auth_methods_supported ?? []).includes('none')
+  );
+}
+
+/**
+ * Clients here never authenticate, so a credential one presents is refused
+ * rather than ignored: a `client_assertion` (private_key_jwt), a
+ * `client_secret`, or an Authorization header (client_secret_basic).
+ * Accepting one unchecked would let a request look authenticated when it
+ * is not (KB-185).
+ */
+export function refusePresentedClientCredentials(
+  params: URLSearchParams,
+  authorizationHeader?: string | null,
+) {
+  if (
+    params.has('client_assertion') ||
+    params.has('client_assertion_type') ||
+    params.has('client_secret') ||
+    authorizationHeader
+  ) {
+    throw new OAuthError(
+      'invalid_client',
+      'StoryBook verifies no client credential: send none, as token_endpoint_auth_method "none", and prove the request with PKCE.',
+    );
+  }
+}
+
+/**
+ * The grants a client gets: those it asked for that we issue. Claude's
+ * document also lists a JWT-bearer grant, which is dropped, not refused.
+ */
+function issuedGrantTypes(metadata: ClientMetadata) {
+  return ALLOWED_GRANT_TYPES.filter(
+    (grant) => !metadata.grant_types || metadata.grant_types.includes(grant),
+  );
 }
 
 export interface ClientRegistrationResponse {
@@ -177,7 +231,7 @@ export async function registerClient(
     client_id_issued_at: Math.floor(now.getTime() / 1000),
     client_name: metadata.client_name,
     redirect_uris: metadata.redirect_uris,
-    grant_types: metadata.grant_types ?? [...ALLOWED_GRANT_TYPES],
+    grant_types: issuedGrantTypes(metadata),
     response_types: ['code'],
     token_endpoint_auth_method: 'none',
   };
@@ -191,33 +245,51 @@ type FetchLike = (
 /**
  * The client for a `client_id`: a stored one, or, when the id is an https
  * URL to a public host, the client described by the metadata document
- * there, fetched once and cached. `null` means "no such client", for
- * every reason: the authorize page shows that and never redirects.
+ * there, fetched once and cached. `null` means "no such client"; a document
+ * whose client can only authenticate throws invalid_client with the reason.
+ * Either way the authorize page shows it and never redirects.
  */
 export async function resolveClient(
   store: OAuthStore,
   clientId: string,
-  options: { fetchFn?: FetchLike; now?: Date } = {},
+  options: {
+    fetchFn?: FetchLike;
+    now?: Date;
+    env?: Record<string, string | undefined>;
+  } = {},
 ): Promise<OAuthClientRecord | null> {
+  const now = options.now ?? new Date();
   const stored = await store.getClient(clientId);
 
-  if (stored) return stored;
+  // A registered client is kept as registered; a document's copy is
+  // refreshed once a day, so a vendor's rotated redirect URIs take effect.
+  // Its createdAt is when it was last fetched.
+  if (
+    stored &&
+    (!stored.metadataUrl ||
+      now.getTime() - new Date(stored.createdAt).getTime() <
+        CLIENT_DOCUMENT_TTL_MS)
+  ) {
+    return stored;
+  }
 
-  if (!isFetchableMetadataUrl(clientId)) return null;
+  if (!isFetchableMetadataUrl(clientId)) return stored;
 
   const document = await fetchClientMetadataDocument(
     clientId,
     options.fetchFn ?? fetch,
+    localServiceUrl('clientdocs', options.env),
   );
 
-  if (!document) return null;
+  // A refetch that fails keeps the copy we have
+  if (!document) return stored;
 
   const record: OAuthClientRecord = {
     clientId,
     clientName: document.client_name,
     redirectUris: document.redirect_uris,
     metadataUrl: clientId,
-    createdAt: (options.now ?? new Date()).toISOString(),
+    createdAt: now.toISOString(),
   };
 
   await store.saveClient(record);
@@ -253,18 +325,28 @@ export function isFetchableMetadataUrl(value: string) {
   return true;
 }
 
+/**
+ * Fetches and validates the document at `url`. `sandboxBase` is set only by
+ * the vendor sandbox (development or test, local addresses only): the
+ * document is then read from it, keyed by the client id, and still held to
+ * that id.
+ */
 async function fetchClientMetadataDocument(
   url: string,
   fetchFn: FetchLike,
+  sandboxBase: string | undefined,
 ): Promise<(ClientMetadata & { client_name: string }) | null> {
   let response: Response;
 
   try {
-    response = await fetchFn(url, {
-      headers: { Accept: 'application/json' },
-      redirect: 'error',
-      signal: AbortSignal.timeout(DOCUMENT_TIMEOUT_MS),
-    });
+    response = await fetchFn(
+      sandboxBase ? `${sandboxBase}/${encodeURIComponent(url)}` : url,
+      {
+        headers: { Accept: 'application/json' },
+        redirect: 'error',
+        signal: AbortSignal.timeout(DOCUMENT_TIMEOUT_MS),
+      },
+    );
   } catch {
     return null;
   }
@@ -293,6 +375,16 @@ async function fetchClientMetadataDocument(
     (body as { client_id?: unknown }).client_id !== url
   ) {
     return null;
+  }
+
+  const shape = ClientMetadataSchema.safeParse(body);
+
+  if (shape.success && !canActAsPublicClient(shape.data)) {
+    // Shown on our page, so the person adding the connector learns why
+    throw new OAuthError(
+      'invalid_client',
+      `This client authenticates only with ${shape.data.token_endpoint_auth_method}; StoryBook accepts public clients, which prove each request with PKCE (token_endpoint_auth_method "none").`,
+    );
   }
 
   try {
