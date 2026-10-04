@@ -124,7 +124,7 @@
     {
       "name": "FILM-1909 A1 the allowlist takes no shot update",
       "kind": "unit",
-      "file": "apps/web/supabase/migrations/20261003163615_film-1909-edit-commit-allowlist.sql",
+      "file": "apps/web/supabase/migrations/20261004101714_kb188-story-viral-quality-allowlist.sql",
       "find": "    \"shots\": {\"scope\": \"episode\", \"ops\": [\"insert\", \"delete\", \"update\"],",
       "replace": "    \"shots\": {\"scope\": \"episode\", \"ops\": [\"insert\", \"delete\"],",
       "cwd": "packages/features/studio-mcp",
