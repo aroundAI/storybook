@@ -526,8 +526,8 @@ function deliveryRefusal(
           details: {
             currentVersion: result.currentVersion,
             expectedVersion: result.expectedVersion,
-            // FILM-2001's package etag, once get_edit_package lands
-            etag: null,
+            // what get_edit_package serves now (FILM-2001)
+            etag: result.etag,
           },
         },
       );
@@ -552,7 +552,7 @@ export const deliverEditTool = defineTool({
   name: 'deliver_edit',
   title: 'Deliver the edit',
   description:
-    "Sends the finished edit back: takes the open edit session, the episode version the Studio edited (episodeVersion from open_edit_session), the renders (ids from request_render_upload, each finalized and ready, exactly one primary), the explain-why report ({versions[], finalDuration, aiOps, userOps, explain{scenes[]}}) and the delivery's QA result. In one step the primary render becomes the episode's video (final_video_url and the master video asset) and its language's publish target, the episode's older renders are superseded, the session is closed as delivered with the report, and the episode moves to ready for the publish flow; nothing is published. TARGET_CHANGED when the episode changed in StoryBook during the edit: re-sync and deliver again. A project viewer cannot deliver; over a published episode only a project owner or admin can.",
+    "Sends the finished edit back: takes the open edit session, the episode version the Studio edited (episodeVersion from open_edit_session), the renders (ids from request_render_upload, each finalized and ready, exactly one primary), the explain-why report ({versions[], finalDuration, aiOps, userOps, explain{scenes[]}}) and the delivery's QA result. In one step the primary render becomes the episode's video (final_video_url and the master video asset) and its language's publish target, the episode's older renders are superseded, the session is closed as delivered with the report, and the episode moves to ready for the publish flow; nothing is published. TARGET_CHANGED when the episode changed in StoryBook during the edit, with the current version and the edit package etag get_edit_package now serves: re-sync and deliver again. A project viewer cannot deliver; over a published episode only a project owner or admin can.",
   inputSchema: DeliveryPackageObjectSchema.shape,
   scope: 'studio:write',
   annotations: {
@@ -566,12 +566,19 @@ export const deliverEditTool = defineTool({
     const client = context.principal.supabase;
 
     // the bound team first: a session elsewhere is NOT_FOUND
-    await requireSession(client, context.accountId, delivery.sessionId);
+    const session = await requireSession(
+      client,
+      context.accountId,
+      delivery.sessionId,
+    );
 
     let result: DeliverEditResult;
 
     try {
-      result = await deliverEdit(client, delivery);
+      result = await deliverEdit(client, delivery, {
+        accountId: context.accountId,
+        episodeId: session.episode.id,
+      });
     } catch {
       throw new McpToolError('INTERNAL', 'Could not deliver the edit.');
     }

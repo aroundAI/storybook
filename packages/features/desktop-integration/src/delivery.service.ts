@@ -10,6 +10,7 @@ import {
 } from './edit-sessions.service';
 import type { ExplainWhyReport } from './explain-why-report.schema';
 import { listEditEvents } from './server/edit-sessions';
+import { currentEditPackageEtag } from './server/load-edit-package';
 
 /**
  * deliverEdit (FILM-2003): the one-transaction delivery. The transaction is
@@ -56,6 +57,8 @@ export type DeliverEditRefusal =
       code: 'TARGET_CHANGED';
       currentVersion: number;
       expectedVersion: number;
+      /** get_edit_package's etag now; null when the caller cannot see the episode. */
+      etag: string | null;
     };
 
 export interface DeliverEditSuccess {
@@ -82,6 +85,8 @@ type Client = SupabaseClient<Database>;
 export async function deliverEdit(
   client: Client,
   delivery: DeliveryPackage,
+  /** The team and episode the session belongs to, for the TARGET_CHANGED etag. */
+  scope: { accountId: string; episodeId: string },
 ): Promise<DeliverEditResult> {
   const events = await listEditEvents(client, delivery.sessionId);
   const summary = buildDeliverySummary(events, delivery.report);
@@ -102,5 +107,13 @@ export async function deliverEdit(
     throw new Error(`deliver_edit failed: ${error.message}`);
   }
 
-  return data as unknown as DeliverEditResult;
+  const result = data as unknown as DeliverEditResult;
+
+  // The Studio re-syncs to what get_edit_package serves now: the same etag,
+  // from the one function that computes it (FILM-2001).
+  if (!result.ok && result.code === 'TARGET_CHANGED') {
+    return { ...result, etag: await currentEditPackageEtag(client, scope) };
+  }
+
+  return result;
 }

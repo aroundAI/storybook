@@ -52,6 +52,16 @@
       "pattern": "fails renders left uploading for a day"
     },
     {
+      "name": "FILM-2003 U6 a TARGET_CHANGED refusal carries no etag",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/delivery.service.ts",
+      "find": "etag: await currentEditPackageEtag(client, scope)",
+      "replace": "etag: null",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/delivery-target-changed.test.ts",
+      "pattern": "carries the etag get_edit_package returns for the same episode"
+    },
+    {
       "name": "FILM-2003 DB1 a viewer may insert a render",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/episode-renders.test.sql",
