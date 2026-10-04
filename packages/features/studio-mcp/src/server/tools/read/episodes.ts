@@ -2,6 +2,8 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { parseEditState } from '@kit/desktop-integration';
+import { getOpenEditSession } from '@kit/desktop-integration/server';
 import { EpisodeStatusSchema } from '@kit/episodes/schemas';
 
 import { McpToolError } from '../../../errors';
@@ -170,15 +172,16 @@ type EpisodeDetailRow = EpisodeRowLike &
     shot_list: unknown;
     generation_origin: unknown;
     final_video_url: string | null;
+    edit_state: unknown;
   };
 
-const EPISODE_DETAIL_COLUMNS = `${EPISODE_LIST_COLUMNS}, story_data, screenplay_data, shot_list, generation_origin`;
+const EPISODE_DETAIL_COLUMNS = `${EPISODE_LIST_COLUMNS}, story_data, screenplay_data, shot_list, generation_origin, edit_state`;
 
 export const getEpisodeTool = defineTool({
   name: 'get_episode',
   title: 'Get episode',
   description:
-    'One episode with its stage status (the workflow draft → story → storyboard → generating → editing → ready → published, and each studio stage as locked, available or done), the story, a screenplay summary, counts of scenes, shots, dialogue lines and assets, and the origin of each stage when recorded. Use get_screenplay, get_shots and get_dialogue for the full stage content.',
+    'One episode with its stage status (the workflow draft → story → storyboard → generating → editing → ready → published, and each studio stage as locked, available or done), the story, a screenplay summary, counts of scenes, shots, dialogue lines and assets, the origin of each stage when recorded, and its StorybookStudio edit state (editState, and editSession while one is open). Use get_screenplay, get_shots and get_dialogue for the full stage content.',
   inputSchema: {
     episodeId: z
       .string()
@@ -202,26 +205,34 @@ export const getEpisodeTool = defineTool({
       ...((metadata.location_ids as string[] | undefined) ?? []),
     ];
 
-    const [shots, dialogue, audioCues, attachedAssets] = await Promise.all([
-      client
-        .from('shots')
-        .select('id', { count: 'exact', head: true })
-        .eq('episode_id', episode.id)
-        .is('deleted_at', null),
-      client
-        .from('dialogue_lines')
-        .select('id', { count: 'exact', head: true })
-        .eq('episode_id', episode.id),
-      client
-        .from('audio_cues')
-        .select('id', { count: 'exact', head: true })
-        .eq('episode_id', episode.id),
-      client
-        .from('assets')
-        .select('id', { count: 'exact', head: true })
-        .eq('episode_id', episode.id)
-        .is('deleted_at', null),
-    ]);
+    const [shots, dialogue, audioCues, attachedAssets, editSession] =
+      await Promise.all([
+        client
+          .from('shots')
+          .select('id', { count: 'exact', head: true })
+          .eq('episode_id', episode.id)
+          .is('deleted_at', null),
+        client
+          .from('dialogue_lines')
+          .select('id', { count: 'exact', head: true })
+          .eq('episode_id', episode.id),
+        client
+          .from('audio_cues')
+          .select('id', { count: 'exact', head: true })
+          .eq('episode_id', episode.id),
+        client
+          .from('assets')
+          .select('id', { count: 'exact', head: true })
+          .eq('episode_id', episode.id)
+          .is('deleted_at', null),
+        // FILM-2002: who is editing it in the Studio, if anyone
+        getOpenEditSession(client, episode.id).catch(() => {
+          throw new McpToolError(
+            'INTERNAL',
+            'Could not read the edit session.',
+          );
+        }),
+      ]);
 
     if (
       shots.error ||
@@ -284,12 +295,15 @@ export const getEpisodeTool = defineTool({
       : null;
 
     const summary = episodeSummary(episode);
+    const editingLine = editSession
+      ? ` Being edited in the Studio since ${editSession.started_at} (session ${editSession.id}).`
+      : '';
     const stageLine = stages
       .map((stage) => `${stage.label}: ${stage.state}`)
       .join(', ');
 
     return {
-      text: `Episode #${summary.number} "${summary.title}" is ${summary.status}. ${stageLine}. ${counts.scenes} scenes, ${counts.shots} shots, ${counts.dialogueLines} dialogue lines, ${counts.assets} assets.`,
+      text: `Episode #${summary.number} "${summary.title}" is ${summary.status}. ${stageLine}. ${counts.scenes} scenes, ${counts.shots} shots, ${counts.dialogueLines} dialogue lines, ${counts.assets} assets.${editingLine}`,
       structuredContent: {
         episode: summary,
         project: {
@@ -299,6 +313,18 @@ export const getEpisodeTool = defineTool({
         },
         statusOrder: EPISODE_STATUS_ORDER,
         stages,
+        editState: parseEditState(episode.edit_state),
+        editSession: editSession
+          ? {
+              id: editSession.id,
+              userId: editSession.user_id,
+              connectionId: editSession.connection_id,
+              packageEtag: editSession.package_etag,
+              previousStatus: editSession.previous_status,
+              startedAt: editSession.started_at,
+              lastEventAt: editSession.last_event_at,
+            }
+          : null,
         story: episode.story_data ?? null,
         screenplaySummary,
         counts,

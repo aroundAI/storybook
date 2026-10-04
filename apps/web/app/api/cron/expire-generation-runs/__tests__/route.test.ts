@@ -8,6 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const rpc = vi.hoisted(() => vi.fn());
+const closeStaleEditSessions = vi.hoisted(() => vi.fn());
+
+vi.mock('@kit/desktop-integration/server', () => ({
+  closeStaleEditSessions,
+}));
 
 vi.mock('@kit/supabase/server-admin-client', () => ({
   getSupabaseServerAdminClient: () => ({ rpc }),
@@ -43,6 +48,8 @@ async function call(request: Request) {
 beforeEach(() => {
   vi.stubEnv('CRON_SECRET', 'test-cron-secret');
   rpc.mockReset();
+  closeStaleEditSessions.mockReset();
+  closeStaleEditSessions.mockResolvedValue({ closed: 0, failed: 0, ids: [] });
 });
 
 describe('the expire-generation-runs cron', () => {
@@ -60,6 +67,7 @@ describe('the expire-generation-runs cron', () => {
       success: true,
       expired: 3,
       trimmed: 0,
+      staleEditSessions: { closed: 0, failed: 0 },
     });
   });
 
@@ -84,6 +92,7 @@ describe('the expire-generation-runs cron', () => {
       success: true,
       expired: 0,
       trimmed: 10120,
+      staleEditSessions: { closed: 0, failed: 0 },
     });
   });
 
@@ -102,6 +111,7 @@ describe('the expire-generation-runs cron', () => {
       success: true,
       expired: 0,
       trimmed: 100000,
+      staleEditSessions: { closed: 0, failed: 0 },
     });
   });
 
@@ -119,6 +129,44 @@ describe('the expire-generation-runs cron', () => {
       error: 'MCP tool-call trim failed',
       expired: 2,
       trimmed: 0,
+      staleEditSessions: { closed: 0, failed: 0 },
+    });
+  });
+
+  it('closes stale edit sessions with the admin client (FILM-2002) and reports them', async () => {
+    rpc.mockResolvedValue({ data: 0, error: null });
+    closeStaleEditSessions.mockResolvedValue({
+      closed: 2,
+      failed: 0,
+      ids: ['s1', 's2'],
+    });
+
+    const response = await call(cronRequest('Bearer test-cron-secret'));
+
+    expect(closeStaleEditSessions).toHaveBeenCalledTimes(1);
+    expect(closeStaleEditSessions.mock.calls[0]?.[0]).toHaveProperty('rpc');
+    expect(await response.json()).toEqual({
+      success: true,
+      expired: 0,
+      trimmed: 0,
+      staleEditSessions: { closed: 2, failed: 0 },
+    });
+  });
+
+  it('still trims when closing stale sessions fails, and reports a 500', async () => {
+    rpc.mockImplementation(async (fn: string) => ({
+      data: fn === 'expire_generation_runs' ? 0 : 7,
+      error: null,
+    }));
+    closeStaleEditSessions.mockRejectedValue(new Error('boom'));
+
+    const response = await call(cronRequest('Bearer test-cron-secret'));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: 'Closing stale edit sessions failed',
+      expired: 0,
+      trimmed: 7,
     });
   });
 
@@ -127,6 +175,7 @@ describe('the expire-generation-runs cron', () => {
 
     expect(response.status).toBe(401);
     expect(rpc).not.toHaveBeenCalled();
+    expect(closeStaleEditSessions).not.toHaveBeenCalled();
   });
 
   it('refuses a caller with no Authorization header', async () => {

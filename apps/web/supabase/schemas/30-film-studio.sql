@@ -85,6 +85,9 @@ create table if not exists public.episodes (
   version integer default 1 not null,
   -- FILM-1903: per stage, {"story": {kind, runId, model, ...}, "screenplay": {...}}
   generation_origin jsonb default '{}'::jsonb not null,
+  -- FILM-2002: EditState {sessionId, editedBy, since, lastDeliveredAt, editedIn, versions}
+  edit_state jsonb default '{}'::jsonb not null
+    constraint episodes_edit_state_object check (jsonb_typeof(edit_state) = 'object'),
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,

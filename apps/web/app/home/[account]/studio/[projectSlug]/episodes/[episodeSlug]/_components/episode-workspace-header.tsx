@@ -10,12 +10,20 @@ import { ArrowLeft, MapPin, Sparkles, User } from 'lucide-react';
 
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
+import {
+  type EditingInStudio,
+  EditingInStudioBadge,
+} from './editing-in-studio-badge';
 import { useEpisodeContext } from './episode-context-provider';
 import { IssueSummaryBadge } from './issue-summary-popover';
 import { QuickActionsMenu } from './quick-actions-menu';
 import { StudioSwitcher } from './studio-switcher';
 
-export function EpisodeWorkspaceHeader() {
+export function EpisodeWorkspaceHeader({
+  editingInStudio = null,
+}: {
+  editingInStudio?: EditingInStudio | null;
+}) {
   const pathname = usePathname() ?? '';
   const isEditingStudio = pathname.includes('/editing-studio');
   const { episode, projectSlug, accountSlug, projectName, projectId } =
@@ -120,6 +128,9 @@ export function EpisodeWorkspaceHeader() {
                               ? 'Published'
                               : 'Draft'}
               </span>
+              {editingInStudio && (
+                <EditingInStudioBadge editing={editingInStudio} />
+              )}
               <IssueSummaryBadge projectId={projectId} />
               <span className="text-xs text-gray-600 dark:text-gray-400">
                 Ep {episode.number}

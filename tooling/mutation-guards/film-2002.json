@@ -1,0 +1,73 @@
+{
+  "feature": "FILM-2002 edit sessions, edit events and the editing status",
+  "mutations": [
+    {
+      "name": "2002 DB O1 two sessions may be open on one episode",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/edit-sessions.test.sql",
+      "sql": "drop index public.edit_sessions_one_open;"
+    },
+    {
+      "name": "2002 DB R1 any signed-in user reads every session",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/edit-sessions.test.sql",
+      "sql": "drop policy edit_sessions_read on public.edit_sessions; create policy edit_sessions_read on public.edit_sessions for select to authenticated using ((select auth.uid()) is not null);"
+    },
+    {
+      "name": "2002 DB T1 any event type is stored",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/edit-sessions.test.sql",
+      "sql": "alter table public.edit_events drop constraint edit_events_type_check;"
+    },
+    {
+      "name": "2002 U1 a batch of 501 events is accepted",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/edit-events.schema.ts",
+      "find": "export const MAX_EDIT_EVENTS_PER_CALL = 500;",
+      "replace": "export const MAX_EDIT_EVENTS_PER_CALL = 501;",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/edit-events.schema.test.ts",
+      "pattern": "accepts a batch of 500 and refuses 501"
+    },
+    {
+      "name": "2002 U2 a re-sent version is counted twice in the summary",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/edit-sessions.service.ts",
+      "find": "        versions.set(versionId, {",
+      "replace": "        versions.set(`${versionId}-${event.id}`, {",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/summarize-edit-session.test.ts",
+      "pattern": "hand-computed summary"
+    },
+    {
+      "name": "2002 U3 record_edit_events stops validating each event",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/studio/sessions.ts",
+      "find": "const events = parseWith(EditEventBatchSchema, input.events);",
+      "replace": "const events = input.events as never;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/studio-session-tools.test.ts",
+      "pattern": "record_edit_events"
+    },
+    {
+      "name": "2002 U4 open_edit_session forgets the device",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/studio/sessions.ts",
+      "find": "connectionId: context.principal.connectionId,",
+      "replace": "connectionId: null,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/studio-session-tools.test.ts",
+      "pattern": "opens with the connection"
+    },
+    {
+      "name": "2002 U5 the hourly cron stops closing stale sessions",
+      "kind": "unit",
+      "file": "apps/web/app/api/cron/expire-generation-runs/route.ts",
+      "find": "const stale = await closeStaleEditSessions(admin);",
+      "replace": "const stale = { closed: 0, failed: 0, ids: [] as string[] };",
+      "cwd": "apps/web",
+      "test": "app/api/cron/expire-generation-runs/__tests__/route.test.ts",
+      "pattern": "closes stale edit sessions"
+    }
+  ]
+}

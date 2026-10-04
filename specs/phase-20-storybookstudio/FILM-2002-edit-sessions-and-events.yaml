@@ -3,7 +3,7 @@ title: "Edit Sessions, Edit Events and the editing Status"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1904"
@@ -23,38 +23,38 @@ summary: >
   (edit_sessions, edit_events) and "Workers, jobs and the status machine".
 acceptance_criteria:
   - text: "Migration creates edit_sessions (id, episode_id FK cascade, user_id FK auth.users, connection_id FK mcp_connections null, package_etag, status open|closed|delivered, started_at, closed_at, delivered_at, summary jsonb) and edit_events (id bigserial, edit_session_id FK cascade, ts, type, data jsonb) with indexes on (episode_id, status) and (edit_session_id, ts); RLS: project members read, the session's user writes"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261004160301_film-2002-edit-sessions-and-events.sql:38 (edit_sessions, plus previous_status, last_event_at and close_reason; one open session per episode, :73), :87 (edit_events, unique (edit_session_id, client_event_id)), :122 (read: has_role_on_project). Writes are granted to nobody directly: they go through the SECURITY DEFINER functions, which allow only the session's user (#614). pgTAP apps/web/supabase/tests/database/edit-sessions.test.sql:230"
   - text: "episodes.edit_state jsonb default '{}' is added with a TypeScript interface {sessionId, editedBy, since, lastDeliveredAt, editedIn: 'studio', versions} per the constitution's JSONB rule"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261004160301_film-2002-edit-sessions-and-events.sql:29; packages/features/desktop-integration/src/edit-state.ts:9 (EditState, editedBy = {userId, name}, versions = the last delivered edit's count) (#614)"
   - text: "open_edit_session({episodeId, packageEtag}) (studio:write) requires project role member or above (viewer is FORBIDDEN); creates the row, sets episodes.status = 'editing' only from storyboard|generating|ready|published (from draft|story is VALIDATION_FAILED: nothing to edit), writes edit_state, returns {sessionId, previousStatus}; a second open on an episode with an open session by another user returns RUN_IN_PROGRESS with who and since; by the same user it returns the existing session"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261004160301_film-2002-edit-sessions-and-events.sql:281 (open_edit_session); packages/features/studio-mcp/src/server/tools/studio/sessions.ts:119; pgTAP apps/web/supabase/tests/database/edit-sessions.test.sql:109 (viewer FORBIDDEN), :124 (draft refused), :180 (RUN_IN_PROGRESS with holder); SDK client apps/e2e/tests/mcp/edit-sessions.spec.ts:96 (#614)"
   - text: "record_edit_events({sessionId, events[]}) accepts up to 500 events per call, validates each type against the enum and its data against a per-type zod schema, is idempotent on (sessionId, client_event_id), and refuses a closed session with VALIDATION_FAILED"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261004160301_film-2002-edit-sessions-and-events.sql:426 (record_edit_events); packages/features/desktop-integration/src/edit-events.schema.ts:91 (per-type strict data); pgTAP apps/web/supabase/tests/database/edit-sessions.test.sql:209 (replay inserts nothing), :212 (501 refused); SDK client apps/e2e/tests/mcp/edit-sessions.spec.ts:96 (#614)"
   - text: "close_edit_session({sessionId}) computes summary {versions, finalDuration, aiOps, userOps, plansProposed, plansApproved, qaRuns} from the events, sets status closed, and restores episodes.status to previousStatus when the session delivered nothing (deliver_edit, FILM-2003, sets delivered instead)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "packages/features/desktop-integration/src/edit-sessions.service.ts:49 (summarizeEditSession); apps/web/supabase/migrations/20261004160301_film-2002-edit-sessions-and-events.sql:497 and :192 (kit.end_edit_session, the seam deliver_edit calls with 'delivered'); pgTAP apps/web/supabase/tests/database/edit-sessions.test.sql:258 (#614)"
   - text: "A session with no event for 24 h is closed by the hourly cron route that already trims mcp_tool_calls, restoring the status the same way; the Studio reopens with a new session"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "apps/web/app/api/cron/expire-generation-runs/route.ts:75; packages/features/desktop-integration/src/server/edit-sessions.ts:220; route test apps/web/app/api/cron/expire-generation-runs/__tests__/route.test.ts:136; pgTAP apps/web/supabase/tests/database/edit-sessions.test.sql:298; driven through the route with the bearer in apps/e2e/tests/mcp/edit-sessions.spec.ts:96 (#614)"
   - text: "Episode header (web) shows an 'Editing in Studio' badge with the editor's name and start time while status is editing and a session is open; the episode list shows the same chip"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:132 and episodes/_components/episode-list-item.tsx:162 (EditingInStudioBadge); Playwright apps/e2e/tests/mcp/edit-sessions.spec.ts:259, screenshots in #614 (#614)"
   - text: "get_episode (FILM-1905) includes edit_state and the open session, so an MCP client can see the editing state without a new tool"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/read/episodes.ts:316 (editState, editSession); packages/features/studio-mcp/__tests__/tools/studio-session-tools.test.ts:363 (#614)"
 test_plan:
   unit:
-    - {text: "Event schemas: each type's data validated; unknown type refused; batch of 501 refused", met: false, reason: "not built"}
-    - {text: "Summary computation from a fixture event stream", met: false, reason: "not built"}
+    - {text: "Event schemas: each type's data validated; unknown type refused; batch of 501 refused", met: true, evidence: "packages/features/desktop-integration/__tests__/edit-events.schema.test.ts:94 and :107; tool-level packages/features/studio-mcp/__tests__/tools/studio-session-tools.test.ts (#614)"}
+    - {text: "Summary computation from a fixture event stream", met: true, evidence: "packages/features/desktop-integration/__tests__/summarize-edit-session.test.ts:93 (#614)"}
   integration:
-    - {text: "pgTAP: RLS matrix for edit_sessions and edit_events (viewer reads, member writes own, outsider nothing); status transitions refuse draft/story", met: false, reason: "not built"}
-    - {text: "SDK client: open → record → close round trip; a second user's open is RUN_IN_PROGRESS; stale session closed by the cron route", met: false, reason: "not built"}
+    - {text: "pgTAP: RLS matrix for edit_sessions and edit_events (viewer reads, member writes own, outsider nothing); status transitions refuse draft/story", met: true, evidence: "apps/web/supabase/tests/database/edit-sessions.test.sql (53 checks; the whole tests/database suite passes, #614)"}
+    - {text: "SDK client: open → record → close round trip; a second user's open is RUN_IN_PROGRESS; stale session closed by the cron route", met: true, evidence: "apps/e2e/tests/mcp/edit-sessions.spec.ts:96 (#614)"}
   e2e:
-    - {text: "Playwright: the badge appears on the episode page after open_edit_session over HTTP and disappears after close", met: false, reason: "not built"}
+    - {text: "Playwright: the badge appears on the episode page after open_edit_session over HTTP and disappears after close", met: true, evidence: "apps/e2e/tests/mcp/edit-sessions.spec.ts:259 (#614)"}
 open_questions:
   - "Should an admin be able to force-close another user's session from the web? Recommended yes, in FILM-2006's Edit record page."
 notes: >
@@ -63,6 +63,29 @@ notes: >
   Studio's local op log (FILM-2012) all carry sessionId. The status restore on
   close keeps the existing publish flow untouched: an episode that was
   published, opened in the Studio and abandoned goes back to published.
+
+  Built in #614. Decisions the ACs left open, recorded here: the tables
+  grant authenticated SELECT only; every write is one of three SECURITY
+  DEFINER functions (open_edit_session, record_edit_events,
+  close_edit_session), so the status machine cannot be bypassed by a
+  direct insert. edit_sessions carries previous_status (what close
+  restores), last_event_at (the 24-hour idle clock, set by the open and
+  by every record call) and close_reason (client, stale, admin,
+  delivered). An event needs a clientEventId (AC4's idempotency key) and
+  its data is validated strictly per type. edit_state.editedBy is
+  {userId, name}, the name copied at open so the badge shows it to every
+  member. Opening and closing each bump episodes.version (the existing
+  trigger); open_edit_session returns episodeVersion after the bump, which
+  is what FILM-2003's deliver_edit compares, never the etag. So the
+  package_etag a session records is the etag from before the open, and the
+  Studio's order is get_edit_package, then open_edit_session, then
+  get_edit_package again for the content it edits (found live by FILM-2011
+  against the integration server). FILM-2003's seam is
+  kit.end_edit_session(session, 'delivered', summary, 'delivered'), which
+  leaves the status to the caller. Open question (admin force-close): lead
+  default, owner may change: close_edit_session(id, summary, 'admin')
+  allows a project owner or admin, ready for FILM-2006's action. The PRD's
+  session_opened event does not exist: open_edit_session records the open.
 feature:
   database:
     tables: ["edit_sessions", "edit_events"]

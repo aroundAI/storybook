@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { closeStaleEditSessions } from '@kit/desktop-integration/server';
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -16,6 +17,11 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
  * (FILM-1904) with `trim_mcp_tool_calls()`, a bounded batch per statement
  * and a bounded number of batches per run, so a large backlog is worked off
  * over a few hours rather than in one long delete.
+ *
+ * It also closes StorybookStudio edit sessions with no event for 24 hours
+ * (FILM-2002), which puts each episode's previous status back; the Studio
+ * opens a new session the next time. A failure there is logged and
+ * reported, and does not stop the trim.
  *
  * Security: `auth: false` plus an explicit bearer check, as the sibling cron
  * routes do: `auth: true` would redirect a session-less caller, and the
@@ -63,6 +69,25 @@ export const GET = enhanceRouteHandler(
       logger.info({ ...ctx, expired }, 'Expired generation runs past lease');
     }
 
+    let staleEditSessions: { closed: number; failed: number } | null = null;
+
+    try {
+      const stale = await closeStaleEditSessions(admin);
+      staleEditSessions = { closed: stale.closed, failed: stale.failed };
+
+      if (stale.closed > 0 || stale.failed > 0) {
+        logger.info(
+          { ...ctx, ...staleEditSessions, sessionIds: stale.ids },
+          'Closed stale edit sessions',
+        );
+      }
+    } catch (staleError) {
+      logger.error(
+        { ...ctx, error: staleError },
+        'Closing stale edit sessions failed',
+      );
+    }
+
     let trimmed = 0;
 
     for (let batch = 0; batch < TRIM_MAX_BATCHES; batch++) {
@@ -75,7 +100,12 @@ export const GET = enhanceRouteHandler(
         logger.error({ ...ctx, error: trimError }, 'MCP tool-call trim failed');
 
         return NextResponse.json(
-          { error: 'MCP tool-call trim failed', expired, trimmed },
+          {
+            error: 'MCP tool-call trim failed',
+            expired,
+            trimmed,
+            staleEditSessions,
+          },
           { status: 500 },
         );
       }
@@ -89,7 +119,19 @@ export const GET = enhanceRouteHandler(
       logger.info({ ...ctx, trimmed }, 'Trimmed MCP tool calls past 90 days');
     }
 
-    return NextResponse.json({ success: true, expired, trimmed });
+    if (!staleEditSessions) {
+      return NextResponse.json(
+        { error: 'Closing stale edit sessions failed', expired, trimmed },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      expired,
+      trimmed,
+      staleEditSessions,
+    });
   },
   { auth: false },
 );
