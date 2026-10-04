@@ -28,7 +28,7 @@ const updatePublishedVideo = enhanceAction(
 
     const { data: episode, error: fetchError } = await client
       .from('episodes')
-      .select('final_video_url, localized_videos, shorts_groups')
+      .select('project_id, final_video_url, localized_videos, shorts_groups')
       .eq('id', episodeId)
       .single();
 
@@ -38,6 +38,7 @@ const updatePublishedVideo = enhanceAction(
 
     const refusal = episodeVideoSaveRefusal({
       episodeId,
+      projectId: episode.project_id,
       stored: episode,
       next: [videoUrl],
     });
@@ -110,7 +111,7 @@ const updateShortsGroups = enhanceAction(
 
     const { data: episode, error: fetchError } = await client
       .from('episodes')
-      .select('final_video_url, localized_videos, shorts_groups')
+      .select('project_id, final_video_url, localized_videos, shorts_groups')
       .eq('id', episodeId)
       .single();
 
@@ -120,6 +121,7 @@ const updateShortsGroups = enhanceAction(
 
     const refusal = episodeVideoSaveRefusal({
       episodeId,
+      projectId: episode.project_id,
       stored: episode,
       next: shortsGroups.flatMap((group) => Object.values(group.videos)),
     });

@@ -13,7 +13,11 @@
  * import it.
  */
 import { ownedPublicKey } from './public-url';
-import { PROJECT_ASSETS_BUCKET, episodeVideoFolder } from './upload-paths';
+import {
+  PROJECT_ASSETS_BUCKET,
+  episodeRenderFolder,
+  episodeVideoFolder,
+} from './upload-paths';
 
 type Env = Record<string, string | undefined>;
 
@@ -55,17 +59,24 @@ export function episodeVideoUrls(episode: EpisodeVideoFields): string[] {
   ];
 }
 
-/** `url` when it is an upload in this episode's own videos folder, else null */
+/**
+ * `url` when it is an upload in this episode's own videos folder, or, given
+ * the episode's project, a StorybookStudio render of this episode (FILM-2003:
+ * `projects/{project}/episodes/{episode}/renders/`); else null
+ */
 export function ownedEpisodeVideoUpload(
   url: string,
   episodeId: string,
   env: Env = process.env,
+  projectId?: string,
 ): string | null {
-  return ownedPublicKey(
-    PROJECT_ASSETS_BUCKET,
-    url,
+  const folders = [
     episodeVideoFolder(episodeId),
-    env,
+    ...(projectId ? [episodeRenderFolder(projectId, episodeId)] : []),
+  ];
+
+  return folders.some((folder) =>
+    ownedPublicKey(PROJECT_ASSETS_BUCKET, url, folder, env),
   )
     ? url
     : null;
@@ -80,11 +91,14 @@ export const EPISODE_VIDEO_SAVE_REFUSAL =
  */
 export function episodeVideoSaveRefusal({
   episodeId,
+  projectId,
   stored,
   next,
   env = process.env,
 }: {
   episodeId: string;
+  /** The episode's project, read from its row: admits its Studio renders */
+  projectId?: string;
   stored: EpisodeVideoFields;
   next: string[];
   env?: Env;
@@ -95,7 +109,7 @@ export function episodeVideoSaveRefusal({
     (url) =>
       url !== '' &&
       !held.has(url) &&
-      !ownedEpisodeVideoUpload(url, episodeId, env),
+      !ownedEpisodeVideoUpload(url, episodeId, env, projectId),
   );
 
   return refused ? EPISODE_VIDEO_SAVE_REFUSAL : null;
