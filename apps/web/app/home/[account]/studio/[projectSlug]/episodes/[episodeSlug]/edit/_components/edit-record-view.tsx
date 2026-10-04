@@ -20,7 +20,6 @@ import {
   TableRow,
 } from '@kit/ui/table';
 
-import { OpenInStudioButton } from '../../_components/open-in-studio-button';
 import type {
   EditRecord,
   EditRecordRender,
@@ -43,23 +42,21 @@ const when = (iso: string) => format(new Date(iso), 'MMM d, yyyy h:mm a');
 /**
  * The Edit record (FILM-2006, PRD R-70): how the episode was edited in
  * StorybookStudio, from the latest delivered session's report. Read-only:
- * the edit itself happens in the Studio, which "Re-open in Studio" launches.
+ * the edit itself happens in the Studio. Re-opening it is the episode
+ * header's "Open in Studio" (FILM-2005), which this page shares with every
+ * episode page rather than drawing a second one.
  */
 export function EditRecordView(props: { record: EditRecord; path: string }) {
   const { record } = props;
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Edit record</h1>
-          <p className="text-sm text-muted-foreground">
-            How this episode was cut in StorybookStudio.
-          </p>
-        </div>
-        <div data-test="reopen-in-studio">
-          <OpenInStudioButton />
-        </div>
+      <header>
+        <h1 className="text-xl font-semibold">Edit record</h1>
+        <p className="text-sm text-muted-foreground">
+          How this episode was cut in StorybookStudio. Open in Studio, above,
+          re-opens it there.
+        </p>
       </header>
 
       {record.open ? (
