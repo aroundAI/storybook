@@ -6580,6 +6580,16 @@ export type Database = {
           tool: string
         }[]
       }
+      admin_studio_delivery_stats: {
+        Args: { p_days?: number }
+        Returns: {
+          deliver_edit_calls: number
+          expired_uploads: number
+          get_edit_package_calls: number
+          target_changed_refusals: number
+          uploading_over_24h: number
+        }[]
+      }
       apply_generation_commit: {
         Args: { p_finalize?: boolean; p_plan: Json; p_run_id: string }
         Returns: Json
@@ -6794,6 +6804,7 @@ export type Database = {
           id: string
         }[]
       }
+      edit_session_device: { Args: { p_session_id: string }; Returns: string }
       editable_publish_ids: {
         Args: { p_publish_ids: string[] }
         Returns: string[]
