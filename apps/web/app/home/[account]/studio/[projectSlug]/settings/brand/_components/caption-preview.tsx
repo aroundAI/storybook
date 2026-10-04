@@ -64,7 +64,9 @@ const LOGO_CORNER = {
 } as const;
 
 /**
- * A 16:9 frame showing a caption styled by the form's current values. Values
+ * A 16:9 frame showing a caption styled by the form's current values, to
+ * scale: fontSize is pixels at 1080p, so the text is as small relative to
+ * the frame as it will be in the render. Values
  * that do not validate yet (a half-typed colour) fall back to the default,
  * so the preview never renders something the Studio would refuse.
  */
@@ -85,7 +87,6 @@ export function CaptionPreview({
     defaults.colors.captionBackground,
   );
   const primary = colorOr(colors?.primary, defaults.colors.primary);
-  const frame = colorOr(colors?.background, defaults.colors.background);
   const fontSize = numberIn(
     style?.fontSize,
     12,
@@ -143,13 +144,18 @@ export function CaptionPreview({
       data-test="brand-caption-preview"
       className="relative aspect-video w-full overflow-hidden rounded-md border"
       style={{
-        backgroundColor: frame,
+        // A stand-in for video under the caption, so a box in any colour
+        // (black by default) stays visible
+        backgroundImage:
+          'linear-gradient(135deg, #1e293b 0%, #475569 55%, #94a3b8 100%)',
         containerType: 'size',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: JUSTIFY[position],
         alignItems: 'center',
-        padding: '6cqh 4cqw',
+        // Percentages of the frame's width: cq units here would resolve
+        // against the viewport, since the frame is its own container
+        padding: '3.4% 4%',
       }}
     >
       {logo?.assetId ? (
@@ -171,7 +177,11 @@ export function CaptionPreview({
         </div>
       ) : null}
 
-      <p data-test="brand-caption-preview-text" className="text-center">
+      <p
+        data-test="brand-caption-preview-text"
+        className="text-center"
+        style={{ fontSize: textStyle.fontSize, lineHeight: 1.6 }}
+      >
         {wrapCaption(SAMPLE, maxChars).map((line, index) => (
           <span key={index} style={textStyle}>
             {line.split(' ').map((word, wordIndex) => (
