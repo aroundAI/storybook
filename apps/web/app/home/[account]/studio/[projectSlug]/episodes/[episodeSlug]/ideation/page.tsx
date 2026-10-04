@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -95,6 +95,19 @@ export default function IdeationPage() {
     episode.id,
   ]);
 
+  // Storing generated ideas moves episodes.version under this page, and
+  // Generate Story is refused for a version the episode has left (KB-186):
+  // send the version the ideas were stored at, and refresh the episode so
+  // the header and every other control hold it too
+  const [ideasStoredAt, setIdeasStoredAt] = useState<number>();
+  const handleIdeasStored = useCallback(
+    (stored?: { version: number }) => {
+      if (stored) setIdeasStoredAt(stored.version);
+      refetchEpisode();
+    },
+    [refetchEpisode],
+  );
+
   // Extract project defaults for duration and content style
   const defaultDuration =
     (projectMetadata?.defaultEpisodeDuration as number | undefined) ?? 300;
@@ -108,7 +121,7 @@ export default function IdeationPage() {
       const result = await unwrap(
         generateFullStoryAction({
           episodeId: episode.id,
-          version: episode.version,
+          version: Math.max(episode.version, ideasStoredAt ?? 0),
           title: selection.title,
           logline: selection.logline,
           targetDuration: selection.targetDuration,
@@ -158,6 +171,7 @@ export default function IdeationPage() {
         defaultDuration={defaultDuration}
         defaultContentStyle={defaultContentStyle}
         storedIdeas={storedIdeas}
+        onIdeasStored={handleIdeasStored}
       />
 
       {/* Thread Candidates — below the ideation form */}

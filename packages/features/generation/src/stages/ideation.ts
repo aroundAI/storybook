@@ -90,6 +90,12 @@ export function ideationOrchestratorInput(brief: Brief): IdeationBriefContext {
 export interface IdeationCommitData {
   ideas: IdeationStageOutput['ideas'];
   generatedAt: string;
+  /**
+   * The episode as the commit left it. Storing the ideas bumps
+   * episodes.version, and the page that shows them sends that version with
+   * Generate Story (KB-186); absent when nothing was written.
+   */
+  episode?: { id: string; version: number };
 }
 
 export const ideationStage: StageDefinition<
@@ -220,9 +226,10 @@ export const ideationStage: StageDefinition<
 
     // One write; requireRows: RLS filters a refused update to no rows,
     // without an error (KB-105)
-    await applyCommit(ctx, {
+    const applied = await applyCommit(ctx, {
       ops: [
         {
+          key: 'episode',
           op: 'update',
           table: 'episodes',
           values: {
@@ -237,11 +244,23 @@ export const ideationStage: StageDefinition<
           merge: [ORIGIN_MERGE],
           match: [eq('id', target.episodeId), is('deleted_at', null)],
           requireRows: true,
+          returning: ['id', 'version'],
         },
       ],
     });
 
-    return { status: 'committed', data: { ideas: out.ideas, generatedAt } };
+    const updated = applied.results.episode?.[0] as
+      | { id: string; version: number }
+      | undefined;
+
+    return {
+      status: 'committed',
+      data: {
+        ideas: out.ideas,
+        generatedAt,
+        episode: updated && { id: updated.id, version: updated.version },
+      },
+    };
   },
 };
 

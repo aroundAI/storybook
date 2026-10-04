@@ -154,7 +154,8 @@ export type BulkAction =
       type: 'UPDATE_EPISODE_VERSION';
       episodeId: string;
       version: number;
-      status: string;
+      /** Absent when the write did not move the status (ideas, KB-186) */
+      status?: string;
     }
   | {
       type: 'RETRY_EPISODES';
@@ -281,7 +282,7 @@ function bulkReducer(state: BulkState, action: BulkAction): BulkState {
     case 'UPDATE_EPISODE_VERSION':
       return updateEpisode(state, action.episodeId, () => ({
         version: action.version,
-        currentStatus: action.status,
+        ...(action.status !== undefined && { currentStatus: action.status }),
       }));
     case 'RETRY_EPISODES': {
       const { episodeIds, phase } = action;

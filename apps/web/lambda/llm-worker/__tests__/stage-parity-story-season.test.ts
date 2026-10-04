@@ -285,7 +285,16 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
 
       expect(json(seen.ideation)).toEqual(old.executorInput);
-      expect(json(result)).toEqual(old.result);
+      // The same result, plus the version the ideas were stored at, which
+      // the page sends with Generate Story (KB-186)
+      const { episode, ...data } = (
+        json(result) as { data: { episode?: unknown } }
+      ).data;
+      expect({ ...(json(result) as object), data }).toEqual(old.result);
+      expect(episode).toEqual({
+        id: IDS.episodeId,
+        version: expect.any(Number),
+      });
     });
 
     it('stores the ideas on episodes.metadata.ideas, which the old handler did not (lead decision, 2026-10-03)', async () => {
