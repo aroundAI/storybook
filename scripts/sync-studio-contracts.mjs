@@ -4,8 +4,10 @@
  *
  * The contracts are defined once, in
  * `packages/features/desktop-integration/src/*.schema.ts` (FILM-2001's edit
- * package, FILM-2004's brand and edit policy, FILM-2003's report and QA
- * schemas when they land). The fork is plain JavaScript (Electron + Vite),
+ * package, FILM-2004's brand and edit policy, FILM-2003's report, QA and
+ * delivery schemas), plus every module those import by relative path,
+ * followed transitively (FILM-2003's `render-presets.ts`), so the copies
+ * always resolve. The fork is plain JavaScript (Electron + Vite),
  * so each is transpiled to `<name>.schema.mjs` with its types stripped and
  * its comments kept, relative imports pointing at the sibling `.mjs` files,
  * and written to `storybookstudio/src/studio/contracts/`. The fork needs
@@ -43,11 +45,36 @@ export const SOURCE_DIR = join(
 export const SUBMODULE_DIR = join(ROOT, 'storybookstudio');
 export const TARGET_DIR = join(SUBMODULE_DIR, 'src/studio/contracts');
 
-/** The contract sources, by file name: every `*.schema.ts`. */
-export function contractFiles() {
-  return readdirSync(SOURCE_DIR)
-    .filter((name) => name.endsWith('.schema.ts'))
-    .sort();
+/** The relative imports of one source, as file names in the same dir. */
+function relativeImports(sourceDir, name) {
+  const text = readFileSync(join(sourceDir, name), 'utf8');
+
+  return [...text.matchAll(/from\s+['"]\.\/([^'"]+)['"]/g)].map(
+    (match) => `${match[1].replace(/\.(?:m?js|ts)$/, '')}.ts`,
+  );
+}
+
+/**
+ * The contract sources, by file name: every `*.schema.ts`, and every module
+ * they import by relative path, transitively. An import naming a file that
+ * is not there is left out (it would fail the source's own typecheck).
+ */
+export function contractFiles(sourceDir = SOURCE_DIR) {
+  const found = new Set(
+    readdirSync(sourceDir).filter((name) => name.endsWith('.schema.ts')),
+  );
+  const queue = [...found];
+
+  while (queue.length > 0) {
+    for (const name of relativeImports(sourceDir, queue.shift())) {
+      if (!found.has(name) && existsSync(join(sourceDir, name))) {
+        found.add(name);
+        queue.push(name);
+      }
+    }
+  }
+
+  return [...found].sort();
 }
 
 /** `brand.schema.ts` → `brand.schema.mjs` */
@@ -56,8 +83,8 @@ export function copyName(source) {
 }
 
 /** The JavaScript the fork keeps for one contract source. */
-export function renderContract(source) {
-  const input = readFileSync(join(SOURCE_DIR, source), 'utf8');
+export function renderContract(source, sourceDir = SOURCE_DIR) {
+  const input = readFileSync(join(sourceDir, source), 'utf8');
   const { outputText } = ts.transpileModule(input, {
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
@@ -70,7 +97,8 @@ export function renderContract(source) {
 
   const body = outputText.replace(
     /(from\s+['"])(\.\/[^'"]+?)(['"])/g,
-    (_match, open, spec, close) => `${open}${spec}.mjs${close}`,
+    (_match, open, spec, close) =>
+      `${open}${spec.replace(/\.(?:m?js|ts)$/, '')}.mjs${close}`,
   );
 
   return `// GENERATED from aroundAI/storybook packages/features/desktop-integration/src/${source}
@@ -85,24 +113,30 @@ export function submoduleCheckedOut() {
 }
 
 /** Each contract whose copy is missing or differs from what would be written. */
-export function driftedContracts(targetDir = TARGET_DIR) {
-  return contractFiles().filter((source) => {
+export function driftedContracts(
+  targetDir = TARGET_DIR,
+  sourceDir = SOURCE_DIR,
+) {
+  return contractFiles(sourceDir).filter((source) => {
     const copy = join(targetDir, copyName(source));
 
     return (
       !existsSync(copy) ||
-      readFileSync(copy, 'utf8') !== renderContract(source)
+      readFileSync(copy, 'utf8') !== renderContract(source, sourceDir)
     );
   });
 }
 
 /** Writes every drifted copy into `targetDir`; returns their source names. */
-export function writeContracts(targetDir = TARGET_DIR) {
-  const drifted = driftedContracts(targetDir);
+export function writeContracts(targetDir = TARGET_DIR, sourceDir = SOURCE_DIR) {
+  const drifted = driftedContracts(targetDir, sourceDir);
 
   mkdirSync(targetDir, { recursive: true });
   for (const source of drifted) {
-    writeFileSync(join(targetDir, copyName(source)), renderContract(source));
+    writeFileSync(
+      join(targetDir, copyName(source)),
+      renderContract(source, sourceDir),
+    );
   }
 
   return drifted;
