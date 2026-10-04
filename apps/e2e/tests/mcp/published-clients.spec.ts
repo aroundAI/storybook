@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { seedTeamAccount, uniqueStamp } from '../utils/seed';
+import { deleteRows, seedTeamAccount, uniqueStamp } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { byTest } from '../utils/visible';
 import { ConnectedAppsPageObject } from './connected-apps.po';
@@ -44,6 +44,12 @@ for (const client of PUBLISHED_CLIENTS) {
     });
     const { verifier, challenge } = pkce();
     const state = `state-${uniqueStamp().slice(0, 8)}`;
+
+    // A client document is cached after its first fetch; drop the copy an
+    // earlier run left so this run fetches the live one
+    const byClient = `client_id=eq.${encodeURIComponent(client.clientId)}`;
+    await deleteRows('mcp_connections', byClient);
+    await deleteRows('mcp_oauth_clients', byClient);
 
     await page.route(`${client.redirectUri}**`, (route) =>
       route.fulfill({ status: 200, contentType: 'text/plain', body: 'ok' }),
