@@ -171,14 +171,6 @@ export default defineConfig({
         __dirname,
         '../../packages/next/src/routes/index.ts',
       ),
-      '@kit/desktop-integration/server': path.resolve(
-        __dirname,
-        '../../packages/features/desktop-integration/src/server/index.ts',
-      ),
-      '@kit/desktop-integration': path.resolve(
-        __dirname,
-        '../../packages/features/desktop-integration/src/index.ts',
-      ),
       '@kit/supabase/server-admin-client': path.resolve(
         __dirname,
         '../../packages/supabase/src/clients/server-admin-client.ts',
