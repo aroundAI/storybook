@@ -518,7 +518,7 @@ jobs:
 
   unit-test:
     name: 🧪 Unit Tests
-    timeout-minutes: 15
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
@@ -609,7 +609,7 @@ jobs:
     # Six since 2026-10-02: ~980 entries took 12-15 minutes a shard on four,
     # and #522's queue run lost shard 4 to the 15-minute limit with every
     # guard already red.
-    timeout-minutes: 15
+    timeout-minutes: 25
     runs-on: ubuntu-latest
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_unit_guards != 'true' }}
