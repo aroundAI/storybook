@@ -15,18 +15,21 @@
   "prettier": "@kit/prettier-config",
   "exports": {
     ".": "./src/index.ts",
-    "./server": "./src/server/index.ts"
+    "./server": "./src/server/index.ts",
+    "./fixtures": "./fixtures/edit-package/seed.ts"
   },
   "dependencies": {
+    "@kit/content-analytics": "workspace:*",
     "@kit/shared": "workspace:*",
+    "@kit/storage": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@supabase/supabase-js": "2.57.4",
     "zod": "^3.25.74"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
-    "@supabase/supabase-js": "2.57.4",
     "@types/node": "^24.5.0",
     "server-only": "^0.0.1",
     "vitest": "^3.2.4"

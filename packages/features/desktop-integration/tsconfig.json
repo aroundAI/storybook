@@ -6,6 +6,7 @@
     "include": [
         "*.ts",
         "src",
+        "fixtures",
         "__tests__"
     ],
     "exclude": [

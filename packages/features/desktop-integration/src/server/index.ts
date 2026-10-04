@@ -7,3 +7,6 @@ export {
   isDesktopIntegrationEnabled,
   teamsWithDesktopIntegration,
 } from './desktop-integration-setting';
+export * from '../build-edit-package';
+export * from './load-edit-package';
+export * from './resolve-media';
