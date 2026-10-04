@@ -171,8 +171,8 @@
       "file": "packages/features/content-analytics/src/components/analytics-dashboard.tsx",
       "edits": [
         {
-          "find": "          <VideoLogTab\n            projectId={projectId}\n            connectionId={connectionId}",
-          "replace": "          <VideoLogTab\n            projectId={projectId}\n            connectionId={undefined}"
+          "find": "            <VideoLogTab\n              projectId={projectId}\n              platforms={platforms}\n              connectionId={connectionId}",
+          "replace": "            <VideoLogTab\n              projectId={projectId}\n              platforms={platforms}\n              connectionId={undefined}"
         }
       ],
       "spec": "tests/analytics/video-log.spec.ts",

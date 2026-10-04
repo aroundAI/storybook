@@ -115,8 +115,8 @@
       "name": "E1 the dashboard never hands the grid the revenue it fetched",
       "kind": "e2e",
       "file": "packages/features/content-analytics/src/components/analytics-dashboard.tsx",
-      "find": "            revenue={revenueByCurrency ? measured(revenueByCurrency) : ABSENT}",
-      "replace": "            revenue={ABSENT}",
+      "find": "                revenue={\n                  revenueByCurrency ? measured(revenueByCurrency) : ABSENT\n                }",
+      "replace": "                revenue={ABSENT}",
       "spec": "tests/analytics/overview.spec.ts",
       "grep": "one currency sees one card"
     },
