@@ -48,6 +48,7 @@ export const getVeoManifestTool = defineTool({
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
+    openWorldHint: false,
   },
   async handler(input, context) {
     const client = context.principal.supabase;

@@ -35,6 +35,7 @@ export const READ_ONLY: McpToolAnnotations = {
   readOnlyHint: true,
   destructiveHint: false,
   idempotentHint: true,
+  openWorldHint: false,
 };
 
 export const CalendarDay = z

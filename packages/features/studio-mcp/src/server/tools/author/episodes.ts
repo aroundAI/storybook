@@ -24,6 +24,7 @@ const WRITE = {
   readOnlyHint: false,
   destructiveHint: false,
   idempotentHint: false,
+  openWorldHint: false,
 } as const;
 
 /**

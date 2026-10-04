@@ -4,13 +4,16 @@ import type { McpPrincipal } from './principal';
 import type { McpScope } from './scopes';
 
 /**
- * MCP's tool annotations, all three required here so a tool author decides
- * each one (clients use them to ask before a destructive call).
+ * MCP's tool annotations, all four required here so a tool author decides
+ * each one: ChatGPT asks before any tool that is not read-only, Claude
+ * before a destructive one. `openWorldHint` is true only for a tool that
+ * reaches outside StoryBook (MCP reads a missing one as true).
  */
 export interface McpToolAnnotations {
   readOnlyHint: boolean;
   destructiveHint: boolean;
   idempotentHint: boolean;
+  openWorldHint: boolean;
 }
 
 /**

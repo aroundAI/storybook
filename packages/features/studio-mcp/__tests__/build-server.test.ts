@@ -61,6 +61,7 @@ const echoTool = defineTool({
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: true,
+    openWorldHint: false,
   },
   async handler(input, context) {
     const seen = getMcpRequestContext();
@@ -87,6 +88,7 @@ const failingTool = defineTool({
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
+    openWorldHint: false,
   },
   async handler(input) {
     if (input.how === 'contract') {
@@ -150,6 +152,7 @@ describe('buildMcpServer', () => {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     });
     expect(whoami?.inputSchema.properties).toHaveProperty('account');
 

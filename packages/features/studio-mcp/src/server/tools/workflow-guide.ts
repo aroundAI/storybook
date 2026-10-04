@@ -64,6 +64,7 @@ export const getWorkflowGuideTool = defineTool({
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
+    openWorldHint: false,
   },
   async handler() {
     return {

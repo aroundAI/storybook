@@ -26,7 +26,7 @@ export const getEpisode = defineTool({
   description: 'One episode with its stage content.',
   inputSchema: { episodeId: z.string().uuid() },
   scope: 'studio:read',
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   async handler(input, { principal, accountId }) {
     const { data } = await principal.supabase // RLS-scoped, as the user
       .from('episodes').select('*').eq('id', input.episodeId).maybeSingle();
@@ -205,7 +205,7 @@ revocation in settings refuses the next call.
 | `SUPABASE_JWT_SECRET` | signs the minted user JWT | required |
 | `MCP_AUTH_SERVER` | which verifier (`own`) | `own` |
 | `MCP_RATE_LIMIT_CALLS_PER_MIN` / `MCP_RATE_LIMIT_WRITES_PER_MIN` | limits | 120 / 60 |
-| `MCP_ALLOWED_ORIGINS` | CORS origins, comma-separated | `https://claude.ai` |
+| `MCP_ALLOWED_ORIGINS` | CORS origins, comma-separated | `https://claude.ai,https://chatgpt.com` |
 | `CACHE_PROVIDER`, `REDIS_URL` | where the counters live (`@kit/cache`) | memory |
 
 With the memory cache each Lambda instance counts on its own; set

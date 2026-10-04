@@ -24,13 +24,19 @@ export interface McpRouteOptions {
   prompts?: McpPromptDefinition[];
   auth?: () => McpAuthDeps;
   runtime?: () => ToolRuntime;
-  /** Origins allowed to call from a browser; defaults to MCP_ALLOWED_ORIGINS or https://claude.ai. */
+  /** Origins allowed to call from a browser; defaults to MCP_ALLOWED_ORIGINS or claude.ai and chatgpt.com. */
   allowedOrigins?: string[];
   /** How long one request may take before the handler answers 504. */
   timeoutMs?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 55_000;
+
+/**
+ * Both clients call from their own servers, so neither needs CORS today;
+ * their web apps are allowed should either call from the browser.
+ */
+const DEFAULT_ALLOWED_ORIGINS = ['https://claude.ai', 'https://chatgpt.com'];
 
 /**
  * The `/api/mcp` handlers (EDD "4. Transport and endpoint"): POST carries
@@ -240,7 +246,7 @@ function allowedOriginsFromEnv() {
         .split(',')
         .map((origin) => origin.trim())
         .filter(Boolean)
-    : ['https://claude.ai'];
+    : DEFAULT_ALLOWED_ORIGINS;
 }
 
 /** The public origin, for the metadata URL: the configured site URL, else the request's. */

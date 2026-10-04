@@ -38,6 +38,7 @@ export function createGenerationTools(
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false,
     },
     async handler(input, context) {
       const result = await service(context).start(input);
@@ -60,6 +61,7 @@ export function createGenerationTools(
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
     async handler(input, context) {
       const result = await service(context).getBrief(
@@ -84,6 +86,7 @@ export function createGenerationTools(
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
     async handler(input, context) {
       const result = await service(context).submit(input);
@@ -112,6 +115,7 @@ export function createGenerationTools(
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
     async handler(input, context) {
       const result = await service(context).finalize(input.runId);
@@ -134,6 +138,7 @@ export function createGenerationTools(
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
     async handler(input, context) {
       const result = await service(context).getRun(input.runId);
@@ -156,6 +161,7 @@ export function createGenerationTools(
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
     async handler(input, context) {
       const result = await service(context).cancel(input.runId);
@@ -183,6 +189,7 @@ export function createGenerationTools(
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
     async handler(input, context) {
       const result = await generationHistory(

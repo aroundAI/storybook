@@ -85,6 +85,7 @@ export const getReportDownload = defineTool({
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: false,
+    openWorldHint: false,
   },
   async handler(input, context) {
     await requireOwnedRow(

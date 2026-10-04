@@ -88,6 +88,85 @@
       "find": "PROVIDERS.some((provider) => getApiKeyForProvider(provider) !== '')",
       "replace": "PROVIDERS.some((provider) => getApiKeyForProvider(provider) !== undefined)",
       "pattern": "cannot with no key at all"
+    },
+    {
+      "name": "1911 CONN U1 a client document that prefers a key but supports none is refused (ChatGPT cannot sign in)",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "    (metadata.token_endpoint_auth_methods_supported ?? []).includes('none')",
+      "replace": "    false",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "ChatGPT's document resolves"
+    },
+    {
+      "name": "1911 CONN U2 a client that can only authenticate with a key or secret is accepted as public",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "    (metadata.token_endpoint_auth_methods_supported ?? []).includes('none')",
+      "replace": "    true",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "only authenticate with a key or a secret"
+    },
+    {
+      "name": "1911 CONN U3 a grant type we do not issue refuses the client (Claude cannot sign in)",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "    !metadata.grant_types.includes('authorization_code')",
+      "replace": "    metadata.grant_types.some((grant) => grant.startsWith('urn:'))",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "Claude's document resolves"
+    },
+    {
+      "name": "1911 CONN U4 the code redirect carries no iss (RFC 9207)",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  location.searchParams.set('iss', input.request.issuer);",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "redirect with code, state and the issuer"
+    },
+    {
+      "name": "1911 CONN U5 an error redirect carries no iss (RFC 9207)",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  location.searchParams.set('iss', issuer);",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "redirects with an error, state attached"
+    },
+    {
+      "name": "1911 CONN U6 the metadata stops advertising iss",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/metadata.ts",
+      "find": "    authorization_response_iss_parameter_supported: true,",
+      "replace": "    authorization_response_iss_parameter_supported: false,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "says it returns iss"
+    },
+    {
+      "name": "1911 CONN U7 a vendor render no longer says it reaches outside StoryBook",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/render/starts.ts",
+      "find": "  openWorldHint: true,",
+      "replace": "  openWorldHint: false,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tool-annotations.test.ts",
+      "pattern": "only the vendor renders"
+    },
+    {
+      "name": "1911 CONN E1 ChatGPT's published client document is refused at /oauth/authorize",
+      "kind": "e2e",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "    (metadata.token_endpoint_auth_methods_supported ?? []).includes('none')",
+      "replace": "    false",
+      "spec": "tests/mcp/published-clients.spec.ts",
+      "grep": "ChatGPT's published client id"
     }
   ]
 }

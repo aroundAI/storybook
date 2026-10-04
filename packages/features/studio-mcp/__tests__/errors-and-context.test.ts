@@ -124,6 +124,7 @@ describe('defineTool', () => {
           readOnlyHint: true,
           destructiveHint: false,
           idempotentHint: true,
+          openWorldHint: false,
         },
         handler: async () => ({ structuredContent: {} }),
       }),
