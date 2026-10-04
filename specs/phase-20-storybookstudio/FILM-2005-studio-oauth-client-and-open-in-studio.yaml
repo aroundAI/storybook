@@ -50,8 +50,8 @@ test_plan:
     - {text: "Playwright: the button is present with the flag on, absent with it off; clicking with no handler shows the download sheet", met: true, evidence: "#619 apps/e2e/tests/desktop-integration/open-in-studio.spec.ts:68 (toggle on and off through AI settings, second save asserted), :117 (sheet after a click, twice), :178 (draft episode)"}
 remaining:
   - criterion: "The browser's 'open app?' prompt is documented with a screenshot"
-    reason: "Chrome shows that prompt only once an app has registered the velorn scheme with the OS, which the Studio's protocol.js does (FILM-2011). Capture it from the packaged Studio and attach it to this spec's record then"
-    closed_by: "FILM-2011"
+    reason: "Chrome shows that prompt only once an app has registered the velorn scheme with the OS, which the Studio's protocol.js does (FILM-2011). The Studio registers it, but agents have no screen-capture permission: the owner captures it from the packaged Studio and attaches it to this spec's record"
+    closed_by: "owner"
 open_questions:
   - "Client name per device: pass as client_name on the token request (non-standard) or register one DCR client per install? Recommended: one pre-registered client, device name as a token-request extension parameter stored on mcp_connections.name."
 notes: >

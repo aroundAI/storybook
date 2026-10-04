@@ -68,7 +68,7 @@ test_plan:
     - {text: "Scene map and context assembly from a built project", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/context.test.mjs:9, :29, :37, :50, :67, :80, :96)"}
     - {text: "Profile switch: agent lists 18, expert lists Velorn's tools plus the 6 lifecycle tools; bearer required on both", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/mcp-profiles.test.mjs:46, :69, :80, :93)"}
   integration:
-    - {text: "SDK client over HTTP: studio_get_context → studio_edit preview → apply → version exists, op log has N lines with reasons, report matches", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/capability-integration.test.mjs:43). M2 exit check met 2026-10-05, MCP SDK client with bearer, 20-shot fixture, real server and renderer code: scene 3 21.0 s → 13.917 s (target 12), a plan of 12 steps (6 ripple extract_range cuts, caption re-time, captions clip, 2 beds, 2 markers) and all 12 step previews pass; the apply made the version 'AI: tighten scene 3 to 12 s' from 'Rough cut' with 12 op-log lines, each with reason, scene and plan session; the report on disk equals the returned one equals the preview draft; the episode went 99.0 s → 91.917 s; 'fix the audio' applied 34 de-click fades from FILM-2016's fade compiler into 'AI: fix the audio'. 12 s was not reached: scene 3's 8 dialogue lines run 12.7 s and the card says so rather than cutting dialogue. The run was repeated in electron:dev with identical cards, report and op log"}
+    - {text: "SDK client over HTTP: studio_get_context → studio_edit preview → apply → version exists, op log has N lines with reasons, report matches", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/capability-integration.test.mjs:43). M2 exit check first measured 2026-10-05 on a fixture with no media on disk (corrected in the notes: re-measured with real media in aroundAI/storybookstudio#14), MCP SDK client with bearer, 20-shot fixture, real server and renderer code: scene 3 21.0 s → 13.917 s (target 12), a plan of 12 steps (6 ripple extract_range cuts, caption re-time, captions clip, 2 beds, 2 markers) and all 12 step previews pass; the apply made the version 'AI: tighten scene 3 to 12 s' from 'Rough cut' with 12 op-log lines, each with reason, scene and plan session; the report on disk equals the returned one equals the preview draft; the episode went 99.0 s → 91.917 s; 'fix the audio' applied 34 de-click fades from FILM-2016's fade compiler into 'AI: fix the audio'. 12 s was not reached: scene 3's 8 dialogue lines run 12.7 s and the card says so rather than cutting dialogue. The run was repeated in electron:dev with identical cards, report and op log"}
     - {text: "Nightly AI eval: 10 fixture episodes × 5 instructions (incl. the north-star sentence) scored on duration hit rate, QA pass rate, script coverage, revisions, cost; a release may not regress QA pass rate or raise cost over 20%", met: false, reason: "the harness is built (scripts/ai-eval.mjs, npm run ai-eval, tests/studio/ai-eval.test.mjs:17, :23, :32, :41) and the oracle agent run is recorded: 50 runs, duration hit 0.5 (hit_duration 10/10; the north-star target sits under the dialogue), coverage 1, 0 tool errors, QA unmeasured. The model run has not been made: it needs the owner's choice of model (phase 20 README question 2). Lead default: the eval model driver uses @anthropic-ai/sdk on demand, not as a dependency, and suggests claude-opus-5-5. The QA pass rate waits for FILM-2014"}
   e2e: []
 remaining:
@@ -110,6 +110,21 @@ notes: >
   studio_add_graphic (FILM-2018), studio_add_captions without existing cues
   (transcription is a job). studio_deliver confirm:true and studio_create_variant
   are real since FILM-2017 (aroundAI/storybookstudio#10).
+
+  M2 correction (aroundAI/storybookstudio#14, merged as 0b7bc20, pinned at
+  storybookstudio@31127e4 by #629). M2 was first measured on a media-less
+  fixture (#9: scene 3 21.0 s to 13.9 s); the compile-time audio reads never
+  decoded anything there. Re-measured with real media: tighten_pacing finds no
+  cut on the seeded episode (the card explains: 8 lines fill 19.5 of 21 s, and
+  the gaps are under the 0.6 s pause limit), fix the audio previews in 0.04 s
+  and applies 7 fades in 0.35 s, and the window stayed alive throughout.
+  Compile-time audio reads now run in the main process with ffmpeg
+  (electron/studio/audioReads.js: silencedetect and FILM-2016's ebur128); the
+  renderer never calls decodeAudioData. That call segfaults the renderer on
+  Electron 28 on macOS 26, and Velorn's own get_audio_analysis tool still
+  does: KB-190. Report durations now end where the picture ends, so a
+  captions clip no longer inflates them. The autoRepair request still has no
+  progress or job id (task 32).
 feature:
   database: {tables: [], columns_added: []}
   queries: []
