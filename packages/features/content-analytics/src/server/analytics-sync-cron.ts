@@ -38,6 +38,7 @@ import type { XAnalyticsResult } from '../providers/twitter';
 import { createYouTubeAnalyticsProvider } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import { syncAssetDurations } from './asset-duration-sync';
+import { syncEditSessionFacts } from './edit-sessions-fact-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
 import {
   buildAudienceRows,
@@ -134,6 +135,10 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
   };
 
   try {
+    // 0. Delivered StorybookStudio edits into edit_sessions_fact (FILM-2006),
+    // first, so a run with no publishes due still rolls them up.
+    result.editSessionFacts = await rollUpEditSessions(client, ctx);
+
     // 1. Fetch publishes that need syncing
     const { publishes: publishesToSync, notAuthorised } =
       await fetchPublishesForSync(client, BATCH_SIZE);
@@ -262,6 +267,40 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     );
 
     return result;
+  }
+}
+
+/**
+ * The edit-session rollup (FILM-2006), hourly over the recent window and in
+ * full once a day at the hour the dim reconcile runs. Never throws: losing
+ * an hour of edit facts is not a reason to lose the run's metrics, and the
+ * next run resends the window.
+ */
+async function rollUpEditSessions(
+  client: Client,
+  ctx: { name: string },
+): Promise<SyncJobResult['editSessionFacts']> {
+  const logger = await getLogger();
+
+  try {
+    const facts = await syncEditSessionFacts(client, {
+      full: new Date().getUTCHours() === 2,
+    });
+
+    if (facts.skipped > 0) {
+      logger.warn(
+        { ...ctx, ...facts },
+        'Delivered edit sessions without a readable report were not rolled up',
+      );
+    }
+
+    return facts;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    logger.error({ ...ctx, error: message }, 'Edit session rollup failed');
+
+    return { error: message };
   }
 }
 
