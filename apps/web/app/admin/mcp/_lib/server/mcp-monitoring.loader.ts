@@ -35,19 +35,23 @@ export async function loadMcpMonitoring(days: MonitoringWindow) {
   const client = getSupabaseServerClient();
   const admin = getSupabaseServerAdminClient();
 
-  const [tools, errorCodes, runs, expiredLeases, guard] = await Promise.all([
-    client.rpc('admin_mcp_tool_stats', { p_days: days }),
-    client.rpc('admin_mcp_error_codes', { p_days: days }),
-    client.rpc('admin_generation_run_stats', { p_days: days }),
-    client.rpc('admin_expired_leases_per_day', { p_days: days }),
-    admin.rpc('external_run_model_calls', { p_limit: 1 }),
-  ]);
+  const [tools, errorCodes, runs, expiredLeases, guard, studio] =
+    await Promise.all([
+      client.rpc('admin_mcp_tool_stats', { p_days: days }),
+      client.rpc('admin_mcp_error_codes', { p_days: days }),
+      client.rpc('admin_generation_run_stats', { p_days: days }),
+      client.rpc('admin_expired_leases_per_day', { p_days: days }),
+      admin.rpc('external_run_model_calls', { p_limit: 1 }),
+      // StorybookStudio deliveries (FILM-2006), super admin only like the rest
+      client.rpc('admin_studio_delivery_stats', { p_days: days }),
+    ]);
 
   return {
     tools: panel(tools),
     errorCodes: panel(errorCodes),
     runs: panel(runs),
     expiredLeases: panel(expiredLeases),
+    studio: panel(studio),
     guard: guard.error
       ? { error: guard.error.message }
       : { violations: guard.data?.[0]?.total ?? 0 },

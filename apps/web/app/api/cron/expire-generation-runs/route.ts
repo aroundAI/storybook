@@ -6,6 +6,7 @@ import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { expireStaleRenderUploads } from './expire-render-uploads';
+import { raiseStudioDeliveryAlerts } from './studio-delivery-alerts';
 
 /**
  * Hourly generation-run expiry (FILM-1903).
@@ -26,7 +27,9 @@ import { expireStaleRenderUploads } from './expire-render-uploads';
  * reported, and does not stop the trim.
  *
  * And it fails StorybookStudio renders left uploading for 24 hours
- * (FILM-2003, `expire-render-uploads.ts`), likewise logged and reported.
+ * (FILM-2003, `expire-render-uploads.ts`), likewise logged and reported,
+ * then alerts on those and on the last hour's TARGET_CHANGED refusals
+ * (FILM-2006, `studio-delivery-alerts.ts`).
  *
  * Security: `auth: false` plus an explicit bearer check, as the sibling cron
  * routes do: `auth: true` would redirect a session-less caller, and the
@@ -135,6 +138,17 @@ export const GET = enhanceRouteHandler(
       logger.info(
         { ...ctx, failedRenders: renders.failed },
         'Failed render uploads left unfinalized for 24 hours',
+      );
+    }
+
+    try {
+      await raiseStudioDeliveryAlerts(admin, {
+        failedRenders: renders.ok ? renders.failed : 0,
+      });
+    } catch (alertError) {
+      logger.error(
+        { ...ctx, error: alertError },
+        'Studio delivery alerts could not run',
       );
     }
 
