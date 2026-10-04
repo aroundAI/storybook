@@ -301,3 +301,137 @@ describe('a credential a client presents is refused, never ignored', () => {
     expect(store.clients.size).toBe(0);
   });
 });
+
+describe('a cached client document is refreshed', () => {
+  const HOUR = 3_600_000;
+
+  function cachedChatGpt(ageHours: number) {
+    const store = createMemoryOAuthStore();
+
+    store.clients.set(CHATGPT.doc.client_id, {
+      clientId: CHATGPT.doc.client_id,
+      clientName: 'ChatGPT',
+      redirectUris: ['https://chatgpt.com/old_redirect'],
+      metadataUrl: CHATGPT.doc.client_id,
+      createdAt: new Date(NOW.getTime() - ageHours * HOUR).toISOString(),
+    });
+
+    return store;
+  }
+
+  function counting(fetchFn: () => Promise<Response>) {
+    const calls: string[] = [];
+    const wrapped = async (input: string | URL | Request) => {
+      calls.push(String(input));
+
+      return fetchFn();
+    };
+
+    return { calls, fetchFn: wrapped };
+  }
+
+  it('a copy younger than a day is used as it is', async () => {
+    const store = cachedChatGpt(23);
+    const { calls, fetchFn } = counting(serving(CHATGPT.text));
+
+    const client = await resolveClient(store, CHATGPT.doc.client_id, {
+      fetchFn,
+      now: NOW,
+    });
+
+    expect(calls).toEqual([]);
+    expect(client?.redirectUris).toEqual(['https://chatgpt.com/old_redirect']);
+  });
+
+  it('an older copy is fetched again, so a rotated redirect URI takes effect', async () => {
+    const store = cachedChatGpt(25);
+    const { calls, fetchFn } = counting(serving(CHATGPT.text));
+
+    const client = await resolveClient(store, CHATGPT.doc.client_id, {
+      fetchFn,
+      now: NOW,
+    });
+
+    expect(calls).toEqual([CHATGPT.doc.client_id]);
+    expect(client?.redirectUris).toEqual(CHATGPT.doc.redirect_uris);
+    expect(store.clients.get(CHATGPT.doc.client_id)).toMatchObject({
+      redirectUris: CHATGPT.doc.redirect_uris,
+      createdAt: NOW.toISOString(),
+    });
+  });
+
+  it('when the refetch fails, the cached copy is kept and used', async () => {
+    const store = cachedChatGpt(25);
+    const { calls, fetchFn } = counting(
+      async () => new Response('down', { status: 503 }),
+    );
+
+    const client = await resolveClient(store, CHATGPT.doc.client_id, {
+      fetchFn,
+      now: NOW,
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(client?.redirectUris).toEqual(['https://chatgpt.com/old_redirect']);
+  });
+
+  it('a registered (DCR) client is never refetched, however old', async () => {
+    const store = createMemoryOAuthStore();
+    store.clients.set('sbk_client_x', {
+      clientId: 'sbk_client_x',
+      clientName: 'x',
+      redirectUris: ['https://x.example/cb'],
+      metadataUrl: null,
+      createdAt: new Date(NOW.getTime() - 400 * HOUR).toISOString(),
+    });
+    const { calls, fetchFn } = counting(serving(CHATGPT.text));
+
+    expect(
+      await resolveClient(store, 'sbk_client_x', { fetchFn, now: NOW }),
+    ).not.toBeNull();
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('client documents from the vendor sandbox', () => {
+  const SANDBOX = {
+    NODE_ENV: 'test',
+    VENDOR_SANDBOX: '1',
+    VENDOR_URL_CLIENTDOCS: 'http://127.0.0.1:4100/__sandbox/client-documents',
+  };
+
+  it('with the sandbox on, the document is read from it, keyed by the client id', async () => {
+    const store = createMemoryOAuthStore();
+    const calls: string[] = [];
+
+    const client = await resolveClient(store, CHATGPT.doc.client_id, {
+      fetchFn: async (input) => {
+        calls.push(String(input));
+        return serving(CHATGPT.text)();
+      },
+      now: NOW,
+      env: SANDBOX,
+    });
+
+    expect(calls).toEqual([
+      `http://127.0.0.1:4100/__sandbox/client-documents/${encodeURIComponent(CHATGPT.doc.client_id)}`,
+    ]);
+    expect(client?.clientId).toBe(CHATGPT.doc.client_id);
+  });
+
+  it('with the sandbox off (production), the override is never read', async () => {
+    const store = createMemoryOAuthStore();
+    const calls: string[] = [];
+
+    await resolveClient(store, CHATGPT.doc.client_id, {
+      fetchFn: async (input) => {
+        calls.push(String(input));
+        return serving(CHATGPT.text)();
+      },
+      now: NOW,
+      env: { ...SANDBOX, NODE_ENV: 'production' },
+    });
+
+    expect(calls).toEqual([CHATGPT.doc.client_id]);
+  });
+});

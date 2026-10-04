@@ -48,6 +48,9 @@ VENDOR_URL_GEMINI=http://127.0.0.1:4112
 VENDOR_URL_OPENAI=http://127.0.0.1:4110
 VENDOR_URL_ELEVENLABS=http://127.0.0.1:4113
 GEMINI_API_KEY=sandbox-local-key
+# Claude's and ChatGPT's OAuth client documents, served from the copies
+# committed with the studio-mcp tests (FILM-1911, KB-185).
+VENDOR_URL_CLIENTDOCS=http://127.0.0.1:4100/__sandbox/client-documents
 # The local job queue (FILM-1806): ElasticMQ for SQS, dynamodb-local for the
 # WebSocket connections table, and the runner's gateway for API Gateway.
 VENDOR_URL_SQS=http://127.0.0.1:4120

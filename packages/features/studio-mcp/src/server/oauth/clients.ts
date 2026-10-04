@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { z } from 'zod';
 
+import { localServiceUrl } from '@kit/shared/vendors';
+
 import { OAuthError } from './errors';
 import type { OAuthClientRecord, OAuthStore } from './store';
 
@@ -22,6 +24,8 @@ import type { OAuthClientRecord, OAuthStore } from './store';
 export const CLIENT_ID_PREFIX = 'sbk_client_';
 
 const MAX_DOCUMENT_BYTES = 64 * 1024;
+/** A cached document older than this is fetched again (KB-185). */
+export const CLIENT_DOCUMENT_TTL_MS = 24 * 60 * 60 * 1000;
 const DOCUMENT_TIMEOUT_MS = 5_000;
 
 const ALLOWED_GRANT_TYPES = ['authorization_code', 'refresh_token'] as const;
@@ -248,27 +252,44 @@ type FetchLike = (
 export async function resolveClient(
   store: OAuthStore,
   clientId: string,
-  options: { fetchFn?: FetchLike; now?: Date } = {},
+  options: {
+    fetchFn?: FetchLike;
+    now?: Date;
+    env?: Record<string, string | undefined>;
+  } = {},
 ): Promise<OAuthClientRecord | null> {
+  const now = options.now ?? new Date();
   const stored = await store.getClient(clientId);
 
-  if (stored) return stored;
+  // A registered client is kept as registered; a document's copy is
+  // refreshed once a day, so a vendor's rotated redirect URIs take effect.
+  // Its createdAt is when it was last fetched.
+  if (
+    stored &&
+    (!stored.metadataUrl ||
+      now.getTime() - new Date(stored.createdAt).getTime() <
+        CLIENT_DOCUMENT_TTL_MS)
+  ) {
+    return stored;
+  }
 
-  if (!isFetchableMetadataUrl(clientId)) return null;
+  if (!isFetchableMetadataUrl(clientId)) return stored;
 
   const document = await fetchClientMetadataDocument(
     clientId,
     options.fetchFn ?? fetch,
+    localServiceUrl('clientdocs', options.env),
   );
 
-  if (!document) return null;
+  // A refetch that fails keeps the copy we have
+  if (!document) return stored;
 
   const record: OAuthClientRecord = {
     clientId,
     clientName: document.client_name,
     redirectUris: document.redirect_uris,
     metadataUrl: clientId,
-    createdAt: (options.now ?? new Date()).toISOString(),
+    createdAt: now.toISOString(),
   };
 
   await store.saveClient(record);
@@ -304,18 +325,28 @@ export function isFetchableMetadataUrl(value: string) {
   return true;
 }
 
+/**
+ * Fetches and validates the document at `url`. `sandboxBase` is set only by
+ * the vendor sandbox (development or test, local addresses only): the
+ * document is then read from it, keyed by the client id, and still held to
+ * that id.
+ */
 async function fetchClientMetadataDocument(
   url: string,
   fetchFn: FetchLike,
+  sandboxBase: string | undefined,
 ): Promise<(ClientMetadata & { client_name: string }) | null> {
   let response: Response;
 
   try {
-    response = await fetchFn(url, {
-      headers: { Accept: 'application/json' },
-      redirect: 'error',
-      signal: AbortSignal.timeout(DOCUMENT_TIMEOUT_MS),
-    });
+    response = await fetchFn(
+      sandboxBase ? `${sandboxBase}/${encodeURIComponent(url)}` : url,
+      {
+        headers: { Accept: 'application/json' },
+        redirect: 'error',
+        signal: AbortSignal.timeout(DOCUMENT_TIMEOUT_MS),
+      },
+    );
   } catch {
     return null;
   }

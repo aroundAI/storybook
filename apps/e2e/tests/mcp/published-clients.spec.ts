@@ -15,12 +15,26 @@ import {
 } from './oauth-client';
 
 /**
- * FILM-1911: Claude and ChatGPT both connect by their published client
- * metadata documents when the authorization server advertises them, as
- * ours does. The server fetches each live document from its real URL, so
- * a change on either side that breaks sign-in shows up here. The browser's
- * last hop, to the client's callback, is answered locally and read.
+ * FILM-1911, KB-185: Claude and ChatGPT both connect by their published
+ * client metadata documents when the authorization server advertises them,
+ * as ours does. The browser's last hop, to the client's callback, is
+ * answered locally and read.
+ *
+ * Where the server reads the documents is its own configuration:
+ *
+ * - SANDBOX_E2E=1, the app started with local.env: from the vendor sandbox,
+ *   which serves the copies committed with the studio-mcp tests
+ *   (VENDOR_URL_CLIENTDOCS). No network; the default.
+ * - LIVE_CLIENT_DOCS=1, the app started without VENDOR_URL_CLIENTDOCS: from
+ *   claude.ai and chatgpt.com, a manual check that the vendors' current
+ *   documents still sign in.
+ *
+ * Neither is set in CI, which has no sandbox; the unit tests run the same
+ * documents through the validator there.
  */
+const DOCUMENTS_SERVED =
+  process.env.SANDBOX_E2E === '1' || process.env.LIVE_CLIENT_DOCS === '1';
+
 const PUBLISHED_CLIENTS = [
   {
     name: 'Claude',
@@ -38,6 +52,11 @@ for (const client of PUBLISHED_CLIENTS) {
   test(`${client.name}'s published client id signs in, gets iss on the callback, and calls whoami`, async ({
     page,
   }) => {
+    test.skip(
+      !DOCUMENTS_SERVED,
+      'Set SANDBOX_E2E=1 (sandbox copies) or LIVE_CLIENT_DOCS=1 (the vendors).',
+    );
+
     const team = await seedTeamAccount({
       emailPrefix: 'published',
       name: `Published ${client.name} ${uniqueStamp().slice(0, 8)}`,
@@ -45,8 +64,8 @@ for (const client of PUBLISHED_CLIENTS) {
     const { verifier, challenge } = pkce();
     const state = `state-${uniqueStamp().slice(0, 8)}`;
 
-    // A client document is cached after its first fetch; drop the copy an
-    // earlier run left so this run fetches the live one
+    // A client document is cached for a day; drop the copy an earlier run
+    // left so this run fetches the document
     const byClient = `client_id=eq.${encodeURIComponent(client.clientId)}`;
     await deleteRows('mcp_connections', byClient);
     await deleteRows('mcp_oauth_clients', byClient);

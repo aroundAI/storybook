@@ -166,7 +166,11 @@
       "find": "    (metadata.token_endpoint_auth_methods_supported ?? []).includes('none')",
       "replace": "    false",
       "spec": "tests/mcp/published-clients.spec.ts",
-      "grep": "ChatGPT's published client id"
+      "grep": "ChatGPT's published client id",
+      "needs": "sandbox",
+      "env": {
+        "SANDBOX_E2E": "1"
+      }
     },
     {
       "name": "1911 CONN U8 the token endpoint ignores a client_assertion or secret it is sent",
@@ -197,6 +201,36 @@
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/oauth/client-compatibility.test.ts",
       "pattern": "only method is private_key_jwt"
+    },
+    {
+      "name": "1911 CONN U11 a cached client document is never refetched",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "export const CLIENT_DOCUMENT_TTL_MS = 24 * 60 * 60 * 1000;",
+      "replace": "export const CLIENT_DOCUMENT_TTL_MS = Number.POSITIVE_INFINITY;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "an older copy is fetched again"
+    },
+    {
+      "name": "1911 CONN U12 a failed refetch loses the cached client",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "  if (!document) return stored;",
+      "replace": "  if (!document) return null;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "the cached copy is kept"
+    },
+    {
+      "name": "1911 CONN U13 the sandbox's client documents are ignored",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "    localServiceUrl('clientdocs', options.env),",
+      "replace": "    undefined,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/client-compatibility.test.ts",
+      "pattern": "read from it, keyed by the client id"
     }
   ]
 }

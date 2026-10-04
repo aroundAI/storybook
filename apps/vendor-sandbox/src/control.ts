@@ -1,3 +1,4 @@
+import { CLIENT_DOCUMENTS_PATH, clientDocument } from './client-documents';
 import { type Handler, parseJson, sendJson } from './http';
 import { drawSeed } from './rng';
 import type { SocialState } from './social/state';
@@ -66,6 +67,21 @@ export function controlHandler(
       const html = statusPage(state, ports());
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(html);
+      return;
+    }
+
+    if (method === 'GET' && url.pathname.startsWith(CLIENT_DOCUMENTS_PATH)) {
+      const document = clientDocument(
+        decodeURIComponent(url.pathname.slice(CLIENT_DOCUMENTS_PATH.length)),
+      );
+
+      if (document === null) {
+        sendJson(res, 404, { error: 'no committed document for that client' });
+        return;
+      }
+
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(document);
       return;
     }
 
