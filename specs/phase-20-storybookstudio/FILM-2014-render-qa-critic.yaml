@@ -3,7 +3,7 @@ title: "Preview Render Tiers, Deterministic QA and the Critic"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-2012"
@@ -26,37 +26,41 @@ summary: >
   Part 1 R-23, R-61.
 acceptance_criteria:
   - text: "electron/studio/previewRender.js renders keyframes (one JPEG per cut and per 2 s, 640 px wide, under cache/kf/) in under 5 s for a 90 s cut on an M1 Air; a scene preview (720p, 24 fps, H.264 fast, from proxies) faster than real time; an audio-only WAV of the bus mix; preview renders bypass the media-preparation queue so a long export never blocks them"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 electron/studio/previewRender.js:95 renderKeyframes, :262 renderScenePreview, :148 renderAudioMix; src/studio/review/renderPlan.js:144 keyframeTimes; electron/mediaPreparation.js:334 startBypassing; tests/studio/preview-render.test.mjs:41 (640 px under cache/kf/), :57 (720p24 faster than real time), :81 (a preview proxy finishes while a 40 s delivery job encodes). Measured on an M5 Pro, not an M1 Air: keyframes for the 99 s cut 1.08 s, scene preview 2.2x real time (RELEASE_CHECKLIST.md:157)"
   - text: "electron/studio/qa.js runs: ebur128 (integrated loudness and true peak against the preset target, -14 LUFS YouTube, -16 Reels), astats clipping, blackdetect, freezedetect, silencedetect (longer than policy), ffprobe (duration within ±5% of policy.targetDurationSeconds; codec, fps, resolution against the preset), caption cues against the preset's safe rectangles and for overlaps, check_media_health for missing or offline assets, and script coverage (every scene has a clip; every dialogue line is placed or marked cut in the op log)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 electron/studio/qa.js:23 analysisArgs, :68 runQa; src/studio/review/qaChecks.js:154 loudnessIssues, :130 clippedRanges, :249 probeIssues, :293 captionIssues, :339 mediaHealthIssues, :377 scriptCoverageIssues; loudness targets and safe areas are imported from FILM-2016 (buses.js, captions/layout.js), not copied"
   - text: "QA output is QaResultSchema {pass, issues:[{type, severity 0-1, timeRange, scene, detail, repairIntent?}]} (shared with FILM-2003); known-bad fixture renders (clipped audio, black frames, out-of-safe-area captions) fail and known-good pass"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 src/studio/review/qaChecks.js:406 qaResult (QaResultSchema with repairIntent); tests/studio/qa.test.mjs:43 (good passes), :64 (clipped audio fails), :74 (black frames fail), :122 (captions outside the 9:16 safe area fail with move_caption)"
   - text: "src/studio/critic/pacing.js: shot lengths vs policy, information delivery (dialogue end vs clip end), repeated shots by semantic similarity, cut density per scene; audio.js: dialogue-to-music ratio per segment from bus stems, fades at cuts, abrupt level changes; visual.js: a vision model on keyframes for subject framing, caption overlap and shot-boundary continuity, plus script fidelity from the scene map; each returns issues in the QA shape with severity"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 src/studio/critic/pacing.js:11, src/studio/critic/audio.js:13, src/studio/critic/visual.js:13; tests/studio/critic.test.mjs:38, :83 (loud music over dialogue is measured from the stems and names duck_music). Correction: the critic modules are .js, as the spec says, and work as ES modules because src/studio/package.json declares type module"
   - text: "studio_review {scope, versionId?} runs QA then the critic and returns both; with no hosted model configured the visual analyser is skipped and the result says so; vision is capped at 40 keyframes per review and its token cost is recorded in the op log"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 electron/studio/reviewTools.js:93 review, :122 appendOpLog; src/studio/critic/visual.js:13 MAX_VISION_FRAMES; electron/studio/visionClient.js:34; electron/studio/mcpCapabilities.js:692 the studio_review handler; tests/studio/critic.test.mjs:109 (no hosted model: vision skipped and says so), tests/studio/review-loop.test.mjs:81 (cost in the op log, capped at 40 keyframes). Owner-gated: the vision model is set by STUDIO_VISION_PROVIDER=anthropic and STUDIO_VISION_MODEL (claude-opus-5-5 when the provider is set), key from the secret vision.anthropic.apiKey or ANTHROPIC_API_KEY; unset, the visual analyser reports skipped"
   - text: "studio_repair {issues[]} compiles each issue's repairIntent (duck_music, trim_silence, normalize_loudness, move_caption, replace_missing_media, add_fade, re-time) to one action plan with reasons; FILM-2013's autoRepair loop uses it, stops at 3 rounds, and leaves remaining issues as cards"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 src/studio/intents/repair.js:95 compile; electron/studio/mcpCapabilities.js:367 reviewRound, :554 the autoRepair loop; tests/studio/repair.test.mjs:134 (one plan for every issue), tests/studio/review-mcp.test.mjs:45 (review, repair previewed and applied into a version, the next review clears it, over MCP), :86 (autoRepair over MCP), tests/studio/review-loop.test.mjs:39"
   - text: "Delivery renders (FILM-2017) go through Velorn's media-preparation queue with VideoToolbox on macOS, NVENC on Windows/Linux and x264 fallback; a 1080p 90 s render completes at 1× real time or faster with hardware encode on the reference machines"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 electron/studio/deliveryPath.js:44 render, :77 service.enqueue, :108 check; electron/studio/studioMain.js:67 swaps FILM-2017's render and qa seams for it; electron/mediaPreparation.js:27 the delivery kind; tests/studio/delivery-path.test.mjs:74 (VideoToolbox through the queue, a 94 s 1080p render 7.0x real time: 13.5 s on an M5 Pro), :84 (without hardware the x264 fallback and its reason are reported). NVENC and the reference machines are not measured"
   - text: "Velorn's export regression runner gains the QA pass over its fixture outputs so a regression in loudness or black frames fails CI"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/fixtures/export-scheduler-electron.cjs:84; electron/studio/exportRegressionQa.js:12; tests/studio/export-regression-qa.test.mjs:38 (VELORN_TEST_NATIVE_ENCODE=1 check:export-worker-scheduling runs QA on its native render; a forced-black encode fails with 'Encoded MP4 failed QA: black_frames')"
 test_plan:
   unit:
-    - {text: "QA: each check on a known-bad and a known-good fixture; thresholds from preset and policy", met: false, reason: "not built"}
-    - {text: "Pacing and audio analysers on the 20-shot fixture produce the expected issues; repair compilation per issue type", met: false, reason: "not built"}
+    - {text: "QA: each check on a known-bad and a known-good fixture; thresholds from preset and policy", met: true, evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/qa.test.mjs:43, :64, :74, :122)"}
+    - {text: "Pacing and audio analysers on the 20-shot fixture produce the expected issues; repair compilation per issue type", met: true, evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/critic.test.mjs:38, :83; tests/studio/repair.test.mjs:22, :134)"}
   integration:
-    - {text: "Apply → keyframes → QA → repair → QA passes on a fixture with planted silence and loud music, in under 3 rounds", met: false, reason: "not built"}
-    - {text: "Render timing on the reference machines recorded in the release checklist", met: false, reason: "not built"}
+    - {text: "Apply → keyframes → QA → repair → QA passes on a fixture with planted silence and loud music, in under 3 rounds", met: true, evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/review-loop.test.mjs:39 converges within 3 rounds; tests/studio/review-mcp.test.mjs:45 and :86 do it over MCP in FILM-2013's harness)"}
+    - {text: "Render timing on the reference machines recorded in the release checklist", met: false, reason: "scripts/studio-render-timings.mjs and the RELEASE_CHECKLIST.md section (storybookstudio@31127e4 RELEASE_CHECKLIST.md:157) exist, and an M5 Pro run is recorded (keyframes for the 99 s cut 1.08 s, scene preview 2.2x real time, 94 s 1080p delivery through the queue with VideoToolbox 13.5 s, 7.0x). The M1 Air and an NVENC machine are not measured"}
   e2e: []
+remaining:
+  - criterion: "Render timings on the M1 Air and an NVENC reference machine (AC1 keyframes under 5 s, AC7 1x real time or faster with hardware encode)"
+    reason: "only an M5 Pro, under load, has been measured; run node scripts/studio-render-timings.mjs on each reference machine and paste the table into RELEASE_CHECKLIST.md"
+    closed_by: "owner"
 open_questions:
   - "Vision model for the visual analyser: the same model that drives the agent, or a cheaper dedicated one? Decide with README open question 2."
 notes: >
@@ -64,6 +68,24 @@ notes: >
   for free, so the critic's tokens go only to pacing, framing and continuity
   judgments. Continuity scoring across shot boundaries starts here as a visual
   issue type; SPIKE-06 decides whether it grows into generation requests.
+
+  Built in aroundAI/storybookstudio#12 (merged as dc363cc; pinned at
+  storybookstudio@31127e4 by #629). Lead defaults, the owner may change them:
+  silence longer than 1.5 s fails unless the policy carries maxSilenceSeconds
+  (EditPolicySchema has no silence field: a FILM-2004 follow-up); QA fails at
+  severity 0.5 and above; preview pictures come from FFmpeg, not the canvas
+  exporter, so previews show no effects, text or kinetic captions
+  (AI_EDITOR_CONTRACT line 7 says so). The vision model for the visual critic
+  is the owner's choice (README question 2): until STUDIO_VISION_PROVIDER and
+  STUDIO_VISION_MODEL are set it reports skipped; @anthropic-ai/sdk is now a
+  dependency. CI found one thing local runs could not: the macOS runner has no
+  VideoToolbox (error -12903), so the delivery test checks the x264 fallback
+  and its reason when no hardware ran, and the MCP test allows 10 minutes per
+  call because the SDK's 60 s default is shorter than one autoRepair request.
+  Follow-ups: studio_edit autoRepair is still one long request with no
+  progress or job id (FILM-2013, task 32), and FILM-2004's policy needs
+  maxSilenceSeconds. Also closes FILM-2017's loud-bed integration line (see
+  that record).
 feature:
   database: {tables: [], columns_added: []}
   queries: []
