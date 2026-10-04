@@ -4559,9 +4559,11 @@ export type Database = {
         Row: {
           account_id: string
           audio_settings: Json | null
+          brand: Json
           created_at: string | null
           created_by: string | null
           description: string | null
+          edit_policy: Json
           id: string
           metadata: Json | null
           name: string
@@ -4577,9 +4579,11 @@ export type Database = {
         Insert: {
           account_id: string
           audio_settings?: Json | null
+          brand?: Json
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          edit_policy?: Json
           id?: string
           metadata?: Json | null
           name: string
@@ -4595,9 +4599,11 @@ export type Database = {
         Update: {
           account_id?: string
           audio_settings?: Json | null
+          brand?: Json
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          edit_policy?: Json
           id?: string
           metadata?: Json | null
           name?: string

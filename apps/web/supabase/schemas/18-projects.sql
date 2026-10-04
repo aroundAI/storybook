@@ -34,6 +34,11 @@ create table if not exists public.projects (
   slug text,
   status varchar(50) default 'active' not null check (status in ('active', 'archived', 'deleted')),
   metadata jsonb default '{}'::jsonb,
+  -- FILM-2004: BrandSchema / EditPolicySchema objects; {} = defaults
+  brand jsonb not null default '{}'::jsonb
+    constraint projects_brand_is_object check (jsonb_typeof(brand) = 'object'),
+  edit_policy jsonb not null default '{}'::jsonb
+    constraint projects_edit_policy_is_object check (jsonb_typeof(edit_policy) = 'object'),
   created_at timestamp with time zone,
   updated_at timestamp with time zone,
   created_by uuid references auth.users on delete set null,
