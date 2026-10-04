@@ -2,7 +2,9 @@
  * Shot Generation Handler — Stage 3
  *
  * The `shots` stage of `@kit/generation` (FILM-1901): prepare → the Shot
- * Orchestrator (Reel Scout → Shot Director per scene → Shot Quality) →
+ * Orchestrator (Reel Scout → Shot Director per scene → Shot Quality), which
+ * `run.write` reaches through the stage's writer
+ * (`@kit/episodes/agent/stage-writers`) →
  * outputSchema and check per part → commit. Commit replaces the episode's
  * shots and its `shot_list`, clears stale cues and tracks, and names the
  * chained `audio_cues` stage, which this handler opens as a child run of
@@ -10,19 +12,11 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { ShotOrchestratorResult } from '@kit/episodes/agent/shot-orchestrator';
 import {
-  type Brief,
   type CommitResult,
-  type GenerateFn,
-  REEL_SCOUT_PART,
-  type ShotsBriefContext,
   type ShotsCommitData,
-  type ShotsPartOutput,
   type ShotsTarget,
-  renderPerformanceContext,
   runStage,
-  scenePartKey,
   shotsStage,
 } from '@kit/generation';
 import {
@@ -60,14 +54,7 @@ export async function processShotGeneration(
 
   const ctx = workerCtx(supabase, data);
 
-  const { commit } = await runStage(shotsStage, ctx, target, {
-    ...stageRunDeps(),
-    // FILM-1912: the block the run was opened with, for every scene prompt
-    generate: orchestratedShots(
-      data,
-      renderPerformanceContext(ctx.performanceContext),
-    ),
-  });
+  const { commit } = await runStage(shotsStage, ctx, target, stageRunDeps());
 
   if (commit.status === 'committed') {
     await openFollowOn(supabase, data, commit);
@@ -81,118 +68,6 @@ export async function processShotGeneration(
       metadata: commit.data.metadata,
     },
   };
-}
-
-/**
- * The server writer: the orchestrator produces every part in one run, on
- * the first brief it is asked for; later briefs are answered from it.
- */
-function orchestratedShots(
-  data: LlmJobPayload<'shot-generation'>,
-  performanceContext: string,
-): GenerateFn {
-  let outputs: Map<string, ShotsPartOutput> | undefined;
-
-  return async (brief) => {
-    outputs ??= await runOrchestratorForParts(brief, data, performanceContext);
-
-    const output = outputs.get(brief.part.key);
-
-    if (!output) {
-      throw new Error(
-        `The Shot Orchestrator produced nothing for part ${brief.part.key}`,
-      );
-    }
-
-    return { output };
-  };
-}
-
-async function runOrchestratorForParts(
-  brief: Brief,
-  data: LlmJobPayload<'shot-generation'>,
-  performanceContext: string,
-): Promise<Map<string, ShotsPartOutput>> {
-  const context = brief.context as unknown as ShotsBriefContext;
-  const { runShotOrchestrator } = await import(
-    '@kit/episodes/agent/shot-orchestrator'
-  );
-
-  console.log(
-    `[Shot Generation] Starting Shot Orchestrator — ${context.scenes.length} scenes`,
-  );
-
-  const result = await runShotOrchestrator({
-    episodeId: data.episodeId,
-    episodeTitle: context.episode.title,
-    genre: context.genre,
-    targetAudience: context.targetAudience,
-    visualStyle: context.visualStyle,
-    accountId: data.accountId,
-    scenes: context.scenes,
-    charactersVeoContext: context.charactersVeo || 'No characters defined.',
-    locationsVeoContext: context.locationsVeo || 'No locations defined.',
-    recurringElementsContext: context.recurringElements,
-    shotDuration: context.shotDuration,
-    performanceContext,
-  });
-
-  console.log(
-    `[Shot Generation] Orchestrator completed — success: ${result.success}, ` +
-      `shots: ${result.shots.length}, reel candidates: ${result.reelCandidateScenes.join(', ') || 'none'}, ` +
-      `steps: ${result.orchestratorSteps}`,
-  );
-
-  if (!result.success) {
-    throw new Error(
-      `Shot Orchestrator failed: ${result.error ?? 'Unknown error'}`,
-    );
-  }
-
-  if (result.shots.length === 0) {
-    throw new Error(
-      'Shot Director returned 0 shots. All scene-shot-generation LLM calls failed. ' +
-        'Check CloudWatch for [Shot Director] error logs and verify scene-shot-generation prompt config.',
-    );
-  }
-
-  return partOutputsFrom(
-    result,
-    context.scenes.map((scene) => scene.number),
-  );
-}
-
-/** The orchestrator's one result, as the stage's parts. */
-export function partOutputsFrom(
-  result: ShotOrchestratorResult,
-  sceneNumbers: number[],
-): Map<string, ShotsPartOutput> {
-  const outputs = new Map<string, ShotsPartOutput>();
-
-  outputs.set(REEL_SCOUT_PART, {
-    kind: 'reel_scout',
-    sceneAnalyses: result.sceneAnalyses,
-    topReelCandidates: result.reelCandidateScenes,
-    orchestratorNote: result.orchestratorNote ?? '',
-  } as ShotsPartOutput);
-
-  for (const sceneNumber of sceneNumbers) {
-    const scene = result.sceneResults?.find(
-      (s) => s.sceneNumber === sceneNumber,
-    );
-
-    outputs.set(scenePartKey(sceneNumber), {
-      kind: 'scene',
-      sceneNumber,
-      shots: result.shots.filter((shot) => shot.sceneNumber === sceneNumber),
-      sceneSummary: scene?.sceneSummary,
-      sceneViralScore: scene?.sceneViralScore,
-      sceneHookType: scene?.sceneHookType,
-      sceneStandaloneSummary: scene?.sceneStandaloneSummary,
-    } as unknown as ShotsPartOutput);
-  }
-
-  return outputs;
 }
 
 /**

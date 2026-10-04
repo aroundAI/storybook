@@ -47,6 +47,29 @@ export function jsonArrayAfter(userPrompt: string, marker: RegExp) {
   return undefined;
 }
 
+/** The first JSON object after `marker` in the prompt; undefined when none parses. */
+export function jsonObjectAfter(userPrompt: string, marker: RegExp) {
+  const at = userPrompt.search(marker);
+  if (at < 0) return undefined;
+  const start = userPrompt.indexOf('{', at);
+  if (start < 0) return undefined;
+
+  let depth = 0;
+  for (let i = start; i < userPrompt.length; i++) {
+    const c = userPrompt[i];
+    if (c === '{') depth++;
+    if (c === '}' && --depth === 0) {
+      try {
+        const parsed: unknown = JSON.parse(userPrompt.slice(start, i + 1));
+        return isObject(parsed) ? parsed : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
 /** "600-900 words" → 600: the floor of the first word range the prompt sets. */
 export function wordFloorFromPrompt(userPrompt: string) {
   const match = /(\d{2,5})\s*[-–]\s*\d{2,5}\s+words/i.exec(userPrompt);
@@ -205,9 +228,84 @@ const batchTranslateMetadata: Fitter = (value, userPrompt, ctx) => {
   };
 };
 
+/**
+ * `quality-evaluation/reel-scout`: one analysis per scene the prompt sent,
+ * under that scene's number, and Reel candidates only among those scenes.
+ */
+const reelScout: Fitter = (value, userPrompt) => {
+  const numbers = (jsonArrayAfter(userPrompt, /Scenes to Evaluate/) ?? [])
+    .filter(
+      (s): s is { number: number } =>
+        isObject(s) && typeof s.number === 'number',
+    )
+    .map((s) => s.number);
+  if (
+    numbers.length === 0 ||
+    !isObject(value) ||
+    !Array.isArray(value.sceneAnalyses)
+  )
+    return value;
+  const generated = value.sceneAnalyses.filter(isObject);
+  const sceneAnalyses = numbers.map((sceneNumber, i) => ({
+    ...generated[i % Math.max(1, generated.length)],
+    sceneNumber,
+  }));
+
+  return {
+    ...value,
+    sceneAnalyses,
+    topReelCandidates: sceneAnalyses
+      .filter((analysis) => analysis.isReelCandidate === true)
+      .map((analysis) => analysis.sceneNumber),
+  };
+};
+
+/**
+ * `scene-shot-generation`: shots name only the characters who speak in the
+ * scene the prompt sent, are set in its location, and last a whole number
+ * of seconds inside the range the prompt asks for.
+ */
+const sceneShots: Fitter = (value, userPrompt) => {
+  const scene = jsonObjectAfter(userPrompt, /## CURRENT SCENE CONTENT/);
+  if (!scene || !isObject(value) || !Array.isArray(value.shots)) return value;
+  const speakers = [
+    ...new Set(
+      (Array.isArray(scene.dialogue) ? scene.dialogue : [])
+        .filter(isObject)
+        .map((line) => line.character)
+        .filter((name): name is string => typeof name === 'string'),
+    ),
+  ];
+  const location =
+    typeof scene.location === 'string' ? scene.location : undefined;
+  const range = /between (\d+) and (\d+) seconds/.exec(userPrompt);
+  const [min, max] = range ? [Number(range[1]), Number(range[2])] : [];
+
+  return {
+    ...value,
+    shots: value.shots.filter(isObject).map((shot) => ({
+      ...shot,
+      characters: speakers.slice(0, 2),
+      duration:
+        min !== undefined && max !== undefined
+          ? Math.min(
+              max,
+              Math.max(min, Math.round(Number(shot.duration) || min)),
+            )
+          : shot.duration,
+      metadata: {
+        ...(isObject(shot.metadata) ? shot.metadata : {}),
+        ...(location ? { location } : {}),
+      },
+    })),
+  };
+};
+
 export const BRIEF_FITTERS: Record<string, Fitter> = {
   'batch-translate-metadata': batchTranslateMetadata,
+  'quality-evaluation/reel-scout': reelScout,
   'scene-audio-refinement': sceneAudio,
+  'scene-shot-generation': sceneShots,
   'screenplay-conversion': screenplay,
   'screenplay-refinement': screenplay,
   'season-generation': seasonGeneration,

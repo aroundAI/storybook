@@ -303,6 +303,14 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/lib/canon/continuity-validator.ts',
       ),
+      '@kit/episodes/lib/canon/validation-checkpoint': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/canon/validation-checkpoint.ts',
+      ),
+      '@kit/episodes/agent/stage-writers': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/stage-writers/index.ts',
+      ),
       '@kit/episodes/components/origin-badge': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/components/origin-badge.tsx',

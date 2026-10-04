@@ -410,6 +410,7 @@ export const screenplayStage: StageDefinition<
   targetType: 'episode',
   targetSchema: ScreenplayTargetSchema,
   outputSchema: ScreenplayPartOutputSchema,
+  orchestrated: true,
   jobTracking: {
     jobType: 'screenplay',
     reference: (target) => ({ type: 'episode', id: target.episodeId }),

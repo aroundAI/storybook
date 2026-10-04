@@ -584,6 +584,7 @@ export const shotsStage: StageDefinition<
   targetType: 'episode',
   targetSchema: ShotsTargetSchema,
   outputSchema: ShotsPartOutputSchema,
+  orchestrated: true,
   jobTracking: {
     jobType: 'shot_list',
     reference: (target) => ({ type: 'episode', id: target.episodeId }),

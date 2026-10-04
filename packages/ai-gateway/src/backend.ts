@@ -46,10 +46,10 @@ async function refuseWithoutModel(run: RunHandle) {
 }
 
 export const gatewayBackend: RunBackend = {
-  write: async (run, brief) => {
+  write: async (run, brief, scope) => {
     await refuseWithoutModel(run);
 
-    return resolveWriter(run)(run, brief);
+    return resolveWriter(run)(run, brief, scope);
   },
   dispatch: async (run) => {
     await refuseWithoutModel(run);

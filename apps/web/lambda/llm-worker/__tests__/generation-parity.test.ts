@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { withRun } from '@kit/ai-gateway';
+import { createServerWriter, withRun } from '@kit/ai-gateway';
 import {
   type RecordedCall,
   fakeRunHandle,
@@ -74,22 +74,24 @@ function parityRun(commitsThrough?: SupabaseClient<Database>) {
     targetId: EPISODE_ID,
     createdBy: USER_ID,
     backend: {
-      write: async (_run, brief) => {
-        executorCalls.push({
-          templateSlug: brief.prompt.slug,
-          variables: brief.prompt.variables,
-        });
+      write: createServerWriter({
+        prompt: async (_run, brief) => {
+          executorCalls.push({
+            templateSlug: brief.prompt.slug,
+            variables: brief.prompt.variables,
+          });
 
-        return {
-          output: MODEL_OUTPUT[brief.prompt.slug],
-          usage: {
-            tokens: 1234,
-            latencyMs: 10,
-            provider: 'gemini',
-            model: 'gemini-3.5-flash',
-          },
-        };
-      },
+          return {
+            output: MODEL_OUTPUT[brief.prompt.slug],
+            usage: {
+              tokens: 1234,
+              latencyMs: 10,
+              provider: 'gemini',
+              model: 'gemini-3.5-flash',
+            },
+          };
+        },
+      }),
       dispatch: async () => undefined,
     },
   }).run;

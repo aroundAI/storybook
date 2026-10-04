@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { withRun } from '@kit/ai-gateway';
+import { createServerWriter, withRun } from '@kit/ai-gateway';
+import { partOutputsFrom } from '@kit/episodes/agent/stage-writers';
 import {
   type RecordingClient,
   fakeRunHandle,
@@ -11,10 +12,7 @@ import {
 import shotsOld from '../../../../../packages/features/generation/__tests__/fixtures/shots-old-writes.json';
 import episodeFixture from '../../../../../packages/features/generation/src/testing/fixtures/shots-episode.json';
 import shotsOutput from '../../../../../packages/features/generation/src/testing/fixtures/shots-model-output.json';
-import {
-  partOutputsFrom,
-  processShotGeneration,
-} from '../handlers/shot-generation';
+import { processShotGeneration } from '../handlers/shot-generation';
 
 /**
  * The shot-generation handler on the `shots` stage (FILM-1901): one Shot
@@ -99,9 +97,11 @@ function shotsRun(commitsThrough?: RecordingClient['client']) {
     targetId: episodeFixture.ids.episodeId,
     createdBy: episodeFixture.ids.userId,
     backend: {
-      write: async () => {
-        throw new Error('the shots run writes through its orchestrator');
-      },
+      write: createServerWriter({
+        prompt: async () => {
+          throw new Error('the shots run writes through its orchestrator');
+        },
+      }),
       dispatch: async (run) => void dispatched.push(run.id),
     },
   });

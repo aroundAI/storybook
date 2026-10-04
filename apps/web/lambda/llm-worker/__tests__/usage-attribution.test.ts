@@ -3,12 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { withRun } from '@kit/ai-gateway';
+import { extractCanonFacts } from '@kit/episodes/agent/stage-writers';
 import { fakeRunHandle } from '@kit/generation/testing';
 
 import { processAnalyticsInsights } from '../handlers/analytics-insights';
 import { processFactExtraction } from '../handlers/fact-extraction';
 import { processLanguageInsights } from '../handlers/language-insights';
-import { extractCanonFacts } from '../utils/commit-story-canon';
 
 /**
  * KB-31: a job's LLM usage is recorded on the account that owns its target.

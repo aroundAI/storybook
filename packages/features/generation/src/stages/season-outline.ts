@@ -275,6 +275,7 @@ export const seasonOutlineStage: StageDefinition<
   targetType: 'season',
   targetSchema: SeasonOutlineTargetSchema,
   outputSchema: SeasonOutlineStageOutputSchema,
+  orchestrated: true,
 
   async parts() {
     return [singlePart('outline', 'The episode outlines')];

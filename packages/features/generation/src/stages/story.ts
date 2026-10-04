@@ -198,6 +198,7 @@ export const storyStage: StageDefinition<
   targetType: 'episode',
   targetSchema: StoryTargetSchema,
   outputSchema: StoryStageOutputSchema,
+  orchestrated: true,
   jobTracking: {
     jobType: 'story',
     reference: (target) => ({ type: 'episode', id: target.episodeId }),

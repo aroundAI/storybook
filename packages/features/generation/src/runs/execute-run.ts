@@ -131,7 +131,7 @@ export async function executeServerRun<TData = unknown>(
 
   try {
     const result = (await runStage(stage, stageContext, target, {
-      generate: (brief) => run.write(brief),
+      generate: (brief, scope) => run.write(brief, scope),
       runId: run.id,
       beforeCommit: () => run.assertTargetUnchanged(),
       run: (usage) => run.toGenerationRun(usage),

@@ -35,6 +35,13 @@ export {
 } from './writers/external-writer';
 export { resolveWriter } from './writers/resolve-writer';
 export {
+  defineStageWriter,
+  installStageWriters,
+  installedStageWriters,
+  type StageWrite,
+  type StageWriter,
+} from './writers/stage-writers';
+export {
   executeLLM,
   type GatewayExecutorConfig,
 } from './executors/execute-llm';

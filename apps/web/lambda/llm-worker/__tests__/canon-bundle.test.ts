@@ -110,7 +110,14 @@ interface CheckpointRun {
 /** Bundles the checkpoint as SST bundles the llm-worker, then runs it. */
 async function bundleAndRunCheckpoint(): Promise<CheckpointRun> {
   await esbuild.build({
-    entryPoints: [path.join(LLM_WORKER, 'utils/validation-checkpoint.ts')],
+    // The checkpoint the screenplay's stage writer runs, resolved from the
+    // worker as its bundle resolves it (KB-184 moved it into @kit/episodes)
+    stdin: {
+      contents:
+        "export { runValidationCheckpoint } from '@kit/episodes/lib/canon/validation-checkpoint';",
+      resolveDir: LLM_WORKER,
+      loader: 'ts',
+    },
     bundle: true,
     platform: 'node',
     format: 'esm',

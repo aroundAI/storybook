@@ -23,6 +23,7 @@ export {
   type JobTracking,
   type JsonSchema,
   type PartSpec,
+  type WriteScope,
   type RevisionSnapshot,
   type StageDefinition,
   type StageKey,

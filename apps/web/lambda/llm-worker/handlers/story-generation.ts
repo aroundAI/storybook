@@ -1,9 +1,10 @@
 /**
  * Story Generation Handler — Stage 1, on the generation core (FILM-1901).
  *
- * prepare (the `story` stage) builds the brief; generate runs the Story
- * Orchestrator (Story Director → Viral Analyst → Continuity Guardian) and
- * then extracts the canon facts with `canon-extraction`; the stage's output
+ * prepare (the `story` stage) builds the brief; `run.write` reaches the
+ * stage's writer, which runs the Story Orchestrator (Story Director →
+ * Viral Analyst → Continuity Guardian) and then extracts the canon facts
+ * with `canon-extraction`; the stage's output
  * schema is enforced; commit writes story_data, status 'story', the canon
  * tables and the invented assets. Stage 2 (screenplay-conversion) is
  * triggered by user action on the Story tab.
@@ -11,12 +12,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { EpisodeViralQuality } from '@kit/episodes/lib';
-import { runStage, storyOrchestratorInput, storyStage } from '@kit/generation';
+import { runStage, storyStage } from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import { calculateContentScaling } from '@kit/shared/duration-scaling';
 import type { Database } from '@kit/supabase/database';
 
-import { extractCanonFacts } from '../utils/commit-story-canon';
 import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface StoryOutput {
@@ -65,93 +65,21 @@ export async function processStoryGeneration(
   const ctx = workerCtx(supabase, data);
   const target = storyStage.targetSchema.parse(data);
 
-  let characterNames: string[] = [];
-  let viralQuality: EpisodeViralQuality | undefined;
-  let orchestratorSteps: number | undefined;
-
-  const { commit } = await runStage(storyStage, ctx, target, {
-    ...stageRunDeps(),
-    generate: async (brief) => {
-      const input = storyOrchestratorInput(brief);
-      const episode = brief.context.episode as { characterNames: string[] };
-      characterNames = episode.characterNames;
-
-      console.log(
-        `[Story Generation] Context built: ${characterNames.length} characters` +
-          (input.recurringElementsContext ? ', recurring element: yes' : '') +
-          (input.contentType ? `, type: ${input.contentType}` : '') +
-          (input.verifiedFacts ? ', episode facts: yes' : ''),
-      );
-
-      const { runStoryOrchestrator } = await import(
-        '@kit/episodes/agent/story-orchestrator'
-      );
-
-      const orchestratorResult = await runStoryOrchestrator(
-        {
-          ...input,
-          episodeId: target.episodeId,
-          projectId: target.projectId,
-          accountId: data.accountId,
-        },
-        supabase,
-      );
-
-      if (!orchestratorResult.success) {
-        throw new Error(
-          `Story Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
-        );
-      }
-
-      console.log(
-        `[Story Generation] Stage 1 complete. Steps: ${orchestratorResult.orchestratorSteps}, Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}`,
-      );
-
-      viralQuality = orchestratorResult.viralQuality ?? undefined;
-      orchestratorSteps = orchestratorResult.orchestratorSteps;
-
-      const storyText = orchestratorResult.storyText ?? '';
-
-      // The second model call of this stage: the canon facts commit stores
-      // (criterion 9). An external agent submits these with the story.
-      const canonFacts = await extractCanonFacts({
-        projectId: target.projectId,
-        accountId: data.accountId,
-        storyContent: storyText,
-        supabase,
-      });
-
-      return {
-        output: {
-          story: {
-            title: orchestratorResult.storyTitle ?? target.title,
-            fullText: storyText,
-            actBreakdown: orchestratorResult.actBreakdown,
-            characters: orchestratorResult.storyCharacters,
-            themes: orchestratorResult.themes,
-            tone: orchestratorResult.tone,
-            estimatedSceneCount: orchestratorResult.estimatedSceneCount,
-            episodeSummary: orchestratorResult.episodeSummary,
-            sentimentScore: orchestratorResult.sentimentScore,
-            keyEvents: orchestratorResult.keyEvents,
-            viralStructure: orchestratorResult.viralStructure,
-          },
-          newCharacters: orchestratorResult.newCharacters ?? [],
-          newLocations: orchestratorResult.newLocations ?? [],
-          canonFacts: canonFacts ?? undefined,
-          evaluation: {
-            viralQuality: viralQuality ? { ...viralQuality } : undefined,
-            orchestratorSteps,
-          },
-        },
-        usage: {
-          provider: 'orchestrator',
-          model: 'multi-agent',
-          tokens: 0,
-        },
-      };
-    },
-  });
+  const { commit, run } = await runStage(
+    storyStage,
+    ctx,
+    target,
+    stageRunDeps(),
+  );
+  const {
+    characterNames = [],
+    viralQuality,
+    orchestratorSteps,
+  } = (run.diagnostics ?? {}) as {
+    characterNames?: string[];
+    viralQuality?: EpisodeViralQuality;
+    orchestratorSteps?: number;
+  };
 
   if (commit.status === 'skipped') {
     console.warn(`[Story Generation] Skipping write: ${commit.reason}`);
