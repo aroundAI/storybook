@@ -89,6 +89,7 @@ function toSummary(row: McpConnectionRow): McpConnectionSummary {
   return {
     id: row.id,
     kind: row.kind === 'oauth' ? 'oauth' : 'pat',
+    clientId: row.client_id,
     name: row.name,
     scopes: McpScopeSchema.array().parse(row.scopes),
     createdAt: row.created_at,

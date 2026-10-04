@@ -107,6 +107,8 @@ create table public.account_ai_settings (
   default_mode text not null default 'server' check (default_mode in ('server', 'external')),
   -- FILM-1912: briefs carry past-episode performance; off by default
   performance_context_enabled boolean not null default false,
+  -- FILM-2005: Open in Studio and the storybookstudio client; off by default
+  desktop_integration_enabled boolean not null default false,
   -- 2026-10-03: USD a UTC day of server-mode LLM spend; null is no cap
   daily_llm_spend_cap_usd numeric(12, 2)
     constraint account_ai_settings_daily_llm_spend_cap_positive

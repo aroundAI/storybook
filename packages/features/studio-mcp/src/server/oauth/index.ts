@@ -9,6 +9,7 @@ export {
   AUTHORIZATION_CODE_TTL_SECONDS,
   DEFAULT_SCOPES,
   denialLocation,
+  isRegisteredRedirectUri,
   issueAuthorizationCode,
   parseAuthorizeRequest,
   parseScopes,

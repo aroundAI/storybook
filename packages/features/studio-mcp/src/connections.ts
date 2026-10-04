@@ -8,6 +8,9 @@ import type { McpScope } from './scopes';
 export interface McpConnectionSummary {
   id: string;
   kind: 'oauth' | 'pat';
+  /** The OAuth client; null for a personal access token. */
+  clientId: string | null;
+  /** The device, for a desktop client (FILM-2005); else the client's name. */
   name: string;
   scopes: McpScope[];
   createdAt: string;
