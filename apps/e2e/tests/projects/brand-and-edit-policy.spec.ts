@@ -59,7 +59,7 @@ async function stored(projectId: string) {
 
 async function choose(page: Page, trigger: string, option: string) {
   await byTest(page, trigger).click();
-  await page.locator(`[data-test="${trigger}-${option}"]`).click();
+  await byTest(page, `${trigger}-${option}`).click();
   await expect(byTest(page, trigger)).toContainText(
     option.charAt(0).toUpperCase() + option.slice(1),
   );
