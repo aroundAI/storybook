@@ -126,7 +126,7 @@ wait_for_clickhouse() {
 case "${1:-}" in
   up)
     echo "==> Supabase"
-    (cd "$ROOT/apps/web" && supabase start)
+    (cd "$ROOT/apps/web" && pnpm exec supabase start)
 
     echo "==> ClickHouse ($CH_IMAGE)"
     if docker ps -a --format '{{.Names}}' | grep -qx "$CH_CONTAINER"; then
