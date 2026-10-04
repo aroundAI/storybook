@@ -2,7 +2,11 @@ import { format } from 'date-fns';
 import { Download, MonitorPlay } from 'lucide-react';
 
 import { formatClock } from '@kit/content-analytics/lib/format';
-import type { ExplainWhyReport, RenderPreset } from '@kit/desktop-integration';
+import {
+  type ExplainWhyReport,
+  RENDER_PRESET_LABELS,
+  type RenderPreset,
+} from '@kit/desktop-integration';
 import { Badge } from '@kit/ui/badge';
 import {
   Card,
@@ -25,15 +29,6 @@ import type {
   EditRecordRender,
 } from '../_lib/server/edit-record.loader';
 import { ForceCloseButton } from './force-close-button';
-
-const PRESET_LABEL: Record<RenderPreset, string> = {
-  youtube_16x9: 'YouTube 16:9',
-  shorts_9x16: 'YouTube Shorts 9:16',
-  tiktok_9x16: 'TikTok 9:16',
-  reels_9x16: 'Reels 9:16',
-  square_1x1: 'Square 1:1',
-  master: 'Master',
-};
 
 const ORIGIN_LABEL = { rough_cut: 'Rough cut', ai: 'AI', user: 'By hand' };
 
@@ -309,7 +304,7 @@ function Renders({ renders }: { renders: EditRecordRender[] }) {
                 >
                   <TableCell>
                     <span className="font-medium">
-                      {PRESET_LABEL[render.preset as RenderPreset] ??
+                      {RENDER_PRESET_LABELS[render.preset as RenderPreset] ??
                         render.preset}
                     </span>
                     {render.primary ? (
