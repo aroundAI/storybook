@@ -102,10 +102,9 @@ notes: >
   shot_overlap, clip_shortened, dialogue_start_from_shot,
   dialogue_without_duration, audio_without_duration, dub_without_line,
   overlap_lane, captions_empty, scene_without_shots. Caveats: render-presets.ts
-  is not a *.schema.ts, so scripts/sync-studio-contracts.mjs does not copy it
-  although delivery-package.schema.ts imports it (the fork rendered it with
-  the script's own function; the script should include it, a FILM-2001/2003
-  follow-up, or StoryBook's --check misses that file); the upstream editor's
+  is not a *.schema.ts, but scripts/sync-studio-contracts.mjs follows
+  relative imports transitively (contractFiles, header lines 9-10), so it
+  copies it and StoryBook's --check covers it; the upstream editor's
   placeLiveCaptions removes every other captions clip when it regenerates, so
   FILM-2016 and FILM-2019 must handle a second language before calling it.
   Bug found by the builder tests: volumeToGainDb(0) returned 0 dB instead of

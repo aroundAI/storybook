@@ -72,7 +72,9 @@ notes: >
   Built in aroundAI/storybookstudio#12 (merged as dc363cc; pinned at
   storybookstudio@31127e4 by #630). Lead defaults, the owner may change them:
   silence longer than 1.5 s fails unless the policy carries maxSilenceSeconds
-  (EditPolicySchema has no silence field: a FILM-2004 follow-up); QA fails at
+  (the field exists since #634: edit-policy.schema.ts maxSilenceSeconds; the
+  fork reads it at storybookstudio@e1f0b0b src/studio/policyFields.js:13,
+  src/studio/review/qaChecks.js:10 and electron/studio/qa.js:45); QA fails at
   severity 0.5 and above; preview pictures come from FFmpeg, not the canvas
   exporter, so previews show no effects, text or kinetic captions
   (AI_EDITOR_CONTRACT line 7 says so). The vision model for the visual critic
@@ -83,8 +85,7 @@ notes: >
   and its reason when no hardware ran, and the MCP test allows 10 minutes per
   call because the SDK's 60 s default is shorter than one autoRepair request.
   Follow-ups: studio_edit autoRepair is still one long request with no
-  progress or job id (FILM-2013, task 32), and FILM-2004's policy needs
-  maxSilenceSeconds. Also closes FILM-2017's loud-bed integration line (see
+  progress or job id (FILM-2013, task 32). Also closes FILM-2017's loud-bed integration line (see
   that record).
 feature:
   database: {tables: [], columns_added: []}

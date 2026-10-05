@@ -84,9 +84,9 @@ notes: >
   (ffprobe, ebur128, a 500 MB cap, reframe warnings as reframe_no_subject at
   severity 0.3). M3 exit check met 2026-10-05: pull, Short, two renders,
   deliver_edit (TARGET_CHANGED, then retry), episode ready, the publish page
-  lists the renders, 59.4 s. Follow-up, not in #10: src/studio/intents/variants.js
-  repeats FILM-2013's lineImportance weights and should import them from
-  src/studio/intents/common.js.
+  lists the renders, 59.4 s. Resolved: src/studio/intents/variants.js:15 imports
+  lineImportance from ./common.js (storybookstudio@e1f0b0b), so the weights
+  live once.
 
   Fix in aroundAI/storybookstudio#15 (merged as f041b9f, pinned at
   storybookstudio@31127e4 by #630), found in the packaged-app run of FILM-2015:

@@ -62,11 +62,14 @@ test_plan:
   e2e:
     - {text: "Playwright: the /edit page shows the report and renders after a delivery made over MCP in the same test", met: true, evidence: "apps/e2e/tests/mcp/edit-record.spec.ts (also the Edit style card, the sync route writing the fact row with ClickHouse on, and the force-close); apps/e2e/tests/admin/studio-deliveries.spec.ts"}
 remaining:
-  - text: "Rollout step 1: desktop_integration on for one internal workspace, PAT only; exit when 10 episodes are delivered end to end"
+  - criterion: "Rollout step 1: desktop_integration on for one internal workspace, PAT only"
+    reason: "exit when 10 episodes are delivered end to end"
     closed_by: "owner"
-  - text: "Rollout step 2: opt-in from workspace settings with OAuth; exit when the PRD's success metrics reach 80% of target"
+  - criterion: "Rollout step 2: opt-in from workspace settings with OAuth"
+    reason: "exit when the PRD's success metrics reach 80% of target"
     closed_by: "owner"
-  - text: "Rollout step 3: desktop_integration on by default"
+  - criterion: "Rollout step 3: desktop_integration on by default"
+    reason: "follows step 2; the owner decides when"
     closed_by: "owner"
 open_questions: []
 notes: >
