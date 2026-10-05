@@ -3,7 +3,7 @@ title: "Edit Package Tool: One Call That Hands an Episode to the Desktop"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-1904"
@@ -33,16 +33,16 @@ acceptance_criteria:
     evidence: "#618: packages/features/studio-mcp/src/server/tools/studio/edit-package.ts:18 (studio:read, readOnlyHint, idempotent, closed world), registered at src/server/tools/index.ts:30; NOT_FOUND :63. Every read is the principal's client (desktop-integration/src/server/load-edit-package.ts:134); the boundary test still finds no admin client under tools/. SDK client against /api/mcp: __tests__/edit-package.contract.test.ts:484 (render-only token FORBIDDEN) and :494 (another team's episode NOT_FOUND), passed in process and against a dev server on port 3303 (lane B)"
   - text: "The result validates against EditPackageSchema (zod, schema id storybook-edit-package/1) exported from packages/features/desktop-integration; the schema is the contract both repos test against and is copied verbatim into the fork's tests"
     met: true
-    evidence: "#618: packages/features/desktop-integration/src/edit-package.schema.ts:285, imports only zod and the two FILM-2004 schemas; getEditPackage parses its own result (load-edit-package.ts:370). scripts/sync-studio-contracts.mjs transpiles every src/*.schema.ts to a types-stripped *.schema.mjs in storybookstudio/src/studio/contracts/ (the fork is plain JS; --check exits 1 on drift). __tests__/studio-contracts.test.ts loads the generated JavaScript and parses the three fixtures and the brand/policy defaults with it (runs in CI), and with the submodule checked out fails on a missing or different copy (seen red before sync and after editing a copy, green after sync). The fork commits the copies and adds zod 3 (FILM-2012)"
+    evidence: "#618: packages/features/desktop-integration/src/edit-package.schema.ts:291, imports only zod and the two FILM-2004 schemas; getEditPackage parses its own result (load-edit-package.ts:370). scripts/sync-studio-contracts.mjs transpiles every src/*.schema.ts to a types-stripped *.schema.mjs in storybookstudio/src/studio/contracts/ (the fork is plain JS; --check exits 1 on drift). __tests__/studio-contracts.test.ts loads the generated JavaScript and parses the three fixtures and the brand/policy defaults with it (runs in CI), and with the submodule checked out fails on a missing or different copy (seen red before sync and after editing a copy, green after sync). The fork commits the copies and adds zod 3 (FILM-2012)"
   - text: "Sources: scenes from episodes.screenplay_data.scenes; shots from shots where deleted_at is null ordered by sequence_number, with timeline_start_seconds, trim_in/out_point, transition_type, prompt, primary_subject, continuation_from_shot_id, first/last frame URLs; dialogue from dialogue_lines with language and timeline_start_seconds; audioTracks from audio_tracks joined to audio_assets (loopable, tags); captions from caption_segments grouped by language; characters from assets type=character joined to character_details; shortsCandidates from shorts; dubbed from dubbed_dialogue_lines; every list read with fetchAllRows"
     met: true
     evidence: "#618: load-edit-package.ts:134 reads each table with fetchAllRows or fetchAllByIds, ordered on a unique column (shots :178); build-edit-package.ts maps them. Characters are the episode's tagged ones (metadata.character_ids, or every project character for the All Characters tag, as the shot generator reads them); dialogue_composite tracks are left out, ambient is named ambience. __tests__/get-edit-package.test.ts asserts every list read is ranged and ordered; the contract test reads 60 shots, 120 lines, 2 x 120 caption segments and 120 dubbed lines back"
-  - text: "Every media entry is {url, key, sha256, bytes, mime} where url is a presigned GET valid for 3600 s from a new getSignedReadUrl(bucket, path, ttlSeconds) on the storage adapters (R2/B2 presign, Supabase createSignedUrl), signed only for keys read out of the caller's rows and lying in the episode's own project or episode folder; sha256 comes from assets.file_hash where recorded, else is null with sha256Reason not_recorded; a slot with nothing to sign yields {url: null, mediaReason}, never a broken URL"
+  - text: "Every media entry is {url, key, sha256, bytes, mime} where url is a presigned GET valid for 3600 s from a new getSignedReadUrl(bucket, path, ttlSeconds) on the storage adapters (R2/B2 presign, Supabase createSignedUrl), signed only for keys read out of the caller's rows and lying in the episode's own project or episode folder; sha256 comes from the checksum recorded when the file was written (media_checksums, KB-189) or assets.file_hash, else is null with sha256Reason not_recorded; a slot with nothing to sign yields {url: null, mediaReason}, never a broken URL"
     met: true
     evidence: "#618: packages/features/storage/src/types.ts:159 (getSignedReadUrl, stat), adapters/s3-presign.ts:67, r2.ts:206, supabase.ts:138; desktop-integration/src/server/resolve-media.ts:98 (keyInTarget confinement :69, recorded hash :125); __tests__/resolve-media; __tests__/resolve-media.test.ts refuses foreign keys (another project, another episode, an unread audio asset, a key naming no project) without touching storage, red 5 of 11 with the rule removed (mutation guards M1, M1b).test.ts refuses foreign keys (another project, another episode, an unread audio asset, a key naming no project) without touching storage, red 5/11 with the rule removed, mutation guards M1 and M1b. Real servers: storage/__tests__/signed-read.s3-local.test.ts:162 on the local R2 sandbox and MinIO, 8/8 (GET and Range GET inside the TTL, refused after a 2 s TTL, forged signature 403). Contract test :330 GETs a signed video and gets its bytes; reasons not_generated, outside_project, missing asserted there and in __tests__/edit-package-fixtures.test.ts"
   - text: "sha256 is computed once and stored on first request for media StoryBook has not hashed"
-    met: false
-    reason: "not built. Only assets.file_hash records a hash, and only master-video uploads write one; shots, dialogue, audio and dubbed media have no assets row. Hashing on request means downloading every object inside a 2 s call, and storing it would give a read-only tool a write surface (lead brief: no admin client; RLS write by a viewer could poison the hash). The package says so per entry (sha256: null, sha256Reason: not_recorded) and FILM-2011 verifies bytes and diffs by key. Filed as KB-189; see remaining"
+    met: true
+    evidence: "#646 (KB-189): computed once, where each file is written, and stored in media_checksums (migration 20261005115253, keyed by bucket and storage key, written only by the service role through record_media_checksum, read under the project's RLS); the request path computes and writes nothing, for the reasons this spec's notes give against hashing on request. Every writer records: uploadToR2 (dialogue, dubs, music, SFX, ambience) and writeProjectObject (the web actions) take the recording client as a required argument; browser uploads (shot video, frames, character images, audio library) report the browser's hash to /api/storage/checksum, which checks the caller writes the key and the stored size first. load-edit-package.ts reads the checksums for the package's keys. Contract test against lane B (edit-package.contract.test.ts, 'every signed file carries the SHA-256 recorded when it was written'): 419 of 419 signed entries of the 60-shot package carry a sha256 equal to the SHA-256 of the bytes their URL downloads; red with recording left out. Media written before #646 keeps sha256Reason not_recorded"
   - text: "etag = v<episodes.version>-sha1 over the package's own content (every row field it carries, media by stored URL and recorded hash, brand and edit policy with defaults), excluding signed URLs, timestamps and analytics hints; get_edit_package with a matching ifNoneMatch returns {unchanged: true, etag} and no body; a stale etag returns the full package"
     met: true
     evidence: "#618: build-edit-package.ts:624; the comparison precedes any signing or analytics read (load-edit-package.ts:380); currentEditPackageEtag(client, {accountId, episodeId}) in @kit/desktop-integration/server gives FILM-2003's deliver_edit the same etag for TARGET_CHANGED. __tests__/edit-package-etag.test.ts:29 (shot video_url), :36 (brand), plus policy, a deleted dialogue line, a caption text, a track volume and the version; unchanged across row order, timestamps, signatures and analytics. Contract test :443 against the database: unchanged on the current etag, new after a shot edit and after a brand edit. Mutation guards E1, E2 red"
@@ -67,10 +67,6 @@ test_plan:
     - {text: "SDK client against /api/mcp with a studio:read PAT: get_edit_package returns a schema-valid package; a studio:render-only token is FORBIDDEN; another team's episode is NOT_FOUND", met: true, evidence: "#618: packages/features/studio-mcp/__tests__/edit-package.contract.test.ts, 7/7 in process and against the dev server on 3303 (lane B, ClickHouse on)"}
     - {text: "pgTAP: a viewer-role project member can call the tool (read); an outsider cannot", met: true, evidence: "#618: apps/web/supabase/tests/database/edit-package-reads.test.sql:124, :136 — 4/4 via pgthrow; red without the viewer's team membership"}
   e2e: []
-remaining:
-  - criterion: "sha256 is computed once and stored on first request for media StoryBook has not hashed"
-    reason: "Hash media where it is written (shot upload route, voice and audio workers, dubbing), into a checksum StoryBook owns, so the package carries one for every file without a read tool writing anything"
-    closed_by: "KB-189"
 open_questions:
   - "Should the package include proxies (a 540p transcode) for very large shots so the Studio can play before the full download lands? Deferred: the Studio builds proxies locally."
 notes: >
@@ -94,16 +90,17 @@ notes: >
   updated_at and a hard delete moves no timestamp (so it does not depend on
   projects.updated_at either); (2) the storage interface takes (bucket,
   path) everywhere, so the method is getSignedReadUrl(bucket, path, ttl),
-  with stat() for size and type; (3) sha256 is only as available as
-  assets.file_hash; recording it at write time is KB-189 (see remaining),
-  and every media entry carries `key` as its stable identity meanwhile. dubbed_dialogue_lines.timing_adjustment is
+  with stat() for size and type; (3) sha256 is recorded where each file is
+  written, not on request: KB-189 (#646) added media_checksums and made
+  every writer fill it, so AC5 is met that way; every media entry carries
+  `key` as its stable identity, and media written before #646 has no hash. dubbed_dialogue_lines.timing_adjustment is
   a 0.5-2 speed factor, so the package names it timingAdjustment, not a time.
   For FILM-2011: an expired URL is 403 on R2 and MinIO but 400 ExpiredToken on
   the local Supabase S3 sandbox; treat any 4xx on a media GET as "fetch the
   package again". A key is stable while the file is, so diff media by key
   when sha256 is null.
 feature:
-  database: {tables: [], columns_added: []}
+  database: {tables: ["media_checksums (KB-189, #646)"], columns_added: []}
   queries: [{name: "buildEditPackage", purpose: "assemble the package from the feature services with fetchAllRows", file: "packages/features/desktop-integration/src/build-edit-package.ts"}]
   actions: []
   ui: []
