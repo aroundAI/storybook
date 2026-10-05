@@ -11,6 +11,7 @@ import {
   mintPersonalAccessToken,
 } from '../utils/mcp';
 import {
+  deleteRows,
   insertRow,
   seedProject,
   seedPublishedEpisode,
@@ -248,11 +249,14 @@ test.describe('MCP analytics tools', () => {
 
   /**
    * Criterion 7: usage rows read under their policy and split by the run's
-   * mode through `llm_usage_analytics.run_id` (FILM-1903). Three rows are
-   * written as the worker would: two with no run, one on an open
-   * server-mode run (the table's trigger refuses a usage row on an external
-   * run, so that is the only mode a row can carry). Cost is summed where
-   * measured and null where no row measured it.
+   * mode through `llm_usage_analytics.run_id` (FILM-1903). Three rows: one on
+   * an open server-mode run (the table's trigger refuses a row with no run
+   * and one on an external run, so that is the only way to write one now),
+   * and two that have lost their run, as every row written before runs
+   * existed has: each is written on a throwaway server run, which is then
+   * deleted, and the foreign key's `on delete set null` leaves the row
+   * unattributed. Cost is summed where measured and null where no row
+   * measured it.
    */
   test('get_ai_usage splits the team’s usage by run mode through generation_runs', async () => {
     const a = await seedTeamWithProject('mcp-usage');
@@ -261,19 +265,23 @@ test.describe('MCP analytics tools', () => {
     });
     const auth = serviceRoleAuth();
 
-    const run = await insertRow<{ id: string }>(
-      'generation_runs',
-      {
-        account_id: a.team.accountId,
-        project_id: a.projectId,
-        target_type: 'episode',
-        target_id: a.episodeIds[0],
-        stage: 'story',
-        mode: 'server',
-        created_by: a.team.userId,
-      },
-      auth,
-    );
+    const openRun = (stage: string) =>
+      insertRow<{ id: string }>(
+        'generation_runs',
+        {
+          account_id: a.team.accountId,
+          project_id: a.projectId,
+          target_type: 'episode',
+          target_id: a.episodeIds[0],
+          stage,
+          mode: 'server',
+          created_by: a.team.userId,
+        },
+        auth,
+      );
+
+    const run = await openRun('story');
+    const lostRun = await openRun('screenplay');
 
     const usage = (extra: Record<string, unknown>) => ({
       account_id: a.team.accountId,
@@ -288,8 +296,17 @@ test.describe('MCP analytics tools', () => {
       ...extra,
     });
 
-    await insertRow('llm_usage_analytics', usage({ total_cost: 0.02 }), auth);
-    await insertRow('llm_usage_analytics', usage({ total_cost: null }), auth);
+    await insertRow(
+      'llm_usage_analytics',
+      usage({ total_cost: 0.02, run_id: lostRun.id }),
+      auth,
+    );
+    await insertRow(
+      'llm_usage_analytics',
+      usage({ total_cost: null, run_id: lostRun.id }),
+      auth,
+    );
+    await deleteRows('generation_runs', `id=eq.${lostRun.id}`);
     await insertRow(
       'llm_usage_analytics',
       usage({ total_cost: 0.03, run_id: run.id }),

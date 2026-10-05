@@ -31,12 +31,18 @@ test.describe('Profile settings with team accounts only (KB-100)', () => {
     await signInAs(page, team);
     await expect(page).toHaveURL(`/home/${team.slug}`);
 
-    await userMenu(page).click();
     const item = byTest(page, 'account-dropdown-settings');
-    await expect(item).toHaveText('Profile settings');
-    await captureIfAsked(page, 'kb100-01-user-menu');
 
-    await item.click();
+    // The menu can close between opening and the click: a /home page streams
+    // in under a loading boundary, and a late re-render of the layout remounts
+    // the menu. A person would open it again, so the test does too (the
+    // nightly run on main timed out here for 120 s on a loaded runner).
+    await expect(async () => {
+      await userMenu(page).click();
+      await expect(item).toHaveText('Profile settings', { timeout: 3_000 });
+      await captureIfAsked(page, 'kb100-01-user-menu');
+      await item.click({ timeout: 3_000 });
+    }).toPass({ timeout: 45_000 });
     await page.waitForURL('**/home/settings');
     await expect(byTest(page, 'update-account-name-form')).toBeVisible();
 
