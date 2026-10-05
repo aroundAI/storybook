@@ -114,25 +114,23 @@ test.describe('Browser uploads record their SHA-256 (KB-189)', () => {
       .toEqual({ sha256: sha256(video), bytes: video.byteLength });
 
     // The first frame: a plain hidden input, through uploadWithPresignedUrl.
-    const frameInput = page.locator('[data-test="frame-upload-input-first"]');
+    // A file input is hidden on purpose, so byTest's visible filter would
+    // never match it; setInputFiles needs the element itself.
+    const frame = { name: 'first.png', mimeType: 'image/png', buffer: FRAME };
     await expect(async () => {
-      await frameInput.setInputFiles({
-        name: 'first.png',
-        mimeType: 'image/png',
-        buffer: FRAME,
-      });
+      await page.locator('[data-test="frame-file-first"]').setInputFiles(frame);
       await expect
         .poll(async () => (await shot()).first_frame_url, { timeout: 5_000 })
         .toMatch(/\/frames\/first-frame-\d+\.png$/);
     }).toPass({ timeout: 30_000 });
 
     const frameUrl = (await shot()).first_frame_url!;
-    const frame = Buffer.from(await (await page.request.get(frameUrl)).body());
+    const stored = Buffer.from(await (await page.request.get(frameUrl)).body());
 
-    expect(sha256(frame)).toBe(sha256(FRAME));
+    expect(sha256(stored)).toBe(sha256(FRAME));
     await expect
       .poll(() => recorded(frameUrl), { timeout: 15_000 })
-      .toEqual({ sha256: sha256(frame), bytes: frame.byteLength });
+      .toEqual({ sha256: sha256(stored), bytes: stored.byteLength });
 
     // The video, its thumbnail and the frame, each recorded once
     expect(checksumCalls).toEqual([200, 200, 200]);

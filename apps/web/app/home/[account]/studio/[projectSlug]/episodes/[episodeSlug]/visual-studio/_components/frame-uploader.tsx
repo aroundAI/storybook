@@ -163,7 +163,7 @@ export function FrameUploader({
         onChange={handleFileSelect}
         disabled={isUploading}
         className="hidden"
-        data-test={`frame-upload-input-${frameType}`}
+        data-test={`frame-file-${frameType}`}
       />
       {isUploading ? (
         <>
