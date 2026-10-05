@@ -90,6 +90,23 @@ notes: >
   normalization is dynamic, and errors lead with ffmpeg's reason. Verified in
   the packaged app: export -14.3 LUFS and -1.7 dBTP, QA pass, Send to
   StoryBook 'sent' with a ready render row. Status stays DONE.
+
+  Fix in aroundAI/storybookstudio#33 (merged as 5278a1c, at
+  storybookstudio@418e8a8): the -2 dBTP headroom from #19 did not bound the
+  AAC encode, which adds up to 3.6 dB of overshoot on transient material, so
+  a delivered file could still go over QA's -1 dBTP ceiling. holdDeliveredTruePeak
+  (electron/studio/audioBusMix.mjs:251; the -1 dBTP ceiling at :244, a 0.2 dB
+  margin at :245, six passes at :246) measures the encoded file and, when it
+  peaks above -1.2 dBTP, limits the source by the excess at 4x oversampling,
+  encodes the AAC again and swaps in the audio stream with the picture
+  copied; after six passes it fails with the peak it measured. Both
+  delivery paths run it: electron/studio/deliveryPath.js:90 (render) and
+  electron/studio/deliveryRender.js:350 (renderDelivery). Tested at
+  tests/studio/audio-bus-export-dynamic.test.mjs:88 and :104, with the burst
+  fixture now seeded (:36), since unseeded noise gave the encode a different
+  overshoot on every run. Measured in the fork PR: 72 deliveries, none over
+  -1 dBTP, the worst at -1.2; 46 needed the hold, none more than 4 passes.
+  Status stays DONE.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
