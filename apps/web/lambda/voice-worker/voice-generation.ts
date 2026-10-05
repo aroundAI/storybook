@@ -329,3 +329,6 @@ export async function processDialogueVoiceGeneration(
     throw error;
   }
 }
+
+/** The account's ElevenLabs key, for the dub-episode job (FILM-2007). */
+export { getAccountElevenLabsApiKey };

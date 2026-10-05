@@ -243,6 +243,12 @@ export const DubbedLineSchema = z.object({
    * fitted with, 0.5..2 (1 = as voiced), not a time offset.
    */
   timingAdjustment: z.number().min(0.5).max(2),
+  /**
+   * `dubbed_dialogue_lines.timeline_start_seconds` (FILM-2007): where the
+   * dub starts, its source line's start when it was voiced. Null when the
+   * source line had no position, or the dub predates the column.
+   */
+  timelineStartSeconds: NonNegativeSeconds.nullable(),
   durationSeconds: NonNegativeSeconds.nullable(),
   status: z.string(),
   audio: MediaEntrySchema,

@@ -9,6 +9,11 @@ import {
 import type { LlmJobTarget } from '@kit/prompt-engine/llm-job-target';
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 
+import {
+  type DubEpisodeMessageInput,
+  DubEpisodeMessageSchema,
+} from '../lib/dub-episode';
+
 // Initialize SQS client
 const sqs = new SQSClient(awsClientOptions('sqs'));
 
@@ -183,4 +188,48 @@ export async function queueVoiceJobs(
   }
 
   console.log(`[SQS] All ${jobs.length} voice jobs queued`);
+}
+
+/**
+ * Queue one `dub-episode` job per language (FILM-2007). Each message is
+ * billed to the target's account and names only the target's episode, as a
+ * voice job does; `delaySeconds` holds back a language whose translation
+ * has only just been queued.
+ */
+export async function queueDubEpisodeJobs(
+  target: LlmJobTarget,
+  jobs: Array<{ message: DubEpisodeMessageInput; delaySeconds: number }>,
+): Promise<void> {
+  const queueUrl = getVoiceQueueUrl();
+
+  if (!queueUrl) {
+    throw new Error(
+      'VOICE_QUEUE_URL not configured. Ensure the queue is linked in sst.config.ts',
+    );
+  }
+
+  for (const { message, delaySeconds } of jobs) {
+    if (
+      !target.episodeId ||
+      message.episodeId !== target.episodeId ||
+      message.accountId !== target.accountId
+    ) {
+      throw new Error(
+        `Dub job for episode ${message.episodeId} does not match its authorised target`,
+      );
+    }
+
+    await sqs.send(
+      new SendMessageCommand({
+        QueueUrl: queueUrl,
+        MessageBody: JSON.stringify(DubEpisodeMessageSchema.parse(message)),
+        DelaySeconds: delaySeconds,
+        MessageAttributes: {
+          jobType: { DataType: 'String', StringValue: 'dub-episode' },
+        },
+      }),
+    );
+  }
+
+  console.log(`[SQS] ${jobs.length} dub-episode job(s) queued`);
 }

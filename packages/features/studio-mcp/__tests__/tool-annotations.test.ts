@@ -9,7 +9,12 @@ import { defaultTools } from '../src/server/tools/index';
  * destructive one. MCP reads a missing openWorldHint as true, so every tool
  * says it.
  */
-const REACHES_OUTSIDE_STORYBOOK = ['start_voice_render', 'start_audio_render'];
+const REACHES_OUTSIDE_STORYBOOK = [
+  'start_voice_render',
+  'start_audio_render',
+  // FILM-2007: translates through the model and voices on ElevenLabs
+  'localize_episode',
+];
 
 describe('the annotations every tool sends', () => {
   it.each(defaultTools.map((tool) => [tool.name, tool] as const))(

@@ -1466,12 +1466,15 @@ create table if not exists public.dubbed_dialogue_lines (
   audio_url text,
   timing_adjustment decimal(4,2) default 1.0 not null,
   duration_seconds decimal(10,2),
+  timeline_start_seconds decimal(10,2),
   status varchar(50) default 'pending' not null,
   generation_metadata jsonb,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   check (status in ('pending', 'translated', 'generating', 'voiced', 'failed')),
   check (timing_adjustment >= 0.5 and timing_adjustment <= 2.0),
+  constraint dubbed_dialogue_lines_timeline_start_nonnegative
+    check (timeline_start_seconds is null or timeline_start_seconds >= 0),
   unique(dubbed_version_id, original_dialogue_id)
 );
 
@@ -1481,6 +1484,7 @@ comment on column public.dubbed_dialogue_lines.timing_adjustment is 'Speed multi
 comment on column public.dubbed_dialogue_lines.status is 'Line status: pending, translated, generating, voiced, failed';
 comment on column public.dubbed_dialogue_lines.generation_metadata is 'Voice generation metadata (provider, cost, etc.)';
 comment on column public.dubbed_dialogue_lines.updated_at is 'Last modification timestamp';
+comment on column public.dubbed_dialogue_lines.timeline_start_seconds is 'Where the dub starts on the episode timeline, in seconds: the source line''s timeline_start_seconds when it was voiced (FILM-2007). Null when the source line had none.';
 
 -- Indexes for dubbed_dialogue_lines
 create index if not exists idx_dubbed_dialogue_version on public.dubbed_dialogue_lines(dubbed_version_id);

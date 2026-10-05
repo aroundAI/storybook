@@ -43,11 +43,13 @@ export function configuredGenerationDeps(): Partial<GenerationToolDeps> {
   return configured;
 }
 
-export const generationTools = createGenerationTools(() => ({
-  runs: runLayer,
-  ...configured,
-}));
+/** The run layer and what the route configured: the Studio job tools (FILM-2007) open runs with it. */
+export function generationToolDeps(): GenerationToolDeps {
+  return { runs: runLayer, ...configured };
+}
+
+export const generationTools = createGenerationTools(generationToolDeps);
 
 export { createGenerationTools } from './tools';
-export type { GenerationToolDeps } from './service';
+export { GenerationService, type GenerationToolDeps } from './service';
 export type { McpRunCtx, RunApi, RunLike } from './run-api';

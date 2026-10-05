@@ -163,6 +163,7 @@ export interface DubbedLineSourceRow {
   original_dialogue_id: string;
   translated_text: string;
   timing_adjustment: number;
+  timeline_start_seconds: number | null;
   duration_seconds: number | null;
   status: string;
   audio_url: string | null;
@@ -563,6 +564,7 @@ function dubbed(
           dialogueId: line.original_dialogue_id,
           translatedText: line.translated_text,
           timingAdjustment: finiteNumber(line.timing_adjustment) ?? 1,
+          timelineStartSeconds: nonNegative(line.timeline_start_seconds),
           durationSeconds: nonNegative(line.duration_seconds),
           status: line.status,
           audio: media(line.audio_url),

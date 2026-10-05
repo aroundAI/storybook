@@ -349,6 +349,20 @@ export function dialogueAudioPath(
   return `episodes/${episodeId}/dialogue/${dialogueLineId}_${now}.mp3`;
 }
 
+/**
+ * A dialogue line voiced in another language (FILM-2007): inside the
+ * episode's folder, so the voice worker may write it (KB-57) and the edit
+ * package may sign it (FILM-2001).
+ */
+export function dubbedDialogueAudioPath(
+  episodeId: string,
+  language: string,
+  dialogueLineId: string,
+  now = Date.now(),
+) {
+  return `episodes/${episodeId}/dubbed/${language}/${dialogueLineId}_${now}.mp3`;
+}
+
 /** A voice preview, heard once in the voice picker */
 export function voicePreviewPath(
   episodeId: string,

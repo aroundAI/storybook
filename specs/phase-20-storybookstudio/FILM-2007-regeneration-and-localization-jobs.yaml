@@ -3,7 +3,7 @@ title: "Shot Regeneration and Localization Jobs for the Studio"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-2001"
@@ -11,55 +11,112 @@ dependencies:
   - spec_id: "FILM-1909"
     note: "the render tools and the shot-generation stage these jobs reuse"
 summary: >
-  Two things the Studio asks StoryBook to do because only StoryBook can: make
+  Two things the Studio asks StoryBook to do because only StoryBook can: plan
   a shot again, and make the episode speak another language. regenerate_shots
-  (studio:render) queues the shot-generation stage for the listed shots with
-  a reason, through the existing generation core, bumping episodes.version so
-  the package etag changes; the Studio's re-sync then offers the new media as
-  a replacement that keeps the clip's position and trims. localize_episode
-  (studio:render) queues dub-episode jobs on the voice worker, one per
-  language, using ElevenLabs Dubbing with background audio preserved (or the
-  existing per-line TTS, README open question 6), writing dubbed_versions and
-  dubbed_dialogue_lines; the package's dubbed block then carries the lines
-  the Studio's language lanes (FILM-2019) need. Both return a job id that
-  get_render_progress (FILM-1909) reports on. Design: PRD-EDD.md Part 3
-  "Workers, jobs and the status machine"; Part 4 flows 3 and 5.
+  (studio:render) opens a shots run scoped to the listed shots with a reason,
+  through the generation core, in the request's mode (external over MCP: the
+  agent writes the new plan through the brief path); the shots go to queued
+  with their video cleared, so the package etag changes at once, and finalize
+  writes the new plan in place and bumps episodes.version. No video is
+  rendered (lead decision 6). localize_episode (studio:render) translates the
+  dialogue with the existing dialogue_translation stage and queues a
+  dub-episode job per language on the voice worker, which voices each line
+  with its speaker's ElevenLabs voice (per-line TTS, the lead default for
+  README open question 6), writing dubbed_versions and dubbed_dialogue_lines;
+  the package's dubbed block then carries the lines the Studio's language
+  lanes (FILM-2019) need. get_render_progress (FILM-1909) reports both. Design:
+  PRD-EDD.md Part 3 "Workers, jobs and the status machine"; Part 4 flows 3
+  and 5.
 acceptance_criteria:
-  - text: "regenerate_shots({episodeId, shotIds[], reason}) requires studio:render and member role; opens a generation run (FILM-1903) for the shot-generation stage scoped to those shots in the request context's mode (external for MCP, so the agent writes the shots through the brief path, or server if the team's settings choose it); returns {runId}; shots move to status queued; a regenerated shot's video_url and sha256 change on completion and episodes.version increments"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+  - text: "regenerate_shots({episodeId, shotIds[], reason}) requires studio:render and member role; opens a generation run (FILM-1903) for the shot-generation stage scoped to those shots in the request context's mode (external for MCP, so the agent writes the shots through the brief path); returns {runId}; the shots move to status queued with video_url cleared (lead decision 6: a re-plan, no media rendered), so the package etag changes; finalize writes the new plan in place and episodes.version increments"
+    met: true
+    evidence: "#623: packages/features/studio-mcp/src/server/tools/studio/jobs.ts:109 (studio:render :126; member role via authorizeEpisodeTarget, FORBIDDEN otherwise :74); opens the run through GenerationService.startAs (:184) on the shots stage with regenerate {shotIds, reason} (packages/features/generation/src/stages/shots.ts:73), whose parts are only the listed shots (:695), briefs carry only their scene (:725) and the commit rewrites the shots in place and touches the episode (:925, :980); then queues the shots and clears video_url as the caller, keeping the old URL in generation_metadata.regeneration (jobs.ts:205). Over MCP the run is always external (the connection id; mcp_runs_are_external), so server mode is reachable only from a non-MCP caller. SDK client against /api/mcp on a dev server (port 3308, lane B): __tests__/studio-jobs.contract.test.ts:214 reads the parts back as [shot:a, shot:b], the shots queued with video null, the etag changed with the same version, then after submit and finalize the new prompts, the version +1 and a second etag change; currentEditPackageEtag and get_edit_package agree on each. sha256 is null before and after for shot media (not recorded, KB-189); the Studio diffs by key (FILM-2001)"
   - text: "A shot with status generating is refused with RUN_IN_PROGRESS; more than 20 shots per call is VALIDATION_FAILED"
-    met: false
-    reason: "not built"
-  - text: "localize_episode({episodeId, languages[]}) requires studio:render; for each language queues a dub-episode job on StorybookVoiceQueue carrying the dialogue stems the Studio uploaded with its master delivery (FILM-2003 captions/stems keys) or, absent stems, the dialogue_lines audio; the voice worker calls ElevenLabs Dubbing (or per-line TTS by project setting), writes dubbed_versions and dubbed_dialogue_lines with timeline_start_seconds, and increments episodes.version"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#623: jobs.ts:131 (cap, also a repeat), :173 (generating → RUN_IN_PROGRESS before any run or write); the stage target holds the same cap (shots.ts:73, SHOT_REGENERATION_MAX :64). __tests__/tools/studio-jobs.test.ts:146 and :174; the contract test gets both refusals through the SDK. Mutation guards R1, R2, R3 red"
+  - text: "localize_episode({episodeId, languages[]}) requires studio:render; for each language queues a dub-episode job on StorybookVoiceQueue carrying its source (the episode's dialogue_lines: the Studio's FILM-2003 delivery carries captions but no dialogue stems); the voice worker voices each translated line with per-line TTS (README open question 6, lead default), writes dubbed_versions and dubbed_dialogue_lines with timeline_start_seconds, and increments episodes.version"
+    met: true
+    evidence: "#623: jobs.ts:259 (studio:render :269); packages/features/audio-generation/src/server/localize-starts.ts:151 upserts a dubbed_versions row per language and queues one dub-episode message each (:315; message schema src/lib/dub-episode.ts:123, source kind dialogue_lines). One translation run per episode can be open, so every language still to translate goes into one translate-dialogue run (payload additionalLanguages, prompt-engine llm-job-payloads.ts:274), translated in turn by the LLM worker (handlers/translate-dialogue.ts:48). The voice worker's handler (apps/web/lambda/voice-worker/dub-episode.ts:137, dispatched at index.ts:250) waits for its language (:260), voices each line with its speaker's voice, writes the line at the source's timeline_start_seconds (:347; new column, migration 20261005101653 with a CHECK >= 0) fitted by timing_adjustment, continues itself 15 lines a message (:421), then marks the version ready (:453) and touches the episode (:472). Through the SDK against the dev server with the server's own workers on private queues and the vendor sandbox (Gemini, ElevenLabs): contract test :370 localizes hi and es; both versions ready in about 65 s, 10 voiced rows each at the source starts, the version +2"
   - text: "Budget and BYOK checks apply exactly as for start_voice_render (FILM-1909); cost lands in llm_usage_analytics/generation_jobs as today"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#623: the start runs start_voice_render's checks before anything is written (localize-starts.ts:158 writable episode, :199 a voice per speaker, :205 a TTS model) and opens the translation through the gateway (:75 openRunForJob), so the daily LLM spend cap, server mode and model availability refuse there; the voice is rendered on the account's own ElevenLabs key (dub-runtime.ts, getAccountElevenLabsApiKey) as every voice job is. Cost: the translation is an LLM run, recorded in llm_usage_analytics as every one is (the contract test reads 5 rows for the team); the TTS cost is recorded per line (generation_metadata.costCents, dub-episode.ts:400) and per language (dubbed_versions.metadata.localization.costCents), as the voice worker records a line's today. Voice has no generation_jobs row today and gets none. __tests__/localize-starts.test.ts asserts each refusal writes and spends nothing"
   - text: "get_render_progress reports both job kinds; get_edit_package's etag changes when either completes; the dubbed block lists lines per language with media"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#623: packages/features/studio-mcp/src/server/tools/render/status.ts:100 (localization: each dubbed language with lines by status, cost, error; regeneration: each run with its shots), returned at :350. Contract test: get_render_progress lists the committed regeneration run with both shots, and es and hi ready; the etag changes at the re-plan, at its finalize and when each dub completes (currentEditPackageEtag and get_edit_package agree); the dubbed block lists es and hi with 10 lines each. Dub audio is stored where the source line's audio is (the audio bucket, inside the episode folder), and the package signs it for its own episode only: desktop-integration/__tests__/dubbed-audio-media.test.ts. Each dubbed line also carries timelineStartSeconds (lead decision, additive to FILM-2001's contract: edit-package.schema.ts DubbedLineSchema, build-edit-package.ts dubbed(), load-edit-package.ts DUBBED_LINE_COLUMNS; the 60-shot fixture regenerated), covered by the etag: desktop-integration/__tests__/dubbed-timeline.test.ts; scripts/sync-studio-contracts.mjs --check reports 3 contracts match against the regenerated fork copies. Mutation guards R5, L1 red"
 test_plan:
   unit:
-    - {text: "Tool input validation; shot count cap; language code validation (BCP-47 subset ElevenLabs supports)", met: false, reason: "not built"}
+    - {text: "Tool input validation; shot count cap; language code validation (BCP-47 subset ElevenLabs supports)", met: true, evidence: "#623: packages/features/studio-mcp/__tests__/tools/studio-jobs.test.ts (13 tests: cap, repeat, generating, FORBIDDEN, NOT_FOUND, pt-BR, en, xx, HI, a repeat, refusal mapping); generation/__tests__/shots-regeneration.test.ts (6); audio-generation/__tests__/localize-starts.test.ts (6, the language set ar de es fr hi ja ko pt zh, bn refused); apps/web/lambda/voice-worker/__tests__/dub-episode.test.ts (6); apps/web/lambda/llm-worker/__tests__/translate-dialogue-languages.test.ts (3)"}
   integration:
-    - {text: "regenerate_shots in external mode opens a run whose brief lists only the given shots; finalize changes the shots' media and the etag (local seed, mocked media)", met: false, reason: "not built"}
-    - {text: "dub-episode handler against the ElevenLabs sandbox (FILM-18xx local vendor sandbox) writes dubbed rows and bumps the version", met: false, reason: "not built"}
+    - {text: "regenerate_shots in external mode opens a run whose brief lists only the given shots; finalize changes the shots' media and the etag (local seed, mocked media)", met: true, evidence: "#623: packages/features/studio-mcp/__tests__/studio-jobs.contract.test.ts:214, through the MCP SDK client against a dev server on port 3308 and lane B's Supabase, on the 5-shot FILM-2001 fixture with no media uploaded"}
+    - {text: "dub-episode handler against the ElevenLabs sandbox (FILM-18xx local vendor sandbox) writes dubbed rows and bumps the version", met: true, evidence: "#623: studio-jobs.contract.test.ts:370: the vendor sandbox on port base 4500, the worktree's LLM and voice workers polling private ElasticMQ queues; dubbed rows for hi and es written, version +2, 2 passed in 73 s. pgTAP apps/web/supabase/tests/database/film-2007-regenerate-and-localize.test.sql (11), whole suite 114 files green on a throwaway Postgres"}
   e2e: []
 open_questions:
   - "Dubbing API (one call, timing preserved) vs per-line TTS (reuses voices and existing pipeline)? See README open question 6."
 notes: >
-  Neither tool renders video; shots are still produced outside StoryBook (Veo
-  via the manifest, or the OpenClaw path). regenerate_shots re-plans the shot
-  (prompt, frames) and resets its status so the existing upload path or the
-  agent's own video tool fills it; the Studio only cares that the media hash
-  changes.
+  Lead decision 6 (TEAM_BRIEF_v5, 2026-10-04) settles both blockers:
+  regenerate_shots is a re-plan (a shots run scoped to the listed shots,
+  status queued, video_url cleared, episodes.version bumped at finalize; no
+  media rendered), and localize_episode is per-line TTS over the existing
+  voice pipeline. README open question 6 stays the owner's: per-line TTS is
+  the lead default, and the owner may switch to ElevenLabs Dubbing later
+  (dubbed_versions.metadata.localization.method records which made a dub, and
+  the message's source block is where a stems source would go).
+
+
+  Lead decisions (2026-10-04, approving t2007's design; TEAM_BRIEF_v5
+  decision 6 and its follow-up): the shots stage is reused with an optional
+  regenerate target; runs opened over MCP are always external; a shot's
+  status and video_url are set through the caller's RLS client, not the
+  commit allowlist; one translate-dialogue run carries additionalLanguages;
+  the voice worker re-queues itself to wait and to continue; the new
+  nullable dubbed_dialogue_lines.timeline_start_seconds column; and the edit
+  package's dubbed lines carry it as timelineStartSeconds.
+
+
+  Corrections to the draft, from the code: (1) a stage commit may not write a
+  shot's status or media (kit.generation_commit_allowlist, FILM-1909), so the
+  tool queues the shots and clears their video as the caller when it opens
+  the run, and the commit writes only the plan; the allowlist is unchanged.
+  (2) The shots stage key is reused with an optional regenerate target rather
+  than a new stage key, which would have rippled through the stage matrix,
+  the sandbox matrix and the generation_runs stage CHECK. A full shots run and
+  a re-plan share the episode's shots lock, so one waits for the other
+  (RUN_IN_PROGRESS). (3) generation_runs_one_open allows one translation run
+  per episode, so a localization into several languages is one run with
+  additionalLanguages, translated in turn; a dub job waits for its own
+  language (a delayed re-queue, up to 30 minutes) and fails its version if
+  the run ends without it. (4) dubbed_dialogue_lines had no
+  timeline_start_seconds; the migration adds it. (5) Languages are the BCP-47
+  primary subtags both the translation stage names and multilingual TTS
+  speaks: ar, de, es, fr, hi, ja, ko, pt, zh; bn is translated but not voiced
+  by eleven_multilingual_v2, so it is refused; an English-only project TTS
+  model is replaced with eleven_multilingual_v2 for a dub. (6) Re-running a
+  localization re-voices only lines without a voiced dub, and retries lines
+  that failed in an earlier request.
+
+
+  For FILM-2019's language lanes: get_edit_package's dubbed[] has one entry
+  per language with lines ordered as the source dialogue; each line's
+  timelineStartSeconds is where the dub starts (its source line's start
+  when it was voiced; null when that line had none, in which case the
+  source line's dialogue[].timelineStartSeconds via dialogueId is the
+  fallback); timingAdjustment (0.5 to 2) is the dub's length over the source
+  line's, the speed that fits it; audio is a media entry like the source
+  line's, keyed by its stored key. A language is complete when its dubbed
+  version's status is ready (get_render_progress localization[]).
+
+
+  Locally the app's R2 adapter has no local endpoint, and the dev server runs
+  the Supabase provider, so audio the workers write to R2 (dialogue and dubs
+  alike) reads not_in_storage in a local package; the signing rule itself is
+  unit-tested.
 feature:
-  database: {tables: [], columns_added: []}
+  database:
+    tables: []
+    columns_added: ["dubbed_dialogue_lines.timeline_start_seconds (decimal(10,2), CHECK >= 0)"]
   queries: []
   actions: []
   ui: []
-  provider_integration: {vendor: "ElevenLabs", endpoints: ["Dubbing API (create dubbing, poll, fetch audio per language)"]}
+  provider_integration: {vendor: "ElevenLabs", endpoints: ["POST /v1/text-to-speech/{voice_id} (per line, the account's own key)"]}
   mcp_tools: ["regenerate_shots", "localize_episode"]
-  workers: ["apps/web/lambda/llm-worker (shot-regeneration via the generation core)", "apps/web/lambda/voice-worker (dub-episode)"]
+  workers: ["apps/web/lambda/llm-worker (translate-dialogue over several languages)", "apps/web/lambda/voice-worker (dub-episode)"]

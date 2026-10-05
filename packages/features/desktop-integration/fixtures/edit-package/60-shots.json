@@ -1,6 +1,6 @@
 {
   "schemaId": "storybook-edit-package/1",
-  "etag": "v7-348b41f2cb5fa63e5e9af1b359abc835be079028",
+  "etag": "v7-62458a3c75a15eec6a9894cc9c06fbee2479fd6d",
   "generatedAt": "2026-10-04T12:00:00.000Z",
   "urlsExpireAt": "2026-10-04T13:00:00.000Z",
   "project": {
@@ -8231,6 +8231,7 @@
           "dialogueId": "f3e9e7cc-c4e9-4962-9d90-8d97877cc26a",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 0.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8247,6 +8248,7 @@
           "dialogueId": "4522fcbd-e815-44c2-8ac1-089929e0d7df",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 2.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8263,6 +8265,7 @@
           "dialogueId": "28878c14-6fd3-449c-8a16-c68f467d4325",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 4.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8279,6 +8282,7 @@
           "dialogueId": "a786b5ea-af3b-46e2-9a7d-fde1acfd18ba",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 6.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8295,6 +8299,7 @@
           "dialogueId": "e1337c3e-cbab-45a6-a4e4-11413baa73f1",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 9.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8311,6 +8316,7 @@
           "dialogueId": "fb88a933-de7f-4f2b-bdcc-c13cb48d6039",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 12.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8327,6 +8333,7 @@
           "dialogueId": "6b0df86a-2ffc-43b4-a2f3-5db2857eccd9",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 15.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8343,6 +8350,7 @@
           "dialogueId": "8b0dfa30-8bbb-467c-99f0-7ed472b61410",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 17.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8359,6 +8367,7 @@
           "dialogueId": "12fbea8a-9949-4915-928e-e8511c033aa4",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 19.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8375,6 +8384,7 @@
           "dialogueId": "d92b06db-791b-4840-b1fd-59d453209da0",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 21.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8391,6 +8401,7 @@
           "dialogueId": "ee75b9f3-8a5e-4c63-b35c-39807b0ed86f",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 24.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8407,6 +8418,7 @@
           "dialogueId": "8faf9797-3d86-469c-bdd8-3dcc633d5873",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 27.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8423,6 +8435,7 @@
           "dialogueId": "d422d4d9-c96f-4801-ad17-9d8eb0e72f57",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 30.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8439,6 +8452,7 @@
           "dialogueId": "8f3e0685-aa8a-494b-bee9-5d4543aca1fa",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 32.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8455,6 +8469,7 @@
           "dialogueId": "9c8d51d5-4a72-4a8c-a94a-bcff8ca322d9",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 34.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8471,6 +8486,7 @@
           "dialogueId": "056ec646-5b2b-47a5-b6a6-d40804798c16",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 36.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8487,6 +8503,7 @@
           "dialogueId": "bb03932d-0551-4803-b3b3-0f4e5de4e492",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 39.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8503,6 +8520,7 @@
           "dialogueId": "9789f8af-24c2-4671-ab42-84081abd9ab7",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 42.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8519,6 +8537,7 @@
           "dialogueId": "9846f60f-2c17-4697-80e3-be1da0e1b4cd",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 45.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8535,6 +8554,7 @@
           "dialogueId": "29cabe62-2240-4540-bb22-fc22a8aade01",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 47.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8551,6 +8571,7 @@
           "dialogueId": "b3424142-71c6-4cd2-8ae1-3b395d00a93e",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 49.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8567,6 +8588,7 @@
           "dialogueId": "e1405bdf-897e-48b7-abd8-00f0088e36ee",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 51.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8583,6 +8605,7 @@
           "dialogueId": "938c5ffb-350a-455c-b1cd-00f1855dd25d",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 54.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8599,6 +8622,7 @@
           "dialogueId": "06072ec5-c44f-46a5-8a5c-638d0012534c",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 57.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8615,6 +8639,7 @@
           "dialogueId": "5b060bc7-6007-48fd-b8e6-9e785a8cc732",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 60.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8631,6 +8656,7 @@
           "dialogueId": "91ee45f6-615b-4d24-8c97-d9029f052b5c",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 62.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8647,6 +8673,7 @@
           "dialogueId": "4c41cfba-b8fc-453c-9c52-c86ad33c97b2",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 64.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8663,6 +8690,7 @@
           "dialogueId": "314992e4-bfa3-41d7-b9d1-a3796afc86ae",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 66.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8679,6 +8707,7 @@
           "dialogueId": "92f43259-ab21-42dd-9879-02a291dc1b81",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 69.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8695,6 +8724,7 @@
           "dialogueId": "98ea40dc-b636-4b17-a99f-207edfadf523",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 72.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8711,6 +8741,7 @@
           "dialogueId": "16798053-1b5a-48cd-a271-8a323ecd13f4",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 75.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8727,6 +8758,7 @@
           "dialogueId": "bd07937c-8b9e-4db9-b916-771f8ccf830b",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 77.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8743,6 +8775,7 @@
           "dialogueId": "2d89dc40-fd0f-4a23-b7be-00e4e1006e66",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 79.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8759,6 +8792,7 @@
           "dialogueId": "dce976f8-b992-4dea-baf1-a0dc768dc058",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 81.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8775,6 +8809,7 @@
           "dialogueId": "c31b51f8-33b0-47d6-941b-c40f08bac5ad",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 84.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8791,6 +8826,7 @@
           "dialogueId": "009f0585-5d35-44f7-b76b-703306814d80",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 87.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8807,6 +8843,7 @@
           "dialogueId": "d8cd00c2-60bf-4a97-8940-f550f5d439cf",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 90.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8823,6 +8860,7 @@
           "dialogueId": "a2693f7b-d9bf-48ef-a8f4-88e4cf54e5fa",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 92.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8839,6 +8877,7 @@
           "dialogueId": "14bc5c09-1569-4fe7-bc3e-6cd6603f2524",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 94.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8855,6 +8894,7 @@
           "dialogueId": "9c858202-fb59-4574-a437-9afaa880ea80",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 96.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8871,6 +8911,7 @@
           "dialogueId": "03f119bf-7ec4-47c9-9614-59b7e229b0fe",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 99.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8887,6 +8928,7 @@
           "dialogueId": "22b78fdd-8d7d-4097-b18e-d66d28033070",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 102.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8903,6 +8945,7 @@
           "dialogueId": "9ab654a4-d4a4-4126-b161-6bee7c73a975",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 105.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8919,6 +8962,7 @@
           "dialogueId": "ad589e4e-88b0-4d44-b338-debda7ddbf8e",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 107.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8935,6 +8979,7 @@
           "dialogueId": "a15e5d52-7952-4ac2-8b72-c6769dd56f49",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 109.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8951,6 +8996,7 @@
           "dialogueId": "5a3e5e63-050e-47fd-9969-edf4baa8a741",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 111.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8967,6 +9013,7 @@
           "dialogueId": "f37472be-3b01-42a3-90c4-e1068bab6a51",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 114.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8983,6 +9030,7 @@
           "dialogueId": "1905f4cb-57fa-4703-b55d-da5ecddd0824",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 117.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -8999,6 +9047,7 @@
           "dialogueId": "c70a7228-35b7-4ef8-abb2-88f18967a541",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 120.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9015,6 +9064,7 @@
           "dialogueId": "9235f3c2-ffad-4e12-920e-ef5df4893537",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 122.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9031,6 +9081,7 @@
           "dialogueId": "75038dee-8dd7-4c3d-945e-00ca6929709a",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 124.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9047,6 +9098,7 @@
           "dialogueId": "905792a3-05c7-4dfc-894d-55966d3f3d31",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 126.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9063,6 +9115,7 @@
           "dialogueId": "00d3353e-58ce-44c1-9f3a-298c71a10066",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 129.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9079,6 +9132,7 @@
           "dialogueId": "5217b8f2-4cf7-41a1-bc2b-9319fd629c2e",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 132.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9095,6 +9149,7 @@
           "dialogueId": "a58f35dc-399f-4e4b-a2f1-7f6ec42d6bad",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 135.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9111,6 +9166,7 @@
           "dialogueId": "dc4d578d-aabb-4572-b95f-607293e9d80d",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 137.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9127,6 +9183,7 @@
           "dialogueId": "ef968cae-157a-434d-912c-70b627b1ee7a",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 139.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9143,6 +9200,7 @@
           "dialogueId": "53fc494f-ecaf-4621-939c-f4a63dc617d3",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 141.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9159,6 +9217,7 @@
           "dialogueId": "4ccfbce0-0c59-4996-b890-60f519b50514",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 144.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9175,6 +9234,7 @@
           "dialogueId": "0b6ae80f-6047-4a85-a3e9-b4ad66487b5d",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 147.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9191,6 +9251,7 @@
           "dialogueId": "55dfbcf9-3ed5-43f5-b55f-3d5c43de404e",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 150.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9207,6 +9268,7 @@
           "dialogueId": "a5839476-847a-4c19-86e6-4da4cd83c9a8",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 152.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9223,6 +9285,7 @@
           "dialogueId": "84c1be7b-4b58-4882-a58e-aa6dbb74ddc8",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 154.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9239,6 +9302,7 @@
           "dialogueId": "e2a719f5-f294-4895-b75a-72889a9f1846",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 156.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9255,6 +9319,7 @@
           "dialogueId": "6394258b-24c0-4797-95ed-7e48003050e8",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 159.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9271,6 +9336,7 @@
           "dialogueId": "12f1a963-8a0f-468c-9596-2af2b759caa7",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 162.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9287,6 +9353,7 @@
           "dialogueId": "53285b21-f305-4834-afdd-b4d292d942aa",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 165.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9303,6 +9370,7 @@
           "dialogueId": "b50bf9c6-81c4-4412-85f4-ce54633c295a",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 167.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9319,6 +9387,7 @@
           "dialogueId": "b6819c3d-50fa-4dcf-81a5-096fc6d0c68e",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 169.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9335,6 +9404,7 @@
           "dialogueId": "653a2c4e-5c0c-4c4d-9de5-26d4924770e7",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 171.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9351,6 +9421,7 @@
           "dialogueId": "e7da62f4-9228-4275-bbdb-d6bbc52de554",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 174.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9367,6 +9438,7 @@
           "dialogueId": "40227c5c-ebaa-41c2-84bd-65b677a9397c",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 177.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9383,6 +9455,7 @@
           "dialogueId": "a8adbdf2-daaa-49df-af29-f2a2b1040970",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 180.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9399,6 +9472,7 @@
           "dialogueId": "fc94fbec-ab12-4310-928f-a6c923e2d612",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 182.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9415,6 +9489,7 @@
           "dialogueId": "920c44ed-91b6-4af5-9f78-916f615b15e4",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 184.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9431,6 +9506,7 @@
           "dialogueId": "13f36a63-5006-47bc-969c-dfda70390e7b",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 186.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9447,6 +9523,7 @@
           "dialogueId": "b5baf32d-b79e-4035-8c54-016ce97e2359",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 189.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9463,6 +9540,7 @@
           "dialogueId": "c4a5d713-be59-49c8-9b99-66203b591c47",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 192.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9479,6 +9557,7 @@
           "dialogueId": "a977e9f7-f311-48e1-bc6c-635d38203aca",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 195.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9495,6 +9574,7 @@
           "dialogueId": "9b9be381-e046-402b-9205-25cd67fcc2f5",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 197.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9511,6 +9591,7 @@
           "dialogueId": "f1840e29-acd8-4b48-8baa-d4e7374c44a7",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 199.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9527,6 +9608,7 @@
           "dialogueId": "f8f5fe3f-8be5-4a71-a6f9-e56835dd9596",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 201.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9543,6 +9625,7 @@
           "dialogueId": "138c1bef-b087-4d59-afb4-b03c4b0eba2c",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 204.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9559,6 +9642,7 @@
           "dialogueId": "72b5034b-4537-4ff6-92e0-630cf98a4a23",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 207.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9575,6 +9659,7 @@
           "dialogueId": "8ded4666-c2dd-4646-b618-77a26a1a5262",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 210.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9591,6 +9676,7 @@
           "dialogueId": "e0f4b766-16d3-4e44-ae47-1d058287d9da",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 212.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9607,6 +9693,7 @@
           "dialogueId": "3ae23033-3e7e-431f-a70a-aa2b8be1ccfc",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 214.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9623,6 +9710,7 @@
           "dialogueId": "ba52d25d-53c7-4666-abdd-4c340797770e",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 216.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9639,6 +9727,7 @@
           "dialogueId": "2ab153d6-82b5-41be-8bed-df759e3c0c45",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 219.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9655,6 +9744,7 @@
           "dialogueId": "8bf7d02c-0f31-4d3e-8389-bc5ccb5790b6",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 222.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9671,6 +9761,7 @@
           "dialogueId": "bbd1a4b8-41d5-4601-9e16-a5beaba7b58c",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 225.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9687,6 +9778,7 @@
           "dialogueId": "628a11e8-bba9-424b-a557-a7e40b43c7e4",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 227.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9703,6 +9795,7 @@
           "dialogueId": "ee2205e8-4ee6-4470-9981-a6d0ad423668",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 229.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9719,6 +9812,7 @@
           "dialogueId": "4a5de5a8-4ce1-4005-9fd2-89e4ecf48bb0",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 231.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9735,6 +9829,7 @@
           "dialogueId": "450415e9-dceb-49c0-afc7-6fcebcca3817",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 234.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9751,6 +9846,7 @@
           "dialogueId": "7946dc80-23d5-4419-a0b1-6d1290f680e2",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 237.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9767,6 +9863,7 @@
           "dialogueId": "5ea4fedf-834b-4493-b72b-cf25d3b41464",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 240.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9783,6 +9880,7 @@
           "dialogueId": "b31bf678-d7fe-4c91-9b0c-b7c1d238a486",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 242.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9799,6 +9897,7 @@
           "dialogueId": "bf9dc3a3-1442-4d35-96e6-13ae50af278b",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 244.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9815,6 +9914,7 @@
           "dialogueId": "1fd4ab61-30da-49d5-b8e4-4a57125ba17e",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 246.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9831,6 +9931,7 @@
           "dialogueId": "2530b821-36fe-4f42-a2be-bb9ab0bdb357",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 249.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9847,6 +9948,7 @@
           "dialogueId": "07108015-d755-4bcb-8615-37a628668858",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 252.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9863,6 +9965,7 @@
           "dialogueId": "70d169a1-6765-489e-b06d-f206aec3d003",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 255.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9879,6 +9982,7 @@
           "dialogueId": "5ece46cc-31ed-4cab-8f94-103aa5c66cbc",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 257.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9895,6 +9999,7 @@
           "dialogueId": "978b8aef-d63e-42e5-bc5f-e236524eed8b",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 259.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9911,6 +10016,7 @@
           "dialogueId": "727d5c53-cda8-471c-ab4d-b6602364dd18",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 261.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9927,6 +10033,7 @@
           "dialogueId": "2ebcfc70-6f9b-41bf-b95f-cbe358b03ebe",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 264.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9943,6 +10050,7 @@
           "dialogueId": "63a6b998-3bbd-4243-a5ee-c94098af7b47",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 267.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9959,6 +10067,7 @@
           "dialogueId": "44e94d87-b9c1-49ec-8866-58be2ff34725",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 270.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9975,6 +10084,7 @@
           "dialogueId": "c20660bd-5d04-4b40-8837-235bba9b6104",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 272.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -9991,6 +10101,7 @@
           "dialogueId": "b5cba119-1f0c-44cd-85e1-99339f22a395",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 274.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10007,6 +10118,7 @@
           "dialogueId": "b19ba710-6ee4-4327-957d-0151ac3c5502",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 276.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10023,6 +10135,7 @@
           "dialogueId": "3f623244-f8e8-40ed-9c9d-f45044f37207",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 279.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10039,6 +10152,7 @@
           "dialogueId": "c2458439-ad20-443f-9cc7-edf652cb5e53",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 282.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10055,6 +10169,7 @@
           "dialogueId": "863940ee-5a73-45c9-9a36-2d11c996575c",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 285.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10071,6 +10186,7 @@
           "dialogueId": "775780b7-162d-4f6f-9fc4-c1673d5124c5",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 287.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10087,6 +10203,7 @@
           "dialogueId": "0849a079-539b-4ca7-9fa9-7c5248539f80",
           "translatedText": "हमें अभी चलना होगा।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 289.4,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10103,6 +10220,7 @@
           "dialogueId": "af6c84a0-9e1c-43c8-957f-56ff8e6513a2",
           "translatedText": "क्या तुमने वह आवाज़ सुनी?",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 291.9,
           "durationSeconds": 1.8,
           "status": "voiced",
           "audio": {
@@ -10119,6 +10237,7 @@
           "dialogueId": "6dffe65b-e357-4f6e-984b-11de615add85",
           "translatedText": "प्रयोगशाला की बत्तियाँ बुझ गई हैं।",
           "timingAdjustment": 1,
+          "timelineStartSeconds": 294.4,
           "durationSeconds": 1.8,
           "status": "pending",
           "audio": {
@@ -10131,6 +10250,7 @@
           "dialogueId": "a5e4cfaf-8040-4627-bcdc-8d30015946cd",
           "translatedText": "मुझ पर भरोसा करो, यह काम करेगा।",
           "timingAdjustment": 1.1,
+          "timelineStartSeconds": 297.4,
           "durationSeconds": 1.8,
           "status": "pending",
           "audio": {
