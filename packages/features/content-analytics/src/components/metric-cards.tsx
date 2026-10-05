@@ -127,7 +127,8 @@ export function MetricCards({
     {
       key: 'likes',
       label: 'Likes',
-      value: data?.likes || 0,
+      // Null is not measured, never 0: no row is not "nobody liked it" (KB-192).
+      value: data ? data.likes : null,
       previousValue: previousData ? previousData.likes : null,
       formatter: formatNumber,
       description: 'Total likes, hearts, and reactions',
@@ -137,7 +138,7 @@ export function MetricCards({
     {
       key: 'comments',
       label: 'Comments',
-      value: data?.comments || 0,
+      value: data ? data.comments : null,
       previousValue: previousData ? previousData.comments : null,
       formatter: formatNumber,
       description: 'Total comments and replies',

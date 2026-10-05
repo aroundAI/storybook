@@ -519,7 +519,11 @@ export interface AggregatedTotals {
  * follower gain or saves, so an all-TikTok scope has none of them.
  */
 export interface ScopeTotals
-  extends Omit<AggregatedTotals, keyof MeasuredColumns> {
+  extends Omit<AggregatedTotals, keyof MeasuredColumns | 'likes' | 'comments'> {
+  /** Null where no row was read: no row is not "nobody liked it" (KB-192). */
+  likes: number | null;
+  /** Null where no row was read (KB-192). */
+  comments: number | null;
   /** Null where no row measured it: an X-only scope (FILM-1727). */
   shares: number | null;
   saves: number | null;

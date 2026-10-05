@@ -353,8 +353,8 @@ function buildWhereClause(filters: QueryFilters): {
  */
 const NO_ROWS_TOTALS: ScopeTotals = {
   views: null,
-  likes: 0,
-  comments: 0,
+  likes: null,
+  comments: null,
   shares: null,
   saves: null,
   watch_time_seconds: null,
@@ -503,9 +503,12 @@ async function queryTotalsSingle(
   // ClickHouse returns numbers as strings, ensure they're numeric
   const row = rows[0]!;
 
+  // No rows read: every count is not measured, never 0 (KB-167, KB-192).
+  if (Number(row.row_count) === 0) return { ...NO_ROWS_TOTALS };
+
   return {
-    // No rows, or rows that are all Facebook's: not measured (KB-167).
-    views: Number(row.row_count) === 0 ? null : nullableNumber(row.views),
+    // Rows that are all Facebook's: not measured (KB-153).
+    views: nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: measuredSum(row.shares, row.shares_measured),

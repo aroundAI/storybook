@@ -2,12 +2,13 @@
 
 import { Share2 } from 'lucide-react';
 
+import type { Measured } from '../../lib/measured';
 import { AnalyticsCard } from './analytics-card';
 import { countClaim } from './card-claim';
 
 interface SharesCardProps {
-  /** Total shares, or `null` when they could not be read. */
-  shares: number | null;
+  /** Total shares: absent when they could not be read, null when not measured. */
+  shares: Measured<number | null>;
 }
 
 /**

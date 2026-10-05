@@ -190,8 +190,9 @@ const AnalyticsInsights = z.object({
     totals: z.object({
       // Null where every row is Facebook's: no single view (KB-153).
       views: z.number().nullable(),
-      likes: z.number(),
-      comments: z.number(),
+      // Null where no row was read (KB-192).
+      likes: z.number().nullable(),
+      comments: z.number().nullable(),
       // Null where no row measured it: X reports no shares (FILM-1727).
       shares: z.number().nullable(),
       // Null is "not measured" (KB-149).

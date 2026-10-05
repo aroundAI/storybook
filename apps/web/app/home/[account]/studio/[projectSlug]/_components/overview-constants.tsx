@@ -27,8 +27,9 @@ export interface ProjectMetadata {
 export interface OverviewAnalytics {
   /** Null where every published video is Facebook's: no single view (KB-153). */
   totalViews: number | null;
-  totalLikes: number;
-  totalComments: number;
+  /** Null where no row was read: not measured, never 0 (KB-192). */
+  totalLikes: number | null;
+  totalComments: number | null;
   /** Likes and comments per view (KB-171), with its record (FILM-1732). */
   avgEngagementRate: RecordedRate;
   contentCount: number;

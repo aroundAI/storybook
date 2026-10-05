@@ -133,6 +133,11 @@ describe('queryTotals, for a figure no row measured (KB-162)', () => {
     // No row is not "nobody watched": nothing was measured (KB-167).
     expect(totals.views).toBeNull();
     expect(totals.watch_time_seconds).toBeNull();
+    // Nor "nobody liked it": every count is null (KB-192).
+    expect(totals.likes).toBeNull();
+    expect(totals.comments).toBeNull();
+    expect(totals.shares).toBeNull();
+    expect(totals.revenue_cents).toBeNull();
   });
 
   it('gives null with ClickHouse off, which measures nothing', async () => {

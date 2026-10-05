@@ -7,6 +7,7 @@
 import 'server-only';
 
 import {
+  addMeasured,
   lifetimeWindow,
   poolDenominators,
   recordViewsDenominator,
@@ -54,9 +55,11 @@ export interface EpisodeAnalytics {
   totalViews: Views;
   /** What `totalViews` covers, for why it is null (KB-166). */
   viewsScope: ViewsScope;
-  totalLikes: number;
-  totalComments: number;
-  totalShares: number;
+  /** Null where no row was read: not measured, never 0 (KB-192). */
+  totalLikes: number | null;
+  totalComments: number | null;
+  /** Null where no row measured it: no row, or only X's (KB-192, FILM-1727). */
+  totalShares: number | null;
   /** Null where no publish measured it: TikTok reports no saves (KB-149). */
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
@@ -95,9 +98,11 @@ export interface SeasonAnalytics {
   totalViews: Views;
   /** What `totalViews` covers, for why it is null (KB-166). */
   viewsScope: ViewsScope;
-  totalLikes: number;
-  totalComments: number;
-  totalShares: number;
+  /** Null where no row was read: not measured, never 0 (KB-192). */
+  totalLikes: number | null;
+  totalComments: number | null;
+  /** Null where no row measured it: no row, or only X's (KB-192, FILM-1727). */
+  totalShares: number | null;
   /** Null where no publish measured it: TikTok reports no saves (KB-162). */
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
@@ -133,9 +138,11 @@ export interface ProjectAnalytics {
   totalViews: Views;
   /** What `totalViews` covers, for why it is null (KB-166). */
   viewsScope: ViewsScope;
-  totalLikes: number;
-  totalComments: number;
-  totalShares: number;
+  /** Null where no row was read: not measured, never 0 (KB-192). */
+  totalLikes: number | null;
+  totalComments: number | null;
+  /** Null where no row measured it: no row, or only X's (KB-192, FILM-1727). */
+  totalShares: number | null;
   /** Null where no publish measured it (KB-162). */
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
@@ -175,9 +182,9 @@ function emptyEpisodeAnalytics(
     episodeNumber,
     totalViews: null,
     viewsScope: EMPTY_VIEWS_SCOPE,
-    totalLikes: 0,
-    totalComments: 0,
-    totalShares: 0,
+    totalLikes: null,
+    totalComments: null,
+    totalShares: null,
     totalSaves: null,
     totalRevenueCents: null,
     avgWatchTimeSeconds: null,
@@ -226,16 +233,22 @@ function emptyEngagementRate(window: DenominatorWindow): RecordedRate {
 }
 
 /**
- * A running total of a figure some platforms do not measure: an unmeasured
- * part adds nothing, and a total of nothing measured stays null (KB-149).
+ * The engagement rate's inputs over measured views. An unmeasured count
+ * adds nothing to the numerator, as `addMeasured` adds nothing for it: a
+ * view was read, so the rate is over what was measured (KB-192).
  */
-function addMeasured(
-  total: number | null,
-  value: number,
-  measured: boolean,
-): number | null {
-  if (!measured) return total;
-  return (total ?? 0) + value;
+function engagementCounts(
+  views: number,
+  likes: number | null,
+  comments: number | null,
+  shares: number | null,
+) {
+  return {
+    views,
+    likes: likes ?? 0,
+    comments: comments ?? 0,
+    shares: shares ?? 0,
+  };
 }
 
 /**
@@ -290,9 +303,10 @@ export async function getEpisodeAnalytics(
   // Calculate totals. A Facebook publish's views are not measured: it adds
   // nothing, and a total of nothing but Facebook is null (KB-153).
   let totalViews: Views = null;
-  let totalLikes = 0;
-  let totalComments = 0;
-  let totalShares = 0;
+  // Null until a row is read: no row is not a measured 0 (KB-192).
+  let totalLikes: number | null = null;
+  let totalComments: number | null = null;
+  let totalShares: number | null = null;
   let totalSaves: number | null = null;
   let totalRevenue: EstimatedRevenue = null;
   let totalWatchTime: number | null = null;
@@ -315,21 +329,19 @@ export async function getEpisodeAnalytics(
     if (!stats) continue;
 
     totalViews = addViews(totalViews, stats.views);
-    totalLikes += stats.likes;
-    totalComments += stats.comments;
-    totalShares += stats.shares;
-    totalSaves = addMeasured(totalSaves, stats.saves, stats.measured.saves);
+    totalLikes = addMeasured(totalLikes, stats.likes);
+    totalComments = addMeasured(totalComments, stats.comments);
+    totalShares = addMeasured(totalShares, measuredFigure(stats, 'shares'));
+    totalSaves = addMeasured(totalSaves, measuredFigure(stats, 'saves'));
     totalRevenue = addRevenue(totalRevenue, stats.revenue_cents);
     totalWatchTime = addMeasured(
       totalWatchTime,
-      stats.watch_time_seconds,
-      stats.measured.watch_time_seconds,
+      measuredFigure(stats, 'watch_time_seconds'),
     );
     if (stats.measured.watch_time_seconds) watchTimePublishes += 1;
     subscribersGained = addMeasured(
       subscribersGained,
-      stats.subscribers_gained,
-      stats.measured.subscribers_gained,
+      measuredFigure(stats, 'subscribers_gained'),
     );
 
     const current = platformMap.get(publish.platform) ?? {
@@ -344,7 +356,7 @@ export async function getEpisodeAnalytics(
       likes: current.likes + stats.likes,
       comments: current.comments + stats.comments,
       shares: current.shares + stats.shares,
-      saves: addMeasured(current.saves, stats.saves, stats.measured.saves),
+      saves: addMeasured(current.saves, measuredFigure(stats, 'saves')),
     });
   }
 
@@ -368,12 +380,7 @@ export async function getEpisodeAnalytics(
     totalViews === null
       ? null
       : recordedEngagementRatePercent(
-          {
-            views: totalViews,
-            likes: totalLikes,
-            comments: totalComments,
-            shares: totalShares,
-          },
+          engagementCounts(totalViews, totalLikes, totalComments, totalShares),
           recordViewsDenominator({
             platforms: contributingPlatforms(publishes, perVideoTotals),
             window: readWindow(dateFilters, publishes),
@@ -477,9 +484,9 @@ export async function getSeasonAnalytics(
       // Nothing published: not measured, never 0 (KB-167).
       totalViews: null,
       viewsScope: EMPTY_VIEWS_SCOPE,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
+      totalLikes: null,
+      totalComments: null,
+      totalShares: null,
       totalSaves: null,
       totalRevenueCents: null,
       avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
@@ -524,13 +531,15 @@ export async function getSeasonAnalytics(
       seasonId,
       seasonNumber: season.number,
       title: season.name || `Season ${season.number}`,
-      totalViews: 0,
+      // None of the selected platforms published here: not measured,
+      // never 0 (KB-167, KB-192).
+      totalViews: null,
       viewsScope: EMPTY_VIEWS_SCOPE,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
-      totalSaves: 0,
-      totalRevenueCents: 0,
+      totalLikes: null,
+      totalComments: null,
+      totalShares: null,
+      totalSaves: null,
+      totalRevenueCents: null,
       avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
       episodeCount: 0,
       topEpisode: null,
@@ -547,9 +556,9 @@ export async function getSeasonAnalytics(
       // Nothing published: not measured, never 0 (KB-167).
       totalViews: null,
       viewsScope: EMPTY_VIEWS_SCOPE,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
+      totalLikes: null,
+      totalComments: null,
+      totalShares: null,
       totalSaves: null,
       totalRevenueCents: null,
       avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
@@ -585,9 +594,10 @@ export async function getSeasonAnalytics(
   // Aggregate per episode
   const episodeAnalytics: SeasonAnalytics['episodes'] = [];
   let totalViews: Views = null;
-  let totalLikes = 0;
-  let totalComments = 0;
-  let totalShares = 0;
+  // Null until a row is read (KB-192).
+  let totalLikes: number | null = null;
+  let totalComments: number | null = null;
+  let totalShares: number | null = null;
   // Each publish's saves, null where unmeasured (KB-162).
   const saves: Array<number | null> = [];
   let totalRevenue: EstimatedRevenue = null;
@@ -601,18 +611,18 @@ export async function getSeasonAnalytics(
   for (const ep of counted) {
     const epPublishes = publishesByEpisode.get(ep.id) ?? [];
     let epViews: Views = null;
-    let epLikes = 0;
-    let epComments = 0;
-    let epShares = 0;
+    let epLikes: number | null = null;
+    let epComments: number | null = null;
+    let epShares: number | null = null;
     let epRevenue: EstimatedRevenue = null;
 
     for (const pub of epPublishes) {
       const stats = perVideoTotals.get(pub.id);
       if (!stats) continue;
       epViews = addViews(epViews, stats.views);
-      epLikes += stats.likes;
-      epComments += stats.comments;
-      epShares += stats.shares;
+      epLikes = addMeasured(epLikes, stats.likes);
+      epComments = addMeasured(epComments, stats.comments);
+      epShares = addMeasured(epShares, measuredFigure(stats, 'shares'));
       saves.push(measuredFigure(stats, 'saves'));
       epRevenue = addRevenue(epRevenue, stats.revenue_cents);
     }
@@ -621,12 +631,7 @@ export async function getSeasonAnalytics(
       epViews === null
         ? null
         : recordedEngagementRatePercent(
-            {
-              views: epViews,
-              likes: epLikes,
-              comments: epComments,
-              shares: epShares,
-            },
+            engagementCounts(epViews, epLikes, epComments, epShares),
             recordViewsDenominator({
               platforms: contributingPlatforms(epPublishes, perVideoTotals),
               window: readWindow(dateFilters, epPublishes),
@@ -643,9 +648,9 @@ export async function getSeasonAnalytics(
     });
 
     totalViews = addViews(totalViews, epViews);
-    totalLikes += epLikes;
-    totalComments += epComments;
-    totalShares += epShares;
+    totalLikes = addMeasured(totalLikes, epLikes);
+    totalComments = addMeasured(totalComments, epComments);
+    totalShares = addMeasured(totalShares, epShares);
     totalRevenue = addRevenue(totalRevenue, epRevenue);
     if (epEngagement !== null) {
       totalEngagement += epEngagement.value;
@@ -750,9 +755,10 @@ export async function getProjectAnalytics(
 
   const seasonAnalyticsList: ProjectAnalytics['seasons'] = [];
   let totalViews: Views = null;
-  let totalLikes = 0;
-  let totalComments = 0;
-  let totalShares = 0;
+  // Null until a season reads a row (KB-192).
+  let totalLikes: number | null = null;
+  let totalComments: number | null = null;
+  let totalShares: number | null = null;
   // Each season's saves, null where none was measured (KB-162).
   const seasonSaves: Array<number | null> = [];
   let totalRevenue: EstimatedRevenue = null;
@@ -775,9 +781,9 @@ export async function getProjectAnalytics(
       });
 
       totalViews = addViews(totalViews, analytics.totalViews);
-      totalLikes += analytics.totalLikes;
-      totalComments += analytics.totalComments;
-      totalShares += analytics.totalShares;
+      totalLikes = addMeasured(totalLikes, analytics.totalLikes);
+      totalComments = addMeasured(totalComments, analytics.totalComments);
+      totalShares = addMeasured(totalShares, analytics.totalShares);
       seasonSaves.push(analytics.totalSaves);
       totalRevenue = addRevenue(totalRevenue, analytics.totalRevenueCents);
       totalEngagement += analytics.avgEngagementRate.value;
