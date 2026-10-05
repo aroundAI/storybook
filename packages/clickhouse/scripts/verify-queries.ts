@@ -3466,6 +3466,8 @@ async function rateDenominatorSteps() {
       },
       recordViewsDenominator({ platforms: ['youtube', 'tiktok'], window }),
     );
+    if (!rate)
+      throw new Error('the rate over measured counts was not measured');
 
     expectEqual('views', totals.views, 1500);
     expectClose('rate', rate.value, (125 / 1500) * 100);
@@ -3507,6 +3509,8 @@ async function rateDenominatorSteps() {
       },
       recordViewsDenominator({ platforms: ['youtube', 'tiktok'], window }),
     );
+    if (!rate)
+      throw new Error('the rate over measured counts was not measured');
 
     expectEqual('views', totals.views, 1100);
     expectClose('rate', rate.value, (85 / 1100) * 100);

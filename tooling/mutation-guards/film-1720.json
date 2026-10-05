@@ -125,8 +125,8 @@
       "name": "KB153-3 totals over Facebook rows alone read 0",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",
-      "find": "    views: Number(row.row_count) === 0 ? null : nullableNumber(row.views),",
-      "replace": "    views: Number(row.row_count) === 0 ? null : Number(row.views),",
+      "find": "    // Rows that are all Facebook's: not measured (KB-153).\n    views: nullableNumber(row.views),\n    likes: Number(row.likes),",
+      "replace": "    // Rows that are all Facebook's: not measured (KB-153).\n    views: Number(row.views),\n    likes: Number(row.likes),",
       "cwd": "packages/clickhouse",
       "test": "__tests__/clickhouse.test.ts",
       "pattern": "totals over Facebook rows alone"

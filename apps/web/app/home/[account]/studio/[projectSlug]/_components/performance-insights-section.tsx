@@ -64,10 +64,10 @@ export function PerformanceInsightsSection({
                 className="mt-1 flex items-center gap-2 text-3xl font-bold text-foreground"
                 data-test="overview-engagement-rate"
               >
-                {analytics?.avgEngagementRate.value
+                {analytics?.avgEngagementRate
                   ? `${analytics.avgEngagementRate.value.toFixed(0)}%`
-                  : '0%'}
-                {analytics && (
+                  : 'Not measured'}
+                {analytics?.avgEngagementRate && (
                   <RateDenominator
                     denominator={analytics.avgEngagementRate.denominator}
                     figure="average engagement"
@@ -76,12 +76,14 @@ export function PerformanceInsightsSection({
               </p>
             </div>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-muted">
-            <div
-              className="h-1.5 rounded-full bg-green-500"
-              style={{ width: `${analytics?.avgEngagementRate.value ?? 0}%` }}
-            />
-          </div>
+          {analytics?.avgEngagementRate && (
+            <div className="h-1.5 w-full rounded-full bg-muted">
+              <div
+                className="h-1.5 rounded-full bg-green-500"
+                style={{ width: `${analytics.avgEngagementRate.value}%` }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Content Published */}

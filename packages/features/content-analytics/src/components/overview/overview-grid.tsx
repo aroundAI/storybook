@@ -156,7 +156,7 @@ export function OverviewGrid({
   const aiSummary = insights?.summary
     ? insights.summary
     : hasData
-      ? `Your content has ${formatNumber(totals?.views || 0)} total views with an average engagement rate of ${formatPercent(analytics?.avgEngagementRate || 0)}.`
+      ? `Your content has ${formatNumber(totals?.views || 0)} total views${analytics?.avgEngagementRate == null ? '' : ` with an average engagement rate of ${formatPercent(analytics.avgEngagementRate)}`}.`
       : 'No analytics data available yet. Publish content to social platforms and connect your accounts to see insights.';
 
   // Build AI insights from actual platform data - no hardcoded fallbacks

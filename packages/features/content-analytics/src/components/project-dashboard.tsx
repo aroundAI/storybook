@@ -178,11 +178,15 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
               className="flex items-center gap-2 text-3xl font-bold"
               data-test="avg-engagement-rate"
             >
-              {data.avgEngagementRate.value.toFixed(2)}%
-              <RateDenominator
-                denominator={data.avgEngagementRate.denominator}
-                figure="average engagement rate"
-              />
+              {data.avgEngagementRate === null
+                ? 'Not measured'
+                : `${data.avgEngagementRate.value.toFixed(2)}%`}
+              {data.avgEngagementRate && (
+                <RateDenominator
+                  denominator={data.avgEngagementRate.denominator}
+                  figure="average engagement rate"
+                />
+              )}
             </p>
           </CardContent>
         </Card>

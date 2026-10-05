@@ -4,8 +4,8 @@
     {
       "name": "NM1 The episode total re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "      : recordedEngagementRatePercent(\n          {\n            views: totalViews,",
-      "replace": "      : ((totalLikes + totalComments + totalShares) / totalViews) * 100 + 0 * Number(\n          {\n            views: totalViews,",
+      "find": "  const engagementRate = recordedEngagementRatePercent(\n    {\n      views: totalViews,",
+      "replace": "  const engagementRate = ((totalLikes + totalComments + totalShares) / totalViews) * 100 + 0 * Number(\n    {\n      views: totalViews,",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
@@ -14,8 +14,8 @@
     {
       "name": "NM2 The publish row re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "        : recordedEngagementRatePercent(\n            { ...stats, views: stats.views },\n            recordViewsDenominator({\n              platforms: [publish.platform],",
-      "replace": "        : ((stats.likes + stats.comments + stats.shares) / stats.views) * 100 + 0 * Number(\n            { ...stats, views: stats.views },\n            recordViewsDenominator({\n              platforms: [publish.platform],",
+      "find": "    const engagementRate = recordedEngagementRatePercent(\n      stats,\n      recordViewsDenominator({\n        platforms: [publish.platform],\n        window: lifetimeWindow([publish.published_at]),",
+      "replace": "    const engagementRate = ((stats.likes + stats.comments + stats.shares) / stats.views) * 100 + 0 * Number(\n      stats,\n      recordViewsDenominator({\n        platforms: [publish.platform],\n        window: lifetimeWindow([publish.published_at]),",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
@@ -24,8 +24,8 @@
     {
       "name": "NM3 The account dashboard re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
-      "find": "        : recordedEngagementRatePercent(\n            { ...stats, views: stats.views },\n            recordViewsDenominator({ platforms: [publish.platform], window }),",
-      "replace": "        : ((stats.likes + stats.comments + stats.shares) / stats.views) * 100 + 0 * Number(\n            { ...stats, views: stats.views },\n            recordViewsDenominator({ platforms: [publish.platform], window }),",
+      "find": "    const engagementRate = recordedEngagementRatePercent(\n      stats,\n      recordViewsDenominator({ platforms: [publish.platform], window }),",
+      "replace": "    const engagementRate = ((stats.likes + stats.comments + stats.shares) / stats.views) * 100 + 0 * Number(\n      stats,\n      recordViewsDenominator({ platforms: [publish.platform], window }),",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
@@ -75,8 +75,8 @@
       "name": "NM20 The per-episode rollup re-inlines the engagement formula",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "        : recordedEngagementRatePercent(\n            {\n              views: epViews,",
-      "replace": "        : ((epLikes + epComments + epShares) / epViews) * 100 + 0 * Number(\n            {\n              views: epViews,",
+      "find": "    const epEngagement = recordedEngagementRatePercent(\n      {\n        views: epViews,",
+      "replace": "    const epEngagement = ((epLikes + epComments + epShares) / epViews) * 100 + 0 * Number(\n      {\n        views: epViews,",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
       "pattern": "computed inline nowhere else"

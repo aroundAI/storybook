@@ -62,6 +62,34 @@ test.describe('Project overview: no trend it did not measure (KB-193)', () => {
     expect(await cards.locator('svg[preserveAspectRatio="none"]').count()).toBe(
       0,
     );
-    await expect(byTest(page, 'overview-engagement-rate')).toBeVisible();
+  });
+
+  test('a project with nothing measured says Not measured for engagement, not 0% (KB-194)', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'kb194' });
+    const project = await seedProject(team);
+    const connectionId = await seedYouTubeConnection(team.accountId);
+    const { seasonId } = await seedSeason(project.id);
+    await seedPublishedEpisode(project.id, connectionId, {
+      title: 'A published video',
+      seasonId,
+    });
+
+    await signInAs(page, team);
+    await page.goto(`/home/${team.slug}/studio/${project.slug}`);
+
+    const engagement = byTest(page, 'overview-engagement-rate');
+    await expect(engagement).toBeVisible();
+
+    if (process.env.CAPTURE_EVIDENCE) {
+      mkdirSync(OUT, { recursive: true });
+      await engagement
+        .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]')
+        .screenshot({ path: `${OUT}/kb-194-engagement-card.png` });
+    }
+
+    await expect(engagement).toContainText('Not measured');
+    await expect(engagement).not.toContainText('0%');
   });
 });

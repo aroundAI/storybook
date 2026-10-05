@@ -276,10 +276,9 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
         // Likes and comments per view, shares left out (KB-171), recorded.
         avgEngagementRate: recordedLikesAndCommentsPercent(
           {
-            // An unmeasured count adds none (KB-192).
-            likes: analyticsSnapshot.totalLikes ?? 0,
-            comments: analyticsSnapshot.totalComments ?? 0,
-            views: analyticsSnapshot.totalViews ?? 0,
+            likes: analyticsSnapshot.totalLikes,
+            comments: analyticsSnapshot.totalComments,
+            views: analyticsSnapshot.totalViews,
           },
           recordViewsDenominator({
             // A snapshot cached before FILM-1732 has neither field.

@@ -91,7 +91,7 @@ export interface LanguagePerformance {
   comments: number;
   shares: number;
   /** engagementRatio (FILM-1713) as a percentage, recorded (FILM-1732). */
-  engagement: RecordedRate;
+  engagement: RecordedRate | null;
   /** USD; null where no day's earnings were measured (FILM-1726). */
   revenueCents: EstimatedRevenue;
   contentCount: number;
@@ -116,7 +116,7 @@ export interface PlatformLanguageEntry {
   comments: number;
   shares: number;
   /** Recorded over this one platform (FILM-1732). */
-  engagementRate: RecordedRate;
+  engagementRate: RecordedRate | null;
   /** USD; null where no day's earnings were measured (FILM-1726). */
   revenueCents: EstimatedRevenue;
   contentCount: number;
@@ -130,7 +130,7 @@ export interface FormatFamilyTotals {
   comments: number;
   shares: number;
   /** Recorded over the family's platforms (FILM-1732). */
-  engagement: RecordedRate;
+  engagement: RecordedRate | null;
   /** USD; null where no day's earnings were measured (FILM-1726). */
   revenueCents: EstimatedRevenue;
   /**
@@ -721,16 +721,13 @@ export async function getShortsSourcePerformance(
     if (!stats) continue;
 
     // A Facebook Short has no views to divide by: not measured (KB-153).
-    const engagement =
-      stats.views === null
-        ? null
-        : recordedLikesAndCommentsPercent(
-            { ...stats, views: stats.views },
-            recordViewsDenominator({
-              platforms: [video.platform],
-              window: { from: startDateStr, to: endDateStr },
-            }),
-          );
+    const engagement = recordedLikesAndCommentsPercent(
+      stats,
+      recordViewsDenominator({
+        platforms: [video.platform],
+        window: { from: startDateStr, to: endDateStr },
+      }),
+    );
 
     results.push({
       publishId: video.videoId,

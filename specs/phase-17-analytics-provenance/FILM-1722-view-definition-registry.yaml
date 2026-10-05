@@ -339,6 +339,13 @@ notes: |
   FILM-1715. It does not ship separately. Until then the cohort curves go on
   computing growth across the boundary, as §11 records.
 
+  Owner's decision, 2026-10-05 (KB-194): the hold on the displayed
+  engagement rate's 0 is lifted for the unmeasured case only. When the views
+  denominator is zero or null, or likes, comments and shares are all
+  unmeasured, the rate is null and reads "Not measured", never 0%. A single
+  unmeasured count adds nothing to the numerator, as KB-192 has it. Nothing
+  else about the rate changes, and it is not switched to engaged views.
+
   ## 13. What adopters call (2026-09-25)
 
   Two registry additions so adoption is one call per site, not a

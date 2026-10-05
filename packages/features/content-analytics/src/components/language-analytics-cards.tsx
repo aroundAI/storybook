@@ -175,12 +175,16 @@ export function LanguagePerformanceCard({
                   {formatPercent(percentage)} of total
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  {formatPercent(lang.engagement.value)} engagement
-                  <RateDenominator
-                    denominator={lang.engagement.denominator}
-                    figure="engagement rate"
-                    subject={languageName(lang.language, dimension)}
-                  />
+                  {lang.engagement === null
+                    ? 'Engagement not measured'
+                    : `${formatPercent(lang.engagement.value)} engagement`}
+                  {lang.engagement && (
+                    <RateDenominator
+                      denominator={lang.engagement.denominator}
+                      figure="engagement rate"
+                      subject={languageName(lang.language, dimension)}
+                    />
+                  )}
                 </span>
               </div>
               <p
@@ -213,10 +217,10 @@ function bestCombination(
   data: readonly PlatformLanguageEntry[],
 ): PlatformLanguageEntry | undefined {
   return data
-    .filter((entry) => entry.language !== null)
+    .filter((entry) => entry.language !== null && entry.engagementRate)
     .reduce<
       PlatformLanguageEntry | undefined
-    >((best, entry) => (!best || entry.engagementRate.value > best.engagementRate.value ? entry : best), undefined);
+    >((best, entry) => (!best || (entry.engagementRate?.value ?? 0) > (best.engagementRate?.value ?? 0) ? entry : best), undefined);
 }
 
 export function platformLanguageClaim(
@@ -243,7 +247,7 @@ export function platformLanguageClaim(
   }
 
   return {
-    figure: formatPercent(best.engagementRate.value),
+    figure: formatPercent(best.engagementRate?.value ?? 0),
     sentence: `The highest engagement rate of any labelled language on any platform: ${languageName(best.language, dimension)} on ${platformLabel(best.platform)}.`,
   };
 }
@@ -355,12 +359,18 @@ export function PlatformLanguageMatrix({
                                 {formatNumber(entry.views)}
                               </div>
                               <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                {formatPercent(entry.engagementRate.value)}
-                                <RateDenominator
-                                  denominator={entry.engagementRate.denominator}
-                                  figure="engagement rate"
-                                  subject={`${languageName(lang, dimension)} on ${platformLabel(platform)}`}
-                                />
+                                {entry.engagementRate === null
+                                  ? 'Not measured'
+                                  : formatPercent(entry.engagementRate.value)}
+                                {entry.engagementRate && (
+                                  <RateDenominator
+                                    denominator={
+                                      entry.engagementRate.denominator
+                                    }
+                                    figure="engagement rate"
+                                    subject={`${languageName(lang, dimension)} on ${platformLabel(platform)}`}
+                                  />
+                                )}
                               </div>
                             </div>
                           ) : (
@@ -380,7 +390,7 @@ export function PlatformLanguageMatrix({
             <TrendingUp className="h-4 w-4" />
             Best: {languageName(bestEntry.language, dimension)} on{' '}
             {platformLabel(bestEntry.platform)} (
-            {formatPercent(bestEntry.engagementRate.value)} engagement)
+            {formatPercent(bestEntry.engagementRate?.value ?? 0)} engagement)
           </div>
         )}
       </div>
@@ -499,12 +509,16 @@ function FormatFamilyTable({ data }: { data: ContentTypeComparison }) {
                   data-test="format-family-engagement"
                 >
                   <span className="inline-flex items-center gap-1">
-                    {formatPercent(row.engagement.value)}
-                    <RateDenominator
-                      denominator={row.engagement.denominator}
-                      figure="engagement rate"
-                      subject={FORMAT_FAMILY_LABEL[row.family]}
-                    />
+                    {row.engagement === null
+                      ? 'Not measured'
+                      : formatPercent(row.engagement.value)}
+                    {row.engagement && (
+                      <RateDenominator
+                        denominator={row.engagement.denominator}
+                        figure="engagement rate"
+                        subject={FORMAT_FAMILY_LABEL[row.family]}
+                      />
+                    )}
                   </span>
                 </td>
                 <td className="py-3 pl-3 text-right tabular-nums">

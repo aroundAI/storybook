@@ -107,7 +107,7 @@ export interface SeasonAnalytics {
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
   /** The mean of the episodes' rates, recorded over all their platforms (FILM-1732). */
-  avgEngagementRate: RecordedRate;
+  avgEngagementRate: RecordedRate | null;
   episodeCount: number;
   topEpisode: {
     episodeId: string;
@@ -147,7 +147,7 @@ export interface ProjectAnalytics {
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
   /** The mean of the seasons' rates, recorded over all their platforms (FILM-1732). */
-  avgEngagementRate: RecordedRate;
+  avgEngagementRate: RecordedRate | null;
   contentCount: number;
   seasons: {
     seasonId: string;
@@ -224,30 +224,26 @@ function contributingPlatforms(
     .map(({ platform }) => platform);
 }
 
-/** A rate of 0 over nothing: a scope with no publishes still says so (FILM-1732). */
-function emptyEngagementRate(window: DenominatorWindow): RecordedRate {
-  return {
-    value: 0,
-    denominator: recordViewsDenominator({ platforms: [], window }),
-  };
-}
-
 /**
- * The engagement rate's inputs over measured views. An unmeasured count
- * adds nothing to the numerator, as `addMeasured` adds nothing for it: a
- * view was read, so the rate is over what was measured (KB-192).
+ * The mean of the rates that were measured, recorded over every platform
+ * they pooled; null when none was (KB-194). A scope whose rows have no
+ * rate is not a rate of 0.
  */
-function engagementCounts(
-  views: number,
-  likes: number | null,
-  comments: number | null,
-  shares: number | null,
-) {
+function meanRate(
+  rates: readonly (RecordedRate | null)[],
+  window: DenominatorWindow,
+): RecordedRate | null {
+  const measured = rates.flatMap((rate) => (rate ? [rate] : []));
+
+  if (measured.length === 0) return null;
+
   return {
-    views,
-    likes: likes ?? 0,
-    comments: comments ?? 0,
-    shares: shares ?? 0,
+    value:
+      measured.reduce((sum, rate) => sum + rate.value, 0) / measured.length,
+    denominator: poolDenominators(
+      measured.map((rate) => rate.denominator),
+      window,
+    ),
   };
 }
 
@@ -376,16 +372,18 @@ export async function getEpisodeAnalytics(
     comments: d.comments,
   }));
 
-  const engagementRate =
-    totalViews === null
-      ? null
-      : recordedEngagementRatePercent(
-          engagementCounts(totalViews, totalLikes, totalComments, totalShares),
-          recordViewsDenominator({
-            platforms: contributingPlatforms(publishes, perVideoTotals),
-            window: readWindow(dateFilters, publishes),
-          }),
-        );
+  const engagementRate = recordedEngagementRatePercent(
+    {
+      views: totalViews,
+      likes: totalLikes,
+      comments: totalComments,
+      shares: totalShares,
+    },
+    recordViewsDenominator({
+      platforms: contributingPlatforms(publishes, perVideoTotals),
+      window: readWindow(dateFilters, publishes),
+    }),
+  );
 
   return {
     episodeId,
@@ -489,7 +487,7 @@ export async function getSeasonAnalytics(
       totalShares: null,
       totalSaves: null,
       totalRevenueCents: null,
-      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
+      avgEngagementRate: null,
       episodeCount: 0,
       topEpisode: null,
       lowestEpisode: null,
@@ -540,7 +538,7 @@ export async function getSeasonAnalytics(
       totalShares: null,
       totalSaves: null,
       totalRevenueCents: null,
-      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
+      avgEngagementRate: null,
       episodeCount: 0,
       topEpisode: null,
       lowestEpisode: null,
@@ -561,7 +559,7 @@ export async function getSeasonAnalytics(
       totalShares: null,
       totalSaves: null,
       totalRevenueCents: null,
-      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
+      avgEngagementRate: null,
       episodeCount: episodes.length,
       topEpisode: null,
       lowestEpisode: null,
@@ -601,8 +599,6 @@ export async function getSeasonAnalytics(
   // Each publish's saves, null where unmeasured (KB-162).
   const saves: Array<number | null> = [];
   let totalRevenue: EstimatedRevenue = null;
-  let totalEngagement = 0;
-  let engagedEpisodes = 0;
 
   const counted = options?.platforms
     ? episodes.filter((ep) => publishesByEpisode.has(ep.id))
@@ -627,16 +623,18 @@ export async function getSeasonAnalytics(
       epRevenue = addRevenue(epRevenue, stats.revenue_cents);
     }
 
-    const epEngagement =
-      epViews === null
-        ? null
-        : recordedEngagementRatePercent(
-            engagementCounts(epViews, epLikes, epComments, epShares),
-            recordViewsDenominator({
-              platforms: contributingPlatforms(epPublishes, perVideoTotals),
-              window: readWindow(dateFilters, epPublishes),
-            }),
-          );
+    const epEngagement = recordedEngagementRatePercent(
+      {
+        views: epViews,
+        likes: epLikes,
+        comments: epComments,
+        shares: epShares,
+      },
+      recordViewsDenominator({
+        platforms: contributingPlatforms(epPublishes, perVideoTotals),
+        window: readWindow(dateFilters, epPublishes),
+      }),
+    );
 
     episodeAnalytics.push({
       episodeId: ep.id,
@@ -652,10 +650,6 @@ export async function getSeasonAnalytics(
     totalComments = addMeasured(totalComments, epComments);
     totalShares = addMeasured(totalShares, epShares);
     totalRevenue = addRevenue(totalRevenue, epRevenue);
-    if (epEngagement !== null) {
-      totalEngagement += epEngagement.value;
-      engagedEpisodes++;
-    }
   }
 
   // Top and lowest are among episodes whose views are measured.
@@ -693,16 +687,11 @@ export async function getSeasonAnalytics(
     totalShares,
     totalSaves: sumMeasured(saves).value,
     totalRevenueCents: totalRevenue,
-    avgEngagementRate: {
-      value: engagedEpisodes > 0 ? totalEngagement / engagedEpisodes : 0,
-      // Over the episodes whose rates it averages: every platform they pooled.
-      denominator: poolDenominators(
-        episodeAnalytics.flatMap(({ engagement }) =>
-          engagement ? [engagement.denominator] : [],
-        ),
-        readWindow(dateFilters, allPublishes),
-      ),
-    },
+    // Over the episodes whose rates it averages: every platform they pooled.
+    avgEngagementRate: meanRate(
+      episodeAnalytics.map(({ engagement }) => engagement),
+      readWindow(dateFilters, allPublishes),
+    ),
     episodeCount: episodeAnalytics.length,
     topEpisode,
     lowestEpisode,
@@ -762,10 +751,9 @@ export async function getProjectAnalytics(
   // Each season's saves, null where none was measured (KB-162).
   const seasonSaves: Array<number | null> = [];
   let totalRevenue: EstimatedRevenue = null;
-  let totalEngagement = 0;
   let contentCount = 0;
   const seasonScopes: ViewsScope[] = [];
-  const seasonDenominators: RecordedRate['denominator'][] = [];
+  const seasonRates: (RecordedRate | null)[] = [];
 
   for (const s of seasons || []) {
     const analytics = await getSeasonAnalytics(s.id, options, client);
@@ -786,8 +774,7 @@ export async function getProjectAnalytics(
       totalShares = addMeasured(totalShares, analytics.totalShares);
       seasonSaves.push(analytics.totalSaves);
       totalRevenue = addRevenue(totalRevenue, analytics.totalRevenueCents);
-      totalEngagement += analytics.avgEngagementRate.value;
-      seasonDenominators.push(analytics.avgEngagementRate.denominator);
+      seasonRates.push(analytics.avgEngagementRate);
       contentCount += analytics.episodeCount;
     }
   }
@@ -832,16 +819,7 @@ export async function getProjectAnalytics(
     totalShares,
     totalSaves: sumMeasured(seasonSaves).value,
     totalRevenueCents: totalRevenue,
-    avgEngagementRate: {
-      value:
-        seasonAnalyticsList.length > 0
-          ? totalEngagement / seasonAnalyticsList.length
-          : 0,
-      denominator: poolDenominators(
-        seasonDenominators,
-        readWindow(dateFilters, []),
-      ),
-    },
+    avgEngagementRate: meanRate(seasonRates, readWindow(dateFilters, [])),
     contentCount,
     seasons: seasonAnalyticsList,
     platformTotals: platformTotalsList,
@@ -1208,16 +1186,13 @@ export async function getContentList(
       revenue_cents: null,
       subscribers_gained: 0,
     };
-    const engagementRate =
-      stats.views === null
-        ? null
-        : recordedEngagementRatePercent(
-            { ...stats, views: stats.views },
-            recordViewsDenominator({
-              platforms: [publish.platform],
-              window: lifetimeWindow([publish.published_at]),
-            }),
-          );
+    const engagementRate = recordedEngagementRatePercent(
+      stats,
+      recordViewsDenominator({
+        platforms: [publish.platform],
+        window: lifetimeWindow([publish.published_at]),
+      }),
+    );
 
     return {
       publishId: publish.id,

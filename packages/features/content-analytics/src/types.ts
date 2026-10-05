@@ -181,7 +181,8 @@ export interface AggregateAnalytics {
   audience?: AudienceData & ExtendedAudienceData;
   trendFacts?: TrendFact[];
   contentCount: number;
-  avgEngagementRate: number;
+  /** Null where it was not measured (KB-194). */
+  avgEngagementRate: number | null;
   /** What `avgEngagementRate` divided by (FILM-1732), for the page's own sentence. */
   avgEngagementDenominator?: DenominatorStamp;
   /** Share breakdown by type */

@@ -193,8 +193,8 @@ describe('season and project analytics record their averages (FILM-1732)', () =>
       window: LIFETIME,
     });
 
-    expect(season?.avgEngagementRate.value).toBeCloseTo(11, 10);
-    expect(season?.avgEngagementRate.denominator).toEqual(record);
+    expect(season?.avgEngagementRate?.value).toBeCloseTo(11, 10);
+    expect(season?.avgEngagementRate?.denominator).toEqual(record);
     expect(season?.episodes[0]?.engagement?.denominator).toEqual(record);
   });
 
@@ -204,8 +204,8 @@ describe('season and project analytics record their averages (FILM-1732)', () =>
       endDate: new Date('2026-10-02T00:00:00Z'),
     });
 
-    expect(project?.avgEngagementRate.value).toBeCloseTo(11, 10);
-    expect(project?.avgEngagementRate.denominator.window).toEqual({
+    expect(project?.avgEngagementRate?.value).toBeCloseTo(11, 10);
+    expect(project?.avgEngagementRate?.denominator.window).toEqual({
       from: '2026-07-05',
       to: '2026-10-02',
     });
@@ -214,8 +214,8 @@ describe('season and project analytics record their averages (FILM-1732)', () =>
   it('records the project average over its seasons platforms', async () => {
     const project = await getProjectAnalytics('project-1');
 
-    expect(project?.avgEngagementRate.value).toBeCloseTo(11, 10);
-    expect(project?.avgEngagementRate.denominator).toEqual(
+    expect(project?.avgEngagementRate?.value).toBeCloseTo(11, 10);
+    expect(project?.avgEngagementRate?.denominator).toEqual(
       recordViewsDenominator({
         platforms: ['youtube', 'facebook'],
         window: LIFETIME,
@@ -223,18 +223,12 @@ describe('season and project analytics record their averages (FILM-1732)', () =>
     );
   });
 
-  it('records a season with no publishes as a 0 over no platform', async () => {
+  it('a season with no publishes has no average to record: not measured, not 0 (KB-194)', async () => {
     state.publishes = [];
 
     const season = await getSeasonAnalytics('season-1');
 
-    expect(season?.avgEngagementRate).toEqual({
-      value: 0,
-      denominator: recordViewsDenominator({
-        platforms: [],
-        window: { from: READ_ON, to: READ_ON },
-      }),
-    });
+    expect(season?.avgEngagementRate).toBeNull();
   });
 });
 

@@ -312,7 +312,11 @@ const TopContentCard = React.memo(function TopContentCard({
                   <div className="text-xs text-muted-foreground">
                     {item.views === null
                       ? `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
-                      : `${formatNumber(item.views)} views • ${item.engagementRate?.value.toFixed(1)}% engagement`}
+                      : `${formatNumber(item.views)} views • ${
+                          item.engagementRate === null
+                            ? `engagement ${VIEWS_NOT_MEASURED.toLowerCase()}`
+                            : `${item.engagementRate.value.toFixed(1)}% engagement`
+                        }`}
                     {item.engagementRate && (
                       <RateDenominator
                         denominator={item.engagementRate.denominator}
