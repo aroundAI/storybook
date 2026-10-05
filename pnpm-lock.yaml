@@ -947,6 +947,9 @@ importers:
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
