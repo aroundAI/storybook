@@ -125,6 +125,46 @@ describe('the local WebSocket gateway', () => {
     ).rejects.toThrow(/401/);
   });
 
+  it('selects a subprotocol only when $connect returns it, as API Gateway does (KB-191)', async () => {
+    const connected = (headers?: Record<string, string>) => async () => ({
+      statusCode: 200,
+      headers,
+    });
+    const { record } = events();
+    const offer = (port: number) =>
+      new Promise<WebSocket>((resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}`, [
+          'access_token',
+          'local-jwt',
+        ]);
+        ws.once('open', () => resolve(ws));
+        ws.once('error', reject);
+      });
+
+    gateway = await startGateway(
+      {
+        connect: connected({ 'Sec-WebSocket-Protocol': 'access_token' }),
+        default: record('$default'),
+        disconnect: record('$disconnect'),
+      },
+      0,
+    );
+    const ws = await offer(gateway.port);
+    expect(ws.protocol).toBe('access_token');
+    ws.close();
+    await gateway.close();
+
+    gateway = await startGateway(
+      {
+        connect: connected(),
+        default: record('$default'),
+        disconnect: record('$disconnect'),
+      },
+      0,
+    );
+    await expect(offer(gateway.port)).rejects.toThrow(/no subprotocol/i);
+  });
+
   it('answers a post to a gone connection with 410, as API Gateway does', async () => {
     const { record } = events();
     gateway = await startGateway(

@@ -187,6 +187,99 @@ describe('WebSocket Connect Handler', () => {
     });
   });
 
+  describe('KB-191: the token as a WebSocket subprotocol', () => {
+    const GOOD = 'good-jwt';
+
+    beforeEach(() => {
+      mockVerifySupabaseToken.mockImplementation(async (token?: string) =>
+        token === GOOD ? 'user-sub' : null,
+      );
+    });
+
+    const offered = (value: string) =>
+      createMockConnectEvent({
+        headers: { 'Sec-WebSocket-Protocol': value },
+        queryStringParameters: undefined,
+      });
+
+    it('accepts the token from Sec-WebSocket-Protocol and echoes access_token', async () => {
+      const result = await handler(offered(`access_token, ${GOOD}`));
+
+      expect(result.statusCode).toBe(200);
+      expect(mockVerifySupabaseToken).toHaveBeenCalledWith(GOOD);
+      expect(result.headers).toEqual({
+        'Sec-WebSocket-Protocol': 'access_token',
+      });
+      expect(mockPutCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          Item: expect.objectContaining({ userId: 'user-sub' }),
+        }),
+      );
+    });
+
+    it('reads the header whatever its case, as Node lowercases it', async () => {
+      const result = await handler(
+        createMockConnectEvent({
+          headers: { 'sec-websocket-protocol': `access_token,${GOOD}` },
+        }),
+      );
+
+      expect(result.statusCode).toBe(200);
+      expect(result.headers?.['Sec-WebSocket-Protocol']).toBe('access_token');
+    });
+
+    it('refuses an invalid token offered as a subprotocol', async () => {
+      const result = await handler(offered('access_token, forged-jwt'));
+
+      expect(result.statusCode).toBe(401);
+      expect(result.headers).toBeUndefined();
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('refuses access_token offered with no token after it', async () => {
+      const result = await handler(offered('access_token'));
+
+      expect(result.statusCode).toBe(401);
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('refuses a connection with no token anywhere', async () => {
+      const result = await handler(
+        createMockConnectEvent({ headers: {}, queryStringParameters: {} }),
+      );
+
+      expect(result.statusCode).toBe(401);
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('still accepts ?token= during the deprecation window, with a warning and no protocol echo', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const result = await handler(
+        createMockConnectEvent({
+          headers: {},
+          queryStringParameters: { token: GOOD },
+        }),
+      );
+
+      expect(result.statusCode).toBe(200);
+      expect(result.headers).toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Deprecated query string authentication'),
+        expect.anything(),
+      );
+      expect(JSON.stringify(warn.mock.calls)).not.toContain(GOOD);
+      warn.mockRestore();
+    });
+
+    it('does not warn when the subprotocol carries the token', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await handler(offered(`access_token, ${GOOD}`));
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+  });
+
   describe('DynamoDB Errors', () => {
     it('should handle DynamoDB connection failure', async () => {
       const event = createMockConnectEvent();
@@ -241,7 +334,7 @@ describe('WebSocket Connect Handler', () => {
       );
     });
 
-    it('should prioritize query string token over header', async () => {
+    it('should prefer the Authorization header over a query string token', async () => {
       const event = createMockConnectEvent({
         headers: {
           Authorization: 'Bearer header-token',
@@ -255,9 +348,9 @@ describe('WebSocket Connect Handler', () => {
 
       await handler(event);
 
-      // Query string token should be checked (fallback)
-      // Note: Current implementation checks header first, but query is fallback
-      expect(mockVerifySupabaseToken).toHaveBeenCalled();
+      expect(mockVerifySupabaseToken).toHaveBeenCalledWith(
+        'Bearer header-token',
+      );
     });
 
     it('should handle authentication service errors gracefully', async () => {

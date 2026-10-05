@@ -17,7 +17,9 @@ import { HOST, readBody } from '../http';
 
 type Handler = (
   event: Record<string, unknown>,
-) => Promise<{ statusCode?: number } | undefined | void>;
+) => Promise<
+  { statusCode?: number; headers?: Record<string, string> } | undefined | void
+>;
 
 export interface WebSocketHandlers {
   connect: Handler;
@@ -60,7 +62,14 @@ export async function startGateway(
 ): Promise<Gateway> {
   const connections = new Map<string, WebSocket>();
   const server = http.createServer();
-  const wss = new WebSocketServer({ noServer: true });
+  // API Gateway selects a subprotocol only when $connect returns one in its
+  // `Sec-WebSocket-Protocol` header; `ws` would otherwise pick the first
+  // offered, hiding a handler that forgets to echo it (KB-191).
+  const selectedProtocol = new WeakMap<http.IncomingMessage, string>();
+  const wss = new WebSocketServer({
+    noServer: true,
+    handleProtocols: (_offered, req) => selectedProtocol.get(req) ?? false,
+  });
   let boundPort = port;
 
   // The Management API, as the AWS SDK calls it: POST /@connections/{id}
@@ -113,6 +122,10 @@ export async function startGateway(
           socket.destroy();
           return;
         }
+        const protocol = Object.entries(result?.headers ?? {}).find(
+          ([name]) => name.toLowerCase() === 'sec-websocket-protocol',
+        )?.[1];
+        if (protocol) selectedProtocol.set(req, protocol);
         wss.handleUpgrade(req, socket, head, (ws) => {
           connections.set(connectionId, ws);
           ws.on('message', (data) => {

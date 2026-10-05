@@ -29,9 +29,54 @@ export type WebsocketConnectEvent = APIGatewayProxyWebsocketEventV2 & {
 };
 
 /**
+ * A browser `WebSocket` cannot set headers, so it sends the access token as a
+ * subprotocol pair: `new WebSocket(url, ['access_token', token])` arrives as
+ * `Sec-WebSocket-Protocol: access_token, <token>` (KB-191).
+ */
+export const TOKEN_SUBPROTOCOL = 'access_token';
+
+type TokenSource = 'authorization' | 'subprotocol' | 'query' | 'none';
+
+function headerValue(
+  headers: WebsocketConnectEvent['headers'],
+  name: string,
+): string | undefined {
+  const key = Object.keys(headers ?? {}).find((k) => k.toLowerCase() === name);
+  return key ? headers?.[key] : undefined;
+}
+
+function tokenFromSubprotocol(
+  headers: WebsocketConnectEvent['headers'],
+): string | undefined {
+  const protocols = (headerValue(headers, 'sec-websocket-protocol') ?? '')
+    .split(',')
+    .map((protocol) => protocol.trim());
+  const index = protocols.indexOf(TOKEN_SUBPROTOCOL);
+  return index === -1 ? undefined : protocols[index + 1] || undefined;
+}
+
+export function readConnectToken(event: WebsocketConnectEvent): {
+  token: string | undefined;
+  source: TokenSource;
+} {
+  const authorization = headerValue(event.headers, 'authorization');
+  if (authorization) return { token: authorization, source: 'authorization' };
+
+  const subprotocol = tokenFromSubprotocol(event.headers);
+  if (subprotocol) return { token: subprotocol, source: 'subprotocol' };
+
+  const query = event.queryStringParameters?.token;
+  if (query) return { token: query, source: 'query' };
+
+  return { token: undefined, source: 'none' };
+}
+
+/**
  * WebSocket $connect handler
  * Called when a client connects to the WebSocket API
- * Requires authentication via JWT token in Authorization header or query string
+ * Requires a JWT in the Authorization header or the `access_token`
+ * subprotocol; `?token=` is still accepted, with a warning, until KB-191's
+ * deprecation window closes.
  */
 export const handler = async (
   event: WebsocketConnectEvent,
@@ -40,6 +85,7 @@ export const handler = async (
     connectionId: event.requestContext.connectionId,
     hasAuthHeader:
       !!event.headers?.Authorization || !!event.headers?.authorization,
+    hasSubprotocol: !!headerValue(event.headers, 'sec-websocket-protocol'),
     hasQueryParams: !!event.queryStringParameters,
   });
 
@@ -47,27 +93,16 @@ export const handler = async (
   const connectedAt = new Date().toISOString();
 
   try {
-    // Extract Authorization header (check both cases)
-    // SECURITY WARNING: Query string authentication is supported as a fallback
-    // but exposes tokens in logs and browser history. Use Authorization header instead.
-    const authHeader =
-      event.headers?.Authorization ||
-      event.headers?.authorization ||
-      event.queryStringParameters?.token;
+    const { token: authHeader, source } = readConnectToken(event);
 
-    // Log security warning if query string auth is used
-    if (
-      !event.headers?.Authorization &&
-      !event.headers?.authorization &&
-      event.queryStringParameters?.token
-    ) {
+    // KB-191: `?token=` puts the credential in every access log. It is kept
+    // for clients loaded before the subprotocol change; remove it once this
+    // warning has stopped appearing (see specs/known-bugs/KB-191.md).
+    if (source === 'query') {
       console.warn(
-        '[Security] Query string authentication used (tokens exposed in logs). ' +
-          'Recommended: Use Authorization header instead.',
-        {
-          connectionId,
-          hasQueryToken: true,
-        },
+        '[Security] Deprecated query string authentication used (token exposed in URL logs). ' +
+          `Send the token as the "${TOKEN_SUBPROTOCOL}" WebSocket subprotocol instead.`,
+        { connectionId },
       );
     }
 
@@ -138,6 +173,11 @@ export const handler = async (
 
     return {
       statusCode: 200,
+      // API Gateway forwards this header in the 101 response; a browser that
+      // offered a subprotocol drops a connection that does not select one.
+      ...(source === 'subprotocol' && {
+        headers: { 'Sec-WebSocket-Protocol': TOKEN_SUBPROTOCOL },
+      }),
       body: JSON.stringify({ message: 'Connected', userId }),
     };
   } catch (error) {
