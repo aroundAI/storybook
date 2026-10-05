@@ -3,7 +3,7 @@ title: "Studio UI: Welcome, Episode Picker, AI Panel, Scene Strip, Review and De
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-2011"
@@ -29,45 +29,69 @@ summary: >
   R-30, R-33, R-62.
 acceptance_criteria:
   - text: "Welcome (src/components/studio/Welcome.jsx): signed in → 'Open from StoryBook' opens the picker; signed out → sign-in with 'Sign in with StoryBook' (PKCE) and 'Paste a token'; recent projects with an 'Updates available' badge when FILM-2011's sync has a pending plan"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/components/studio/Welcome.jsx:168 Welcome, :20 SignInForm (browser sign-in and Paste a token), :112 RecentProjects (Updates available badge; a crashed project is listed, :120); tests/studio/ui/components-render.test.mjs:86; tests/studio/ui/picker-and-guards.test.mjs:21. Packaged-app run: signed in with a token against a local StoryBook"
   - text: "EpisodePicker.jsx: tree of projects → seasons → episodes from list_projects/list_episodes with status chips (storyboard, generating, editing, ready, published), duration, last changed, estimated size from the package, 'On this machine' when a local project links to it; opening pre-selects from a velorn://open deep link; 'Open' starts the pull with a progress view (phase, files, bytes) and lands in the editor when playable"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/components/studio/EpisodePicker.jsx:38 EpisodePicker, :19 ProgressView; src/studio/ui/pickerModel.js:47 buildEpisodeTree, :9 STATUS_CHIPS, :73 packageBytes, :100 jobProgressView; tests/studio/ui/picker-and-guards.test.mjs:21, :45, :55, :74. Packaged app: the 20-shot episode opened in 3.2 s. Deviation: StoryBook returns no season names, so seasons are labelled by number (lead default)"
   - text: "AIPanel.jsx mounted on the editor's right: instruction box, plan cards [{scene, before → after, changes with reasons}], Approve all / Approve scene / Reject, the report view, a 'touches your edits' section when a plan affects user-edited clips; cards arrive via studio:plan-proposed from the in-app agent or an external MCP client alike; the editor stays interactive while a plan is prepared and the plan re-bases before showing"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/components/studio/AIPanel.jsx:163 AIPanel, :18 PlanCard, :181 aria-live; src/studio/ui/planCards.js; src/studio/ui/planActions.js:20 proposeInstruction, :127 approvePlan, :163 rejectPlan; src/studio/ui/instructions.js:24 instructionToIntent; tests/studio/ui/plan-bridge.test.mjs:75, :101, :121, :162, :233, :283; tests/studio/ui/plan-cards.test.mjs:23, :41. Lead default, the owner may change it: the instruction box maps only a few known phrasings (durations, pacing, dead air, the hook, music under dialogue) and does not guess the rest (tests/studio/ui/instructions.test.mjs:8, :15, :23)"
   - text: "SceneStrip.jsx above the timeline: one segment per scene with heading, target vs actual duration (red when over policy tolerance); clicking selects the scene's clips and scopes the next instruction ('tighten this')"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/components/studio/SceneStrip.jsx:14 SceneStrip, :68 click; src/studio/ui/sceneStrip.js:9 DEFAULT_SCENE_TOLERANCE 0.1, :19 buildSceneSegments, :79 scopeForSegment; tests/studio/ui/scene-strip.test.mjs:13, :29, :78; tests/studio/ui/components-render.test.mjs:110. Lead default, the owner may change it: the tolerance is 10 percent until EditPolicySchema has a field for it (a FILM-2004 follow-up)"
   - text: "ReviewScreen.jsx: before and after versions stacked, clips changed in the plan highlighted by origin, synced scrubbing, per-scene accept (restores other scenes from the parent version), 'Why this?' popover reading the report's reason for a clip; keyboard operable"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/components/studio/ReviewScreen.jsx:107 ReviewScreen, :77 WhyPopover, :194 keyboard (Escape closes the popover, not the screen, :197); src/studio/ui/review.js:71 buildReviewModel, :141 mergeAcceptedScenes, :194 reasonForClip; src/studio/ui/studioRuntime.js:150 acceptScenes; tests/studio/ui/review.test.mjs:47, :71, :89, :100; tests/studio/ui/accept-scenes.test.mjs:13. Packaged app: keeping only scene 2 gave 94 s"
   - text: "DeliverScreen.jsx: presets with per-render status and QA badge, issues listed with 'Fix with AI' (studio_repair), 'Send to StoryBook' opening a confirmation that names the episode, workspace, files and sizes and only then calls studio_deliver confirm:true; 'Export to file' always available offline"
     met: false
-    reason: "not built"
+    reason: "the screen, its confirmation naming the episode, workspace, files and sizes, the one-time token and the refusal to start without it are built and ran in the packaged app (src/components/studio/DeliverScreen.jsx:110 DeliverScreen, :23 Confirmation, :174 deliverConfirm, :179 deliverStart; src/studio/ui/deliverySummary.js:60 buildDeliveryConfirmation; tests/studio/ui/delivery-summary.test.mjs:29, :46, :55; tests/studio/ui/plan-bridge.test.mjs:308, :361 Fix with AI), at aroundAI/storybookstudio#16 (storybookstudio@31127e4). Not met: Export to file and Send to StoryBook were not completed in the packaged app (see remaining)"
   - text: "Project-close and app-quit prompt when a plan is unapproved or a delivery is in flight; a crash during a plan reopens at the last autosave with 'Return to version before plan' offered (FILM-2012 versions)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 src/studio/ui/sessionGuard.js:12 pendingWorkPrompt, :34 recoveryOffer; src/components/studio/StudioRoot.jsx:57 PendingWorkPrompt; src/components/studio/AIPanel.jsx:136 RecoveryBanner; src/studio/ui/studioBridge.js:76 the quit request, :93 setPendingWork; electron/studio/studioUi.js:22; tests/studio/ui/picker-and-guards.test.mjs:84, :99; tests/studio/ui/studio-ui-main.test.mjs:25; tests/studio/ui/plan-bridge.test.mjs:199, :248. Packaged app: the quit prompt names the waiting plan; killed mid-plan, the reopened project offers Return to version before plan and it works"
   - text: "Accessibility: all five surfaces keyboard-navigable, aria-live on plan arrival and QA results, captions and report readable by a screen reader; Velorn's existing editor accessibility unchanged"
     met: false
-    reason: "not built"
+    reason: "aria-live announces plan arrival (src/components/studio/AIPanel.jsx:181; tests/studio/ui/components-render.test.mjs:86; tests/studio/ui/plan-cards.test.mjs:85) and the Review screen takes the keyboard (src/components/studio/ReviewScreen.jsx:194), but no screen reader pass was run and the QA-result announcement is not tested on its own"
   - text: "Nothing in the renderer holds a token; every cloud call goes through electronAPI.studio.* IPC (FILM-2011); the MCP snapshot excludes auth state"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 tests/studio/ui/no-token-in-renderer.test.mjs:21 (renderer source never reaches the token store), :31 (the preload bridge returns no token or secret), :41 (the MCP snapshot is built from project, timeline and asset stores only), :48 (the built bundle carries no token). Packaged app: the token was never in the renderer, the AI-connection snapshot or a plaintext file"
 test_plan:
   unit:
-    - {text: "Plan card rendering from fixture plans; scene strip durations; confirmation summary content", met: false, reason: "not built"}
+    - {text: "Plan card rendering from fixture plans; scene strip durations; confirmation summary content", met: true, evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 tests/studio/ui/plan-cards.test.mjs:23; tests/studio/ui/scene-strip.test.mjs:13; tests/studio/ui/delivery-summary.test.mjs:29)"}
   integration:
-    - {text: "Renderer tests: a plan proposed over the bridge appears as cards; approve calls apply; reject leaves the document unchanged", met: false, reason: "not built"}
+    - {text: "Renderer tests: a plan proposed over the bridge appears as cards; approve calls apply; reject leaves the document unchanged", met: true, evidence: "aroundAI/storybookstudio#16 (storybookstudio@31127e4 tests/studio/ui/plan-bridge.test.mjs:75, :101, :132, :162)"}
   e2e:
-    - {text: "Packaged app on macOS: sign in with a PAT against local StoryBook, open the 20-shot fixture, run 'make it 90 seconds', approve, review, deliver to file; screenshots in the PR", met: false, reason: "not built"}
+    - {text: "Packaged app on macOS: sign in with a PAT against local StoryBook, open the 20-shot fixture, run 'make it 90 seconds', approve, review, deliver to file; screenshots in the PR", met: false, reason: "ran against a local StoryBook integration build: sign-in with a token and opening the episode (3.2 s), 'make it 90 seconds' with a hand-built plan sent over studio:plan-proposed (99 s to 90 s; the quit prompt named the waiting plan), Review keeping only scene 2 (94 s), the Deliver confirmation (correct; start without the token refused), kill mid-plan and reopen (Return to version before plan offered and works), token hygiene. Re-run 1 (2026-10-05, Studio packaged from fork main 31127e4, StoryBook integration build f05f90c83, PAT sign-in, no hand-built plan, no renderer crash): the real AI compile passed: open episode to editor 3.1 s, 'make it 90 seconds' to plan cards 0.9 s, Approve all applied 1.4 s, Review 0.1 s; the plan was hit_duration, 99.0 s to 97.2 s, 6 cards and 10 changes, with the op log holding the version and 10 AI ops with reasons; Review read '99.0 s to 97.2 s, 2 scene(s) changed', 'Why this?' worked from the keyboard, and keeping scene 5 only gave 98.1 s with a user studio_accept_scenes op (hit_duration stops short of 90 s: FILM-2013 remaining). Not run: delivery to a file (the summary hash included timeline.modified until aroundAI/storybookstudio#15, f041b9f; then the bus mix failed with 'Audio bus mix failed: :', task 36), and Send to StoryBook (the integration build predates FILM-2003's upload tools). Screenshots are in the PR that records this"}
+remaining:
+  - criterion: "Packaged-app steps: Deliver to file and Send to StoryBook; the Deliver screen e2e and the Deliver screen QA badge fix"
+    reason: "the real AI compile passed in Re-run 1 (see the e2e line). Delivery to a file was blocked by the summary hash (aroundAI/storybookstudio#15, f041b9f, merged) and the bus mix failure on a pulled project (FILM-2016 fix, aroundAI/storybookstudio#19); Send to StoryBook needs the integration build from current main, which the re-run used. The Deliver screen's QA badge needs a fix"
+    closed_by: "FILM-2015"
+  - criterion: "Accessibility: a screen reader pass over the five surfaces and a test of the QA-result announcement"
+    reason: "arrival of a plan is announced and tested; the rest was not checked with assistive technology"
+    closed_by: "FILM-2015"
 open_questions: []
 notes: >
   The design rule from Velorn's AGENTS.md holds: preserve simple guided
   workflows and do not turn routine surfaces into node configuration. The
   five surfaces are the whole of what a non-editor sees; the full timeline is
   one click away and unchanged.
+
+  Built in aroundAI/storybookstudio#16 (merged as 95d54c6; pinned at
+  storybookstudio@31127e4 by #630). Lead defaults, the owner may change them:
+  the scene strip's tolerance is 10 percent until EditPolicySchema has a field
+  for it (a FILM-2004 follow-up); seasons are labelled by number because
+  StoryBook returns no season names; the instruction box maps only a few
+  common phrasings to an intent and does not guess the rest. An error
+  boundary now wraps every studio surface (src/components/studio/StudioBoundary.jsx:8,
+  mounted in src/App.jsx:634, :1049, :1152): a surface that throws no longer
+  unmounts App, which also runs Velorn's MCP action bridge, so MCP calls no
+  longer time out when a panel fails. The packaged-app run found bugs routed
+  elsewhere: a Welcome crashed-project entry and Escape closing the whole
+  Review screen (both fixed here), the delivery summary logging a save as an
+  AI op (aroundAI/storybookstudio#15), report durations including the
+  captions clip (aroundAI/storybookstudio#14), and the MCP port 19790 shared
+  by every Studio instance (task 37). The status moves to DONE after the
+  re-run in remaining.
 feature:
   database: {tables: [], columns_added: []}
   queries: []

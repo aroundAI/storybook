@@ -58,13 +58,10 @@ test_plan:
     - {text: "Preset table; reframe smoothing on a synthetic subject path; hook variant selection", met: true, evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 tests/studio/delivery-presets.test.mjs:25; tests/studio/reframe.test.mjs:35; tests/studio/variants.test.mjs:61; tests/studio/delivery-render.test.mjs:71, :87, :106)"}
   integration:
     - {text: "Against local StoryBook: deliver two presets for the fixture; episode_renders has two ready rows, episodes.status is ready, final_video_url is the 16:9 render; retry after a planted version bump hits TARGET_CHANGED and succeeds after re-sync", met: true, evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 tests/studio/deliver.test.mjs:102). M3 exit check met 2026-10-05, headless, fork main-process code against a local StoryBook integration build, 20-shot episode: pull and rough cut 11.4 s; Short variant and reframe 4.0 s (face found on 6/6 keyframes, largest step 0.15, 3 testsrc shots centred and flagged); confirm:true without a token FORBIDDEN; first deliver_edit TARGET_CHANGED (currentVersion 4, expected 3) with 2 renders finalized; the retry done at episodeVersion 4, both renders reused, nothing re-uploaded; whole run 59.4 s. episode_renders has 2 ready rows (youtube_16x9 99.00 s, 149,044,242 B, QA pass, VTT; shorts_9x16 18.00 s, 20,984,975 B, QA pass, 3 reframe warnings); the episode is ready with final_video_url the youtube_16x9 render; edit_sessions.summary matches the report; edit_events hold qa_run x2, version_created and delivered once each; the youtube file measures -14.6 LUFS, -2.6 dBTP, 1920x1080 h264/aac; the publish page lists the renders"}
-    - {text: "QA on each delivered file passes on the fixture; a planted loud music bed fails and 'Fix with AI' repairs it", met: false, reason: "QA passes on each fixture file (inline QA, see above), but the loud-bed case is not run: it needs FILM-2014's critic and studio_repair, and a +18 dB bed passed the inline QA at -14.0 LUFS because loudnorm hides the balance"}
+    - {text: "QA on each delivered file passes on the fixture; a planted loud music bed fails and 'Fix with AI' repairs it", met: true, evidence: "QA passes on each fixture file (inline QA, see above). The loud-bed repair is covered by aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/review-loop.test.mjs:39 plants loud music and silence and QA passes after repair; tests/studio/review-mcp.test.mjs:45 QA fails the loud music, studio_repair fixes it into a version and the next review clears it). Not the delivery-path loud-bed case specifically: those tests run the review loop, not a delivery render, and a +18 dB bed passed the earlier inline QA at -14.0 LUFS because loudnorm hides the balance, which FILM-2014's bus-level check measures instead"}
   e2e:
     - {text: "Packaged app: Deliver screen → confirmation → progress → 'Sent to StoryBook'; the web publish page lists the renders", met: false, reason: "not run: the Deliver screen is FILM-2015's; the main-process IPC it calls (deliverSummary, deliverConfirm, deliverStart, deliverRetry, createVariant, chooseExportFolder) is built and tested"}
 remaining:
-  - criterion: "A planted loud music bed fails QA and Fix with AI repairs it"
-    reason: "the render and QA used are interim stand-ins (deliveryRender.js, deliveryQa.js); the critic, the balance check and studio_repair are FILM-2014, which swaps them in as the render and qa arguments of createStudioDeliver"
-    closed_by: "FILM-2014"
   - criterion: "Packaged app: Deliver screen to Sent to StoryBook"
     reason: "the main-process delivery and its IPC are built; the Deliver screen and the packaged run are FILM-2015"
     closed_by: "FILM-2015"
@@ -93,6 +90,15 @@ notes: >
   lists the renders, 59.4 s. Follow-up, not in #10: src/studio/intents/variants.js
   repeats FILM-2013's lineImportance weights and should import them from
   src/studio/intents/common.js.
+
+  Fix in aroundAI/storybookstudio#15 (merged as f041b9f, pinned at
+  storybookstudio@31127e4 by #630), found in the packaged-app run of FILM-2015:
+  the delivery summary hash included timeline.modified, so the confirmation
+  token never matched after a save; it now ignores that field. A delivery
+  summary also no longer journals a save as an 'ai save_project' op. FILM-2014
+  (aroundAI/storybookstudio#12) replaced the interim renderer and inline QA
+  with the media-preparation queue and qa.js. The Deliver screen e2e stays
+  with the FILM-2015 re-run.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
