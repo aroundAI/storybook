@@ -122,11 +122,9 @@ export function LlmWebSocketProvider({
     }
 
     const connect = () => {
-      console.log(
-        '[LlmWebSocket] Connecting to:',
-        wsUrl.substring(0, 50) + '...',
-      );
-      const ws = new WebSocket(`${wsUrl}?token=${token}`);
+      console.log('[LlmWebSocket] Connecting');
+      // The token travels as a subprotocol, never in the URL (KB-191).
+      const ws = new WebSocket(wsUrl, ['access_token', token]);
 
       ws.onopen = () => {
         console.log('[LlmWebSocket] Connected successfully');
