@@ -15,6 +15,7 @@ import { fetchAllRows } from '@kit/shared/pagination';
 
 import { ActionRefusal } from '../lib/action-result';
 import { resolveAssetDuration } from '../lib/asset-duration';
+import { type EditStyle, deriveEditStyle } from '../lib/edit-style';
 import { detectRetentionCliff } from '../lib/retention';
 import {
   type EpisodeAnalyticsSchema,
@@ -364,5 +365,67 @@ export async function getEpisodeRetentionCurveService(
     asOf: fetched.asOf,
     durationSeconds: curve.duration.known ? curve.duration.seconds : null,
     points: curve.points,
+  };
+}
+
+/**
+ * The episode's latest delivered StorybookStudio edit, as the Edit style
+ * card shows it (FILM-2006). Read on the caller's client, so RLS decides
+ * whether they may see the session. `none` is "never delivered from the
+ * Studio" — the card does not render — and `style: null` is a delivery
+ * whose report could not be read, which the page says rather than hides.
+ */
+export type EpisodeEditStyleResult =
+  | { status: 'none' }
+  | {
+      status: 'delivered';
+      sessionId: string;
+      deliveredAt: string;
+      style: EditStyle | null;
+    };
+
+export async function getEpisodeEditStyleService(
+  client: AnalyticsClient,
+  { episodeId }: EpisodeAnalyticsInput,
+): Promise<EpisodeEditStyleResult> {
+  const [sessions, episode] = await Promise.all([
+    client
+      .from('edit_sessions')
+      .select('id, delivered_at, summary')
+      .eq('episode_id', episodeId)
+      .eq('status', 'delivered')
+      .order('delivered_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(1),
+    client
+      .from('episodes')
+      .select('target_duration_seconds')
+      .eq('id', episodeId)
+      .maybeSingle(),
+  ]);
+
+  if (sessions.error) {
+    throw new Error(
+      `Failed to read the episode's edit sessions: ${sessions.error.message}`,
+    );
+  }
+
+  if (episode.error) {
+    throw new Error(`Failed to read the episode: ${episode.error.message}`);
+  }
+
+  const session = sessions.data?.[0];
+
+  if (!session?.delivered_at) return { status: 'none' };
+
+  return {
+    status: 'delivered',
+    sessionId: session.id,
+    deliveredAt: session.delivered_at,
+    style: deriveEditStyle({
+      summary: session.summary,
+      episodeTargetDurationSeconds:
+        episode.data?.target_duration_seconds ?? null,
+    }),
   };
 }

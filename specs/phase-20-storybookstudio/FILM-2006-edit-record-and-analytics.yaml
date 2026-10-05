@@ -3,13 +3,17 @@ title: "The Edit Record Page and Edit Analytics"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-2002"
     note: "sessions and events are what the page and the fact table show"
   - spec_id: "FILM-2003"
     note: "renders and the report"
+  - spec_id: "FILM-2005"
+    note: "Open in Studio and the desktop_integration flag the rollout flips"
+  - spec_id: "FILM-2001"
+    note: "the storage adapters' getSignedReadUrl for render downloads"
 summary: >
   Closes the Learn stage. A new episode page, /edit, shows how the episode was
   edited: versions on a timeline, final duration against target, AI versus
@@ -24,42 +28,76 @@ summary: >
   "Web UI changes", Part 4 "Testing, observability and rollout".
 acceptance_criteria:
   - text: "Route .../episodes/[episodeSlug]/edit renders versions (from the delivered session's report), duration vs target, aiOps/userOps, the report's per-scene changes with reasons, and the renders table (preset, language, duration, QA badge, download via signed URL)"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/page.tsx:50 (withI18n, metadata :18); loader apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/_lib/server/edit-record.loader.ts:99 (RLS reads, signed GET :230 via FILM-2001's getSignedReadUrl, 15 min); view apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/_components/edit-record-view.tsx:126 (summary, versions), :215 (per-scene changes), :274 (renders, QA badge :357); tab _components/episode-workspace-tabs.tsx:76; Playwright apps/e2e/tests/mcp/edit-record.spec.ts (the signed download returns the uploaded bytes)"
+    reason: "Target is the report's explain.targetDuration, else episodes.target_duration_seconds. Every render of the episode is listed, newest first, with its status, so a superseded or failed one is visible too (#631)."
   - text: "An open session shows the editor, device and start time; project admins can force-close it (close_edit_session's logic via a server action), which restores the previous status"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/_components/edit-record-view.tsx:81; device through public.edit_session_device apps/web/supabase/migrations/20261004203358_film-2006-edit-record.sql:24 (mcp_connections is readable by its own user only); forceCloseEditSessionAction apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/_lib/server/actions.ts:28 (closeEditSession reason 'admin' :32, refusals returned as values); pgTAP apps/web/supabase/tests/database/edit-record.test.sql D1-D6, F1-F6; Playwright: the project owner force-closes a teammate's session twice and the episode is published again"
+    reason: "The editor is edit_state.editedBy.name (FILM-2002). The owner/admin check is close_edit_session's own; a member, even the session's user, is FORBIDDEN as admin (F3) (#631)."
   - text: "'Re-open in Studio' launches the deep link (FILM-2005) and the next session's open_edit_session records previousStatus = published when applicable"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "FILM-2005's OpenInStudioButton is in the episode header on every episode page, /edit included (asserted on /edit in apps/e2e/tests/mcp/edit-record.spec.ts); previousStatus = published: apps/web/supabase/tests/database/edit-record.test.sql R1-R3 and the Playwright re-open over MCP"
+    reason: "Corrected: the page does not draw a second button; the header's (flag-gated by FILM-2005) is on it. open_edit_session needed no change: it records the episode's status at open, and a delivered-then-published episode is published (#631)."
   - text: "ClickHouse migration adds edit_sessions_fact (episode_id, project_id, account_id, session_id, delivered_at, final_duration, target_duration, ai_ops, user_ops, plans_proposed, plans_approved, cut_count, avg_shot_length, hook_type, languages, presets); analytics-sync upserts it hourly from delivered sessions"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "packages/clickhouse/src/migrations/024_edit_sessions_fact.ts:27 (ReplacingMergeTree on synced_at, ORDER BY project_id, episode_id, session_id; registered run.ts:60); writer and reader packages/clickhouse/src/queries-edit.ts:68, :92; rollup packages/features/content-analytics/src/server/edit-sessions-fact-sync.ts:78, called first in runAnalyticsSyncJob analytics-sync-cron.ts:140; verify-queries.ts editStyleSteps :6746 against ClickHouse 24.8; packages/features/content-analytics/__tests__/edit-sessions-fact.local-stack.test.ts"
+    reason: "The fact also stores cuts_per_minute and ai_share as deriveEditStyle computed them, so the card, the fact and the genome share one rule. Hourly it resends the last 48 hours, and every delivered session once a day at 02 UTC; resending is idempotent. NULL is 'not recorded', never 0 (#631)."
   - text: "Episode analytics page shows an Edit style card (cut density, average shot length, hook type, AI share) beside retention when a delivered session exists; the content genome query gains these as optional dimensions"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/edit-style-card.tsx:15; derivation packages/features/content-analytics/src/lib/edit-style.ts:81; analytics page section apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/analytics/page.tsx:185; genome packages/clickhouse/src/lib/genome-attributes.ts:400 (editStyleAttributes), :429 (withEditStyle), read in packages/features/content-analytics/src/server/genome-service.ts:178 through queryEditStyleForVideos packages/clickhouse/src/queries-edit.ts:205"
+    reason: "Derived from ExplainWhyReport.style (lead decision 22:50, added by FILM-2003): cut_count = shotCount − 1, avg_shot_length = finalDuration / shotCount, cut density = cuts per minute, AI share = aiOps / (aiOps + userOps). The card reads the delivered session from Postgres, so it shows with ClickHouse off. In the genome, measured cut density uses the existing cuts_per_minute bands and replaces a hand band; avg_shot_length and ai_share are derived dimensions (never tags); the hook joins only when the account has not tagged one (#631)."
   - text: "Request logs on /api/mcp already carry tool and duration (FILM-1904); a dashboard panel counts get_edit_package, deliver_edit, TARGET_CHANGED refusals and uploading renders older than 24 h, with an alert on the last two"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "public.admin_studio_delivery_stats apps/web/supabase/migrations/20261004203358_film-2006-edit-record.sql:45 (super admin at aal2 via admin_mcp_check_window); panel apps/web/app/admin/mcp/page.tsx:190; alerts apps/web/app/api/cron/expire-generation-runs/studio-delivery-alerts.ts:41, run after FILM-2003's sweep route.ts:145; pgTAP edit-record.test.sql P1-P6; Playwright apps/e2e/tests/admin/studio-deliveries.spec.ts"
+    reason: "Built on FILM-1911's /admin/mcp page. The alerts are FILM-1911's form (a log line tagged studio.alert.stale_render_uploads / studio.alert.target_changed and a monitoring capture) but do not fail the cron, so they raise no CloudWatch/SNS alarm; any TARGET_CHANGED in the last hour alerts (#631)."
   - text: "Rollout: desktop_integration flag on for one internal workspace (PAT only); then opt-in from workspace settings with OAuth; then default on. Each step's exit metric from the PRD (10 episodes delivered; metrics at 80% of target) is recorded in this spec's notes when passed"
     met: false
-    reason: "not built"
+    reason: "The plan is recorded in notes; no step has run. The flag exists (FILM-2005, account_ai_settings.desktop_integration_enabled, default off) and step 2's opt-in is that setting. Each step is the owner's."
 test_plan:
   unit:
-    - {text: "Edit style derivation from a report fixture (cut_count, avg_shot_length, hook_type)", met: false, reason: "not built"}
+    - {text: "Edit style derivation from a report fixture (cut_count, avg_shot_length, hook_type)", met: true, evidence: "packages/features/content-analytics/__tests__/edit-style.test.ts; genome bands packages/clickhouse/__tests__/genome-edit-style.test.ts; genome join packages/features/content-analytics/__tests__/genome-actions.test.ts; alerts apps/web/app/api/cron/expire-generation-runs/__tests__/studio-delivery-alerts.test.ts; mutation guards tooling/mutation-guards/film-2006.json"}
   integration:
-    - {text: "analytics-sync against the ClickHouse sandbox inserts one fact row per delivered session and is idempotent", met: false, reason: "not built"}
+    - {text: "analytics-sync against the ClickHouse sandbox inserts one fact row per delivered session and is idempotent", met: true, evidence: "packages/features/content-analytics/__tests__/edit-sessions-fact.local-stack.test.ts (EDIT_FACT_LOCAL_STACK=1; hand-computed rows; red against a table whose key lets resends pile up); packages/clickhouse/scripts/verify-queries.ts editStyleSteps; pgTAP apps/web/supabase/tests/database/edit-record.test.sql"}
   e2e:
-    - {text: "Playwright: the /edit page shows the report and renders after a delivery made over MCP in the same test", met: false, reason: "not built"}
+    - {text: "Playwright: the /edit page shows the report and renders after a delivery made over MCP in the same test", met: true, evidence: "apps/e2e/tests/mcp/edit-record.spec.ts (also the Edit style card, the sync route writing the fact row with ClickHouse on, and the force-close); apps/e2e/tests/admin/studio-deliveries.spec.ts"}
+remaining:
+  - text: "Rollout step 1: desktop_integration on for one internal workspace, PAT only; exit when 10 episodes are delivered end to end"
+    closed_by: "owner"
+  - text: "Rollout step 2: opt-in from workspace settings with OAuth; exit when the PRD's success metrics reach 80% of target"
+    closed_by: "owner"
+  - text: "Rollout step 3: desktop_integration on by default"
+    closed_by: "owner"
 open_questions: []
 notes: >
   The page is read-only by design; editing happens in the Studio. The fact
   table is the only new ClickHouse object in the phase, and it is additive to
   the content genome (FILM-17xx) rather than a new analysis.
+  Corrections as built (#631): the derivation lives in
+  @kit/content-analytics (lib/edit-style.ts), not beside the report schema,
+  because @kit/desktop-integration depends on @kit/content-analytics
+  (FILM-2001's retention hints); it reads the report through a narrow schema
+  of the fields it uses. The rollup is in runAnalyticsSyncJob (the lambda
+  calls the sync route), not in the lambda. The genome reads edit style
+  through queryEditStyleForVideos, beside querySegmentVideoMeasures, so the
+  shared segment SQL is unchanged. The cut figures and the hook come from
+  ExplainWhyReport.style (FILM-2003, lead decision 2026-10-04 22:50): the
+  fork fills style.shotCount from the delivered cut's picture clips
+  (FILM-2012/2013) and style.hookType from the open_with_strongest_line
+  intent (FILM-2013), both pending on the fork side; until then a delivery
+  carries no style and the card says "Not recorded". Open question (FILM-2002) "may an admin
+  force-close from the web?": the recommended yes, as built.
+  Rollout plan (PRD Part 4), each step the owner's, recorded here when its
+  exit metric passes: 1. internal: desktop_integration on for one workspace,
+  PAT only; exit at 10 episodes delivered end to end. 2. beta: OAuth and the
+  deep link, opt-in from Settings, AI (the same flag); exit when the PRD's
+  success metrics reach 80% of target. 3. general: the flag on by default
+  and the Edit record visible to all (it already shows to every project
+  member).
 feature:
   database: {tables: ["edit_sessions_fact (ClickHouse)"], columns_added: []}
-  queries: [{name: "queryEditStyleByEpisode", purpose: "edit style for the analytics card and genome dimensions", file: "packages/clickhouse/src/queries-edit.ts"}]
-  actions: [{name: "forceCloseEditSessionAction", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/_lib/server/actions.ts"}]
+  queries: [{name: "queryEditStyleByEpisode", purpose: "an episode's latest delivered edit style from the fact", file: "packages/clickhouse/src/queries-edit.ts"}, {name: "queryEditStyleForVideos", purpose: "the genome's optional edit-style dimensions, per video", file: "packages/clickhouse/src/queries-edit.ts"}, {name: "insertEditSessionFacts", purpose: "the rollup's writer", file: "packages/clickhouse/src/queries-edit.ts"}]
+  actions: [{name: "forceCloseEditSessionAction", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/_lib/server/actions.ts"}, {name: "getEpisodeEditStyleAction", file: "packages/features/content-analytics/src/server/diagnostics-actions.ts"}]
   ui: [{component: "EditRecordPage", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit/page.tsx"}, {component: "EditStyleCard", file: "packages/features/content-analytics/src/components/edit-style-card.tsx"}]
   provider_integration: null
-  workers: ["apps/web/lambda/analytics-sync (edit_sessions rollup)"]
+  workers: ["packages/features/content-analytics/src/server/edit-sessions-fact-sync.ts (edit_sessions rollup, run by runAnalyticsSyncJob)", "apps/web/app/api/cron/expire-generation-runs/studio-delivery-alerts.ts (hourly alerts)"]

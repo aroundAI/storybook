@@ -74,6 +74,8 @@ async function McpMonitoringPage({ searchParams }: McpMonitoringPageProps) {
 
           <GuardCard guard={data.guard} />
 
+          <StudioDeliveryCard panel={data.studio} days={days} />
+
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <PanelCard
               test="mcp-panel-tools"
@@ -167,6 +169,88 @@ function GuardCard({
         {'error' in guard
           ? `The check could not run: ${guard.error}`
           : `${guard.violations} usage rows on external runs, all time.`}
+      </CardContent>
+    </Card>
+  );
+}
+
+type StudioDeliveryRow = {
+  get_edit_package_calls: number;
+  deliver_edit_calls: number;
+  target_changed_refusals: number;
+  uploading_over_24h: number;
+  expired_uploads: number;
+};
+
+/**
+ * StorybookStudio deliveries (FILM-2006): packages served, deliveries,
+ * TARGET_CHANGED refusals and renders left uploading for a day. The last
+ * two are what the hourly cron alerts on; here they turn the badge red.
+ */
+function StudioDeliveryCard({
+  panel,
+  days,
+}: {
+  panel: Panel<StudioDeliveryRow>;
+  days: number;
+}) {
+  const row = 'error' in panel ? null : (panel.rows[0] ?? null);
+  const alerting =
+    row !== null &&
+    (row.target_changed_refusals > 0 ||
+      row.uploading_over_24h > 0 ||
+      row.expired_uploads > 0);
+  const counters: Array<[string, string, number | undefined]> = [
+    ['get_edit_package', 'get-edit-package', row?.get_edit_package_calls],
+    ['deliver_edit', 'deliver-edit', row?.deliver_edit_calls],
+    ['TARGET_CHANGED refusals', 'target-changed', row?.target_changed_refusals],
+    ['Uploading > 24 h now', 'uploading-stale', row?.uploading_over_24h],
+    ['Uploads expired by the sweep', 'expired-uploads', row?.expired_uploads],
+  ];
+
+  return (
+    <Card data-test="mcp-panel-studio">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          StorybookStudio deliveries
+          {row ? (
+            <Badge
+              variant={alerting ? 'destructive' : 'success'}
+              data-test="mcp-panel-studio-status"
+            >
+              {alerting ? 'Needs a look' : 'Clear'}
+            </Badge>
+          ) : null}
+        </CardTitle>
+        <CardDescription>
+          Edit packages served and deliveries in the last{' '}
+          {days === 1 ? '24 hours' : `${days} days`}. A TARGET_CHANGED refusal
+          means the episode changed in StoryBook during an edit; a render still
+          uploading after a day was never finalized. The hourly cron alerts on
+          both.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        {'error' in panel ? (
+          <p
+            className="text-sm text-destructive"
+            data-test="mcp-panel-studio-error"
+          >
+            This panel could not load: {panel.error}
+          </p>
+        ) : (
+          <dl className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            {counters.map(([label, test, value]) => (
+              <div key={test} data-test={`mcp-studio-${test}`}>
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd className="text-lg font-semibold tabular-nums">
+                  {value === undefined ? '—' : value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </CardContent>
     </Card>
   );

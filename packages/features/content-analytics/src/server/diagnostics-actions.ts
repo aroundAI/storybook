@@ -10,6 +10,7 @@ import {
 } from '../lib/schemas/diagnostics.schema';
 import {
   getEpisodeAnalyticsService,
+  getEpisodeEditStyleService,
   getEpisodeRetentionPublishService,
   getRetentionCurveService,
   getWeeklyDiagnosticsService,
@@ -67,6 +68,19 @@ export const getEpisodeRetentionPublishAction = withRefusals(
   enhanceAction(
     async (input) =>
       getEpisodeRetentionPublishService(getSupabaseServerClient(), input),
+    { schema: EpisodeAnalyticsSchema },
+  ),
+);
+
+/**
+ * The episode's latest delivered StorybookStudio edit, for the Edit style
+ * card (FILM-2006).
+ */
+export const getEpisodeEditStyleAction = withRefusals(
+  "load the episode's edit style",
+  enhanceAction(
+    async (input) =>
+      getEpisodeEditStyleService(getSupabaseServerClient(), input),
     { schema: EpisodeAnalyticsSchema },
   ),
 );

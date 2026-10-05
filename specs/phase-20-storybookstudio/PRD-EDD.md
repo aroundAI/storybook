@@ -664,7 +664,7 @@ alter table projects add column edit_policy jsonb not null default '{}';  -- tar
 alter table episodes add column edit_state jsonb not null default '{}';   -- {sessionId, lastDeliveredAt, editedIn:'studio', versions}
 ```
 
-`projects.brand` and `projects.edit_policy` are edited on the project settings page and travel inside the edit package. `episodes.final_video_url` and `master_video_asset_id` are set by `deliver_edit` from the delivery's primary render (FILM-2003; `master_video_asset_id` is a new `assets` row for it) so the existing publish worker and public-sharing pages need no change. ClickHouse gets one new fact table, `edit_sessions_fact`, synced by the existing `analytics-sync` lambda from `edit_sessions.summary`.
+`projects.brand` and `projects.edit_policy` are edited on the project settings page and travel inside the edit package. `episodes.final_video_url` and `master_video_asset_id` are set by `deliver_edit` from the delivery's primary render (FILM-2003; `master_video_asset_id` is a new `assets` row for it) so the existing publish worker and public-sharing pages need no change. ClickHouse gets one new fact table, `edit_sessions_fact`, synced hourly by the existing analytics sync (`runAnalyticsSyncJob`, which the `analytics-sync` lambda triggers) from `edit_sessions.summary` (FILM-2006).
 
 ## API: the desktop endpoints
 
@@ -783,7 +783,7 @@ Five touches, all inside the existing episode and project pages. No timeline in 
 | Where | Change |
 | --- | --- |
 | Episode header and Visual Studio (`.../visual-studio/_components/visual-studio-screen.tsx`) | **"Open in Studio"** button next to the ZIP export. Builds `velorn://open?api=<origin>&episode=<id>`. On a 2 s timeout with no handler, shows a sheet: download links for macOS and Windows, and "or create a token". Shows "Editing in Studio by \<name> since \<time>" while status is `editing` |
-| New `.../episodes/[episodeSlug]/edit` page | **Edit record**: versions timeline, final duration vs target, AI vs hand changes, the explain-why report, renders per preset and language with QA badges and download, "Re-open in Studio" |
+| New `.../episodes/[episodeSlug]/edit` page | **Edit record**: versions timeline, final duration vs target, AI vs hand changes, the explain-why report, renders per preset and language with QA badges and download; re-opening is the episode header's "Open in Studio" (FILM-2006) |
 | Publish page | Picks the primary render from `episode_renders` instead of a manually uploaded file; Shorts renders appear as publish candidates for TikTok, Reels and Shorts |
 | Project settings (`/studio/[projectSlug]/settings`) | **Brand** tab (fonts, colours, caption style preview, logo, intro/outro uploads) and **Edit policy** tab (target duration default, shot length bounds, transitions, music ducking, captions on/off) |
 | Account settings (`/home/[account]/settings/desktop-apps`) | Token list, create, revoke, last used |
@@ -810,8 +810,8 @@ Analytics pages gain one card in v2: "Edit style" on the episode analytics page 
 | `packages/features/episodes/src/lib/types.ts`, `schemas/` | Changed | `editState`, brand and policy types |
 | `apps/web/lambda/llm-worker/index.ts` | Changed (v1) | `shot-regeneration` job type |
 | `apps/web/lambda/voice-worker/` | Changed (v2) | `dub-episode` job type |
-| `apps/web/lambda/analytics-sync/` | Changed (v1) | Edit-session rollup |
-| `packages/clickhouse/migrations/<n>_edit_sessions_fact.sql` | New (v1) | Fact table |
+| `packages/features/content-analytics/src/server/edit-sessions-fact-sync.ts` | New (v1) | Edit-session rollup, run by `runAnalyticsSyncJob` (FILM-2006) |
+| `packages/clickhouse/src/migrations/024_edit_sessions_fact.ts` | New (v1) | Fact table (FILM-2006) |
 | `apps/web/config/` | Changed | Rate limits, Studio download URLs, allowed desktop redirect schemes |
 | `packages/features/desktop-integration/__tests__/` | New | Package builder snapshots, bearer auth tests, RLS role matrix, PKCE flow, deliver locking |
 

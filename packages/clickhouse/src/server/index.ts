@@ -246,3 +246,10 @@ export type {
   PostReachSummary,
   ReachPlatform,
 } from '../reach';
+
+export {
+  insertEditSessionFacts,
+  queryEditStyleByEpisode,
+  queryEditStyleForVideos,
+} from '../queries-edit';
+export type { EditSessionFactRow, EpisodeEditStyle } from '../queries-edit';

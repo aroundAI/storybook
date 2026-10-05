@@ -54,6 +54,7 @@ import {
   insertChannelDaily,
   insertChannelReachDaily,
   insertChannelWindows,
+  insertEditSessionFacts,
   insertRetentionCurves,
   insertSubscriberSnapshot,
   insertVideoAudience,
@@ -78,6 +79,8 @@ import {
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
   queryDataDaysForVideos,
+  queryEditStyleByEpisode,
+  queryEditStyleForVideos,
   queryFollowerStatusByUploadMonth,
   queryLanguagePairs,
   queryLatestSnapshots,
@@ -110,6 +113,7 @@ import {
   queryViewsForVideos,
   queryWatchWindowTotals,
 } from '../src/server';
+import type { EditSessionFactRow } from '../src/server';
 import type {
   AnalyticsPlatform,
   VideoMetric,
@@ -6709,6 +6713,255 @@ async function genomeSteps() {
   await step('genome: cleanup', () => clearGenomeFixture(channels));
 }
 
+const ES_PROJECT = '20060000-0000-4000-8000-000000000001';
+const ES_OTHER_PROJECT = '20060000-0000-4000-8000-000000000002';
+const ES_ACCOUNT = '20060000-0000-4000-8000-0000000000a1';
+const ES_OTHER_ACCOUNT = '20060000-0000-4000-8000-0000000000a2';
+const ES_EPISODE_A = '20060000-0000-4000-8000-0000000000e1';
+const ES_EPISODE_B = '20060000-0000-4000-8000-0000000000e2';
+const ES_EPISODE_NONE = '20060000-0000-4000-8000-0000000000e3';
+
+function editFact(
+  session: string,
+  episode: string,
+  deliveredAt: string,
+  figures: Partial<EditSessionFactRow> = {},
+): EditSessionFactRow {
+  return {
+    session_id: session,
+    episode_id: episode,
+    project_id: ES_PROJECT,
+    account_id: ES_ACCOUNT,
+    delivered_at: deliveredAt,
+    final_duration: 90,
+    target_duration: 95,
+    ai_ops: 12,
+    user_ops: 4,
+    plans_proposed: 3,
+    plans_approved: 2,
+    cut_count: 15,
+    avg_shot_length: 5.625,
+    hook_type: 'cold-open',
+    cuts_per_minute: 10,
+    ai_share: 0.75,
+    languages: ['en'],
+    presets: ['youtube_16x9'],
+    ...figures,
+  };
+}
+
+async function clearEditStyleFixture(): Promise<void> {
+  for (const table of ['edit_sessions_fact', 'video_dim']) {
+    await getClickHouseClient().command({
+      query: `ALTER TABLE ${table} DELETE WHERE project_id IN ({a:UUID}, {b:UUID})`,
+      query_params: { a: ES_PROJECT, b: ES_OTHER_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
+/**
+ * FILM-2006: edit_sessions_fact and queryEditStyleByEpisode. Episode A was
+ * delivered twice (an older 60 s cut, then the 90 s one the figures above
+ * describe), and its newer session is then resent by a later rollup with a
+ * corrected hook: the episode has one answer, the newest delivery as last
+ * synced. Episode B's report carried no style and its summary no plan
+ * counts: those come back null, not 0. A third episode was never delivered
+ * and is absent.
+ */
+async function editStyleSteps() {
+  const sessionOld = '20060000-0000-4000-8000-0000000000c1';
+  const sessionNew = '20060000-0000-4000-8000-0000000000c2';
+  const sessionB = '20060000-0000-4000-8000-0000000000c3';
+
+  await step('editStyle: cleanup before', clearEditStyleFixture);
+
+  await step('insertEditSessionFacts', () =>
+    insertEditSessionFacts([
+      editFact(sessionOld, ES_EPISODE_A, '2026-10-01T09:00:00.000Z', {
+        final_duration: 60,
+        cut_count: 5,
+        avg_shot_length: 10,
+        cuts_per_minute: 5,
+      }),
+      editFact(sessionNew, ES_EPISODE_A, '2026-10-03T09:00:00.000Z', {
+        hook_type: 'question',
+      }),
+      editFact(sessionB, ES_EPISODE_B, '2026-10-02T12:30:00.000Z', {
+        final_duration: 30,
+        target_duration: null,
+        ai_ops: 0,
+        user_ops: 0,
+        plans_proposed: null,
+        plans_approved: null,
+        cut_count: null,
+        avg_shot_length: null,
+        hook_type: null,
+        cuts_per_minute: null,
+        ai_share: null,
+        languages: ['en', 'hi'],
+        presets: ['shorts_9x16', 'youtube_16x9'],
+      }),
+    ]),
+  );
+
+  // The next rollup resends the newer session with the hook corrected.
+  await step('insertEditSessionFacts (resend)', () =>
+    insertEditSessionFacts([
+      editFact(sessionNew, ES_EPISODE_A, '2026-10-03T09:00:00.000Z'),
+    ]),
+  );
+
+  await step('queryEditStyleByEpisode', async () => {
+    const styles = await queryEditStyleByEpisode({
+      episodeIds: [ES_EPISODE_A, ES_EPISODE_B, ES_EPISODE_NONE],
+      projectIds: [ES_PROJECT],
+    });
+    const a = styles.get(ES_EPISODE_A);
+    const b = styles.get(ES_EPISODE_B);
+    const expectedA = {
+      episodeId: ES_EPISODE_A,
+      sessionId: sessionNew,
+      deliveredAt: '2026-10-03T09:00:00Z',
+      finalDuration: 90,
+      targetDuration: 95,
+      aiOps: 12,
+      userOps: 4,
+      plansProposed: 3,
+      plansApproved: 2,
+      cutCount: 15,
+      avgShotLength: 5.625,
+      cutsPerMinute: 10,
+      hookType: 'cold-open',
+      aiShare: 0.75,
+      languages: ['en'],
+      presets: ['youtube_16x9'],
+    };
+
+    if (JSON.stringify(a) !== JSON.stringify(expectedA)) {
+      throw new Error(`episode A: got ${JSON.stringify(a)}`);
+    }
+    if (
+      !b ||
+      b.cutCount !== null ||
+      b.avgShotLength !== null ||
+      b.cutsPerMinute !== null ||
+      b.hookType !== null ||
+      b.aiShare !== null ||
+      b.plansProposed !== null ||
+      b.targetDuration !== null ||
+      b.finalDuration !== 30 ||
+      b.languages.join(',') !== 'en,hi'
+    ) {
+      throw new Error(`episode B must keep its nulls: ${JSON.stringify(b)}`);
+    }
+    if (styles.has(ES_EPISODE_NONE) || styles.size !== 2) {
+      throw new Error(
+        `an undelivered episode must be absent: ${[...styles.keys()]}`,
+      );
+    }
+    return `${styles.size} episode(s), A = ${a!.sessionId.slice(-2)}`;
+  });
+
+  await step('edit_sessions_fact: one row per session', async () => {
+    const result = await getClickHouseClient().query({
+      query:
+        'SELECT count() as n FROM edit_sessions_fact FINAL WHERE project_id = {p:UUID}',
+      query_params: { p: ES_PROJECT },
+      format: 'JSONEachRow',
+    });
+    const [row] = await result.json<{ n: string | number }>();
+
+    // four inserts, three sessions
+    if (Number(row?.n) !== 3) {
+      throw new Error(`expected 3 rows, got ${row?.n}`);
+    }
+    return 3;
+  });
+
+  await step('queryEditStyleByEpisode (another project)', async () => {
+    const styles = await queryEditStyleByEpisode({
+      episodeIds: [ES_EPISODE_A],
+      projectIds: [ES_OTHER_PROJECT],
+    });
+
+    if (styles.size !== 0) {
+      throw new Error('the project bound must exclude another project');
+    }
+    return 0;
+  });
+
+  // The genome's join: two videos of episode A (a full and a Short), one
+  // of episode B, one of an episode never delivered. Each takes its
+  // episode's latest delivery; the last is absent.
+  const dim = (video: string, episode: string) => ({
+    video_id: video,
+    project_id: ES_PROJECT,
+    account_id: ES_ACCOUNT,
+    episode_id: episode,
+    connection_id: CHANNEL,
+    platform: 'youtube',
+    content_type: 'full',
+    language: 'en',
+    channel_language: 'en',
+    title: video,
+    published_at: '2026-10-03 10:00:00',
+    episode_duration_seconds: 90,
+    asset_duration_seconds: 90,
+    tags: [],
+  });
+
+  await step('insertVideoDims (edit style)', () =>
+    insertVideoDims([
+      dim('es-vid-a-full', ES_EPISODE_A),
+      dim('es-vid-a-short', ES_EPISODE_A),
+      dim('es-vid-b', ES_EPISODE_B),
+      dim('es-vid-none', ES_EPISODE_NONE),
+    ]),
+  );
+
+  await step('queryEditStyleForVideos', async () => {
+    const styles = await queryEditStyleForVideos({
+      videoIds: ['es-vid-a-full', 'es-vid-a-short', 'es-vid-b', 'es-vid-none'],
+      accountId: ES_ACCOUNT,
+    });
+    const a = {
+      cutsPerMinute: 10,
+      avgShotLength: 5.625,
+      hookType: 'cold-open',
+      aiShare: 0.75,
+    };
+    const b = {
+      cutsPerMinute: null,
+      avgShotLength: null,
+      hookType: null,
+      aiShare: null,
+    };
+    const got = JSON.stringify([...styles.entries()].sort());
+    const expected = JSON.stringify([
+      ['es-vid-a-full', a],
+      ['es-vid-a-short', a],
+      ['es-vid-b', b],
+    ]);
+
+    if (got !== expected) {
+      throw new Error(`got ${got}`);
+    }
+
+    const other = await queryEditStyleForVideos({
+      videoIds: ['es-vid-a-full'],
+      accountId: ES_OTHER_ACCOUNT,
+    });
+
+    if (other.size !== 0) {
+      throw new Error('the account bound must exclude another account');
+    }
+    return `${styles.size} video(s)`;
+  });
+
+  await step('editStyle: cleanup', clearEditStyleFixture);
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -6735,6 +6988,7 @@ async function main() {
   await unmeasuredTotalsSteps();
   await noRowsViewsSteps();
   await rateDenominatorSteps();
+  await editStyleSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 

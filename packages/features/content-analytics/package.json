@@ -93,6 +93,7 @@
     "./lib/experiment-transitions": "./src/lib/experiment-transitions.ts",
     "./lib/schemas/experiment": "./src/lib/schemas/experiment.schema.ts",
     "./lib/local-date": "./src/lib/local-date.ts",
+    "./lib/edit-style": "./src/lib/edit-style.ts",
     "./lib/query-state": "./src/lib/query-state.ts"
   },
   "dependencies": {

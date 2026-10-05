@@ -39,6 +39,8 @@ select results_eq(
        ('public.admin_mcp_error_codes'),
        -- is_super_admin() (aal2 + super-admin role), via admin_mcp_check_window; aggregates only (FILM-1911)
        ('public.admin_mcp_tool_stats'),
+       -- is_super_admin() (aal2 + super-admin role), via admin_mcp_check_window; counts only (FILM-2006)
+       ('public.admin_studio_delivery_stats'),
        -- can_drive_generation_run of the run; open, TARGET_CHANGED; every write on kit.generation_commit_allowlist() and inside the run's project (FILM-1901, FILM-1903)
        ('public.apply_generation_commit'),
        -- project_members owner/admin/member of the episode's project
@@ -70,6 +72,8 @@ select results_eq(
        ('public.create_mcp_personal_access_token'),
        -- the session's user, project owner/admin/member (viewer FORBIDDEN), owner/admin only on a published episode; TARGET_CHANGED on episodes.version; only the caller's ready renders of the episode (FILM-2003)
        ('public.deliver_edit'),
+       -- has_role_on_project of the session's episode's project; returns only mcp_connections.name (FILM-2006)
+       ('public.edit_session_device'),
        -- no caller check: answers only whether the episode id belongs to the
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-113)

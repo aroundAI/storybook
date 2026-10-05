@@ -10,6 +10,7 @@ import {
   ListOrdered,
   Lock,
   Music,
+  Scissors,
   Share2,
 } from 'lucide-react';
 
@@ -71,6 +72,13 @@ const POST_TABS: TabConfig[] = [
     path: 'publish',
     studioMode: 'post',
   },
+  {
+    id: 'edit',
+    label: 'Edit record',
+    icon: Scissors,
+    path: 'edit',
+    studioMode: 'post',
+  },
 ];
 
 function getTabUnlockState(
@@ -94,6 +102,7 @@ function getTabUnlockState(
     'shot-list': hasScreenplayData, // Unlocked when screenplay exists
     audio: hasShotList, // Unlocked when shot list exists
     publish: hasShotList, // Unlocked when shot list exists (user can upload video directly)
+    edit: true, // Read-only: says when nothing was delivered from the Studio yet (FILM-2006)
   };
 }
 
@@ -120,6 +129,7 @@ export function EpisodeWorkspaceTabs() {
     if (pathname.endsWith('/visual-studio')) return 'shot-list';
     if (pathname.endsWith('/audio-studio')) return 'audio';
     if (pathname.endsWith('/publish')) return 'publish';
+    if (pathname.endsWith('/edit')) return 'edit';
     return 'ideation';
   };
 

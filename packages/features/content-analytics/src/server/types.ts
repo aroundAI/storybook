@@ -107,6 +107,14 @@ export interface SyncJobResult {
     }
   >;
   durationMs: number;
+  /**
+   * Delivered StorybookStudio edits rolled into edit_sessions_fact
+   * (FILM-2006), or why the rollup failed. Absent when the run failed
+   * before reaching it.
+   */
+  editSessionFacts?:
+    | { enabled: boolean; delivered: number; written: number; skipped: number }
+    | { error: string };
 }
 
 /**

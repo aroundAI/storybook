@@ -39,8 +39,9 @@ function tabIds() {
 }
 
 /**
- * FILM-607: the Edit Suite is retired. The workspace offers the story tabs
- * and Publish, each linking to its own page, and nothing else. The
+ * FILM-607: the Edit Suite is retired. The workspace offers the story tabs,
+ * Publish and FILM-2006's read-only Edit record, each linking to its own
+ * page, and nothing else. The
  * Playwright spec `apps/e2e/tests/episodes/workspace-tabs.spec.ts` drives
  * the same bar in a browser; this is the deterministic half that the
  * mutation guard runs.
@@ -60,6 +61,7 @@ describe('EpisodeWorkspaceTabs (FILM-607)', () => {
       'shot-list',
       'audio',
       'publish',
+      'edit',
     ]);
     expect(screen.queryByText('Edit Suite')).toBeNull();
   });
@@ -78,6 +80,7 @@ describe('EpisodeWorkspaceTabs (FILM-607)', () => {
       `${BASE}/visual-studio`,
       `${BASE}/audio-studio`,
       `${BASE}/publish`,
+      `${BASE}/edit`,
     ]);
   });
 

@@ -30,6 +30,7 @@ import { migration as m020 } from './020_facebook';
 import { migration as m021 } from './021_twitter';
 import { migration as m022 } from './022_video_revenue_daily';
 import { migration as m023 } from './023_reels_attention';
+import { migration as m024 } from './024_edit_sessions_fact';
 import type { ClickHouseMigration } from './migration-types';
 
 const MIGRATIONS: ClickHouseMigration[] = [
@@ -56,6 +57,7 @@ const MIGRATIONS: ClickHouseMigration[] = [
   m021,
   m022,
   m023,
+  m024,
 ];
 
 const MIGRATION_TABLE = `

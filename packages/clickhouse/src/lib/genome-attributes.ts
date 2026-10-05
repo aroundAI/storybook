@@ -82,10 +82,21 @@ export type GenomeSemanticDimension =
 /** Derived from `video_dim`, never tagged. */
 export const DURATION_DIMENSION = 'duration';
 
+/**
+ * Derived from `edit_sessions_fact` (FILM-2006), never tagged: how the
+ * episode was cut in StorybookStudio. Cut density and the hook reuse the
+ * observable dimensions above, so a measured `cuts_per_minute` lands in the
+ * same bands a hand-recorded one does.
+ */
+export const EDIT_STYLE_DIMENSIONS = ['avg_shot_length', 'ai_share'] as const;
+
+export type EditStyleDimension = (typeof EDIT_STYLE_DIMENSIONS)[number];
+
 export type GenomeDimension =
   | GenomeObservableDimension
   | GenomeSemanticDimension
-  | typeof DURATION_DIMENSION;
+  | typeof DURATION_DIMENSION
+  | EditStyleDimension;
 
 /** Every dimension a `content_tags` row may have — the table's CHECK. */
 export const TAG_DIMENSIONS = [
@@ -153,6 +164,8 @@ export const GENOME_DIMENSION_STAGE: Record<GenomeDimension, FunnelStage> = {
   scene_changes: 'attention',
   result_first: 'attention',
   duration: 'attention',
+  avg_shot_length: 'attention',
+  ai_share: 'attention',
   curiosity: 'hook',
   novelty: 'reach',
   utility: 'transmission',
@@ -179,8 +192,11 @@ export interface GenomeAttribute {
   dimension: GenomeDimension;
   value: string;
   tag: string;
-  /** Where the attribute came from: a `publish_tags` row, or `video_dim`. */
-  source: 'tag' | 'video_dim';
+  /**
+   * Where the attribute came from: a `publish_tags` row, `video_dim`, or a
+   * delivered StorybookStudio edit (`edit_sessions_fact`, FILM-2006).
+   */
+  source: 'tag' | 'video_dim' | 'edit_sessions_fact';
 }
 
 /**
@@ -309,4 +325,116 @@ export function splitVideoTags(tags: readonly string[]): {
   }
 
   return { taxonomy, genome };
+}
+
+/**
+ * A video's edit style as `edit_sessions_fact` measured it (FILM-2006):
+ * the latest delivered StorybookStudio session of its episode. Each figure
+ * is null when the session did not record it.
+ */
+export interface EditStyleFigures {
+  cutsPerMinute: number | null;
+  avgShotLength: number | null;
+  hookType: string | null;
+  aiShare: number | null;
+}
+
+interface Band {
+  slug: string;
+  below: number;
+}
+
+/** The `cuts_per_minute` tag's closed values, as edges. */
+const CUTS_PER_MINUTE_BANDS: readonly Band[] = [
+  { slug: 'under-5', below: 5 },
+  { slug: '5-to-15', below: 15 },
+  { slug: '15-to-30', below: 30 },
+  { slug: 'over-30', below: Number.POSITIVE_INFINITY },
+];
+
+export const AVG_SHOT_LENGTH_BANDS: readonly Band[] = [
+  { slug: 'under-2s', below: 2 },
+  { slug: '2-to-4s', below: 4 },
+  { slug: '4-to-8s', below: 8 },
+  { slug: 'over-8s', below: Number.POSITIVE_INFINITY },
+];
+
+export const AI_SHARE_BANDS: readonly Band[] = [
+  { slug: 'under-25pct', below: 0.25 },
+  { slug: '25-to-75pct', below: 0.75 },
+  { slug: 'over-75pct', below: Number.POSITIVE_INFINITY },
+];
+
+function bandOf(value: number | null, bands: readonly Band[]): string | null {
+  if (value === null || !Number.isFinite(value) || value < 0) return null;
+
+  return bands.find((band) => value < band.below)!.slug;
+}
+
+function editAttribute(
+  dimension: GenomeDimension,
+  value: string | null,
+): GenomeAttribute[] {
+  return value === null
+    ? []
+    : [
+        {
+          kind: 'genome',
+          layer: 'observable',
+          dimension,
+          value,
+          tag: `${dimension}:${value}`,
+          source: 'edit_sessions_fact',
+        },
+      ];
+}
+
+/**
+ * The genome attributes a delivered edit adds to a video. A measured cut
+ * density replaces a hand-recorded band (see `withEditStyle`), as
+ * `video_dim`'s duration does: a second, estimated copy could only
+ * disagree. A hand-recorded hook is kept and the measured one not added,
+ * because hook types are each account's own vocabulary. A figure not
+ * recorded adds nothing — never a lowest band.
+ */
+export function editStyleAttributes(
+  style: EditStyleFigures | null | undefined,
+  tagged: readonly GenomeAttribute[],
+): GenomeAttribute[] {
+  if (!style) return [];
+
+  const handHook = tagged.some(
+    (attribute) => attribute.dimension === 'hook_type',
+  );
+  const hook =
+    style.hookType !== null && !handHook
+      ? (parseVideoTag(`hook_type:${style.hookType}`)?.tag ?? null)
+      : null;
+
+  return [
+    ...editAttribute(
+      'cuts_per_minute',
+      bandOf(style.cutsPerMinute, CUTS_PER_MINUTE_BANDS),
+    ),
+    ...editAttribute(
+      'avg_shot_length',
+      bandOf(style.avgShotLength, AVG_SHOT_LENGTH_BANDS),
+    ),
+    ...editAttribute('hook_type', hook ? style.hookType : null),
+    ...editAttribute('ai_share', bandOf(style.aiShare, AI_SHARE_BANDS)),
+  ];
+}
+
+/** A video's tagged attributes with its edit style applied. */
+export function withEditStyle(
+  tagged: readonly GenomeAttribute[],
+  style: EditStyleFigures | null | undefined,
+): GenomeAttribute[] {
+  const edited = editStyleAttributes(style, tagged);
+  const measured = new Set(edited.map((attribute) => attribute.dimension));
+
+  return [
+    ...tagged.filter((attribute) => !measured.has(attribute.dimension)),
+    ...edited,
+  ];
 }
