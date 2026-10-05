@@ -178,15 +178,20 @@ license is confirmed before FILM-2018.
 
 1. Which content type comes first: generative cinema, information or
    explainer videos, or cartoons? If explainer or cartoons, FILM-2018
-   (graphics) moves ahead of FILM-2003/2017 (delivery).
+   (graphics) moves ahead of FILM-2003/2017 (delivery). Answered by the
+   owner, 2026-10-05: all of them, generative and programmatic (FILM-2018).
 2. Which model drives the agent and critic: Claude over the Studio's MCP,
    the Studio's in-app agent (LM Studio today), or a hosted model billed
    through StoryBook? The capability profile is the same either way; billing
-   and the vision critic's availability differ.
+   and the vision critic's availability differ. Moot for the AI eval (owner,
+   2026-10-05): the nightly eval runs oracle mode only and a model run is on
+   demand (FILM-2013); the vision critic runs only when a model is
+   configured (FILM-2014).
 3. Should `deliver_edit` auto-publish, or only attach renders and set `ready`
    for the existing publish flow? Recommended: attach only.
 4. Is a Windows build needed at launch? Deep links and `safeStorage` differ
-   per OS; the test matrix in FILM-2010 assumes macOS first.
+   per OS; the test matrix in FILM-2010 assumes macOS first. Answered no by
+   the owner, 2026-10-05: Windows is not needed (FILM-2010, FILM-2014).
 5. FILM-2003: does a delivery on a `published` episode supersede the live
    renders, or create a new publish candidate? Recommended: supersede, with
    the publish page offering to re-publish.

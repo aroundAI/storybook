@@ -3,7 +3,7 @@ title: "Preview Render Tiers, Deterministic QA and the Critic"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-2012"
@@ -55,14 +55,10 @@ test_plan:
     - {text: "Pacing and audio analysers on the 20-shot fixture produce the expected issues; repair compilation per issue type", met: true, evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/critic.test.mjs:38, :83; tests/studio/repair.test.mjs:22, :134)"}
   integration:
     - {text: "Apply → keyframes → QA → repair → QA passes on a fixture with planted silence and loud music, in under 3 rounds", met: true, evidence: "aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/review-loop.test.mjs:39 converges within 3 rounds; tests/studio/review-mcp.test.mjs:45 and :86 do it over MCP in FILM-2013's harness)"}
-    - {text: "Render timing on the reference machines recorded in the release checklist", met: false, reason: "scripts/studio-render-timings.mjs and the RELEASE_CHECKLIST.md section (storybookstudio@31127e4 RELEASE_CHECKLIST.md:157) exist, and an M5 Pro run is recorded (keyframes for the 99 s cut 1.08 s, scene preview 2.2x real time, 94 s 1080p delivery through the queue with VideoToolbox 13.5 s, 7.0x). The M1 Air and an NVENC machine are not measured"}
+    - {text: "Render timing on the reference machines recorded in the release checklist", met: true, evidence: "The reference machine is the owner's Apple M5 Pro (owner decision, 2026-10-05: the Studio is an internal tool used only by the owner, per FILM-2018's licence note; the M1 Air and NVENC references are out of scope). Its run, measured under load near 49 (storybookstudio/RELEASE_CHECKLIST.md:163), meets both targets: keyframes for the whole 99 s cut in 1.08 s against 5 s (storybookstudio/RELEASE_CHECKLIST.md:167), and a full 1080p render with h264_videotoolbox at 5.7x real time against 1x (storybookstudio/RELEASE_CHECKLIST.md:171). The table comes from storybookstudio/scripts/studio-render-timings.mjs"}
   e2e: []
-remaining:
-  - criterion: "Render timings on the M1 Air and an NVENC reference machine (AC1 keyframes under 5 s, AC7 1x real time or faster with hardware encode)"
-    reason: "only an M5 Pro, under load, has been measured; run node scripts/studio-render-timings.mjs on each reference machine and paste the table into RELEASE_CHECKLIST.md"
-    closed_by: "owner"
-open_questions:
-  - "Vision model for the visual analyser: the same model that drives the agent, or a cheaper dedicated one? Decide with README open question 2."
+remaining: []
+open_questions: []
 notes: >
   Deterministic first, judgment second: FFmpeg catches most technical failures
   for free, so the critic's tokens go only to pacing, framing and continuity
@@ -87,6 +83,19 @@ notes: >
   Follow-ups: studio_edit autoRepair is still one long request with no
   progress or job id (FILM-2013, task 32). Also closes FILM-2017's loud-bed integration line (see
   that record).
+
+  Owner decisions, 2026-10-05. Render timing: the reference machine is the
+  owner's Apple M5 Pro, since the Studio is an internal tool used only by the
+  owner; the M1 Air and NVENC references are out of scope (Windows is not
+  needed, FILM-2010). Vision model (formerly an open question): the visual
+  pass runs only when a vision model is configured; with
+  STUDIO_VISION_PROVIDER unset it reports skipped and calls nothing
+  (storybookstudio@496a554 electron/studio/visionClient.js:35, :37;
+  src/studio/critic/visual.js:106, :109), and with it set to anthropic the model is
+  STUDIO_VISION_MODEL, default claude-opus-5-5 (visionClient.js:24, :48). The
+  owner chooses by setting those variables, and under FILM-2013's eval
+  decision (oracle only nightly) no scheduled run calls a model, so the
+  question no longer blocks anything.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
