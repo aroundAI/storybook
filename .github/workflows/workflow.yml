@@ -64,7 +64,7 @@ jobs:
     # skip_*=true, which needs vars.CI_SCOPE_HEAVY == 'true'; blank (a PR, a
     # dispatch, the nightly run, report-only, a failed step) runs everything.
     timeout-minutes: 5
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       actions: read
@@ -195,7 +195,7 @@ jobs:
     # package from a cold cache, which takes about 15 minutes; at 10 the job
     # was cancelled with no error, twice, on a correct change.
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
@@ -250,7 +250,7 @@ jobs:
     # format:fix` repairs a failure here. Skipped on the docs-only path:
     # .prettierignore already excludes *.md and specs/**/*.yaml.
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
@@ -277,7 +277,7 @@ jobs:
   clickhouse-sql:
     name: 🗄️ ClickHouse SQL
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
@@ -353,7 +353,7 @@ jobs:
     # (64 s, 2026-10-03); a cold runner adds the install and the first
     # compile of every package, so 20 minutes is headroom, not an estimate.
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_build != 'true' }}
     env:
@@ -395,7 +395,7 @@ jobs:
     # 35, not 20: Phase 19 grew the database mutation guards to 228; #584's
     # queue run finished all of them at 19m39s and was cancelled at 20m.
     timeout-minutes: 35
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_supabase != 'true' }}
     env:
@@ -519,7 +519,7 @@ jobs:
   unit-test:
     name: 🧪 Unit Tests
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
@@ -610,7 +610,7 @@ jobs:
     # and #522's queue run lost shard 4 to the 15-minute limit with every
     # guard already red.
     timeout-minutes: 25
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_unit_guards != 'true' }}
     strategy:
@@ -667,7 +667,7 @@ jobs:
     # or test changed. Anything else fails, including a failed 🔎 Changes.
     needs: [changes, unit-guards, docs-checks]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Every unit guard shard passed, or the shards were skipped by design
         env:
@@ -712,7 +712,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'false' }}
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       DO_NOT_TRACK: 1
     steps:
@@ -777,7 +777,7 @@ jobs:
     # 43-47 minutes, and two queue runs (#519, #504) were cancelled at 45 with
     # every guard so far RED. Billing is per minute used, so headroom is free.
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # CI minutes are rationed: the E2E mutation guards run with the other
     # heavy jobs, in the merge queue (or on a dispatch), not on PR pushes.
     needs: changes
@@ -838,6 +838,8 @@ jobs:
       # Same reason as ⚫️ Test: Supabase images, browsers and the monorepo
       # install do not fit a runner's spare disk.
       - name: Free disk space
+        # GitHub's image only: on a self-hosted runner these paths are the host's.
+        if: runner.environment == 'github-hosted'
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
             /usr/local/share/boost /usr/local/share/powershell \
@@ -952,7 +954,7 @@ jobs:
     # extra work before its guards began, and it is the shard that kept
     # failing.
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     # Nightly and on dispatch only, like 🧬 E2E guards (owner, 2026-10-02):
     # scoping runs it for any change to apps/e2e, so test-only PRs paid for it.
@@ -996,6 +998,8 @@ jobs:
       # Same reason as ⚫️ Test: Supabase images, browsers and the monorepo
       # install do not fit a runner's spare disk.
       - name: Free disk space
+        # GitHub's image only: on a self-hosted runner these paths are the host's.
+        if: runner.environment == 'github-hosted'
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
             /usr/local/share/boost /usr/local/share/powershell \
@@ -1122,7 +1126,7 @@ jobs:
     # worker with up to three retries. 20 minutes cancelled Playwright
     # mid-run after every earlier step had passed.
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: changes
     # Nightly and on dispatch only, like the two 🧬 E2E jobs (owner, 2026-10-02):
     # every Playwright suite runs in the nightly full run on main; the queue
@@ -1158,6 +1162,8 @@ jobs:
       # so the failure is invisible in the UI. Dropping toolchains this job
       # never uses buys back over 20GB.
       - name: Free disk space
+        # GitHub's image only: on a self-hosted runner these paths are the host's.
+        if: runner.environment == 'github-hosted'
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
             /usr/local/share/boost /usr/local/share/powershell \
@@ -1315,7 +1321,7 @@ jobs:
       - test
     if: always()
     timeout-minutes: 5
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
