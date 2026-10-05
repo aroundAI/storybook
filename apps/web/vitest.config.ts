@@ -343,6 +343,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/assets/src/lib/index.ts',
       ),
+      '@kit/content-analytics/components': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/components/index.ts',
+      ),
       // The scheduled-reports cron's imports (KB-74's route test mocks them)
       '@kit/content-analytics/lib/csv-generator': path.resolve(
         __dirname,

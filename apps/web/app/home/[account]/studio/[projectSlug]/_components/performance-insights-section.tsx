@@ -1,6 +1,6 @@
 import { RateDenominator } from '@kit/content-analytics/components';
 
-import { Sparkline, formatNumber } from './overview-constants';
+import { formatNumber } from './overview-constants';
 import type { OverviewAnalytics } from './overview-constants';
 
 interface PerformanceInsightsSectionProps {
@@ -50,12 +50,6 @@ export function PerformanceInsightsSection({
                   : formatNumber(analytics?.totalViews ?? 0)}
               </p>
             </div>
-            <span className="rounded-md bg-green-100 px-2 py-1 text-xs font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              {analytics?.totalViews ? '+12%' : '0%'}
-            </span>
-          </div>
-          <div className="relative h-12">
-            <Sparkline color="#007AFF" />
           </div>
         </div>
 
@@ -81,9 +75,6 @@ export function PerformanceInsightsSection({
                 )}
               </p>
             </div>
-            <span className="rounded-md bg-muted px-2 py-1 text-xs font-bold text-muted-foreground">
-              0%
-            </span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-muted">
             <div
@@ -104,12 +95,6 @@ export function PerformanceInsightsSection({
                 {analytics?.contentCount ?? 0}
               </p>
             </div>
-            <span className="rounded-md bg-blue-100 px-2 py-1 text-xs font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-              {analytics?.contentCount ? '+5%' : '0%'}
-            </span>
-          </div>
-          <div className="relative h-12">
-            <Sparkline color="#007AFF" />
           </div>
         </div>
       </div>
