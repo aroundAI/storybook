@@ -4,6 +4,15 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { analyticsTools } from '../src/server/tools/analytics';
+import { authorTools } from '../src/server/tools/author';
+import { editTools } from '../src/server/tools/edit';
+import { generationTools } from '../src/server/tools/generation';
+import { readTools } from '../src/server/tools/read';
+import { renderTools } from '../src/server/tools/render';
+import { studioTools } from '../src/server/tools/studio';
+import { studioRenderTools } from '../src/server/tools/studio/renders';
+import { whoamiTool } from '../src/server/tools/whoami';
+import { getWorkflowGuideTool } from '../src/server/tools/workflow-guide';
 import {
   ANON_KEY,
   JWT_SECRET,
@@ -187,35 +196,22 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
         const { tools } = await client.listTools();
         const names = tools.map((tool) => tool.name);
 
-        expect(names.sort()).toEqual(
-          [
-            'whoami',
-            'get_workflow_guide',
-            'list_projects',
-            'get_project',
-            'list_episodes',
-            'get_episode',
-            'get_screenplay',
-            'get_shots',
-            'get_dialogue',
-            'list_assets',
-            'create_project',
-            'update_project',
-            'create_episode',
-            'update_episode',
-            'upsert_asset',
-            'link_assets_to_episode',
-            // FILM-1906's list, pinned by name in analytics-catalogue.test.ts
-            ...analyticsTools.map((tool) => tool.name),
-            'start_generation',
-            'get_brief',
-            'submit_generation',
-            'finalize_generation',
-            'get_run',
-            'cancel_generation',
-            'get_generation_history',
-          ].sort(),
-        );
+        // Every tool module's own export, not the list in tools/index.ts, so
+        // a module left out of defaultTools shows here too.
+        const registered = [
+          whoamiTool,
+          getWorkflowGuideTool,
+          ...readTools,
+          ...authorTools,
+          ...analyticsTools,
+          ...generationTools,
+          ...renderTools,
+          ...editTools,
+          ...studioTools,
+          ...studioRenderTools,
+        ].map((tool) => tool.name);
+
+        expect(names.sort()).toEqual(registered.sort());
 
         for (const tool of tools.filter((t) => PAGED.includes(t.name))) {
           expect(tool.description).toMatch(/cursor/);
