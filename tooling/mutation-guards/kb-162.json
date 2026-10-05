@@ -55,8 +55,8 @@
       "name": "KB-162 an account with nothing published shows watch time 0m",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
-      "find": "    totals: {\n      views: null,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: null,",
-      "replace": "    totals: {\n      views: null,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: 0,",
+      "find": "    totals: {\n      views: null,\n      likes: null,\n      comments: null,\n      shares: null,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: null,",
+      "replace": "    totals: {\n      views: null,\n      likes: null,\n      comments: null,\n      shares: null,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: 0,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/account-dashboard-unmeasured.test.ts",
       "pattern": "measures nothing for an account with no publishes"

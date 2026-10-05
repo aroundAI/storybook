@@ -55,8 +55,8 @@
       "name": "RD6 the episode read records no window from its date filter",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "            platforms: contributingPlatforms(publishes, perVideoTotals),\n            window: readWindow(dateFilters, publishes),",
-      "replace": "            platforms: contributingPlatforms(publishes, perVideoTotals),\n            window: readWindow({}, publishes),",
+      "find": "      platforms: contributingPlatforms(publishes, perVideoTotals),\n      window: readWindow(dateFilters, publishes),",
+      "replace": "      platforms: contributingPlatforms(publishes, perVideoTotals),\n      window: readWindow({}, publishes),",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/rate-denominator-aggregation-reads.test.ts",
       "pattern": "date filter as the window"
@@ -75,8 +75,8 @@
       "name": "RD8 the content list records no platform",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "              platforms: [publish.platform],\n              window: lifetimeWindow([publish.published_at]),",
-      "replace": "              platforms: [],\n              window: lifetimeWindow([publish.published_at]),",
+      "find": "        platforms: [publish.platform],\n        window: lifetimeWindow([publish.published_at]),",
+      "replace": "        platforms: [],\n        window: lifetimeWindow([publish.published_at]),",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/rate-denominator-aggregation-reads.test.ts",
       "pattern": "over its own platform"
@@ -145,8 +145,8 @@
       "name": "RD15 a top short records no platform",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/language-analytics.ts",
-      "find": "              platforms: [video.platform],",
-      "replace": "              platforms: [],",
+      "find": "        platforms: [video.platform],\n        window: { from: startDateStr, to: endDateStr },",
+      "replace": "        platforms: [],\n        window: { from: startDateStr, to: endDateStr },",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/rate-denominator-language-reads.test.ts",
       "pattern": "records each short over its own platform"

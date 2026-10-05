@@ -5,8 +5,8 @@
       "name": "KB-149 an episode total counts an unmeasured publish as 0",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "  if (!measured) return total;\n  return (total ?? 0) + value;",
-      "replace": "  return (total ?? 0) + value;",
+      "find": "    totalWatchTime = addMeasured(\n      totalWatchTime,\n      measuredFigure(stats, 'watch_time_seconds'),\n    );",
+      "replace": "    totalWatchTime =\n      (totalWatchTime ?? 0) + (measuredFigure(stats, 'watch_time_seconds') ?? 0);",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/episode-analytics-unmeasured.test.ts",
       "pattern": "gives no watch time, follower gain or saves"
