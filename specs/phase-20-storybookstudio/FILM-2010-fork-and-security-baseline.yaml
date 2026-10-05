@@ -24,8 +24,8 @@ acceptance_criteria:
     met: true
     evidence: "https://github.com/aroundAI/storybookstudio, commit 233f35f 'Add StorybookStudio PRD and EDD' (docs/STORYBOOKSTUDIO_PRD_EDD.md, docs/images/); transferred from XuryaX 2026-10-04"
   - text: "The name is StorybookStudio everywhere a user or another program sees it: package.json productName and name, appId, window titles, the about dialog (the upstream name appears only in its Open-source licenses view, which GPL-3.0 §5 requires), the MCP server name, the deep-link scheme storybookstudio://, the file protocol storybookstudio-file://, the project file project.storybookstudio (the loader still opens the old extension and renames it on save), settings and storage keys"
-    met: false
-    reason: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 package.json:141 productName StorybookStudio; electron/mcpServer.js:10713 serverInfo.name) set the user-facing name and kept the upstream internal identifiers, as the upstream AGENTS.md prescribes for legacy names. The owner reversed that on 2026-10-05 (#632): no upstream name survives in the product or its identifiers. The fork-side rename is aroundAI/storybookstudio#22, queued with #632; this criterion is met when the pin follows it"
+    met: true
+    evidence: "aroundAI/storybookstudio#22 (merged as 6882026, pinned at storybookstudio@e1f0b0b; owner decision 2026-10-05, #632: no upstream name survives in the product or its identifiers). package.json:3 name, :146 productName StorybookStudio, :145 appId co.aroundai.storybookstudio, :245 protocols with the storybookstudio scheme; electron/studio/protocol.js:12 STORYBOOKSTUDIO_SCHEME; tests/studio/no-upstream-names.test.mjs:73 (no tracked file is named for or mentions the upstream editor, red with 2108 hits on the old main, green after), :96 (the built renderer bundle), :122 (a packed macOS app's Info.plist carries CFBundleIdentifier co.aroundai.storybookstudio and the storybookstudio URL scheme); tests/studio/legacy-names.test.mjs:40 (settings under an earlier prefix move once), :68 (a project pulled before the rename opens and its first save writes project.storybookstudio and removes the old file), :111 (the earlier userData folder moves once, never over an existing one), :126 (LUTs copied from the earlier database). Data no longer leaves the app for the upstream author: src/services/feedback.js:11 ships no feedback endpoint (the upstream author's worker is not ours), the Discover catalog is empty (public/discover/catalog.json) and the app's Discord callout and sponsor links are gone (README.md:11 still carries the upstream community's Discord badge, a link in the repository page and not in the app). The upstream name appears only in the Open-source licenses view (src/components/studio/OpenSourceLicenses.jsx:8; electron/studio/licenses.js), where GPL-3.0 §5 requires it. Deviation from the criterion's wording: earlier names are read once and migrated (settings, userData folder, project files, file URLs under the earlier scheme at tests/studio/legacy-names.test.mjs:61), not kept as aliases"
   - text: "docs/AI_EDITOR_CONTRACT.md defines inputs, perception, editing primitives, editing intents, validation and lifecycle; docs/CAPABILITY_MATRIX.md lists every tool in electron/mcpServer.js with one of exists / adapter / build against the contract's verbs"
     met: true
     evidence: "aroundAI/storybookstudio#2 and #4 (storybookstudio@9fa74d2 docs/AI_EDITOR_CONTRACT.md (section 8 safety alignment in #4), docs/CAPABILITY_MATRIX.md, 130 tools: exists 112, adapter 18, build 21; scripts/capability-matrix.mjs --check; tests/studio/capabilityMatrix.test.mjs)"
@@ -46,7 +46,7 @@ acceptance_criteria:
     evidence: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 docs/UPSTREAM.md last merged head fdd8255, the section Patches we offer upstream, the merge log)"
   - text: "CI on the fork runs the upstream editor's existing tests plus tests/studio/*; the package builds for macOS arm64 (the first target) with protocols: [{name: StorybookStudio, schemes: [storybookstudio]}] in electron-builder config"
     met: false
-    reason: "half met. aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 .github/workflows/ci.yml) runs on macos-14 the four upstream scripts (test:media-preparation, check:media-preparation, test:export-scheduler, test:rife-hardening) plus test:studio and npm run build, which is vite build only; nightly.yml runs npm test. package.json:227 declares the deep-link protocol (renamed storybookstudio by aroundAI/storybookstudio#22) and :235 the mac dmg arm64 target, but only release.yml:410 runs electron-builder --mac, on release, so no CI run on a pull request packages the app"
+    reason: "half met. aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 .github/workflows/ci.yml) runs on macos-14 the four upstream scripts (test:media-preparation, check:media-preparation, test:export-scheduler, test:rife-hardening) plus test:studio and npm run build, which is vite build only; nightly.yml runs npm test. package.json:245 declares the deep-link protocol (renamed storybookstudio by aroundAI/storybookstudio#22) and :256 the mac dmg arm64 target, but only release.yml:410 runs electron-builder --mac, on release, so no CI run on a pull request packages the app"
 test_plan:
   unit:
     - {text: "MCP auth: missing, wrong and right bearer; non-loopback Origin refused", met: true, evidence: "aroundAI/storybookstudio#3 (storybookstudio@9fa74d2 tests/studio/mcpAuth.test.mjs)"}
@@ -59,9 +59,15 @@ remaining:
   - criterion: "CI packages the app for macOS arm64 on a pull request"
     reason: "ci.yml stops at vite build; electron-builder runs only in release.yml on a release"
     closed_by: "FILM-2015"
-  - criterion: "The name is StorybookStudio everywhere a user or another program sees it"
-    reason: "Owner decision 2026-10-05 (#632, aroundAI/storybookstudio#22): the fork renames the deep-link scheme, file protocol, project file extension, package name, appId and storage keys, keeping the upstream name only in the licenses view"
-    closed_by: "FILM-2010"
+  - criterion: "The macOS caption engine downloads on first use"
+    reason: "the first caption download on macOS answers 404 until the whisper-mac-engine release is published (README.md:136; the build is .github/workflows/whisper-mac-engine.yml, run by hand with publish set); a machine that already has the engine is unaffected"
+    closed_by: "owner"
+  - criterion: "The Linux packages name a real maintainer address"
+    reason: "package.json:284 carries the placeholder maintainer aroundAI <opensource@aroundai.co>; the owner confirms or replaces it before a Linux release"
+    closed_by: "owner"
+  - criterion: "The Windows signing names are the real ones"
+    reason: "package.json:238 azureSignOptions (publisherName aroundAI and the Azure account and profile names) are set without a signing run; the owner confirms them against the Azure account before a Windows release"
+    closed_by: "owner"
 open_questions:
   - "Windows at launch (README open question 4) decides whether NVENC and the Windows protocol registration are in this spec's CI matrix."
 notes: >
@@ -80,6 +86,15 @@ notes: >
   for shot audio and caption audio. docs/MCP.md and
   .mcp.json carry the bearer through ${STORYBOOKSTUDIO_MCP_TOKEN}. Fork docs follow-up: docs/UPSTREAM.md says the MCP patch generates a per-launch token, but the code persists the secret in userData/mcp-secret. The matrix counts
   130 tools, not 129 (exists 112, adapter 18, build 21).
+  Rename: owner decision 2026-10-05 (#632) reversed the rule that kept the
+  upstream editor's internal identifiers. aroundAI/storybookstudio#22 (merged
+  as 6882026, pinned at storybookstudio@e1f0b0b) renamed the package, appId,
+  scheme, file protocol, project extension and storage keys, and moved every
+  earlier name behind a one-time migration (src/studio/legacyNames.json,
+  tests/studio/legacy-names.test.mjs). The same PR removed what sent data to
+  the upstream author: the feedback endpoint, the Discover catalog and the
+  app's Discord and sponsor links. The post-rename packaged-app run is
+  recorded in FILM-2015. The three items left in remaining are the owner's.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
