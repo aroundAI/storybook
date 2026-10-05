@@ -167,27 +167,25 @@ describe('getLanguagePerformance, recorded (FILM-1732)', () => {
     const byLanguage = new Map(rows.map((row) => [row.language, row]));
 
     // en: (270 + 54 + 16) / 5,000 — Facebook's views are null and add none.
-    expect(byLanguage.get('en')?.engagement.value).toBeCloseTo(6.8, 10);
+    expect(byLanguage.get('en')?.engagement?.value).toBeCloseTo(6.8, 10);
     // es: (100 + 30 + 30) / 2,000
-    expect(byLanguage.get('es')?.engagement.value).toBeCloseTo(8, 10);
-    // hi: no views in the window, so 0.
-    expect(byLanguage.get('hi')?.engagement.value).toBe(0);
+    expect(byLanguage.get('es')?.engagement?.value).toBeCloseTo(8, 10);
+    // hi: no views in the window: not measured, not 0 (KB-194).
+    expect(byLanguage.get('hi')?.engagement).toBeNull();
   });
 
   it('records the platforms whose rows were summed, over the read’s window', async () => {
     const rows = await getLanguagePerformance('project-1', options);
     const byLanguage = new Map(rows.map((row) => [row.language, row]));
 
-    expect(byLanguage.get('en')?.engagement.denominator).toEqual(
+    expect(byLanguage.get('en')?.engagement?.denominator).toEqual(
       denominator(['youtube', 'facebook']),
     );
-    expect(byLanguage.get('es')?.engagement.denominator).toEqual(
+    expect(byLanguage.get('es')?.engagement?.denominator).toEqual(
       denominator(['tiktok']),
     );
-    // A language with no rows in the window pooled no platform.
-    expect(byLanguage.get('hi')?.engagement.denominator).toEqual(
-      denominator([]),
-    );
+    // A language with no views in the window has no rate to record.
+    expect(byLanguage.get('hi')?.engagement).toBeNull();
   });
 });
 
@@ -198,18 +196,18 @@ describe('getPlatformLanguageMatrix, recorded (FILM-1732)', () => {
       rows.find((row) => row.platform === platform);
 
     // youtube × en: (240 + 48 + 12) / 5,000
-    expect(cell('youtube')?.engagementRate.value).toBeCloseTo(6, 10);
-    // facebook × en: interactions but no views, so 0.
-    expect(cell('facebook')?.engagementRate.value).toBe(0);
+    expect(cell('youtube')?.engagementRate?.value).toBeCloseTo(6, 10);
+    // facebook × en: interactions but no views: not measured (KB-194).
+    expect(cell('facebook')?.engagementRate).toBeNull();
     // tiktok × es: (100 + 30 + 30) / 2,000
-    expect(cell('tiktok')?.engagementRate.value).toBeCloseTo(8, 10);
+    expect(cell('tiktok')?.engagementRate?.value).toBeCloseTo(8, 10);
   });
 
   it('records each cell over its one platform', async () => {
     const rows = await getPlatformLanguageMatrix('project-1', options);
 
-    for (const row of rows) {
-      expect(row.engagementRate.denominator).toEqual(
+    for (const row of rows.filter((entry) => entry.engagementRate)) {
+      expect(row.engagementRate?.denominator).toEqual(
         denominator([row.platform]),
       );
     }
@@ -228,13 +226,13 @@ describe('getContentTypeComparison, recorded (FILM-1732)', () => {
       families.find((entry) => entry.family === name);
 
     // short_vertical: (330 + 76 + 44) / 6,000; revenue 120 / 6,000.
-    expect(family('short_vertical')?.engagement.value).toBeCloseTo(7.5, 10);
+    expect(family('short_vertical')?.engagement?.value).toBeCloseTo(7.5, 10);
     expect(family('short_vertical')?.revenuePerViewCents?.value).toBeCloseTo(
       0.02,
       10,
     );
     // long_horizontal: (40 + 8 + 2) / 1,000; revenue 500 / 1,000.
-    expect(family('long_horizontal')?.engagement.value).toBeCloseTo(5, 10);
+    expect(family('long_horizontal')?.engagement?.value).toBeCloseTo(5, 10);
     expect(family('long_horizontal')?.revenuePerViewCents?.value).toBeCloseTo(
       0.5,
       10,
@@ -248,11 +246,11 @@ describe('getContentTypeComparison, recorded (FILM-1732)', () => {
     const shorts = denominator(['youtube', 'facebook', 'tiktok']);
 
     expect(comparison.window).toEqual(WINDOW);
-    expect(family('short_vertical')?.engagement.denominator).toEqual(shorts);
+    expect(family('short_vertical')?.engagement?.denominator).toEqual(shorts);
     expect(family('short_vertical')?.revenuePerViewCents?.denominator).toEqual(
       shorts,
     );
-    expect(family('long_horizontal')?.engagement.denominator).toEqual(
+    expect(family('long_horizontal')?.engagement?.denominator).toEqual(
       denominator(['youtube']),
     );
   });

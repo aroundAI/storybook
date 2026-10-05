@@ -79,7 +79,7 @@ const AggregateAnalyticsSchema = z
     audience: AudienceDataSchema.optional(),
     trendFacts: z.array(TrendFactSchema).max(40).optional(),
     contentCount: z.number(),
-    avgEngagementRate: z.number(),
+    avgEngagementRate: z.number().nullable(),
   })
   .nullable();
 

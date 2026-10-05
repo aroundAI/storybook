@@ -31,7 +31,8 @@ export interface OverviewAnalytics {
   totalLikes: number | null;
   totalComments: number | null;
   /** Likes and comments per view (KB-171), with its record (FILM-1732). */
-  avgEngagementRate: RecordedRate;
+  /** Null where it was not measured (KB-194). */
+  avgEngagementRate: RecordedRate | null;
   contentCount: number;
   seasons?: {
     seasonId: string;

@@ -287,26 +287,15 @@ async function getAccountFigures(
   }));
 
   const window = { from: startDateStr, to: endDateStr };
-  const engagementRate =
-    currentAnalyticsTotals.views === null
-      ? null
-      : recordedEngagementRatePercent(
-          {
-            ...currentAnalyticsTotals,
-            views: currentAnalyticsTotals.views,
-            // An unmeasured count adds none: X's shares (FILM-1727), or
-            // none read (KB-192).
-            likes: currentAnalyticsTotals.likes ?? 0,
-            comments: currentAnalyticsTotals.comments ?? 0,
-            shares: currentAnalyticsTotals.shares ?? 0,
-          },
-          recordViewsDenominator({
-            platforms: allPublishes
-              .filter(({ id }) => perVideoTotals.has(id))
-              .map(({ platform }) => platform),
-            window,
-          }),
-        );
+  const engagementRate = recordedEngagementRatePercent(
+    currentAnalyticsTotals,
+    recordViewsDenominator({
+      platforms: allPublishes
+        .filter(({ id }) => perVideoTotals.has(id))
+        .map(({ platform }) => platform),
+      window,
+    }),
+  );
 
   // Top content (top 5 by views)
   const topContent = buildTopContent(allPublishes, perVideoTotals, window);
@@ -421,13 +410,10 @@ function buildTopContent(
 
     const episode = publish.episodes as PublishRow['episodes'];
     // No views, nothing to divide by: not measured, never 0% (KB-153).
-    const engagementRate =
-      stats.views === null
-        ? null
-        : recordedEngagementRatePercent(
-            { ...stats, views: stats.views },
-            recordViewsDenominator({ platforms: [publish.platform], window }),
-          );
+    const engagementRate = recordedEngagementRatePercent(
+      stats,
+      recordViewsDenominator({ platforms: [publish.platform], window }),
+    );
 
     contentList.push({
       id: publish.id,

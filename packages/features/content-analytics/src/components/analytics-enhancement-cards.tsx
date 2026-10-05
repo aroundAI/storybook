@@ -276,11 +276,15 @@ function ShortsROIBody({
     sources.contentCount > 0 ? sources.views / sources.contentCount : 0;
   const shortsMultiplier =
     viewsPerSource > 0 ? viewsPerShort / viewsPerSource : 0;
-  const engagementDiff = clips.engagement.value - sources.engagement.value;
-  // A difference of two rates: recorded over both families' platforms.
+  // A difference of two rates: not measured unless both are (KB-194).
+  const engagementDiff =
+    clips.engagement && sources.engagement
+      ? clips.engagement.value - sources.engagement.value
+      : null;
+  // Recorded over both families' platforms.
   const engagementDiffDenominator = poolDenominators(
     [clips, sources].flatMap((row) =>
-      row.published ? [row.engagement.denominator] : [],
+      row.published && row.engagement ? [row.engagement.denominator] : [],
     ),
     contentTypeData.window,
   );
@@ -324,14 +328,23 @@ function ShortsROIBody({
         <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
           <span className="text-sm">Engagement difference</span>
           <span className="inline-flex items-center gap-1">
-            <Badge variant={engagementDiff > 0 ? 'default' : 'secondary'}>
-              {engagementDiff > 0 ? '+' : ''}
-              {engagementDiff.toFixed(1)}%
+            <Badge
+              variant={
+                engagementDiff !== null && engagementDiff > 0
+                  ? 'default'
+                  : 'secondary'
+              }
+            >
+              {engagementDiff === null
+                ? 'Not measured'
+                : `${engagementDiff > 0 ? '+' : ''}${engagementDiff.toFixed(1)}%`}
             </Badge>
-            <RateDenominator
-              denominator={engagementDiffDenominator}
-              figure="engagement difference"
-            />
+            {engagementDiff !== null && (
+              <RateDenominator
+                denominator={engagementDiffDenominator}
+                figure="engagement difference"
+              />
+            )}
           </span>
         </div>
         <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
@@ -401,7 +414,11 @@ export function BestEpisodesToClipCard({
     const clips = familyTotals(contentTypeData, CLIP_FAMILY);
     const sources = familyTotals(contentTypeData, SOURCE_FAMILY);
 
-    if (clips.engagement.value > sources.engagement.value) {
+    if (
+      clips.engagement &&
+      sources.engagement &&
+      clips.engagement.value > sources.engagement.value
+    ) {
       recommendations.push({
         icon: <TrendingUp className="h-4 w-4 text-green-500" />,
         title: 'Shorts outperform horizontal long-form',
@@ -441,13 +458,14 @@ export function BestEpisodesToClipCard({
     }
 
     const highEngagementLang = labelledLanguages.find(
-      (l) => l.engagement.value > 5 && l.contentCount < 5,
+      (l) =>
+        l.engagement !== null && l.engagement.value > 5 && l.contentCount < 5,
     );
     if (highEngagementLang) {
       recommendations.push({
         icon: <TrendingUp className="h-4 w-4 text-purple-500" />,
         title: `Expand ${languageName(highEngagementLang.language)} content`,
-        description: `High engagement (${highEngagementLang.engagement.value.toFixed(1)}%) but low volume. Great opportunity for more clips.`,
+        description: `High engagement (${highEngagementLang.engagement?.value.toFixed(1)}%) but low volume. Great opportunity for more clips.`,
         priority: 'medium',
       });
     }

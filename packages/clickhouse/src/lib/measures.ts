@@ -383,19 +383,37 @@ export function engagementRatio(
 }
 
 /**
- * The engagement percentage the dashboards show today: the one definition,
- * over the stored views column, 0 where there are no views.
+ * Counts as a read returns them: null where the read measured nothing.
+ * `views` is the denominator, `likes` and `comments` and `shares` the
+ * engagement numerator.
+ */
+export type MeasuredEngagementCounts = {
+  [K in 'views' | 'likes' | 'comments' | 'shares']: number | null;
+};
+
+/**
+ * The engagement percentage the dashboards show: the one definition, over
+ * the stored views column. Null (not measured, never 0) when the views are
+ * null or zero, or when a numerator count (likes, comments, shares) is
+ * null.
  *
- * Held deliberately until FILM-1719 can explain the change on screen — the
- * owner's ruling of 2026-09-22 (FILM-1722 §12): a figure is not switched to
- * engaged views, nor suppressed, before the copy that says why. New surfaces
- * read `computeMeasure` instead, which never returns that 0.
+ * Until 2026-10-05 this returned 0 there. That was held deliberately until
+ * FILM-1722 could explain a changed figure on screen (owner, 2026-09-22,
+ * FILM-1722 §12). The owner lifted the hold for the unmeasured case only
+ * on 2026-10-05 (KB-194): nothing else about the rate changes, and it is
+ * not switched to engaged views. New surfaces read `computeMeasure`.
  */
 export function displayedEngagementRatePercent(
-  totals: EngagementCounts & { views: number },
-): number {
-  const value = engagementRatio(totals, totals.views);
-  return value === null ? 0 : value * 100;
+  totals: MeasuredEngagementCounts,
+): number | null {
+  const { views, likes, comments, shares } = totals;
+
+  if (views === null || likes === null || comments === null || shares === null)
+    return null;
+
+  const value = engagementRatio({ likes, comments, shares }, views);
+
+  return value === null ? null : value * 100;
 }
 
 function inputAbsence(
@@ -857,27 +875,36 @@ export function denominatorSentence(stamp: DenominatorStamp): string {
   return sentences.join(' ');
 }
 
-/** Engagement rate as the dashboards show it, with its record (FILM-1732). */
+/**
+ * Engagement rate as the dashboards show it, with its record (FILM-1732);
+ * null when it is not measured (KB-194).
+ */
 export function recordedEngagementRatePercent(
-  totals: EngagementCounts & { views: number },
+  totals: MeasuredEngagementCounts,
   denominator: DenominatorStamp,
-): RecordedRate {
-  return { value: displayedEngagementRatePercent(totals), denominator };
+): RecordedRate | null {
+  const value = displayedEngagementRatePercent(totals);
+
+  return value === null ? null : { value, denominator };
 }
 
 /**
- * Likes and comments per view, as a percentage, 0 without views: the
- * figure two surfaces label engagement while leaving shares out (KB-171).
- * A second definition, kept as it is so no figure moves; named here so it
- * is recorded rather than recomputed inline.
+ * Likes and comments per view, as a percentage: the figure two surfaces
+ * label engagement while leaving shares out (KB-171). A second numerator,
+ * kept as it is so no measured figure moves, over the same rule: null when
+ * views are null or zero or a count is null (KB-194).
  */
 export function recordedLikesAndCommentsPercent(
-  totals: Pick<EngagementCounts, 'likes' | 'comments'> & { views: number },
+  totals: Pick<MeasuredEngagementCounts, 'views' | 'likes' | 'comments'>,
   denominator: DenominatorStamp,
-): RecordedRate {
-  const value = ratio(totals.likes + totals.comments, totals.views);
+): RecordedRate | null {
+  const { views, likes, comments } = totals;
 
-  return { value: value === null ? 0 : value * 100, denominator };
+  if (views === null || likes === null || comments === null) return null;
+
+  const value = ratio(likes + comments, views);
+
+  return value === null ? null : { value: value * 100, denominator };
 }
 
 /**

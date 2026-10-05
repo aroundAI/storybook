@@ -241,7 +241,7 @@ const AnalyticsInsights = z.object({
       .max(40)
       .optional(),
     contentCount: z.number(),
-    avgEngagementRate: z.number(),
+    avgEngagementRate: z.number().nullable(),
   }),
 });
 

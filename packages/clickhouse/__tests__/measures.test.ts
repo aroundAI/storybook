@@ -37,9 +37,32 @@ describe('engagementRatio: the one definition (FILM-1713)', () => {
     expect(engagementRatio(COUNTS, 0)).toBeNull();
   });
 
-  it("keeps today's displayed percentage, 0 included, until FILM-1719", () => {
+  it('keeps the displayed percentage where it is measured', () => {
     expect(displayedEngagementRatePercent(COUNTS)).toBe(10);
-    expect(displayedEngagementRatePercent({ ...COUNTS, views: 0 })).toBe(0);
+  });
+
+  it('is not measured, never 0, over zero or null views or an unmeasured count (KB-194)', () => {
+    expect(displayedEngagementRatePercent({ ...COUNTS, views: 0 })).toBeNull();
+    expect(
+      displayedEngagementRatePercent({ ...COUNTS, views: null }),
+    ).toBeNull();
+    expect(
+      displayedEngagementRatePercent({ ...COUNTS, likes: null }),
+    ).toBeNull();
+    expect(
+      displayedEngagementRatePercent({ ...COUNTS, comments: null }),
+    ).toBeNull();
+    expect(
+      displayedEngagementRatePercent({ ...COUNTS, shares: null }),
+    ).toBeNull();
+    expect(
+      displayedEngagementRatePercent({
+        ...COUNTS,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+      }),
+    ).toBe(0);
   });
 });
 

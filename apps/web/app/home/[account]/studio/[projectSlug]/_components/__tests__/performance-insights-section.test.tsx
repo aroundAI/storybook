@@ -53,4 +53,34 @@ describe('PerformanceInsightsSection', () => {
 
     expect(container.textContent).not.toMatch(/[+-]\d+%/);
   });
+
+  it('says Not measured, never 0%, when the engagement rate is null (KB-194)', () => {
+    const { container } = render(
+      <PerformanceInsightsSection
+        analytics={{ ...analytics, avgEngagementRate: null }}
+      />,
+    );
+
+    const engagement = container.querySelector(
+      '[data-test="overview-engagement-rate"]',
+    );
+
+    expect(engagement?.textContent).toBe('Not measured');
+  });
+
+  it('shows a measured 0% as 0%', () => {
+    const { container } = render(
+      <PerformanceInsightsSection
+        analytics={{
+          ...analytics,
+          avgEngagementRate: { ...analytics.avgEngagementRate, value: 0 },
+        }}
+      />,
+    );
+
+    expect(
+      container.querySelector('[data-test="overview-engagement-rate"]')
+        ?.textContent,
+    ).toBe('0%');
+  });
 });

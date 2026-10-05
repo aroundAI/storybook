@@ -190,8 +190,8 @@ describe('recorded rates keep their figures (FILM-1732)', () => {
       recordedEngagementRatePercent(
         { views: 0, likes: 5, comments: 0, shares: 0 },
         record,
-      ).value,
-    ).toBe(0);
+      ),
+    ).toBeNull();
   });
 
   it('likes and comments per view leaves shares out, as the two cards always did (KB-171)', () => {
@@ -199,7 +199,7 @@ describe('recorded rates keep their figures (FILM-1732)', () => {
       recordedLikesAndCommentsPercent(
         { views: 1000, likes: 50, comments: 30 },
         record,
-      ).value,
+      )?.value,
     ).toBe(8);
   });
 

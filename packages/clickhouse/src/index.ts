@@ -202,6 +202,7 @@ export type {
   DenominatorStamp,
   DenominatorWindow,
   ViewDefinitionRef,
+  MeasuredEngagementCounts,
   RecordedRate,
   InputSupportCell,
   InstagramMediaSurface,
