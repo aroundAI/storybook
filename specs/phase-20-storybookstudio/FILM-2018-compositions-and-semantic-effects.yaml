@@ -3,7 +3,7 @@ title: "Composition Clips (Remotion render-to-asset), Graphics Primitives and Se
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: XL
 dependencies:
   - spec_id: "FILM-2013"
@@ -28,7 +28,8 @@ summary: >
   clearer drawn. The semantic effects and choose_visual_representation are
   built (aroundAI/storybookstudio#30); the composition clip, its Remotion
   renderer and the first primitive, Counter, are built (#32); the other nine
-  primitives and studio_add_graphic are not. README open question 1 (content type) and
+  primitives, studio_add_graphic, its pop SFX and the graphic-over-caption
+  QA check are built (#37). README open question 1 (content type) and
   Remotion's licence were answered by the owner on 2026-10-05 (notes). Design: PRD-EDD.md
   Part 2 "Audio, captions, compositions and localization"; Part 1 R-43, R-45.
 acceptance_criteria:
@@ -39,11 +40,11 @@ acceptance_criteria:
     met: true
     evidence: "aroundAI/storybookstudio#32 (at storybookstudio@418e8a8 electron/studio/compositionRenderer.js:55 createCompositionRenderer, :62 resolve reads the brand (:67) and keys the render (:69, sha256 at :72), :88 renders to a temporary name and renames it into place (:93), :104 one render at a time in the order asked, a cache hit returns at once and two asks for one key share a render; src/studio/compositions/key.js:31 compositionKeyMaterial is canonical JSON of the id, the props with defaults filled, the brand tokens the primitive reads, the engine, length, size and fps, so a props or brand change is a new key, :55 compositionRenderPath; Remotion sits behind engine.render(...): electron/studio/compositionEngines/remotion.js:26 createRemotionEngine, :55 renderMedia to VP9 (:58) yuva420p (:60) in Chrome Headless Shell, :88 packagedRemotionPaths; electron/studio/studioMain.js:143 wires it; src/studio/compositions/renderSync.js:24 keeps each clip attached to its render and renders again after a brand change; package.json:115 @remotion/renderer 4.0.533, :133 @remotion/bundler as a devDependency, :41 npm run build:compositions builds the bundle, which storybookstudio/.github/workflows/ci.yml:75 runs; tests/studio/composition-renderer.test.mjs:42 miss then hit, :63 new props a new render, :75 a brand change the primitive reads invalidates it and one it does not read does not, :91 one at a time and shared, :117 a failed render leaves no file; tests/studio/composition-remotion.test.mjs:36 a 4 s Counter through Remotion to an alpha WebM in the brand colours; tests/studio/composition-packaging.test.mjs:23). Timing, recorded in the fork PR with storybookstudio/scripts/composition-timings.mjs: a 4 s 1080p30 Counter took 1.43 to 1.59 s at load ~14, 2.33 to 5.36 s at load ~58, and 2.05 s in the packaged app, against the 10 s target"
   - text: "src/studio/compositions/: Text, Counter, Callout, Arrow, Highlight, LowerThird, Chart, Map, Timeline, ProgressBar, each a Remotion component taking brand tokens and a props schema; a catalogue the agent can read via studio_get_context"
-    met: false
-    reason: "Counter only. aroundAI/storybookstudio#32 (at storybookstudio@418e8a8 src/studio/compositions/catalogue.js:40 Counter's zod props schema, :52 the catalogue with brand tokens per primitive (:58), :102 listCompositions; src/studio/compositions/remotion/Counter.jsx, src/studio/compositions/remotion/Root.jsx:26 one <Composition> per catalogue id; tests/studio/compositions-key.test.mjs:63 props checked against the schema, :77 the Remotion root draws every id). Text, Callout, Arrow, Highlight, LowerThird, Chart, Map, Timeline and ProgressBar are not built, and listCompositions is not yet read by studio_get_context (nothing outside catalogue.js calls it)"
+    met: true
+    evidence: "aroundAI/storybookstudio#37 (merged as 1fb55a5, at storybookstudio@496a554 src/studio/compositions/catalogue.js:115 PRIMITIVES: the ten, each with a zod props schema, the brand tokens it reads and its text props, :294 resolveCompositionProps checks props against the schema and fills defaults, :347 listCompositions; src/studio/compositions/remotion/Root.jsx:24 COMPONENTS, one Remotion component per catalogue id (Text.jsx, Counter.jsx, Callout.jsx, Arrow.jsx, Highlight.jsx, LowerThird.jsx, Chart.jsx, MapMarker.jsx, Timeline.jsx, ProgressBar.jsx); src/studio/capabilityRuntime.js:361 studio_get_context returns compositions: listCompositions(); tests/studio/compositions-primitives.test.mjs:41 the catalogue has the ten and Root.jsx draws exactly those ids, :49 per primitive defaults fill, bad and unknown props are refused, text props exist and brand tokens are declared; tests/studio/graphic-integration.test.mjs:119 studio_get_context carries the catalogue; tests/studio/composition-remotion.test.mjs:99 every primitive renders through real Remotion, drawn inside its footprint and transparent outside it, on 16:9 and 9:16). Deviations: the ids are lowercase slugs, so LowerThird and ProgressBar are lower-third and progress-bar, and Map's component is MapMarker; the catalogue describes each prop in one line (catalogue.js:361), so it fits the in-app agent's 18,000-character result cap (src/services/agentTools.js:4)"
   - text: "studio_add_graphic {kind, text, at, duration, anchor?} creates a composition clip with props validated by the primitive's schema, places it inside the aspect's safe area, and adds a pop SFX from the brand's SFX style when kind is counter or callout; QA checks overlap with captions"
-    met: false
-    reason: "not built: studio_add_graphic is listed with available false (storybookstudio@418e8a8 electron/studio/mcpCapabilities.js:165, :168) and answers not available yet"
+    met: true
+    evidence: "aroundAI/storybookstudio#37 (merged as 1fb55a5, at storybookstudio@496a554 electron/studio/mcpCapabilities.js:167 studio_add_graphic, available true (:170), :831 its case; src/studio/intents/add_graphic.js:79 compile: the kind names a primitive (catalogue.js:269 GRAPHIC_KINDS), the props are checked by that primitive's schema, :102 with no anchor the graphic moves to an anchor clear of the captions on screen with it, :116 an add_composition_clip step, :124 a counter or callout adds a pop, the project's own pop SFX (:54 libraryPop) through add_asset_to_timeline or else the built-in pop through add_sfx_clip (src/studio/compositions/sfx.js:7 POP_FILE); placement inside the aspect's safe area: src/studio/compositions/remotion/layout.js:61 footprintFor places every primitive inside the safe rectangle (:28 safeRectFor), the same footprint the component draws in; src/studio/compositions/placement.js:51 captionsCovered measures it against the caption blocks; QA: src/studio/review/qaChecks.js:335 graphicIssues, :354 graphic_caption_overlap, a failing issue (severity 0.6), run by electron/studio/qa.js:97; electron/mcpServer.js:121 studio_add_graphic is plan-writable; src/services/agentTools.js:77 the in-app agent has it; tests/studio/compositions-primitives.test.mjs:101 every footprint at every anchor sits inside the safe area of 16:9, 9:16 and 1:1, :137 the project's pop when the library has one, else the built-in, :155 the compiler refuses what it cannot place, :168 the built-in pop is a 0.3 s 48 kHz WAV; tests/studio/graphic-integration.test.mjs:174 a lower third with no anchor moves clear of the caption, and given an anchor over it QA flags graphic_caption_overlap, :196 an unknown kind, bad props and an unknown prop are refused before anything changes). Deviations: the brand contract has no SFX style field, so the pop is the project library's pop, else the built-in one; there is no separate safe-area QA check for graphics, because placement is inside the safe area by construction (proven by the unit test across anchors and aspects) and QA checks the caption overlap; the tool also takes props (overrides checked by the schema) and, like studio_edit, previewOnly and planId; the render key is version 2 (src/studio/compositions/key.js:22)"
   - text: "Semantic effects punch_in, ken_burns, speed_ramp, freeze_frame, color_grade compile to action plans over set_clip_keyframes, set_clip_speed, split_clip and add_glsl_effect with reasons; exposed as studio_edit intents"
     met: true
     evidence: "aroundAI/storybookstudio#30 (merged as b266c45, pinned at storybookstudio@0cd8c53 src/studio/intents/effects.js:122 punchIn, :161 kenBurns, :204 speedRamp, :250 freezeFrame, :285 colorGrade, :311 EFFECT_COMPILERS; src/studio/compile.js:24 imports them and :31 registers them as owner FILM-2018, :34 STUDIO_EDIT_INTENTS includes them; electron/studio/mcpCapabilities.js:24 STUDIO_EDIT_INTENTS lists the five, so studio_edit offers them; tests/studio/effects.test.mjs:25 the five are studio_edit intents and every tool they emit is plan-writable (add_glsl_effect added), :32 punch_in, :51 ken_burns, :69 speed_ramp, :97 freeze_frame, :120 color_grade, :142 a hand-edited shot is left alone with a note, :155 every effect previews to cards and a draft report with a reason per step; tests/studio/effects-integration.test.mjs:57 freeze_frame over MCP applies split and speed keyframes with one logged line per step, :81 color_grade, punch_in, speed_ramp and ken_burns over MCP). Dev app, freeze_frame on S3.2: the shot split at 47.5 s, the version 'AI: freeze on S3.2 for a second' was created, and the burned timecode held at 1.708 while the captions advanced. Deviations from the criterion's wording: (1) no step uses set_clip_speed, because it changes the clip's length (src/studio/intents/effects.js:11); speed_ramp and freeze_frame use set_clip_keyframes on the speed property plus split_clip, which keep the length, and split the shot where the ramp or hold ends so the rest is back on its sound. (2) freeze_frame holds at the ramp floor of 0.05x (effects.js:22 MIN_RAMP_SPEED, about 1.2 source frames per second of hold), not a true still, because the editor has no hold-frame primitive. (3) speed_ramp is slow motion only, 0.05 to 0.99x (effects.js:209; a faster ramp would need picture past the shot's out point)"
@@ -56,16 +57,13 @@ acceptance_criteria:
 test_plan:
   unit:
     - {text: "Hash stability", met: true, evidence: "aroundAI/storybookstudio#32 (storybookstudio@418e8a8 tests/studio/compositions-key.test.mjs:29 key order and filled defaults leave the hash alone, and the digest is pinned, :42 every input that changes the picture changes it, :58 a brand token the primitive does not read does not)"}
-    - {text: "Props schemas per primitive", met: false, reason: "only Counter's exists (tests/studio/compositions-key.test.mjs:63); the other nine primitives are not built"}
+    - {text: "Props schemas per primitive", met: true, evidence: "aroundAI/storybookstudio#37 (storybookstudio@496a554 tests/studio/compositions-primitives.test.mjs:49 for each of the ten: defaults fill, bad and unknown props are refused, text props exist, brand tokens are declared; :79 text is read into each primitive's main props and props wins over it)"}
     - {text: "Effect compilers", met: true, evidence: "aroundAI/storybookstudio#30 (storybookstudio@0cd8c53 tests/studio/effects.test.mjs:32 punch_in, :51 ken_burns, :69 speed_ramp, :97 freeze_frame, :120 color_grade, :135 the film looks are glslFilmLook's presets; tests/studio/effects-integration.test.mjs:57, :81 over MCP)"}
   integration:
-    - {text: "'At 32 s show a counter to 87' produces a composition clip, a cached render, a pop SFX, and passes safe-area QA on 16:9 and 9:16", met: false, reason: "needs studio_add_graphic, the pop SFX and the graphics QA; the composition clip and its render exist (#32)"}
+    - {text: "'At 32 s show a counter to 87' produces a composition clip, a cached render, a pop SFX, and passes safe-area QA on 16:9 and 9:16", met: true, evidence: "aroundAI/storybookstudio#37 (storybookstudio@496a554 tests/studio/graphic-integration.test.mjs:164 on 16:9 and :169 on 9:16, over MCP: studio_get_context carries the catalogue (:119), the preview then apply of {kind counter, text 87, at 32, duration 4} makes a composition clip at 32 s counting to 87 on a Graphics track and a 0.3 s pop at 32 s, the render lands at compositions/counter-<hash>.webm and a second resolve is a cache hit, and QA has no caption_safe_area, caption_overlap or graphic_caption_overlap issue). The test renders with the test-card engine; the real Remotion render of every primitive is tests/studio/composition-remotion.test.mjs:99"}
   e2e: []
 open_questions: []
-remaining:
-  - criterion: "The nine graphics primitives besides Counter, with studio_get_context reading the catalogue (acceptance criterion 3), and studio_add_graphic (criterion 4)"
-    reason: "not built. studio_add_graphic still answers VALIDATION_FAILED not available yet"
-    closed_by: "FILM-2018"
+remaining: []
 notes: >
   Owner decisions, 2026-10-05. Content type (README open question 1) is all:
   generative and programmatic. Remotion licence: the owner's company is a
@@ -74,6 +72,13 @@ notes: >
   GPL-3.0 conveyance terms are not triggered. Installers that contain Remotion
   must not be published; publishing one needs this decision revisited first.
   This records the licence status acceptance criterion 7 asks for.
+  aroundAI/storybookstudio#35 (merged as 36aa762) enforces the rule: the
+  release preflight refuses while @remotion/* ships in the app's
+  dependencies (storybookstudio/scripts/check-release-licences.mjs:17
+  releaseLicenceCheck, run by storybookstudio/.github/workflows/release.yml:43
+  before any installer is built; tests/studio/release-licences.test.mjs:27).
+  Publishing one needs this decision revisited, then the repository variable
+  REMOTION_RELEASE_APPROVED set to true.
 
   Built in aroundAI/storybookstudio#30 (pinned at storybookstudio@0cd8c53,
   part A): the five semantic effects as studio_edit intents and
@@ -92,7 +97,22 @@ notes: >
   renderer's header comment still says the only engine is a test card
   (electron/studio/compositionRenderer.js:24), and the language variant's
   card still says compositions are not in this build (FILM-2019); both are
-  stale.
+  stale. Both comments were corrected in #37 (9c2a582).
+
+  Built in aroundAI/storybookstudio#37 (merged as 1fb55a5, at
+  storybookstudio@496a554, part C): the other nine primitives with their
+  Remotion components, the catalogue in studio_get_context, studio_add_graphic
+  with placement inside the safe area and clear of captions, the pop SFX for
+  a counter or callout, and the graphic_caption_overlap QA check (criteria 3
+  and 4). Deviations, as the criteria record: no SFX style field in the brand
+  contract, so the pop is the project library's pop, else a built-in one; no
+  separate graphic safe-area QA check, because placement is proven by unit
+  test across anchors and aspects and QA checks the caption overlap; the ids
+  lower-third and progress-bar; the extra props, previewOnly and planId
+  arguments; render key version 2; compact catalogue props for the in-app
+  agent's 18,000-character result cap. Real-render timing, recorded in the
+  fork PR: a 4 s 1080p30 Counter took 8.0 s cold in headless Chromium on
+  Linux, under the 10 s target.
 
   Render-to-asset keeps one live renderer in the preview and makes
   localization (FILM-2019) a matter of re-rendering compositions whose

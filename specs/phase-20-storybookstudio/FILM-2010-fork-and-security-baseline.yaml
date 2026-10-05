@@ -3,7 +3,7 @@ title: "The StorybookStudio Fork and Its Security Baseline"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies: []
 summary: >
@@ -55,18 +55,8 @@ test_plan:
   integration:
     - {text: "the upstream editor's existing export regression runner still passes on the fork", met: true, evidence: "aroundAI/storybookstudio#1 (storybookstudio@9fa74d2 .github/workflows/ci.yml runs test:export-scheduler and test:rife-hardening, green on the PR and on main)"}
   e2e: []
-remaining:
-  - criterion: "The macOS caption engine downloads on first use"
-    reason: "the first caption download on macOS answers 404 until the whisper-mac-engine release is published (README.md:136; the build is .github/workflows/whisper-mac-engine.yml, run by hand with publish set); a machine that already has the engine is unaffected"
-    closed_by: "owner"
-  - criterion: "The Linux packages name a real maintainer address"
-    reason: "package.json:284 carries the placeholder maintainer aroundAI <opensource@aroundai.co>; the owner confirms or replaces it before a Linux release"
-    closed_by: "owner"
-  - criterion: "The Windows signing names are the real ones"
-    reason: "package.json:238 azureSignOptions (publisherName aroundAI and the Azure account and profile names) are set without a signing run; the owner confirms them against the Azure account before a Windows release"
-    closed_by: "owner"
-open_questions:
-  - "Windows at launch (README open question 4) decides whether NVENC and the Windows protocol registration are in this spec's CI matrix."
+remaining: []
+open_questions: []
 notes: >
   The upstream editor is GPL-3.0-only, so the fork is GPL and public; StoryBook's server
   code is a separate program over HTTP and stays outside the GPL boundary.
@@ -98,6 +88,19 @@ notes: >
   the upstream author: the feedback endpoint, the Discover catalog and the
   app's Discord and sponsor links. The post-rename packaged-app run is
   recorded in FILM-2015. The three items left in remaining are the owner's.
+
+  The three owner items are closed, 2026-10-05. The macOS caption engine is
+  published: whisper-mac-engine run 37347506427 (publish=true) attached
+  whisper-cli-macos-universal-v1.9.1.zip (2,451,903 bytes) to the prerelease
+  whisper-cli-v1.9.1-mac, so the download URL in
+  storybookstudio@496a554 electron/captionWhisper.js:38 answers 200 where it
+  answered 404; README.md:135 in the fork still says it is unpublished.
+  Owner decision: the Linux maintainer aroundAI <opensource@aroundai.co>
+  (storybookstudio@496a554 package.json:329) is a real, monitored address.
+  Owner decision: Windows is not needed, so the Windows signing names
+  (package.json:263 azureSignOptions) are out of scope, and README open
+  question 4 (Windows at launch) is answered no: NVENC and the Windows
+  protocol registration are not in this spec's CI matrix.
 feature:
   database: {tables: [], columns_added: []}
   queries: []

@@ -3,7 +3,7 @@ title: "Localization Lanes: One Master Edit, Many Language Renders"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-2007"
@@ -16,7 +16,8 @@ summary: >
   One master timeline, many languages, no per-language timelines. The owner
   lifted this spec's v2 deferral on 2026-10-05; aroundAI/storybookstudio#31
   (part A) builds the lanes, the render selection, the language variant and
-  the language check, and not the graphics refit (notes).
+  the language check, and #38 (part B) the graphics: each language's words
+  on the master's graphics, refit to fit and rendered per language (notes).
   Dialogue and caption tracks carry a language; every element has
   languageDependency (none, language, locale); a render selects a language,
   including tracks that match it or are language-independent and muting the
@@ -36,11 +37,11 @@ acceptance_criteria:
     met: true
     evidence: "aroundAI/storybookstudio#31 (at storybookstudio@418e8a8 src/studio/localization/selection.js:19 elementLanguage, :35 trackForLanguage, :45 selectLanguage: one rule, and the language's own lane plays in its render though the editor mutes it; read by src/studio/delivery/exportFilter.js:15, which src/services/exporter.js:1142 applies for export_timeline and export_delivery_batch (electron/mcpServer.js:10611 languages, one file per preset and language), by src/studio/review/renderPlan.js:209, :221 and :261 for the delivery and preview renders, and by the interim renderer electron/studio/deliveryRender.js:300; captions burned through libass (deliveryRender.js:332) or written as the sidecar; tests/studio/language-lanes.test.mjs:54 a Hindi render hears the Hindi lane and shows its Devanagari captions, an English render is unchanged, export_timeline's filter selects the same way, and captions the policy turned off stay off; tests/studio/language-delivery.test.mjs:83 the 16:9 sidecar carries the Hindi cues). deliveryRender.js:67 keeps its own inLanguage helper with the same rule beside selection.js"
   - text: "studio_create_variant {kind: language, language} pulls the dubbed block via re-sync (FILM-2011), creates a Dialogue:<lang> track from dubbed_dialogue_lines at timelineStart, runs studio_add_captions for the language, and re-renders compositions with localized strings (FILM-2018)"
-    met: false
-    reason: "Built except the composition step. aroundAI/storybookstudio#31 (at storybookstudio@418e8a8 electron/studio/deliver.js:62 kind language and its presets, :634, :668 createLanguageVariant, :670 reads the dubbed block from the pulled package, :710 applies through the renderer action studio_apply_language_lane (src/studio/delivery/rendererActions.js:45, one undo step at :69; src/services/mcpActions.js:8961) or, with no window, :715 writes the project file; src/studio/localization/lanes.js:52 buildLanguageLane puts a Dialogue (<lang>) lane on the master placed by the builder's own code (:64), and a Captions (<lang>) track (:109) whose cues come from the dubbed text where each dub plays (:40 laneCaptionCues), styled and placed by studio_add_captions' placement step (:103) rather than transcribed; applied, each preset renders into renders/<version>/languages/ (deliver.js:726) and is QA-checked; tests/studio/language-lanes.test.mjs:113 the Hindi lane on a master pulled before the dub, a re-run replaces it, :153 no dub says to localize_episode and re-sync; tests/studio/language-lane-editor.test.mjs:78 the lane lands on the open master as one undo step and survives a save). Not built: re-rendering compositions with localized strings, which needs the refit (criterion 4). Deviations: the variant reads the dubbed block the last re-sync pulled and does not run one itself (lanes.js:58 names studio_check_updates and studio_apply_updates); the track is named Dialogue (<lang>), not Dialogue:<lang>. The variant card still says compositions are not in this build (deliver.js:692), which has been stale since #32 merged them"
+    met: true
+    evidence: "aroundAI/storybookstudio#31 (merged as 6b65641, at storybookstudio@418e8a8 electron/studio/deliver.js:62 kind language and its presets, :634, :668 createLanguageVariant, :670 reads the dubbed block from the pulled package, :710 applies through the renderer action studio_apply_language_lane (src/studio/delivery/rendererActions.js:45, one undo step at :69; src/services/mcpActions.js:8961) or, with no window, :715 writes the project file; src/studio/localization/lanes.js:52 buildLanguageLane puts a Dialogue (<lang>) lane on the master placed by the builder's own code (:64), and a Captions (<lang>) track (:109) whose cues come from the dubbed text where each dub plays (:40 laneCaptionCues), styled and placed by studio_add_captions' placement step (:103) rather than transcribed; applied, each preset renders into renders/<version>/languages/ (deliver.js:726) and is QA-checked; tests/studio/language-lanes.test.mjs:113 the Hindi lane on a master pulled before the dub, a re-run replaces it, :153 no dub says to localize_episode and re-sync; tests/studio/language-lane-editor.test.mjs:78 the lane lands on the open master as one undo step and survives a save). The composition step is built by aroundAI/storybookstudio#38 (merged as 496a554, at storybookstudio@496a554 electron/studio/deliver.js:710 studio_create_variant reads each graphic's words (src/studio/localization/graphics.js:56 graphicStrings: the variant's graphics argument, else words an earlier variant kept, else the dub of a dialogue line the graphic quotes word for word), stored on the master clip as composition.localized[<lang>] in the lane's undo step (src/studio/localization/lanes.js:188), :788 each preset renders the language's graphics (:337 languageGraphics, :349 renderComposition) before the render and QA, and :364 studio_deliver does the same for every non-master language; src/studio/localization/selection.js:65 compositionPropsForLanguage selects the words for a render; electron/studio/studioMain.js:102 passes renderComposition; a graphic left in the master's words is the non-failing QA note graphic_text_untranslated (src/studio/localization/refit.js:203, severity 0.3 under electron/studio/deliveryQa.js:18 FAIL_SEVERITY 0.5); tests/studio/language-delivery.test.mjs:270 the Hindi variant renders each graphic once in Hindi, refit and lengthened, composites it and passes QA while the master keeps its words, :338 studio_deliver in en and hi plays the master's graphic in English and the Hindi one in Hindi; tests/studio/language-refit.test.mjs:179 where the words come from, :194 a graphics argument naming no such graphic, prop or list length is refused, :239 the words stored on the master clip in one undo step with the lane). Deviations: the variant reads the dubbed block the last re-sync pulled and does not run one itself (storybookstudio@496a554 src/studio/localization/lanes.js:61 names studio_check_updates and studio_apply_updates); the track is named Dialogue (<lang>), not Dialogue:<lang>; the graphics' words do not come from the package's dubbed block, which carries translated dialogue only (packages/features/desktop-integration/src/build-edit-package.ts:534 dubbed), so they come from the agent, an earlier variant or a quoted line's dub, and the owner decided on 2026-10-05 that graphics are not translated otherwise (notes)"
   - text: "Localized graphics refit: text measured per language; font size reduced to a floor, then wrapping, then duration extended within 20%; a string that still does not fit is a QA issue 'localized text exceeds container' with the element id"
-    met: false
-    reason: "needs FILM-2018's graphics primitives; not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#38 (merged as 496a554, at storybookstudio@496a554 src/studio/localization/refit.js:125 refitSlot: per text slot the font comes down to the floor (:29 REFIT_FONT_FLOOR 0.7) to stay on one line, then wraps at the floor onto the lines the slot holds, :163 refitGraphic then lengthens the clip by the localized text's reading time, capped at 20% (:30 DURATION_EXTENSION_CAP) and never past the program's end; :189 exceedsContainerIssue: text that still does not fit is localized_text_exceeds_container, 'localized text exceeds container: graphic <clipId>', a failing issue (severity 0.6); src/studio/localization/graphics.js:92 planLanguageGraphics raises it, also for words longer than the primitive's schema allows; the components draw what was measured: src/studio/compositions/remotion/layout.js:127 textSlots, :192 slotFontSize; the refit is in the render key (src/studio/compositions/key.js:37 compositionKeyMaterial takes fit, :50), so each language caches its own file; tests/studio/language-refit.test.mjs:33 a long German title shrinks to the floor, wraps, then runs exactly 20% longer, :61 one that still does not fit is the QA issue naming the element, :75 a short Japanese title needs nothing, :84 and :104 the floor and cap edges, :111 the measurement model, :127 the components draw what was measured, :149 the render key; tests/studio/language-delivery.test.mjs:320 an over-long Hindi title fails QA as localized_text_exceeds_container naming the graphic; tests/studio/composition-remotion.test.mjs:133 a refit German lower third renders through real Remotion on the two lines the refit broke it into, inside the slot's width). Deviations: text is measured by a deterministic model of advance widths per character class (refit.js:18), calibrated against Chrome to measure wide (2-13% on Linux; macOS's San Francisco draws about 15% narrower than measured), not measured by Remotion; a reading-time extension that hits the 20% cap is reported as durationCapped (refit.js:182), not as an issue"
   - text: "QA language check: whisper language detection on the audio mix of a language render must match the requested language; mismatch is a failing issue"
     met: true
     evidence: "aroundAI/storybookstudio#31 (at storybookstudio@418e8a8 electron/studio/languageCheck.js:35 createLanguageDetector runs whisper-cli with --detect-language (:46) on 16 kHz mono audio of the render's mix, :58 from the first line of the language's dialogue lane, :65 checkSpokenLanguage: a mismatch is the failing issue language_mismatch (:82, severity 1), and with no engine the check says so as the non-failing language_unchecked (:73), never a pass; electron/studio/studioMain.js:94 wires the detector to the local caption engine; electron/studio/deliveryQa.js:62 and electron/studio/deliveryPath.js:129 run it, so studio_deliver checks every language render (deliver.js:335) and the variant checks each preset (:728); tests/studio/language-lanes.test.mjs:200 the verdicts, :216 the detector reads whisper-cli's output; tests/studio/language-delivery.test.mjs:88 a dub that speaks another language fails and is not uploaded). CI stands in a tone detector for whisper (tests/studio/helpers/languages.mjs:107); the real whisper.cpp run is in notes"
@@ -50,15 +51,12 @@ acceptance_criteria:
 test_plan:
   unit:
     - {text: "Track selection per language", met: true, evidence: "aroundAI/storybookstudio#31 (storybookstudio@418e8a8 tests/studio/language-lanes.test.mjs:54; speed-fit at :86)"}
-    - {text: "Refit algorithm on long German and short Japanese strings", met: false, reason: "needs FILM-2018's graphics primitives; refit not built"}
+    - {text: "Refit algorithm on long German and short Japanese strings", met: true, evidence: "aroundAI/storybookstudio#38 (storybookstudio@496a554 tests/studio/language-refit.test.mjs:33 long German, :49 a German title a little longer, :61 one that does not fit, :75 short Japanese, :84 the floor edge, :104 the cap edge, :111 the measurement model)"}
   integration:
     - {text: "Fixture with dubbed HI lines: variant created, captions in Devanagari placed in safe area, render passes language check", met: true, evidence: "aroundAI/storybookstudio#31 (storybookstudio@418e8a8 tests/studio/language-delivery.test.mjs:53 three dubbed Hindi lines become a lane, Devanagari captions sit in the safe area, and the 16:9 and 9:16 Hindi renders pass the language check; :153 burned Devanagari shaped by libass inside the 9:16 safe area)"}
   e2e: []
 open_questions: []
-remaining:
-  - criterion: "Localized graphics refit (acceptance criterion 4), and re-rendering compositions with localized strings in studio_create_variant (criterion 3)"
-    reason: "needs FILM-2018's graphics primitives; not built. Only the Counter primitive exists, and nothing measures or refits localized text"
-    closed_by: "FILM-2019"
+remaining: []
 notes: >
   Separating language-independent from language-dependent content is what
   makes localization a compilation step rather than six edits; the stems from
@@ -68,6 +66,25 @@ notes: >
   aroundAI/storybookstudio#31 (merged as 6b65641, at storybookstudio@418e8a8,
   part A): criteria 1, 2, 5 and 6, and criterion 3 except the composition
   re-render. The graphics refit (criterion 4) is not built.
+
+  Owner decision, 2026-10-05: on-screen graphic text is not translated.
+  Graphics keep the master's words unless the agent supplies words (the
+  studio_create_variant graphics argument); graphic_text_untranslated is a
+  note, never a failure. Built in aroundAI/storybookstudio#38 (merged as
+  496a554, part B): criterion 4 and the composition step of criterion 3.
+  Each language graphic takes its words from the agent, an earlier variant
+  or the dub of a dialogue line it quotes, is refit to the master's room
+  (font to a 70% floor, then wrapping, then up to 20% longer) and is rendered
+  for that language, by studio_create_variant and by studio_deliver in any
+  non-master language. Deviations: the words do not come from the package's
+  dubbed block, which carries translated dialogue only; measurement is a
+  deterministic model calibrated against Chrome to measure wide (macOS's San
+  Francisco draws about 15% narrower than measured, Linux 2-13%); a
+  reading-time extension past the 20% cap is flagged durationCapped, not an
+  issue; words longer than the primitive's schema allows raise
+  localized_text_exceeds_container too. Not done, and not criteria: graphics
+  are localized on the master timeline only, and the in-app exporter's
+  export_timeline with a language shows the master's graphics.
 
   The open question (a dubbed line longer than the original shot) was
   answered with the lead default, speed-fit with a 0.9 floor
