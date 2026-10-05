@@ -24,7 +24,7 @@ export interface ResolveMediaOptions {
   episodeId: string;
   /** Audio assets of this project the caller read: their legacy keys are theirs. */
   audioAssetIds: ReadonlySet<string>;
-  /** Stored URL → recorded SHA-256 (`assets.file_hash`). */
+  /** Stored URL → recorded SHA-256 (`media_checksums`, `assets.file_hash`). */
   recordedHashes: Readonly<Record<string, string>>;
   ttlSeconds: number;
   /** Parallel HEAD + sign requests. */
@@ -56,7 +56,7 @@ function mimeFor(key: string, stored: string | null) {
 }
 
 /** Where a stored URL lives in StoryBook's storage, or null. */
-function locate(storage: StorageAdapter, url: string) {
+export function locateStoredMedia(storage: StorageAdapter, url: string) {
   for (const bucket of Object.values(STORAGE_BUCKETS)) {
     const key = storageKeyFromPublicUrl(storage, bucket, url);
 
@@ -99,7 +99,7 @@ async function resolveOne(
   url: string,
   options: ResolveMediaOptions,
 ): Promise<MediaEntry> {
-  const location = locate(options.storage, url);
+  const location = locateStoredMedia(options.storage, url);
 
   if (!location) return missing('not_in_storage');
 

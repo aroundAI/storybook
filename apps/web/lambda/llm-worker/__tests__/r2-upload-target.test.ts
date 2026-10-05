@@ -22,9 +22,11 @@ const PROJECT = '11111111-5700-4000-8000-000000000001';
 const EPISODE = '11111111-5700-4000-8000-000000000002';
 const OTHER = '11111111-5700-4000-8000-000000000009';
 const BODY = Buffer.from('audio');
+const checksums = { rpc: vi.fn(async () => ({ error: null })) };
 
 beforeEach(() => {
   send.mockReset();
+  checksums.rpc.mockClear();
   vi.stubEnv('R2_ACCOUNT_ID', 'test');
   vi.stubEnv('R2_ACCESS_KEY_ID', 'test');
   vi.stubEnv('R2_SECRET_ACCESS_KEY', 'test');
@@ -36,9 +38,14 @@ describe('uploadToR2 writes only inside its authorised target', () => {
   it('puts a key in the target episode', async () => {
     const key = `episodes/${EPISODE}/dialogue/line_1.mp3`;
 
-    const result = await uploadToR2('audio', key, BODY, 'audio/mpeg', {
-      episodeId: EPISODE,
-    });
+    const result = await uploadToR2(
+      'audio',
+      key,
+      BODY,
+      'audio/mpeg',
+      { episodeId: EPISODE },
+      checksums,
+    );
 
     expect(send).toHaveBeenCalledOnce();
     expect(send.mock.calls[0]![0].input).toMatchObject({
@@ -55,6 +62,7 @@ describe('uploadToR2 writes only inside its authorised target', () => {
       BODY,
       'audio/mpeg',
       { projectId: PROJECT },
+      checksums,
     );
 
     expect(send).toHaveBeenCalledOnce();
@@ -66,11 +74,63 @@ describe('uploadToR2 writes only inside its authorised target', () => {
     ['a key that names nothing', `dialogue/${EPISODE}/line_1.mp3`],
   ])('refuses %s, and R2 is never called', async (_label, key) => {
     await expect(
-      uploadToR2('audio', key, BODY, 'audio/mpeg', {
-        episodeId: EPISODE,
-        projectId: PROJECT,
-      }),
+      uploadToR2(
+        'audio',
+        key,
+        BODY,
+        'audio/mpeg',
+        { episodeId: EPISODE, projectId: PROJECT },
+        checksums,
+      ),
     ).rejects.toThrow('outside its authorised target');
     expect(send).not.toHaveBeenCalled();
+    expect(checksums.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('uploadToR2 records what it stored (KB-189)', () => {
+  it('records the SHA-256 and size of the stored bytes under their key', async () => {
+    const key = `episodes/${EPISODE}/dialogue/line_1.mp3`;
+
+    await uploadToR2(
+      'audio',
+      key,
+      BODY,
+      'audio/mpeg',
+      { episodeId: EPISODE },
+      checksums,
+    );
+
+    expect(checksums.rpc).toHaveBeenCalledExactlyOnceWith(
+      'record_media_checksum',
+      {
+        p_bucket: 'audio',
+        p_key: key,
+        // printf audio | shasum -a 256
+        p_sha256:
+          '6ed8919ce20490a5e3ad8630a4fab69475297abd07db73918dd5f36fcfaeb11b',
+        p_bytes: 5,
+      },
+    );
+    // Recorded after the object is stored, never for a failed put
+    expect(send.mock.invocationCallOrder[0]!).toBeLessThan(
+      checksums.rpc.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('records nothing when the put fails', async () => {
+    send.mockRejectedValueOnce(new Error('R2 down'));
+
+    await expect(
+      uploadToR2(
+        'audio',
+        `episodes/${EPISODE}/dialogue/line_1.mp3`,
+        BODY,
+        'audio/mpeg',
+        { episodeId: EPISODE },
+        checksums,
+      ),
+    ).rejects.toThrow('R2 down');
+    expect(checksums.rpc).not.toHaveBeenCalled();
   });
 });

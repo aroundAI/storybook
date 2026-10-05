@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getEpisodeRetentionCurveService } from '@kit/content-analytics/server/diagnostics-service';
 import { getLogger } from '@kit/shared/logger';
-import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
+import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { type StorageAdapter, getStorageAdapter } from '@kit/storage';
 import type { Database } from '@kit/supabase/database';
 
@@ -37,7 +37,7 @@ import {
   type EpisodeRetentionCurve,
   analyticsHintsFrom,
 } from '../retention-hints';
-import { resolveMedia } from './resolve-media';
+import { locateStoredMedia, resolveMedia } from './resolve-media';
 
 /**
  * FILM-2001: reads an episode's edit package with the caller's own client.
@@ -48,6 +48,9 @@ import { resolveMedia } from './resolve-media';
  * `fetchAllByIds`): PostgREST caps a read at 1000 rows without an error,
  * and a 60-shot episode in two languages has more caption segments than
  * that. Only keys read out of those rows are signed (`resolve-media.ts`).
+ *
+ * The SHA-256 of each file is the one recorded when it was written
+ * (`media_checksums`, KB-189), or `assets.file_hash`; nothing here hashes.
  */
 
 type Client = SupabaseClient<Database>;
@@ -74,6 +77,13 @@ const DUBBED_LINE_COLUMNS =
   'id, dubbed_version_id, original_dialogue_id, translated_text, timing_adjustment, timeline_start_seconds, duration_seconds, status, audio_url';
 
 const ALL_CHARACTERS = 'all characters';
+
+/**
+ * Storage keys are ~100 characters, and an `.in()` list rides in the request
+ * URI: 40 of them stay well under the 8 KB a proxy commonly allows, where
+ * `fetchAllByIds`'s 200 (sized for uuids) would not.
+ */
+const KEY_CHUNK_SIZE = 40;
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value)
@@ -128,12 +138,73 @@ async function loadCharacters(
 }
 
 /**
+ * The SHA-256 recorded at write time (KB-189) for each of `urls` that is a
+ * file in StoryBook's storage, keyed by the URL as stored. Read under the
+ * caller's RLS, so only the project's own checksums are visible.
+ */
+async function loadRecordedChecksums(
+  client: Client,
+  storage: StorageAdapter,
+  projectId: string,
+  urls: string[],
+): Promise<Record<string, string>> {
+  const urlsByKey = new Map<string, string[]>();
+
+  for (const url of urls) {
+    const location = locateStoredMedia(storage, url);
+
+    if (!location) continue;
+
+    const id = `${location.bucket}/${location.key}`;
+    urlsByKey.set(id, [...(urlsByKey.get(id) ?? []), url]);
+  }
+
+  const keys = Array.from(
+    new Set(
+      Array.from(urlsByKey.keys(), (id) => id.slice(id.indexOf('/') + 1)),
+    ),
+  );
+  const chunks = await Promise.all(
+    chunkIds(keys, KEY_CHUNK_SIZE).map((chunk, index) =>
+      fetchAllRows<{ bucket: string; object_key: string; sha256: string }>(
+        (from, to) =>
+          client
+            .from('media_checksums')
+            .select('bucket, object_key, sha256')
+            .eq('project_id', projectId)
+            .in('object_key', chunk)
+            .order('bucket')
+            .order('object_key')
+            .range(from, to),
+        `edit package media checksums chunk ${index}`,
+      ),
+    ),
+  );
+
+  const recorded: Record<string, string> = {};
+
+  for (const row of chunks.flat()) {
+    for (const url of urlsByKey.get(`${row.bucket}/${row.object_key}`) ?? []) {
+      recorded[url] = row.sha256;
+    }
+  }
+
+  return recorded;
+}
+
+/**
  * Every row the package is built from, or null when the caller cannot see
- * a live episode with this id in the team.
+ * a live episode with this id in the team. `storage` places each media URL
+ * in its bucket, to find its recorded checksum; it defaults to the
+ * configured adapter on the caller's client.
  */
 export async function loadEditPackageSources(
   client: Client,
-  { accountId, episodeId }: { accountId: string; episodeId: string },
+  {
+    accountId,
+    episodeId,
+    storage = getStorageAdapter(client),
+  }: { accountId: string; episodeId: string; storage?: StorageAdapter },
 ): Promise<EditPackageSources | null> {
   const { data: found, error } = await client
     .from('episodes')
@@ -306,14 +377,7 @@ export async function loadEditPackageSources(
       ),
     ]);
 
-  const recordedHashes: Record<string, string> = {};
-  for (const asset of hashed) {
-    if (asset.file_url && asset.file_hash) {
-      recordedHashes[asset.file_url] = asset.file_hash;
-    }
-  }
-
-  return {
+  const sources: EditPackageSources = {
     project,
     episode,
     shots,
@@ -327,8 +391,26 @@ export async function loadEditPackageSources(
     shorts,
     dubbedVersions,
     dubbedLines,
-    recordedHashes,
+    recordedHashes: {},
   };
+
+  for (const asset of hashed) {
+    if (asset.file_url && asset.file_hash) {
+      sources.recordedHashes[asset.file_url] = asset.file_hash;
+    }
+  }
+
+  Object.assign(
+    sources.recordedHashes,
+    await loadRecordedChecksums(
+      client,
+      storage,
+      project.id,
+      collectMediaUrls(sources),
+    ),
+  );
+
+  return sources;
 }
 
 /**
@@ -339,7 +421,7 @@ export async function loadEditPackageSources(
  */
 export async function currentEditPackageEtag(
   client: Client,
-  input: { accountId: string; episodeId: string },
+  input: { accountId: string; episodeId: string; storage?: StorageAdapter },
 ): Promise<string | null> {
   const sources = await loadEditPackageSources(client, input);
 
@@ -371,7 +453,8 @@ export async function getEditPackage(
   client: Client,
   input: GetEditPackageInput,
 ): Promise<GetEditPackageResult> {
-  const sources = await loadEditPackageSources(client, input);
+  const storage = input.storage ?? getStorageAdapter(client);
+  const sources = await loadEditPackageSources(client, { ...input, storage });
 
   if (!sources) return { status: 'not_found' };
 
@@ -381,7 +464,6 @@ export async function getEditPackage(
     return { status: 'unchanged', etag };
   }
 
-  const storage = input.storage ?? getStorageAdapter(client);
   const readRetention =
     input.readRetention ??
     ((episodeId: string) =>

@@ -43,6 +43,9 @@ const state = vi.hoisted(() => ({
   keyReads: [] as string[],
   vendorCalls: 0,
   sent: [] as Array<Record<string, unknown>>,
+  // KB-189: the client each write was handed to record its checksum on
+  checksumClients: [] as unknown[],
+  admin: { name: 'service-role client' },
 }));
 
 vi.mock('@kit/next/actions', () => ({
@@ -68,7 +71,7 @@ vi.mock('@kit/supabase/require-user', () => ({
 }));
 
 vi.mock('@kit/supabase/server-admin-client', () => ({
-  getSupabaseServerAdminClient: () => ({}),
+  getSupabaseServerAdminClient: () => state.admin,
 }));
 
 vi.mock('@kit/storage', () => ({
@@ -76,7 +79,10 @@ vi.mock('@kit/storage', () => ({
     upload: async () => ({ url: 'https://audio.test/line.mp3' }),
   }),
   // The gate is @kit/storage's own test; here it passes the write through
-  writeProjectObject: async () => ({ url: 'https://audio.test/line.mp3' }),
+  writeProjectObject: async (...args: unknown[]) => {
+    state.checksumClients.push(args[6]);
+    return { url: 'https://audio.test/line.mp3' };
+  },
 }));
 
 vi.mock('../src/providers/elevenlabs', () => ({
@@ -263,6 +269,7 @@ beforeEach(() => {
   state.keyReads = [];
   state.vendorCalls = 0;
   state.sent = [];
+  state.checksumClients = [];
 });
 
 describe('generateVoiceFromTextAction (voice preview, KB-46)', () => {
@@ -297,6 +304,8 @@ describe('generateVoiceFromTextAction (voice preview, KB-46)', () => {
     expect(result).toMatchObject({ ok: true });
     expect(state.keyReads).toEqual([B_ACCOUNT]);
     expect(state.vendorCalls).toBe(1);
+    // KB-189: written with the service-role client to record its SHA-256 on
+    expect(state.checksumClients).toEqual([state.admin]);
   });
 });
 
@@ -328,6 +337,8 @@ describe('generateDialogueVoiceAction (one line, sync)', () => {
     expect(result).toMatchObject({ ok: true, data: { status: 'completed' } });
     expect(state.keyReads).toEqual([B_ACCOUNT]);
     expect(state.vendorCalls).toBe(1);
+    // KB-189: written with the service-role client to record its SHA-256 on
+    expect(state.checksumClients).toEqual([state.admin]);
   });
 
   // KB-105: the 'generating' write gates the paid call. If RLS filters it to

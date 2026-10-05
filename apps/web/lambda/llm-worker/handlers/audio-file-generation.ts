@@ -153,9 +153,14 @@ export async function processAudioFileGeneration(
   try {
     // Files go only inside the project the job was authorised for (KB-57)
     const projectUpload: UploadFn = (bucket, path, body, contentType) =>
-      uploadToR2(bucket, path, body, contentType, {
-        projectId: data.projectId,
-      });
+      uploadToR2(
+        bucket,
+        path,
+        body,
+        contentType,
+        { projectId: data.projectId },
+        supabase,
+      );
 
     // Fetch API key from external_api_keys via project → account lookup
     const apiKey = await getProjectElevenLabsApiKey(supabase, data.projectId);

@@ -89,8 +89,8 @@ export function fakeClient(
   } as never;
 }
 
-export function seedTables() {
-  const seed = seedFixture(FIXTURES[1]);
+export function seedTables(fixture: (typeof FIXTURES)[number] = FIXTURES[1]) {
+  const seed = seedFixture(fixture);
   const { sources } = seed;
   const with_ = (rows: object[], extra: Row): Row[] =>
     rows.map((row) => ({ ...row, ...extra }));

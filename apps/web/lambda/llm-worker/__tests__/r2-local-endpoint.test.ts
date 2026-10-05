@@ -32,6 +32,7 @@ async function uploadOnce() {
     Buffer.from('audio'),
     'audio/mpeg',
     { episodeId: EPISODE },
+    { rpc: async () => ({ error: null }) },
   );
   return created.at(-1)!;
 }

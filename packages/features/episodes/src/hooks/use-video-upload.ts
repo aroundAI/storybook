@@ -11,7 +11,10 @@ import { useCallback, useRef, useState } from 'react';
 
 import { PROJECT_ASSETS_BUCKET } from '@kit/assets/lib';
 import { sanitizeFilename } from '@kit/assets/upload-validation';
-import { requestPresignedUpload } from '@kit/storage/client';
+import {
+  recordUploadChecksum,
+  requestPresignedUpload,
+} from '@kit/storage/client';
 
 // Video constraints
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
@@ -383,6 +386,9 @@ export function useVideoUpload(
         videoUrl = videoPresign.publicUrl;
         xhrRef.current = null;
 
+        // KB-189: the edit package hands the Studio this file's SHA-256
+        await recordUploadChecksum(file, PROJECT_ASSETS_BUCKET, videoPath);
+
         // 3c. Upload thumbnail (small, no progress tracking needed)
         setProgress((prev) => ({ ...prev, percentage: 97 }));
         const thumbResponse = await fetch(thumbnailPresign.uploadUrl, {
@@ -398,6 +404,11 @@ export function useVideoUpload(
         }
 
         thumbnailUrl = thumbnailPresign.publicUrl;
+        await recordUploadChecksum(
+          thumbnailBlob,
+          PROJECT_ASSETS_BUCKET,
+          thumbnailPath,
+        );
       } catch (err) {
         xhrRef.current = null;
         if (err instanceof Error && err.message === 'Upload cancelled') {

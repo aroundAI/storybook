@@ -28,6 +28,9 @@ const state = vi.hoisted(() => ({
   keyReads: [] as string[],
   assetLookups: [] as string[],
   vendorCalls: 0,
+  // KB-189: the client each write was handed to record its checksum on
+  checksumClients: [] as unknown[],
+  admin: { name: 'service-role client' },
 }));
 
 vi.mock('@kit/next/actions', () => ({
@@ -54,7 +57,7 @@ vi.mock('@kit/supabase/require-user', () => ({
 }));
 
 vi.mock('@kit/supabase/server-admin-client', () => ({
-  getSupabaseServerAdminClient: () => ({}),
+  getSupabaseServerAdminClient: () => state.admin,
 }));
 
 vi.mock('@kit/storage', () => ({
@@ -62,7 +65,10 @@ vi.mock('@kit/storage', () => ({
     upload: async () => ({ url: 'https://audio.test/asset.mp3' }),
   }),
   // The gate is @kit/storage's own test; here it passes the write through
-  writeProjectObject: async () => ({ url: 'https://audio.test/asset.mp3' }),
+  writeProjectObject: async (...args: unknown[]) => {
+    state.checksumClients.push(args[6]);
+    return { url: 'https://audio.test/asset.mp3' };
+  },
 }));
 
 vi.mock('../src/server/project-audio-settings', () => ({
@@ -174,6 +180,7 @@ beforeEach(() => {
   state.keyReads = [];
   state.assetLookups = [];
   state.vendorCalls = 0;
+  state.checksumClients = [];
 });
 
 function expectNothingSpent() {
@@ -205,6 +212,9 @@ describe('generateSfxAction (timeline SFX)', () => {
 
     expect(state.keyReads).toEqual([B_PROJECT]);
     expect(state.vendorCalls).toBe(1);
+    // KB-189: the file is written with the service-role client to record
+    // its SHA-256 on (writeProjectObject's own test shows it records)
+    expect(state.checksumClients).toEqual([state.admin]);
   });
 });
 
@@ -240,6 +250,9 @@ describe('generateMusicElevenLabsAction (timeline music)', () => {
 
     expect(state.keyReads).toEqual([B_PROJECT]);
     expect(state.vendorCalls).toBe(1);
+    // KB-189: the file is written with the service-role client to record
+    // its SHA-256 on (writeProjectObject's own test shows it records)
+    expect(state.checksumClients).toEqual([state.admin]);
   });
 });
 
@@ -272,6 +285,9 @@ describe('generateMusicAssetAction (audio library)', () => {
 
     expect(state.keyReads).toEqual([B_PROJECT]);
     expect(state.vendorCalls).toBe(1);
+    // KB-189: the file is written with the service-role client to record
+    // its SHA-256 on (writeProjectObject's own test shows it records)
+    expect(state.checksumClients).toEqual([state.admin]);
   });
 });
 
@@ -304,5 +320,8 @@ describe('generateSfxAssetAction (audio library)', () => {
 
     expect(state.keyReads).toEqual([B_PROJECT]);
     expect(state.vendorCalls).toBe(1);
+    // KB-189: the file is written with the service-role client to record
+    // its SHA-256 on (writeProjectObject's own test shows it records)
+    expect(state.checksumClients).toEqual([state.admin]);
   });
 });

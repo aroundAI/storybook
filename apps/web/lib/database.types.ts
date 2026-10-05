@@ -4046,6 +4046,41 @@ export type Database = {
           },
         ]
       }
+      media_checksums: {
+        Row: {
+          bucket: string
+          bytes: number
+          object_key: string
+          project_id: string
+          recorded_at: string
+          sha256: string
+        }
+        Insert: {
+          bucket: string
+          bytes: number
+          object_key: string
+          project_id: string
+          recorded_at?: string
+          sha256: string
+        }
+        Update: {
+          bucket?: string
+          bytes?: number
+          object_key?: string
+          project_id?: string
+          recorded_at?: string
+          sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_checksums_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       narrative_threads: {
         Row: {
           auto_generated: boolean
@@ -7332,6 +7367,15 @@ export type Database = {
       record_edit_events: {
         Args: { p_events: Json; p_session_id: string }
         Returns: Json
+      }
+      record_media_checksum: {
+        Args: {
+          p_bucket: string
+          p_bytes: number
+          p_key: string
+          p_sha256: string
+        }
+        Returns: undefined
       }
       remove_episode_from_threads_touched: {
         Args: { p_episode_id: string; p_project_id: string }

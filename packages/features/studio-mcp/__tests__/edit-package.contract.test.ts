@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -14,6 +14,7 @@ import {
   seedFixture,
 } from '@kit/desktop-integration/fixtures';
 import { collectMediaUrls } from '@kit/desktop-integration/server';
+import { recordWrittenMedia } from '@kit/storage/media-checksum';
 
 import {
   ANON_KEY,
@@ -241,6 +242,40 @@ describe.skipIf(!SEED)(
         );
       }
 
+      // KB-189: each file's SHA-256 recorded as its writer records it, with
+      // the function the workers, actions and checksum route call, on the
+      // service role. The character image keeps only its assets.file_hash,
+      // so that older source is still read.
+      const checksums = {
+        rpc: async (fn: string, args: object) => {
+          await rest(`/rest/v1/rpc/${fn}`, { ...admin, body: args });
+          return { error: null };
+        },
+      };
+      const fileHashed = new Set(
+        Object.keys(sources.recordedHashes).map((media) =>
+          media.slice(prefix.length),
+        ),
+      );
+      for (let index = 0; index < uploads.length; index += 16) {
+        await Promise.all(
+          uploads
+            .slice(index, index + 16)
+            .filter((key) => !fileHashed.has(key))
+            .map((key) => {
+              const [bucket, ...path] = key.split('/');
+              return recordWrittenMedia(
+                checksums,
+                bucket!,
+                path.join('/'),
+                Buffer.from(`film-2001 ${key}`),
+              ).then((recorded) => {
+                if (!recorded) throw new Error(`checksum ${key}`);
+              });
+            }),
+        );
+      }
+
       if (CLICKHOUSE) {
         const [publish] = await rest('/rest/v1/publishes', {
           ...admin,
@@ -401,6 +436,65 @@ describe.skipIf(!SEED)(
         Object.values(seed.sources.recordedHashes)[0],
       );
     });
+
+    it('every signed file carries the SHA-256 recorded when it was written, equal to its download (KB-189)', async () => {
+      const result = await call(reader, { episodeId: team.episodeId });
+      const editPackage = EditPackageSchema.parse(result.structuredContent);
+      const signed = new Map<
+        string,
+        { url: string; sha256: string | null; bytes: number }
+      >();
+      const walk = (value: unknown): void => {
+        if (Array.isArray(value)) return value.forEach(walk);
+        if (!value || typeof value !== 'object') return;
+        const entry = value as Record<string, unknown>;
+        if (typeof entry.key === 'string' && typeof entry.url === 'string') {
+          signed.set(entry.key, entry as never);
+        }
+        Object.values(entry).forEach(walk);
+      };
+      walk(editPackage);
+
+      // The folder each file is in: video, frames, dialogue, dubbed, …
+      const kinds = new Set(
+        [...signed.keys()].map((key) => key.split('/').at(-2)),
+      );
+      const mismatched: string[] = [];
+      const entries = [...signed.entries()];
+
+      for (let index = 0; index < entries.length; index += 16) {
+        await Promise.all(
+          entries.slice(index, index + 16).map(async ([key, entry]) => {
+            const body = Buffer.from(
+              await (await fetch(entry.url)).arrayBuffer(),
+            );
+            const actual = createHash('sha256').update(body).digest('hex');
+            const recorded =
+              seed.sources.recordedHashes[
+                `${SUPABASE_URL}/storage/v1/object/public/${key}`
+              ];
+
+            // assets.file_hash is the fixture's own value, not these bytes
+            if (recorded) {
+              if (entry.sha256 !== recorded) mismatched.push(key);
+              return;
+            }
+            if (entry.sha256 !== actual || entry.bytes !== body.byteLength) {
+              mismatched.push(`${key} ${entry.sha256} != ${actual}`);
+            }
+          }),
+        );
+      }
+
+      console.info('[KB-189 measurement]', {
+        signedEntries: signed.size,
+        withSha256: [...signed.values()].filter((e) => e.sha256).length,
+        kinds: [...kinds].sort(),
+      });
+
+      expect(signed.size).toBeGreaterThan(400);
+      expect(mismatched).toEqual([]);
+    }, 120_000);
 
     it(
       CLICKHOUSE
