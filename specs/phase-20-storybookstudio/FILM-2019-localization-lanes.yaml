@@ -3,7 +3,7 @@ title: "Localization Lanes: One Master Edit, Many Language Renders"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DEFERRED
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-2007"
@@ -13,7 +13,10 @@ dependencies:
   - spec_id: "FILM-2017"
     note: "per-language delivery renders"
 summary: >
-  v2. One master timeline, many languages, no per-language timelines.
+  One master timeline, many languages, no per-language timelines. The owner
+  lifted this spec's v2 deferral on 2026-10-05; aroundAI/storybookstudio#31
+  (part A) builds the lanes, the render selection, the language variant and
+  the language check, and not the graphics refit (notes).
   Dialogue and caption tracks carry a language; every element has
   languageDependency (none, language, locale); a render selects a language,
   including tracks that match it or are language-independent and muting the
@@ -27,35 +30,74 @@ summary: >
   compositions and localization" (localization); Part 4 flow 5; Part 1 R-51.
 acceptance_criteria:
   - text: "Tracks carry language (BCP-47) and elements carry languageDependency; the builder (FILM-2012) sets none on video, music, sfx, ambience and shot audio, language on dialogue and captions"
-    met: false
-    reason: "deferred to v2"
+    met: true
+    evidence: "aroundAI/storybookstudio#31 (merged as 6b65641, at storybookstudio@418e8a8 src/studio/projectBuilder.js:48 LANGUAGE_DEPENDENT_ROLES (dialogue, caption), :49 languageDependencyForRole, :173 on every imported asset, :227 on every clip's metadata, :548 a dialogue track carries its language, :577 a captions track carries its language; tests/studio/language-lanes.test.mjs:35 the built fixture has Captions (en), Captions (hi), Dialogue (en), Dialogue (hi) with their languages, language on dialogue and caption clips, none on video, shot audio, music, sfx and ambience)"
   - text: "Render selection: export_timeline and export_delivery_batch take a language; tracks whose language matches or is none are included, others muted; captions burned or sidecar in that language"
-    met: false
-    reason: "deferred to v2"
+    met: true
+    evidence: "aroundAI/storybookstudio#31 (at storybookstudio@418e8a8 src/studio/localization/selection.js:19 elementLanguage, :35 trackForLanguage, :45 selectLanguage: one rule, and the language's own lane plays in its render though the editor mutes it; read by src/studio/delivery/exportFilter.js:15, which src/services/exporter.js:1142 applies for export_timeline and export_delivery_batch (electron/mcpServer.js:10611 languages, one file per preset and language), by src/studio/review/renderPlan.js:209, :221 and :261 for the delivery and preview renders, and by the interim renderer electron/studio/deliveryRender.js:300; captions burned through libass (deliveryRender.js:332) or written as the sidecar; tests/studio/language-lanes.test.mjs:54 a Hindi render hears the Hindi lane and shows its Devanagari captions, an English render is unchanged, export_timeline's filter selects the same way, and captions the policy turned off stay off; tests/studio/language-delivery.test.mjs:83 the 16:9 sidecar carries the Hindi cues). deliveryRender.js:67 keeps its own inLanguage helper with the same rule beside selection.js"
   - text: "studio_create_variant {kind: language, language} pulls the dubbed block via re-sync (FILM-2011), creates a Dialogue:<lang> track from dubbed_dialogue_lines at timelineStart, runs studio_add_captions for the language, and re-renders compositions with localized strings (FILM-2018)"
     met: false
-    reason: "deferred to v2"
+    reason: "Built except the composition step. aroundAI/storybookstudio#31 (at storybookstudio@418e8a8 electron/studio/deliver.js:62 kind language and its presets, :634, :668 createLanguageVariant, :670 reads the dubbed block from the pulled package, :710 applies through the renderer action studio_apply_language_lane (src/studio/delivery/rendererActions.js:45, one undo step at :69; src/services/mcpActions.js:8961) or, with no window, :715 writes the project file; src/studio/localization/lanes.js:52 buildLanguageLane puts a Dialogue (<lang>) lane on the master placed by the builder's own code (:64), and a Captions (<lang>) track (:109) whose cues come from the dubbed text where each dub plays (:40 laneCaptionCues), styled and placed by studio_add_captions' placement step (:103) rather than transcribed; applied, each preset renders into renders/<version>/languages/ (deliver.js:726) and is QA-checked; tests/studio/language-lanes.test.mjs:113 the Hindi lane on a master pulled before the dub, a re-run replaces it, :153 no dub says to localize_episode and re-sync; tests/studio/language-lane-editor.test.mjs:78 the lane lands on the open master as one undo step and survives a save). Not built: re-rendering compositions with localized strings, which needs the refit (criterion 4). Deviations: the variant reads the dubbed block the last re-sync pulled and does not run one itself (lanes.js:58 names studio_check_updates and studio_apply_updates); the track is named Dialogue (<lang>), not Dialogue:<lang>. The variant card still says compositions are not in this build (deliver.js:692), which has been stale since #32 merged them"
   - text: "Localized graphics refit: text measured per language; font size reduced to a floor, then wrapping, then duration extended within 20%; a string that still does not fit is a QA issue 'localized text exceeds container' with the element id"
     met: false
-    reason: "deferred to v2"
+    reason: "needs FILM-2018's graphics primitives; not built"
   - text: "QA language check: whisper language detection on the audio mix of a language render must match the requested language; mismatch is a failing issue"
-    met: false
-    reason: "deferred to v2"
+    met: true
+    evidence: "aroundAI/storybookstudio#31 (at storybookstudio@418e8a8 electron/studio/languageCheck.js:35 createLanguageDetector runs whisper-cli with --detect-language (:46) on 16 kHz mono audio of the render's mix, :58 from the first line of the language's dialogue lane, :65 checkSpokenLanguage: a mismatch is the failing issue language_mismatch (:82, severity 1), and with no engine the check says so as the non-failing language_unchecked (:73), never a pass; electron/studio/studioMain.js:94 wires the detector to the local caption engine; electron/studio/deliveryQa.js:62 and electron/studio/deliveryPath.js:129 run it, so studio_deliver checks every language render (deliver.js:335) and the variant checks each preset (:728); tests/studio/language-lanes.test.mjs:200 the verdicts, :216 the detector reads whisper-cli's output; tests/studio/language-delivery.test.mjs:88 a dub that speaks another language fails and is not uploaded). CI stands in a tone detector for whisper (tests/studio/helpers/languages.mjs:107); the real whisper.cpp run is in notes"
   - text: "Delivery of EN, HI and ES in 16:9 and 9:16 from one master passes QA on the fixture; episode_renders rows carry each language"
-    met: false
-    reason: "deferred to v2"
+    met: true
+    evidence: "aroundAI/storybookstudio#31 (at storybookstudio@418e8a8 tests/studio/language-delivery.test.mjs:112: HI and ES lanes added to one master, one captions track per language, then studio_deliver for youtube_16x9 and shorts_9x16 in en, hi and es: six renders, every one passes QA including the language check, and the StoryBook stand-in gets one request_render_upload per preset and language and a delivered render row per language (en, hi, es twice))"
 test_plan:
   unit:
-    - {text: "Track selection per language; refit algorithm on long German and short Japanese strings", met: false, reason: "deferred"}
+    - {text: "Track selection per language", met: true, evidence: "aroundAI/storybookstudio#31 (storybookstudio@418e8a8 tests/studio/language-lanes.test.mjs:54; speed-fit at :86)"}
+    - {text: "Refit algorithm on long German and short Japanese strings", met: false, reason: "needs FILM-2018's graphics primitives; refit not built"}
   integration:
-    - {text: "Fixture with dubbed HI lines: variant created, captions in Devanagari placed in safe area, render passes language check", met: false, reason: "deferred"}
+    - {text: "Fixture with dubbed HI lines: variant created, captions in Devanagari placed in safe area, render passes language check", met: true, evidence: "aroundAI/storybookstudio#31 (storybookstudio@418e8a8 tests/studio/language-delivery.test.mjs:53 three dubbed Hindi lines become a lane, Devanagari captions sit in the safe area, and the 16:9 and 9:16 Hindi renders pass the language check; :153 burned Devanagari shaped by libass inside the 9:16 safe area)"}
   e2e: []
-open_questions:
-  - "Lip-sync drift: dubbed lines longer than the original shot. Extend the shot (speed 0.9 floor) or trim the line? Decide with FILM-2007's dubbing choice."
+open_questions: []
+remaining:
+  - criterion: "Localized graphics refit (acceptance criterion 4), and re-rendering compositions with localized strings in studio_create_variant (criterion 3)"
+    reason: "needs FILM-2018's graphics primitives; not built. Only the Counter primitive exists, and nothing measures or refits localized text"
+    closed_by: "FILM-2019"
 notes: >
   Separating language-independent from language-dependent content is what
   makes localization a compilation step rather than six edits; the stems from
   FILM-2016 are what make the mix cheap to rebuild per language.
+
+  Owner decision, 2026-10-05: the v2 deferral is lifted. Built in
+  aroundAI/storybookstudio#31 (merged as 6b65641, at storybookstudio@418e8a8,
+  part A): criteria 1, 2, 5 and 6, and criterion 3 except the composition
+  re-render. The graphics refit (criterion 4) is not built.
+
+  The open question (a dubbed line longer than the original shot) was
+  answered with the lead default, speed-fit with a 0.9 floor
+  (src/studio/localization/fit.js:16 DUB_SPEED_FLOOR, :23 fitDubbedLine): a
+  dub plays at the speed StoryBook fitted it with, never slower than 0.9; one
+  that still runs past its slot is sped up to fit, up to 1.25; one that
+  still overruns is never trimmed and the picture is never extended, so it
+  is placed whole and reported as dub_overruns_slot
+  (src/studio/projectBuilder.js:435). Tested at
+  tests/studio/language-lanes.test.mjs:86.
+
+  Fixed on the way, in the same PR: placeLiveCaptions replaced every
+  language's captions and now regenerates one language's clip only
+  (src/stores/timelineStore.js:1376, src/services/mcpCaptions.js:339;
+  tests/studio/language-lanes.test.mjs:174); Devanagari and other complex
+  scripts are burned through libass with shaping=complex
+  (electron/studio/deliveryRender.js:332, electron/studio/previewRender.js:257);
+  a cue placed for another aspect is placed again for the render's
+  (previewRender.js:247); Devanagari emphasis matching keeps vowel signs
+  (src/studio/captions/layout.js:45; language-lanes.test.mjs:161); the
+  caption canvas falls back to named Devanagari fonts
+  (src/utils/kineticCaptionRenderer.js:466).
+
+  Real whisper.cpp run, recorded in the fork PR: whisper-cli v1.9.1 built by
+  whisper-mac-engine.yml run 37312513952 (publish=false) with ggml-base.bin.
+  The Hindi render was detected as hi, p = 0.961, a pass; English dialogue
+  in the Hindi lane was detected as en, p = 0.986, a fail. The test is
+  tests/studio/language-delivery.test.mjs:219, which skips without
+  STUDIO_WHISPER_CLI, STUDIO_WHISPER_MODEL and macOS's Lekha voice, so CI
+  does not run it.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
@@ -64,5 +106,5 @@ feature:
   provider_integration: null
   repo: "aroundAI/storybookstudio"
   mcp_tools: ["studio_create_variant (kind: language)"]
-  modules: ["src/studio/localization/lanes.js", "src/studio/localization/refit.js"]
-  files_changed: ["src/services/exporter.js (language selection)", "src/stores/timelineStore.js (track language)"]
+  modules: ["src/studio/localization/lanes.js", "src/studio/localization/selection.js", "src/studio/localization/fit.js", "electron/studio/languageCheck.js"]
+  files_changed: ["electron/studio/deliver.js (studio_create_variant kind language)", "src/studio/delivery/rendererActions.js (studio_apply_language_lane)", "src/studio/delivery/exportFilter.js (language selection)", "src/studio/review/renderPlan.js (language selection)", "electron/studio/deliveryRender.js (language selection, libass shaping)", "electron/studio/deliveryQa.js (language check)", "src/studio/projectBuilder.js (track language, speed-fit)", "src/stores/timelineStore.js (captions per language)"]
