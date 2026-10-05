@@ -17,7 +17,8 @@ run "🐘 Supabase DB" "database mutation guards" "python3 tooling/mutation-guar
 # local.env holds lane A's hosts; lane B re-applies its own after it
 LANE_REAPPLY=; [ "$LANE" = A ] || LANE_REAPPLY='; . "$CI/lane.sh"'
 CH="set -a; . \$MAINROOT/deployment/config/local.env; set +a$LANE_REAPPLY"
-run "🗄️ ClickHouse SQL" "apply migrations" "$CH; curl -sf $CH_URL/ping >/dev/null && pnpm --filter @kit/clickhouse migrate"
+# a fresh server per PR, as CI: verify asserts over live rows (ch-reset.sh)
+run "🗄️ ClickHouse SQL" "apply migrations" "$CH; LANE=$LANE bash $CI/ch-reset.sh"
 run "🗄️ ClickHouse SQL" "execute every query and insert" "$CH; pnpm --filter @kit/clickhouse verify"
 # warm Next's compiler cache from the last build on this machine (Next revalidates it)
 SEED=$STATE/next-cache-seed
