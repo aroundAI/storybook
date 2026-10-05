@@ -321,11 +321,14 @@ test.describe('Platform filter completion (FILM-1709)', () => {
 
     // Back to every platform's total. Without metric rows (⚫️ Test reads
     // no ClickHouse) no video has a view, so the total is null and says
-    // "Not measured" — never 0 (KB-153, KB-162).
+    // "Not measured" — never 0 (KB-153, KB-162). That is
+    // `metric-not-measured`; `metric-unmeasured` is the no-selection
+    // reason above, and is gone once a platform is selected (KB-149).
     if (OBSERVED) {
       await expect(metricValue(page, 'views')).toBeVisible(SLOW);
     } else {
-      await expect(byTest(views, 'metric-unmeasured')).toHaveText(
+      await expect(byTest(views, 'metric-unmeasured')).toHaveCount(0);
+      await expect(byTest(views, 'metric-not-measured')).toHaveText(
         'Not measured',
       );
       await expect(byTest(views, 'metric-value')).toHaveCount(0);
