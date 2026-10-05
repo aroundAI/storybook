@@ -548,7 +548,8 @@ const generateMusicAsset = enhanceAction(
       const fileName = generatedAudioPath(data.projectId, 'music', asset.id);
       // audio-assets is server-write-only on Supabase (KB-55): the service
       // role writes it once the caller is checked on the key (KB-57).
-      const storage = getStorageAdapter(getSupabaseServerAdminClient());
+      const admin = getSupabaseServerAdminClient();
+      const storage = getStorageAdapter(admin);
 
       const uploadResult = await writeProjectObject(
         client,
@@ -557,6 +558,7 @@ const generateMusicAsset = enhanceAction(
         fileName,
         result.audioBuffer,
         { contentType: 'audio/mpeg' },
+        admin,
       );
 
       // Update asset with completed status
@@ -684,7 +686,8 @@ const generateSfxAsset = enhanceAction(
       const fileName = generatedAudioPath(data.projectId, 'sfx', asset.id);
       // audio-assets is server-write-only on Supabase (KB-55): the service
       // role writes it once the caller is checked on the key (KB-57).
-      const storage = getStorageAdapter(getSupabaseServerAdminClient());
+      const admin = getSupabaseServerAdminClient();
+      const storage = getStorageAdapter(admin);
 
       const uploadResult = await writeProjectObject(
         client,
@@ -693,6 +696,7 @@ const generateSfxAsset = enhanceAction(
         fileName,
         result.audioBuffer,
         { contentType: 'audio/mpeg' },
+        admin,
       );
 
       // Update asset with completed status

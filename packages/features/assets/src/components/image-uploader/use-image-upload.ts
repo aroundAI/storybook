@@ -9,7 +9,10 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { validateUpload } from '@kit/assets/upload-validation';
-import { requestPresignedUpload } from '@kit/storage/client';
+import {
+  recordUploadChecksum,
+  requestPresignedUpload,
+} from '@kit/storage/client';
 
 import { PROJECT_ASSETS_BUCKET } from '../../lib/constants';
 import type {
@@ -175,6 +178,9 @@ export function useImageUpload(
           }
           xhr.send(file);
         });
+
+        // KB-189: the edit package hands the Studio this file's SHA-256
+        await recordUploadChecksum(file, PROJECT_ASSETS_BUCKET, storagePath);
 
         // 4. Handle Success
         setState('success');

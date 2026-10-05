@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { type MediaChecksumClient, recordWrittenMedia } from './media-checksum';
 import type { StorageAdapter, UploadOptions, UploadResult } from './types';
 import { storageKeyScope } from './upload-paths';
 
@@ -61,7 +62,8 @@ export async function canWriteProjectKey(
 /**
  * Upload `data` at `key`, once the caller is known to write the project the
  * key names. `storage` may run on the service role: `audio-assets` takes no
- * user writes, and this check is the policy's own.
+ * user writes, and this check is the policy's own. The bytes' SHA-256 is
+ * recorded through `checksums`, a service-role client (KB-189).
  */
 export async function writeProjectObject(
   client: ProjectKeyClient,
@@ -70,6 +72,7 @@ export async function writeProjectObject(
   key: string,
   data: Buffer,
   options: UploadOptions,
+  checksums: MediaChecksumClient,
 ): Promise<UploadResult> {
   if (!storageKeyScope(key)) {
     throw new StorageWriteRefused(key, 'no-scope');
@@ -79,5 +82,9 @@ export async function writeProjectObject(
     throw new StorageWriteRefused(key, 'not-writer');
   }
 
-  return storage.upload(bucket, key, data, options);
+  const result = await storage.upload(bucket, key, data, options);
+
+  await recordWrittenMedia(checksums, bucket, key, data);
+
+  return result;
 }

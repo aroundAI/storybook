@@ -50,6 +50,7 @@ function adapterDouble(): StorageAdapter {
 
 const BODY = Buffer.from('audio');
 const OPTIONS = { contentType: 'audio/mpeg' };
+const CHECKSUMS = { rpc: vi.fn(async () => ({ error: null })) };
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -68,6 +69,7 @@ describe('writeProjectObject', () => {
       KEY,
       BODY,
       OPTIONS,
+      CHECKSUMS,
     );
 
     expect(client.rpc).toHaveBeenCalledWith('can_write_project_storage', {
@@ -80,6 +82,55 @@ describe('writeProjectObject', () => {
       OPTIONS,
     );
     expect(result.url).toBe(`https://cdn.test/audio/${KEY}`);
+  });
+
+  it('records the SHA-256 and size of the bytes it wrote (KB-189)', async () => {
+    const { writeProjectObject } = await import('../src/project-write');
+    const storage = adapterDouble();
+
+    await writeProjectObject(
+      rpcClient({ data: true, error: null }),
+      storage,
+      'audio',
+      KEY,
+      BODY,
+      OPTIONS,
+      CHECKSUMS,
+    );
+
+    expect(CHECKSUMS.rpc).toHaveBeenCalledExactlyOnceWith(
+      'record_media_checksum',
+      {
+        p_bucket: 'audio',
+        p_key: KEY,
+        // sha256sum of the 5 bytes "audio"
+        p_sha256:
+          '6ed8919ce20490a5e3ad8630a4fab69475297abd07db73918dd5f36fcfaeb11b',
+        p_bytes: 5,
+      },
+    );
+  });
+
+  it('a file whose checksum cannot be recorded is still written', async () => {
+    const { writeProjectObject } = await import('../src/project-write');
+    const storage = adapterDouble();
+    const failing = {
+      rpc: vi.fn(async () => ({ error: { message: 'permission denied' } })),
+    };
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = await writeProjectObject(
+      rpcClient({ data: true, error: null }),
+      storage,
+      'audio',
+      KEY,
+      BODY,
+      OPTIONS,
+      failing,
+    );
+
+    expect(result.url).toBe(`https://cdn.test/audio/${KEY}`);
+    expect(failing.rpc).toHaveBeenCalledOnce();
   });
 
   it('refuses a key the caller cannot write, and writes nothing', async () => {
@@ -96,6 +147,7 @@ describe('writeProjectObject', () => {
         KEY,
         BODY,
         OPTIONS,
+        CHECKSUMS,
       ),
     ).rejects.toBeInstanceOf(StorageWriteRefused);
     await expect(
@@ -106,9 +158,11 @@ describe('writeProjectObject', () => {
         KEY,
         BODY,
         OPTIONS,
+        CHECKSUMS,
       ),
     ).rejects.toMatchObject({ key: KEY, reason: 'not-writer' });
     expect(storage.upload).not.toHaveBeenCalled();
+    expect(CHECKSUMS.rpc).not.toHaveBeenCalled();
   });
 
   it('refuses a key that names no project without asking the database', async () => {
@@ -124,6 +178,7 @@ describe('writeProjectObject', () => {
         'music/asset.mp3',
         BODY,
         OPTIONS,
+        CHECKSUMS,
       ),
     ).rejects.toMatchObject({ reason: 'no-scope' });
     expect(client.rpc).not.toHaveBeenCalled();
@@ -142,6 +197,7 @@ describe('writeProjectObject', () => {
         KEY,
         BODY,
         OPTIONS,
+        CHECKSUMS,
       ),
     ).rejects.toThrow('connection reset');
     expect(storage.upload).not.toHaveBeenCalled();
@@ -159,6 +215,7 @@ describe('writeProjectObject', () => {
         KEY,
         BODY,
         OPTIONS,
+        CHECKSUMS,
       ),
     ).rejects.toMatchObject({ reason: 'not-writer' });
     expect(storage.upload).not.toHaveBeenCalled();
@@ -191,6 +248,7 @@ describe('on the R2 adapter', () => {
         KEY,
         BODY,
         OPTIONS,
+        CHECKSUMS,
       ),
     ).rejects.toMatchObject({ reason: 'not-writer' });
     expect(send).not.toHaveBeenCalled();
@@ -207,6 +265,7 @@ describe('on the R2 adapter', () => {
       KEY,
       BODY,
       OPTIONS,
+      CHECKSUMS,
     );
 
     expect(send).toHaveBeenCalledOnce();

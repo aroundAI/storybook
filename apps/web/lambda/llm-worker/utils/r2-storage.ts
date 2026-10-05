@@ -7,6 +7,10 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 import { localServiceUrl } from '@kit/shared/vendors';
+import {
+  type MediaChecksumClient,
+  recordWrittenMedia,
+} from '@kit/storage/media-checksum';
 import { keyInTarget } from '@kit/storage/upload-paths';
 
 // Singleton S3 client
@@ -68,6 +72,8 @@ export interface R2UploadTarget {
  * @param data - File buffer
  * @param contentType - MIME type
  * @param target - The project or episode the job was authorised for
+ * @param checksums - The worker's service-role client: the bytes' SHA-256 is
+ *   recorded there once they are stored (KB-189)
  * @returns Public URL and path
  */
 export async function uploadToR2(
@@ -76,6 +82,7 @@ export async function uploadToR2(
   data: Buffer,
   contentType: string,
   target: R2UploadTarget,
+  checksums: MediaChecksumClient,
 ): Promise<R2UploadResult> {
   if (!keyInTarget(path, target)) {
     throw new Error(
@@ -104,6 +111,8 @@ export async function uploadToR2(
       ContentType: contentType,
     }),
   );
+
+  await recordWrittenMedia(checksums, bucket, path, data);
 
   return {
     url: `${publicUrl}/${fullPath}`,

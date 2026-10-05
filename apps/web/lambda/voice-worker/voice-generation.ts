@@ -266,6 +266,7 @@ export async function processDialogueVoiceGeneration(
       audioBuffer,
       'audio/mpeg',
       { episodeId: data.episodeId },
+      supabase,
     );
 
     // 7. Calculate duration estimate (rough: ~150 words per minute)

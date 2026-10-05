@@ -6,6 +6,7 @@
  */
 
 export {
+  recordUploadChecksum,
   requestPresignedUpload,
   uploadWithPresignedUrl,
   uploadAvatar,

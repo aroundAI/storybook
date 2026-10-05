@@ -393,6 +393,14 @@ export default defineConfig({
         __dirname,
         '../../packages/features/storage/node_modules/@aws-sdk/client-s3',
       ),
+      '@aws-sdk/client-sqs': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/node_modules/@aws-sdk/client-sqs',
+      ),
+      '@kit/audio-generation/server-core': path.resolve(
+        __dirname,
+        '../../packages/features/audio-generation/src/server/core/index.ts',
+      ),
       '@kit/audio-generation/dub-episode': path.resolve(
         __dirname,
         '../../packages/features/audio-generation/src/lib/dub-episode.ts',
@@ -404,6 +412,10 @@ export default defineConfig({
       '@kit/storage/client': path.resolve(
         __dirname,
         '../../packages/features/storage/src/client.ts',
+      ),
+      '@kit/storage/media-checksum': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/media-checksum.ts',
       ),
       '@kit/storage/upload-paths': path.resolve(
         __dirname,

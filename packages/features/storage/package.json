@@ -11,6 +11,7 @@
         "./upload-paths": "./src/upload-paths.ts",
         "./public-url": "./src/public-url.ts",
         "./episode-video": "./src/episode-video.ts",
+        "./media-checksum": "./src/media-checksum.ts",
         "./adapters/local": "./src/adapters/local.ts",
         "./adapters/supabase": "./src/adapters/supabase.ts"
     },

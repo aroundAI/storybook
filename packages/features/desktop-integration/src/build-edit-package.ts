@@ -184,7 +184,10 @@ export interface EditPackageSources {
   shorts: ShortSourceRow[];
   dubbedVersions: DubbedVersionSourceRow[];
   dubbedLines: DubbedLineSourceRow[];
-  /** `assets.file_url` → `assets.file_hash`, for the project's hashed files. */
+  /**
+   * Stored URL → the SHA-256 recorded when the file was written
+   * (`media_checksums`, KB-189), or `assets.file_hash`.
+   */
   recordedHashes: Record<string, string>;
 }
 

@@ -292,6 +292,7 @@ const generateDialogueVoice = enhanceAction(
           contentType: 'audio/mpeg',
           upsert: overwriteExisting,
         },
+        adminClient,
       );
 
       // 14. Prepare metadata
@@ -588,6 +589,7 @@ const generateVoiceFromText = enhanceAction(
         {
           contentType: 'audio/mpeg',
         },
+        adminClient,
       );
 
       // 10. Update generation job as completed

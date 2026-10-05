@@ -12,6 +12,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ElevenLabsMusicProvider } from '../providers/elevenlabs-music';
@@ -87,6 +88,7 @@ async function uploadAudioToStorage(
     storagePath,
     audioBuffer,
     { contentType: 'audio/mpeg', upsert: true },
+    getSupabaseServerAdminClient(),
   );
 
   return {

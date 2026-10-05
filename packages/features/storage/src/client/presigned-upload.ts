@@ -88,13 +88,62 @@ export async function requestPresignedUpload(
   return data;
 }
 
+/** A body's SHA-256, lower-case hex, computed in the browser */
+async function sha256OfBody(body: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    await body.arrayBuffer(),
+  );
+
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
+
+/**
+ * Record the SHA-256 of a file just PUT to `project-assets` (KB-189), so the
+ * edit package can hand StorybookStudio a hash to verify it by. The server
+ * checks the caller writes the key and the stored size, then records it.
+ *
+ * Never throws: the upload has succeeded either way, and a file without a
+ * recorded hash is one the package says has none. Resolves to whether it
+ * was recorded.
+ */
+export async function recordUploadChecksum(
+  body: Blob,
+  bucket: string,
+  path: string,
+): Promise<boolean> {
+  if (bucket !== PROJECT_ASSETS_BUCKET) return false;
+
+  try {
+    const response = await fetch('/api/storage/checksum', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bucket,
+        path,
+        sha256: await sha256OfBody(body),
+        size: body.size,
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.warn('Could not record the upload checksum', error);
+
+    return false;
+  }
+}
+
 /**
  * Upload a file using a presigned URL
  *
  * Flow:
  * 1. Request presigned URL from server (small request)
  * 2. Upload file directly to storage using presigned URL (no Lambda)
- * 3. Return public URL
+ * 3. Record its SHA-256 (KB-189)
+ * 4. Return public URL
  *
  * @param file - File to upload
  * @param bucket - Storage bucket name
@@ -132,7 +181,10 @@ export async function uploadWithPresignedUrl(
     );
   }
 
-  // Step 3: Return public URL
+  // Step 3: Record what was stored, for the edit package (KB-189)
+  await recordUploadChecksum(file, bucket, path);
+
+  // Step 4: Return public URL
   return {
     url: presigned.publicUrl,
     path,
