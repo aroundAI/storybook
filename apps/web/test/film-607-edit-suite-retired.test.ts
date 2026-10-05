@@ -51,13 +51,18 @@ export const RETIRED_NAMES = [
 ];
 
 // Every top-level directory is scanned except these: version control, other
-// worktrees and local tool state, and the specs, which record the retirement.
+// worktrees and local tool state, the specs, which record the retirement, and
+// the StorybookStudio submodule: a separate repository that CI never checks
+// out, so a populated checkout (a local-CI worktree) would scan an editor
+// that legitimately names ffmpeg-static (72 hits on #630, 2026-10-05).
 const SKIPPED_ROOTS = new Set([
   '.git',
   '.claude',
   '.local-ci',
+  '.sst', // SST build artifacts: old Lambda bundles that still name the retired tables
   'node_modules',
   'specs',
+  'storybookstudio',
 ]);
 
 const SKIPPED_DIRECTORIES = new Set([
