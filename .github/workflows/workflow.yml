@@ -293,24 +293,25 @@ jobs:
     # theoretical: an alias shadowing a filter column reached main behind
     # 120 green tests and broke every deep-dive query. This job runs the
     # real migrations and the real queries against a real ClickHouse.
-    services:
-      clickhouse:
-        image: clickhouse/clickhouse-server:24.8-alpine
-        # Both must be set on the *container*: its entrypoint disables
-        # network access for `default` when they are absent, so the health
-        # check never passes and the job fails before running anything.
-        env:
-          CLICKHOUSE_USER: default
-          CLICKHOUSE_PASSWORD: verify
-          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-        ports:
-          - 8123:8123
-        # No container health check: the alpine image ships neither wget nor
-        # curl, so any HTTP probe inside it fails and the container is
-        # reported unhealthy before it has done anything wrong. The runner
-        # has curl, so readiness is waited for from a step instead.
-
     steps:
+      # macOS runners cannot start service containers, so ClickHouse is run
+      # by hand; the same step works on GitHub's Linux image. Both env vars
+      # must be set on the container (its entrypoint disables network access
+      # for `default` without them); the alpine image has no HTTP client, so
+      # the host waits on /ping. rm -f first: a self-hosted runner keeps
+      # containers between jobs.
+      - name: ClickHouse 24.8 (docker run)
+        run: |
+          docker rm -f ci-clickhouse >/dev/null 2>&1 || true
+          docker run -d --name ci-clickhouse \
+            -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=verify \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+            -p 8123:8123 clickhouse/clickhouse-server:24.8-alpine >/dev/null
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:8123/ping >/dev/null && exit 0
+            sleep 2
+          done
+          echo 'ClickHouse did not answer /ping in 120s'; docker logs ci-clickhouse | tail -20; exit 1
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
@@ -817,19 +818,25 @@ jobs:
       EVIDENCE_DIR: ${{ github.workspace }}/evidence
       ENABLE_BILLING_TESTS: 'false'
 
-    services:
-      clickhouse:
-        image: clickhouse/clickhouse-server:24.8-alpine
-        # See 🗄️ ClickHouse SQL: both must be set on the container, and the
-        # alpine image has no HTTP client for a health check.
-        env:
-          CLICKHOUSE_USER: default
-          CLICKHOUSE_PASSWORD: verify
-          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-        ports:
-          - 8123:8123
-
     steps:
+      # macOS runners cannot start service containers, so ClickHouse is run
+      # by hand; the same step works on GitHub's Linux image. Both env vars
+      # must be set on the container (its entrypoint disables network access
+      # for `default` without them); the alpine image has no HTTP client, so
+      # the host waits on /ping. rm -f first: a self-hosted runner keeps
+      # containers between jobs.
+      - name: ClickHouse 24.8 (docker run)
+        run: |
+          docker rm -f ci-clickhouse >/dev/null 2>&1 || true
+          docker run -d --name ci-clickhouse \
+            -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=verify \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+            -p 8123:8123 clickhouse/clickhouse-server:24.8-alpine >/dev/null
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:8123/ping >/dev/null && exit 0
+            sleep 2
+          done
+          echo 'ClickHouse did not answer /ping in 120s'; docker logs ci-clickhouse | tail -20; exit 1
       - uses: actions/checkout@v4
         with:
           # Whole history: `run.py --changed` diffs from the merge base.
@@ -980,19 +987,25 @@ jobs:
       EVIDENCE_DIR: ${{ github.workspace }}/evidence
       ENABLE_BILLING_TESTS: 'false'
 
-    services:
-      clickhouse:
-        image: clickhouse/clickhouse-server:24.8-alpine
-        # See 🗄️ ClickHouse SQL: both must be set on the container, and the
-        # alpine image has no HTTP client for a health check.
-        env:
-          CLICKHOUSE_USER: default
-          CLICKHOUSE_PASSWORD: verify
-          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-        ports:
-          - 8123:8123
-
     steps:
+      # macOS runners cannot start service containers, so ClickHouse is run
+      # by hand; the same step works on GitHub's Linux image. Both env vars
+      # must be set on the container (its entrypoint disables network access
+      # for `default` without them); the alpine image has no HTTP client, so
+      # the host waits on /ping. rm -f first: a self-hosted runner keeps
+      # containers between jobs.
+      - name: ClickHouse 24.8 (docker run)
+        run: |
+          docker rm -f ci-clickhouse >/dev/null 2>&1 || true
+          docker run -d --name ci-clickhouse \
+            -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=verify \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+            -p 8123:8123 clickhouse/clickhouse-server:24.8-alpine >/dev/null
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:8123/ping >/dev/null && exit 0
+            sleep 2
+          done
+          echo 'ClickHouse did not answer /ping in 120s'; docker logs ci-clickhouse | tail -20; exit 1
       - uses: actions/checkout@v4
 
       # Same reason as ⚫️ Test: Supabase images, browsers and the monorepo
