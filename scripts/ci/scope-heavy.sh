@@ -27,6 +27,7 @@
 #                             .github/**, tooling/** except the guard JSON,
 #                             scripts/ci/**; and an empty diff, a failed
 #                             turbo, or any count this script cannot read
+#   nothing                   the storybookstudio submodule pin
 #
 # Verdict keys: full, reason, test, build, supabase, unit_guards, e2e_guards.
 # Effective keys, which the jobs gate on: enforced, skip_test, skip_build,
@@ -93,6 +94,9 @@ classify() {
       tooling/mutation-guards/*.json) ;;
       *.md) ;;
       tooling/* | scripts/ci/*) root+=("$path") ;;
+      # The StorybookStudio submodule pin: CI never checks it out and no
+      # StoryBook code reads it, so a bump runs no heavy job on its account.
+      storybookstudio) ;;
       */*) ;;
       *) root+=("$path") ;;
     esac

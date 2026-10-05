@@ -145,7 +145,13 @@ storybook/
   Read and change its code there; do not look for it elsewhere or clone it again. Run
   `git submodule update --init storybookstudio` if the folder is empty. It is outside the
   pnpm workspace and CI does not check it out; commits inside it go to that repo, and
-  StoryBook pins one of its commits (bump the pin here to follow it).
+  StoryBook pins one of its commits. The pin follows fork main by itself:
+  `.github/workflows/studio-pin.yml` opens or refreshes one
+  `chore(storybookstudio): the pin follows fork main to <sha>` PR when fork main
+  changes and daily (`scripts/ci/studio-pin.sh`; it needs the `STUDIO_PIN_TOKEN`
+  secret), and you queue it. A pin-only PR runs no heavy job. It records nothing:
+  the specs a fork PR advances are still updated by a records PR, citing
+  `storybookstudio@<sha>` at the pin it describes.
 
 ## Multi-Tenant Architecture
 
