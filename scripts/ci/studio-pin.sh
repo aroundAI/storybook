@@ -21,13 +21,17 @@ old=$(git ls-tree HEAD storybookstudio | awk '{print $3}')
 [ -n "$old" ] || { echo 'storybookstudio is not a submodule at HEAD' >&2; exit 1; }
 
 # .gitmodules names the fork over SSH, and a CI runner has no key; the fork
-# is public, so read it over HTTPS (git passes -c on to the clone it runs).
-https=(-c url.https://github.com/.insteadOf=git@github.com:)
+# is public, so read it over HTTPS. Exported, not passed with -c: a blobless
+# clone fetches contents lazily from later commands (the checkout below), and
+# each of those must read over HTTPS too.
+n=${GIT_CONFIG_COUNT:-0}
+export "GIT_CONFIG_KEY_$n=url.https://github.com/.insteadOf" "GIT_CONFIG_VALUE_$n=git@github.com:"
+export GIT_CONFIG_COUNT=$((n + 1))
 
 # Blobless: the merge subjects between the two pins are all that is read.
-git "${https[@]}" submodule update --init --filter=blob:none storybookstudio >/dev/null 2>&1 \
-  || git "${https[@]}" submodule update --init storybookstudio >/dev/null
-git "${https[@]}" -C storybookstudio fetch --quiet --filter=blob:none origin main
+git submodule update --init --filter=blob:none storybookstudio >/dev/null 2>&1 \
+  || git submodule update --init storybookstudio >/dev/null
+git -C storybookstudio fetch --quiet --filter=blob:none origin main
 new=$(git -C storybookstudio rev-parse FETCH_HEAD)
 
 if [ "$old" = "$new" ]; then
