@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * "Open in Studio" (FILM-2005): the episode statuses that offer it, and the
  * deep link it launches. The Studio's protocol handler (FILM-2011) parses
- * the same link: `velorn://open?api=<encoded origin>&episode=<id>`.
+ * the same link: `storybookstudio://open?api=<encoded origin>&episode=<id>`.
  */
 export const OPEN_IN_STUDIO_STATUSES = [
   'storyboard',
@@ -18,7 +18,7 @@ export function canOpenInStudio(status: string): status is OpenInStudioStatus {
   return (OPEN_IN_STUDIO_STATUSES as readonly string[]).includes(status);
 }
 
-export const STUDIO_DEEP_LINK_SCHEME = 'velorn';
+export const STUDIO_DEEP_LINK_SCHEME = 'storybookstudio';
 
 const StudioOpenLinkInputSchema = z.object({
   origin: z

@@ -141,7 +141,7 @@ storybook/
 - See `apps/web/supabase/CLAUDE.md` for database workflows
 - Review `packages/features/CLAUDE.md` for feature development
 - **StorybookStudio (Phase 20, FILM-2010..2019) is in `storybookstudio/`**, a git
-  submodule of `aroundAI/storybookstudio` (the Velorn fork), like `deployment/config`.
+  submodule of `aroundAI/storybookstudio` (the StorybookStudio repo), like `deployment/config`.
   Read and change its code there; do not look for it elsewhere or clone it again. Run
   `git submodule update --init storybookstudio` if the folder is empty. It is outside the
   pnpm workspace and CI does not check it out; commits inside it go to that repo, and

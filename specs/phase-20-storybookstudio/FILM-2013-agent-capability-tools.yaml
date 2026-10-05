@@ -16,9 +16,9 @@ summary: >
   The model sees eighteen capability tools, not 129 primitives. The Studio's
   local MCP server (electron/mcpServer.js, 127.0.0.1:19790) gains a profile
   switch: agent (default) serves the capability tools; expert serves every
-  Velorn tool as today. Each editing capability is an intent compiler, a plain
+  upstream tool as today. Each editing capability is an intent compiler, a plain
   function (context, scope, params, policy) => ActionPlan, where ActionPlan is
-  Velorn's run_mcp_action_plan shape (up to 50 primitive steps,
+  the upstream editor's run_mcp_action_plan shape (up to 50 primitive steps,
   createCheckpointFirst) plus a reasons[] array aligned to steps. Preview runs
   the plan through the primitives' own previewOnly path and renders per-scene
   plan cards; apply creates a version and logs every step with its reason.
@@ -29,9 +29,9 @@ summary: >
   produce identical cards. Design: PRD-EDD.md Part 2 "Agent interface",
   Part 1 R-20, R-21, R-23, R-25, R-26.
 acceptance_criteria:
-  - text: "electron/studio/mcpCapabilities.js registers the 18 capability tools (the draft said 16, then 17) with JSON schemas; GET/POST /mcp?profile=agent (default) lists only them, ?profile=expert lists Velorn's tools (131) plus the 6 lifecycle tools (the draft's storybook_* names are studio_*); both require the FILM-2010 bearer"
+  - text: "electron/studio/mcpCapabilities.js registers the 18 capability tools (the draft said 16, then 17) with JSON schemas; GET/POST /mcp?profile=agent (default) lists only them, ?profile=expert lists the upstream editor's tools (131) plus the 6 lifecycle tools (the draft's storybook_* names are studio_*); both require the FILM-2010 bearer"
     met: true
-    evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 electron/studio/mcpCapabilities.js:54 CAPABILITY_TOOLS; electron/mcpServer.js:10723 toolsForProfile, :10812 the profile header; tests/studio/mcp-profiles.test.mjs:46 agent lists 18, :69 expert lists every Velorn tool plus 6, :80 bearer on both, :93 unknown profile 400)"
+    evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 electron/studio/mcpCapabilities.js:54 CAPABILITY_TOOLS; electron/mcpServer.js:10723 toolsForProfile, :10812 the profile header; tests/studio/mcp-profiles.test.mjs:46 agent lists 18, :69 expert lists every upstream tool plus 6, :80 bearer on both, :93 unknown profile 400)"
   - text: "Lifecycle: studio_open_episode {episodeId} (starts the FILM-2011 pull, returns jobId), studio_get_job_status {jobId}, studio_check_readiness (media present and probed, codecs, durations, captions available, policy loaded, target duration known → pass or issues), studio_create_version {name}, studio_restore_version {versionId}, studio_deliver {presets[], languages[], confirm:false} (FILM-2017 renders and uploads only when confirm:true after a UI confirmation)"
     met: true
     evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 electron/studio/mcpCapabilities.js:213 studio_open_episode, :222 studio_get_job_status, :231 studio_check_readiness, :240 studio_create_version, :249 studio_restore_version, :258 studio_deliver; tests/studio/capability-integration.test.mjs:171 readiness, versions and the deliver summary over MCP). confirm:true is real since aroundAI/storybookstudio#10 (storybookstudio@69426c2 electron/studio/mcpCapabilities.js:631 the token gate, electron/studio/deliver.js:290 consumeToken, :471 studioDeliver; tests/studio/deliver.test.mjs:72) and in FILM-2017"
@@ -66,7 +66,7 @@ test_plan:
   unit:
     - {text: "Each compiler on the 20-shot fixture: expected steps and reasons; policy bounds respected; user-edited clips excluded or flagged", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/compile.test.mjs:28, :68, :81, :97, :113, :123, :133, :143, :161, :167, :179, :188, :199; tests/studio/intents-audio.test.mjs:47, :70, :88, :121; tests/studio/intents-captions.test.mjs:33, :47, :64)"}
     - {text: "Scene map and context assembly from a built project", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/context.test.mjs:9, :29, :37, :50, :67, :80, :96)"}
-    - {text: "Profile switch: agent lists 18, expert lists Velorn's tools plus the 6 lifecycle tools; bearer required on both", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/mcp-profiles.test.mjs:46, :69, :80, :93)"}
+    - {text: "Profile switch: agent lists 18, expert lists the upstream editor's tools plus the 6 lifecycle tools; bearer required on both", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/mcp-profiles.test.mjs:46, :69, :80, :93)"}
   integration:
     - {text: "SDK client over HTTP: studio_get_context → studio_edit preview → apply → version exists, op log has N lines with reasons, report matches", met: true, evidence: "aroundAI/storybookstudio#9 (storybookstudio@69426c2 tests/studio/capability-integration.test.mjs:43). M2 exit check first measured 2026-10-05 on a fixture with no media on disk (corrected in the notes: re-measured with real media in aroundAI/storybookstudio#14), MCP SDK client with bearer, 20-shot fixture, real server and renderer code: scene 3 21.0 s → 13.917 s (target 12), a plan of 12 steps (6 ripple extract_range cuts, caption re-time, captions clip, 2 beds, 2 markers) and all 12 step previews pass; the apply made the version 'AI: tighten scene 3 to 12 s' from 'Rough cut' with 12 op-log lines, each with reason, scene and plan session; the report on disk equals the returned one equals the preview draft; the episode went 99.0 s → 91.917 s; 'fix the audio' applied 34 de-click fades from FILM-2016's fade compiler into 'AI: fix the audio'. 12 s was not reached: scene 3's 8 dialogue lines run 12.7 s and the card says so rather than cutting dialogue. The run was repeated in electron:dev with identical cards, report and op log"}
     - {text: "Nightly AI eval: 10 fixture episodes × 5 instructions (incl. the north-star sentence) scored on duration hit rate, QA pass rate, script coverage, revisions, cost; a release may not regress QA pass rate or raise cost over 20%", met: false, reason: "the harness is built (scripts/ai-eval.mjs, npm run ai-eval, tests/studio/ai-eval.test.mjs:17, :23, :32, :41) and the oracle agent run is recorded: 50 runs, duration hit 0.5 (hit_duration 10/10; the north-star target sits under the dialogue), coverage 1, 0 tool errors, QA unmeasured. The model run has not been made: it needs the owner's choice of model (phase 20 README question 2). Lead default: the eval model driver uses @anthropic-ai/sdk on demand, not as a dependency, and suggests claude-opus-5-5. The QA pass rate waits for FILM-2014"}
@@ -94,12 +94,12 @@ notes: >
   intent and scope, the compiler decides which primitives. That keeps plans
   reproducible, cheap to preview and easy to test, and lets the eval harness
   score the model's choices separately from the compiler's correctness.
-  Velorn's MCP_ACTION_PLAN_WRITABLE_TOOLS set gains every studio_* write tool
+  The upstream editor's MCP_ACTION_PLAN_WRITABLE_TOOLS set gains every studio_* write tool
   except studio_deliver, which must stay a separate confirmed step.
 
   Built in aroundAI/storybookstudio#9 and #11 (pinned at storybookstudio@69426c2
   by #627) with the draft's corrections: 18 capability tools; the expert
-  profile is Velorn's 131 plus 6 lifecycle tools; the lifecycle names are
+  profile is the upstream editor's 131 plus 6 lifecycle tools; the lifecycle names are
   studio_*; get_audio_analysis stands in for the nonexistent detect_silence;
   cuts are ripple extract_range because trim_clips does not ripple. M2 exit
   check met 2026-10-05: 'tighten scene 3 to 12 s and fix the audio' ran plan
@@ -124,7 +124,7 @@ notes: >
   Compile-time audio reads now run in the main process with ffmpeg
   (electron/studio/audioReads.js: silencedetect and FILM-2016's ebur128); the
   renderer never calls decodeAudioData. That call segfaults the renderer on
-  Electron 28 on macOS 26, and Velorn's own get_audio_analysis tool still
+  Electron 28 on macOS 26, and the upstream editor's own get_audio_analysis tool still
   does: KB-190. Report durations now end where the picture ends, so a
   captions clip no longer inflates them. The autoRepair request still has no
   progress or job id (task 32).

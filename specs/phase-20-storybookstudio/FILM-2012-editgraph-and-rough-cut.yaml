@@ -13,11 +13,11 @@ dependencies:
   - spec_id: "FILM-2004"
     note: "brand and policy are written beside the project"
 summary: >
-  The Studio's project format is Velorn's project.comfystudio plus four
+  The Studio's project format is the upstream editor's project.storybookstudio plus four
   additive fields (asset.role, asset.semantic, asset.analysis,
   clip.metadata.semantic/origin, timeline.studio, project.studio), an
-  append-only operation log and named versions. Stock Velorn opens a Studio
-  project and ignores the extra fields; the Studio opens any Velorn project.
+  append-only operation log and named versions. The stock upstream editor opens a Studio
+  project and ignores the extra fields; the Studio opens any upstream project.
   The project builder is a pure function from (edit package, probed assets,
   brand, policy) to project JSON that assembles the rough cut: shots on
   video-1 at their planned times, dialogue per language, music/SFX/ambience
@@ -28,22 +28,22 @@ summary: >
   derived from the log. Design: PRD-EDD.md Part 2 "Project format: EditGraph
   v1" and Part 1 R-13, R-22, R-24, R-31, R-32.
 acceptance_criteria:
-  - text: "src/studio/contracts/editgraph.schema.js (zod) defines the additive fields: asset {role enum, semantic {scene, shotId, characters[], purpose, emotion, prompt, continuationFrom}, analysis {loudnessLufs, silences[], bpm, keyframes[], semanticsVersion}, languageDependency none|language|locale}; clip.metadata {semantic {scene, shotId, role}, origin {versionId, opId, by ai|user}}; timeline.studio {kind master|variant, variantOf, aspect, language}; project.studio {schema 'editgraph/1', episodeId, currentVersion, audioBuses}; a Velorn sample project without them validates"
+  - text: "src/studio/contracts/editgraph.schema.js (zod) defines the additive fields: asset {role enum, semantic {scene, shotId, characters[], purpose, emotion, prompt, continuationFrom}, analysis {loudnessLufs, silences[], bpm, keyframes[], semanticsVersion}, languageDependency none|language|locale}; clip.metadata {semantic {scene, shotId, role}, origin {versionId, opId, by ai|user}}; timeline.studio {kind master|variant, variantOf, aspect, language}; project.studio {schema 'editgraph/1', episodeId, currentVersion, audioBuses}; an upstream sample project without them validates"
     met: true
-    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/contracts/editgraph.schema.js:154 EditGraphProjectSchema (asset :79, clip metadata :105, timeline.studio :121, project.studio :145); tests/studio/editgraph-schema.test.mjs:53 a stock Velorn project validates, :74 a bad role is refused)"
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/contracts/editgraph.schema.js:154 EditGraphProjectSchema (asset :79, clip metadata :105, timeline.studio :121, project.studio :145); tests/studio/editgraph-schema.test.mjs:53 a the stock upstream editor project validates, :74 a bad role is refused)"
   - text: "Asset role taxonomy: primary_video, broll, reaction, establishing, generated_video, stock_video, overlay_video, dialogue, voiceover, soundbite, music, ambience, sfx, caption, title, lower_third, logo, image, composition; the builder maps shot → generated_video, dialogue line → dialogue, audio_tracks.type → music|sfx|ambience, character reference → image"
     met: true
     evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/contracts/editgraph.schema.js:9 ASSET_ROLES, :35 STORYBOOK_ROLE_MAP (exported; the builder that applies it is slice B))"
   - text: "src/studio/projectBuilder.js (pure, no Electron import) produces a project with one master timeline at the episode's aspect and fps; shots on video-1 at timelineStart else packed by sequence_number; a Dialogue track per language at each line's timelineStart; Music, SFX, Ambience tracks with bus fields and audio_tracks.volume; a captions track from caption segments; a marker per scene named by heading at the scene's first shot; asset folders per scene; semantic on every clip and asset; a ShotAudio track for Veo audio set to duck under dialogue; storybook/package.json, link.json, brand.json, policy.json written beside"
     met: true
     evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 src/studio/projectBuilder.js:115 buildProject (pure, no Electron, no clock); :286 shots on video-1 at the planned start, else packed by sequenceNumber; :402 one Dialogue track per language, dubs at timingAdjustment as clip speed (:435); :444 Shot audio track linked to its picture; :459-495 Music/SFX/Ambience tracks with bus fields and volume as clip gain; :573 live captions per language; :615 one marker per scene at its first shot; :152 asset folder per scene; :659-676 project.studio.audioBuses, music and shotaudio duck under dialogue (policy duckDb, default -8 dB, attack 120 ms, release 400 ms); :697 storybook/package.json, link.json, brand.json, policy.json written beside, URL signatures stripped; tests/studio/project-builder.test.mjs:23)"
-  - text: "Builder snapshot tests pass on the three FILM-2001 fixture packages (5, 20, 60 shots with dubbed audio) and the output opens in stock Velorn v0.3.36 without error"
+  - text: "Builder snapshot tests pass on the three FILM-2001 fixture packages (5, 20, 60 shots with dubbed audio) and the output opens in the stock upstream editor (v0.3.36) without error"
     met: true
-    evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/project-builder.test.mjs:23 snapshots the 5, 20 and 60-shot fixtures (102 KB, 351 KB, 1.48 MB); tests/studio/rough-cut-opens.test.mjs:200 opens each built folder with upstream fdd8255's own openProject (Velorn v0.3.36 stores run in Node, not a packaged app): no error, every clip loads at its built time, stock saveProject writes it, and the fork reopens it as 1.2 with every Studio field intact; :175 runs the fork's entry end to end (write, open, Rough cut version on disk))"
+    evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/project-builder.test.mjs:23 snapshots the 5, 20 and 60-shot fixtures (102 KB, 351 KB, 1.48 MB); tests/studio/rough-cut-opens.test.mjs:200 opens each built folder with upstream fdd8255's own openProject (the upstream editor v0.3.36 stores run in Node, not a packaged app): no error, every clip loads at its built time, stock saveProject writes it, and the fork reopens it as 1.2 with every Studio field intact; :175 runs the fork's entry end to end (write, open, Rough cut version on disk))"
   - text: "src/studio/oplog.js wraps runMcpAction and the timeline/assets store mutators: one JSON line per applied operation {op, ts, by ai|user, session, tool, args, inverse, reason, scene, versionId}; preview-only calls are not logged; the file is append-only and fsynced on version boundaries"
     met: true
     evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/oplog.js:157 wrapMcpActionRunner, :197 attachUserEditLogger, :50 createOpLog; src/services/mcpActions.js:8938; tests/studio/oplog.test.mjs:90 one line per write tool, :112 a preview appends none; tests/studio/edit-log-runtime.test.mjs:139 real stores and handlers)"
-  - text: "src/studio/versions.js: createVersion(name, {prompt, by}) snapshots the timeline document under edits/snapshots/<id>.json and records {id, name, parent, opRange, createdBy, createdAt, prompt}; restoreVersion(id) loads the snapshot in O(1) and appends a restore op; versions survive restart; Velorn's in-memory undo stays the fast path"
+  - text: "src/studio/versions.js: createVersion(name, {prompt, by}) snapshots the timeline document under edits/snapshots/<id>.json and records {id, name, parent, opRange, createdBy, createdAt, prompt}; restoreVersion(id) loads the snapshot in O(1) and appends a restore op; versions survive restart; the upstream editor's in-memory undo stays the fast path"
     met: true
     evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/versions.js:49 createVersion, :89 restoreVersion; tests/studio/versions.test.mjs:99 restore equals the snapshot with no replay, :144 survives a restart)"
   - text: "src/studio/report.js derives the explain-why report for a version from the op log (removed, changed, added per scene with reasons; duration before/after per scene and total; audio changes; QA summary) as JSON (ExplainWhyReportSchema, shared with FILM-2003) and as the text block in the PRD"
@@ -57,19 +57,19 @@ acceptance_criteria:
     evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/services/fileSystem.js:246; src/stores/projectStore.js:169 normalize, :445 create; src/studio/projectVersion.js:29; tests/studio/project-version.test.mjs:53; tests/studio/edit-log-runtime.test.mjs:89)"
 test_plan:
   unit:
-    - {text: "Schema: Velorn project validates; Studio fields validate; bad role refused", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/editgraph-schema.test.mjs)"}
+    - {text: "Schema: upstream project validates; Studio fields validate; bad role refused", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/editgraph-schema.test.mjs)"}
     - {text: "Builder snapshots (3 fixtures); packing rule when timelineStart is null; captions and markers", met: true, evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/project-builder.test.mjs; 13 builder rules red when removed)"}
     - {text: "Op log: every write tool appends exactly one line; preview appends none; restore appends a restore op and the document equals the snapshot", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/oplog.test.mjs, tests/studio/versions.test.mjs, tests/studio/edit-log-runtime.test.mjs)"}
     - {text: "Report: fixture log → expected JSON and text", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/report.test.mjs)"}
   integration:
-    - {text: "Open a built project in stock Velorn (packaged, CI job on the fork) and save it; the Studio re-opens it with its fields intact", met: true, evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/rough-cut-opens.test.mjs:200). Met by upstream fdd8255's own stores run in Node (git archive; CI fetches the SHA), not by a packaged app"}
+    - {text: "Open a built project in the stock upstream editor (packaged, CI job on the fork) and save it; the Studio re-opens it with its fields intact", met: true, evidence: "aroundAI/storybookstudio#6 (storybookstudio@4e3c581 tests/studio/rough-cut-opens.test.mjs:200). Met by upstream fdd8255's own stores run in Node (git archive; CI fetches the SHA), not by a packaged app"}
   e2e: []
 open_questions: []
 notes: >
-  Why additive and not a new format: Velorn's stores, exporter and MCP
-  snapshot all read project.comfystudio; a parallel format would fork the
+  Why additive and not a new format: the upstream editor's stores, exporter and MCP
+  snapshot all read project.storybookstudio; a parallel format would fork the
   whole app. The op log is the durable truth for 'what did the AI change';
-  Velorn's undo stack (timeline history plus projectHistory, max 25) stays
+  the upstream editor's undo stack (timeline history plus projectHistory, max 25) stays
   for fast interactive undo. Snapshots make restore O(1) so a version is as
   cheap to return to as to create.
 
@@ -105,7 +105,7 @@ notes: >
   is not a *.schema.ts, so scripts/sync-studio-contracts.mjs does not copy it
   although delivery-package.schema.ts imports it (the fork rendered it with
   the script's own function; the script should include it, a FILM-2001/2003
-  follow-up, or StoryBook's --check misses that file); Velorn's
+  follow-up, or StoryBook's --check misses that file); the upstream editor's
   placeLiveCaptions removes every other captions clip when it regenerates, so
   FILM-2016 and FILM-2019 must handle a second language before calling it.
   Bug found by the builder tests: volumeToGainDb(0) returned 0 dB instead of

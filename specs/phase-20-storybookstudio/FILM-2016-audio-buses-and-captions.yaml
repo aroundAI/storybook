@@ -14,9 +14,9 @@ summary: >
   Sound and captions become things the AI can reason about. Audio tracks carry
   a bus (dialogue, music, sfx, ambience) summed into a master with a limiter;
   ducking is a sidechain from the dialogue bus onto the music bus, applied at
-  preview as Web Audio gain automation on Velorn's mixer graph and at export
+  preview as Web Audio gain automation on the upstream editor's mixer graph and at export
   as FFmpeg sidechaincompress; bus stems export separately so localization
-  (FILM-2019) can swap dialogue without remixing. Captions keep Velorn's local
+  (FILM-2019) can swap dialogue without remixing. Captions keep the upstream editor's local
   whisper.cpp path and gain a brand caption preset (font, size, colours,
   background, position, max chars per line, emphasis words) and safe-area
   rules per aspect ratio, checked by QA (FILM-2014). Design: PRD-EDD.md Part 2
@@ -34,7 +34,7 @@ acceptance_criteria:
   - text: "studio_edit_audio intents compile to primitives and bus changes: balance (per-segment dialogue-to-music ratio to policy, via set_clip_audio and bus gain), duck (enable or adjust duckDb), normalize (bus and master targets), fade (set_clip_audio envelopes at cuts); each with reasons"
     met: true
     evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d src/studio/intents/audio.js:240 compileAudioIntent (balance, duck, normalize, fade, each with reasons); tests/studio/intents-audio.test.mjs:88 balance to 12 dB via the music bus and dialogue clip gain)"
-  - text: "src/studio/captions/style.js applies BrandSchema.captionStyle (FILM-2004) to the captions clip's style (Velorn's live captions on a role:'captions' track) and positions cues inside per-aspect safe rectangles: 16:9 bottom 10% margin; 9:16 above the bottom 25% and clear of the right 15% platform UI; 1:1 bottom 12%"
+  - text: "src/studio/captions/style.js applies BrandSchema.captionStyle (FILM-2004) to the captions clip's style (the upstream editor's live captions on a role:'captions' track) and positions cues inside per-aspect safe rectangles: 16:9 bottom 10% margin; 9:16 above the bottom 25% and clear of the right 15% platform UI; 1:1 bottom 12%"
     met: true
     evidence: "aroundAI/storybookstudio#8 (storybookstudio@fdc8f0d src/studio/captions/style.js:55 captionOverrides applies BrandSchema.captionStyle; src/studio/captions/layout.js:14 SAFE_AREAS per aspect; src/utils/kineticCaptionRenderer.js:932 the subtitle renderer draws inside the safe rectangle; tests/studio/captions-style.test.mjs:176 a 9:16 variant through the real renderer). Margins differ from the draft numbers by lead default, see notes"
   - text: "studio_add_captions {language, style?} compiles to transcribe_captions (whisper.cpp) → update_caption_cues with the styled, safe-area-placed cues → the QA caption check; emphasis words from the brand preset are styled when present in a cue"

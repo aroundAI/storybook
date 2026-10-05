@@ -69,12 +69,12 @@ describe('OpenInStudioButton (FILM-2005)', () => {
     },
   );
 
-  it('launches velorn://open with the origin and episode, and opens the sheet when nothing answered in 2 s', () => {
+  it('launches storybookstudio://open with the origin and episode, and opens the sheet when nothing answered in 2 s', () => {
     renderButton(true);
 
     fireEvent.click(screen.getByTestId('open-in-studio-button'));
 
-    const link = `velorn://open?api=${encodeURIComponent(window.location.origin)}&episode=${EPISODE_ID}`;
+    const link = `storybookstudio://open?api=${encodeURIComponent(window.location.origin)}&episode=${EPISODE_ID}`;
     expect(assign).toHaveBeenCalledWith(link);
     expect(
       screen

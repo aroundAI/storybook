@@ -33,7 +33,7 @@ describe('which episodes open in StorybookStudio (FILM-2005)', () => {
   });
 });
 
-describe('the velorn://open deep link', () => {
+describe('the storybookstudio://open deep link', () => {
   it('carries the encoded app origin and the episode id, nothing else', () => {
     const link = studioOpenLink({
       origin: 'https://app.storybook.test',
@@ -41,11 +41,11 @@ describe('the velorn://open deep link', () => {
     });
 
     expect(link).toBe(
-      `velorn://open?api=https%3A%2F%2Fapp.storybook.test&episode=${EPISODE}`,
+      `storybookstudio://open?api=https%3A%2F%2Fapp.storybook.test&episode=${EPISODE}`,
     );
 
     const url = new URL(link);
-    expect(url.protocol).toBe('velorn:');
+    expect(url.protocol).toBe('storybookstudio:');
     expect(url.host).toBe('open');
     expect([...url.searchParams.keys()]).toEqual(['api', 'episode']);
     expect(url.searchParams.get('api')).toBe('https://app.storybook.test');
@@ -60,7 +60,9 @@ describe('the velorn://open deep link', () => {
 
     const api = new URL(link).searchParams.get('api');
     expect(api).toBe('http://localhost:3100');
-    expect(link).not.toMatch(/secret|sbk_|token|session|studio/);
+    expect(link.replace(/^storybookstudio:\/\/open\?/, '')).not.toMatch(
+      /secret|sbk_|token|session|studio/,
+    );
   });
 
   it('refuses an episode id that is not a UUID, so nothing can be appended through it', () => {

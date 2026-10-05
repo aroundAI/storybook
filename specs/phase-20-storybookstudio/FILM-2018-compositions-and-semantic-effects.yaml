@@ -17,7 +17,7 @@ summary: >
   type {engine: remotion, compositionId, props, languageDependency} rendered in
   the main process by @remotion/renderer to an alpha WebM keyed by
   sha256(compositionId + props), cached under compositions/, and played
-  through Velorn's existing overlay path. Remotion is not a live renderer in
+  through the upstream editor's existing overlay path. Remotion is not a live renderer in
   the preview; a placeholder shows until the render lands. A graphics
   primitives package (text, counter, callout, arrow, highlight, lower third,
   chart, map, timeline, progress bar) reads brand tokens. Semantic effects
