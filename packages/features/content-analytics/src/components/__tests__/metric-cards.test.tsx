@@ -100,6 +100,27 @@ describe('MetricCards', () => {
     expect(screen.queryByText('$0')).toBeNull();
   });
 
+  it('says Likes, Comments and Shares were not measured instead of 0 (KB-192)', () => {
+    const { container } = render(
+      <MetricCards
+        data={{ ...mockData, likes: null, comments: null, shares: null }}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+      />,
+    );
+
+    const notMeasured = [
+      ...container.querySelectorAll('[data-test="metric-not-measured"]'),
+    ];
+    const values = [
+      ...container.querySelectorAll('[data-test="metric-value"]'),
+    ].map((node) => node.textContent);
+
+    expect(notMeasured).toHaveLength(3);
+    expect(values).not.toContain('0');
+  });
+
   it('says why revenue was not measured, once per reason', () => {
     render(
       <MetricCards
@@ -232,8 +253,9 @@ describe('MetricCards', () => {
     const cards = screen.getAllByTestId('card');
     expect(cards).toHaveLength(7);
 
-    // Should display 0 for all metrics
-    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+    // No figure is not a 0: every card says Not measured (KB-192).
+    expect(screen.getAllByText('Not measured')).toHaveLength(7);
+    expect(screen.queryByText('0')).toBeNull();
   });
 
   describe('no previous period (KB-16)', () => {

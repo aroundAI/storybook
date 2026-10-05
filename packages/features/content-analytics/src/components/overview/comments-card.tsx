@@ -3,12 +3,13 @@
 import { MessageCircle } from 'lucide-react';
 
 import { formatNumber } from '../../lib/format';
+import type { Measured } from '../../lib/measured';
 import { AnalyticsCard } from './analytics-card';
 import { countClaim } from './card-claim';
 
 interface CommentsCardProps {
-  /** Total comments, or `null` when they could not be read. */
-  comments: number | null;
+  /** Total comments: absent when they could not be read, null when not measured. */
+  comments: Measured<number | null>;
   /**
    * The one item with strictly the most comments, from `mostDiscussed`,
    * or null when nothing qualifies — nobody commented, or two items tie.

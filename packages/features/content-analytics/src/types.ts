@@ -9,9 +9,11 @@ import type { Views } from './lib/views';
 export interface AnalyticsTotals {
   /** Null where every row is a platform with no single view (KB-153). */
   views: Views;
-  likes: number;
-  comments: number;
-  /** Null when no row measured it: X reports no shares (FILM-1727). */
+  /** Null when no row was read: not measured, never 0 (KB-192). */
+  likes: number | null;
+  /** Null when no row was read (KB-192). */
+  comments: number | null;
+  /** Null when no row measured it: none read, or X's alone (FILM-1727). */
   shares: number | null;
   /** Saves (bookmarks) - primarily TikTok and Instagram */
   saves?: number;

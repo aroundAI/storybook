@@ -24,6 +24,7 @@ import {
   topContentClaim,
   topRegionClaim,
 } from '../src/components/overview/card-claim';
+import { ABSENT, measured } from '../src/lib/measured';
 
 /**
  * FILM-1706. Every card leads with one figure and one sentence. The figure
@@ -55,8 +56,12 @@ const trafficBucket = (bucket: string, browse: number, search: number) => {
 
 /** Every branch of every builder, so the vocabulary check sees them all. */
 const CLAIMS: Array<[string, CardClaim | 'loading']> = [
-  ['count', countClaim(111_111, 'Views of this project’s published videos.')],
-  ['count absent', countClaim(null, 'Views.')],
+  [
+    'count',
+    countClaim(measured(111_111), 'Views of this project’s published videos.'),
+  ],
+  ['count absent', countClaim(ABSENT, 'Views.')],
+  ['count not measured', countClaim(measured(null), 'Views.')],
   [
     'split',
     platformSplitClaim([
@@ -164,14 +169,14 @@ const CLAIMS: Array<[string, CardClaim | 'loading']> = [
   [
     'query loading',
     claimFromQuery({ isLoading: true, isError: false, data: undefined }, () =>
-      countClaim(1, 'x.'),
+      countClaim(measured(1), 'x.'),
     ),
   ],
   [
     'query failed',
     claimFromQuery(
       { isLoading: false, isError: true, data: undefined },
-      () => countClaim(1, 'x.'),
+      () => countClaim(measured(1), 'x.'),
       'Median views could not be loaded.',
     ),
   ],
@@ -197,7 +202,18 @@ describe('card claims', () => {
   });
 
   it('a count that could not be read shows no number, not zero', () => {
-    expect(countClaim(null, 'Views.')).toMatchObject({ figure: null });
+    expect(countClaim(ABSENT, 'Views.')).toMatchObject({
+      figure: null,
+      noFigure: 'Could not be read.',
+    });
+  });
+
+  it('a count nothing measured says Not measured, not zero nor unread (KB-192)', () => {
+    expect(countClaim(measured(null), 'Views.')).toMatchObject({
+      figure: null,
+      noFigure: 'Not measured.',
+    });
+    expect(countClaim(measured(0), 'Views.')).toMatchObject({ figure: '0' });
   });
 
   it('a query that is still loading claims nothing yet', () => {

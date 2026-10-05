@@ -2,6 +2,7 @@
 
 import { Eye } from 'lucide-react';
 
+import type { Measured } from '../../lib/measured';
 import {
   SparklineArea,
   type SparklineDataPoint,
@@ -10,8 +11,8 @@ import { AnalyticsCard } from './analytics-card';
 import { countClaim } from './card-claim';
 
 interface ViewsCardProps {
-  /** Total views, or `null` when they could not be read — never a 0 for that. */
-  views: number | null;
+  /** Total views: absent when they could not be read, null when not measured. */
+  views: Measured<number | null>;
   /** Sparkline data points with labels */
   sparklineDataPoints?: SparklineDataPoint[];
 }

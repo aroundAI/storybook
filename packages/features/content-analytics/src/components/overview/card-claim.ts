@@ -5,6 +5,7 @@ import {
 } from '@kit/clickhouse';
 
 import { formatNumber } from '../../lib/format';
+import type { Measured } from '../../lib/measured';
 import { platformLabel } from '../../lib/platform-labels';
 import { SHOWN_ANALYTICS_PLATFORMS } from '../../lib/shown-platforms';
 
@@ -139,17 +140,31 @@ export function claimFromQuery<T>(
 }
 
 /**
- * A total. `null` means it could not be read, which is not zero: the card
- * says so instead of drawing a 0 (KB-16).
+ * A total. Absent means it could not be read (KB-16); a measured `null`
+ * means nothing in the selection measured it (KB-192). Neither is zero,
+ * and they are not each other: the card says which, never drawing a 0.
  */
-export function countClaim(value: number | null, sentence: string): CardClaim {
-  return value === null
-    ? {
-        figure: null,
-        noFigure: 'Could not be read.',
-        sentence: 'This figure could not be loaded.',
-      }
-    : { figure: value.toLocaleString('en-US'), sentence };
+export function countClaim(
+  value: Measured<number | null>,
+  sentence: string,
+): CardClaim {
+  if (value.kind === 'absent') {
+    return {
+      figure: null,
+      noFigure: 'Could not be read.',
+      sentence: 'This figure could not be loaded.',
+    };
+  }
+
+  if (value.value === null) {
+    return {
+      figure: null,
+      noFigure: 'Not measured.',
+      sentence: 'Nothing in the selected period measured this figure.',
+    };
+  }
+
+  return { figure: value.value.toLocaleString('en-US'), sentence };
 }
 
 /**

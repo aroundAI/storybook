@@ -2,13 +2,14 @@
 
 import { Heart } from 'lucide-react';
 
+import type { Measured } from '../../lib/measured';
 import { type BarDataPoint, MiniBarChart } from '../charts/mini-bar-chart';
 import { AnalyticsCard } from './analytics-card';
 import { countClaim } from './card-claim';
 
 interface LikesCardProps {
-  /** Total likes, or `null` when they could not be read — never a 0 for that. */
-  likes: number | null;
+  /** Total likes: absent when they could not be read, null when not measured. */
+  likes: Measured<number | null>;
   /** Bar chart data points with labels */
   barDataPoints?: BarDataPoint[];
 }

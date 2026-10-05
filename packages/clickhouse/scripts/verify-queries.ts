@@ -3458,7 +3458,12 @@ async function rateDenominatorSteps() {
       endDate: window.to,
     });
     const rate = recordedEngagementRatePercent(
-      { ...totals, views: totals.views ?? 0, shares: totals.shares ?? 0 },
+      {
+        views: totals.views ?? 0,
+        likes: totals.likes ?? 0,
+        comments: totals.comments ?? 0,
+        shares: totals.shares ?? 0,
+      },
       recordViewsDenominator({ platforms: ['youtube', 'tiktok'], window }),
     );
 
@@ -3494,7 +3499,12 @@ async function rateDenominatorSteps() {
       endDate: window.to,
     });
     const rate = recordedEngagementRatePercent(
-      { ...totals, views: totals.views ?? 0, shares: totals.shares ?? 0 },
+      {
+        views: totals.views ?? 0,
+        likes: totals.likes ?? 0,
+        comments: totals.comments ?? 0,
+        shares: totals.shares ?? 0,
+      },
       recordViewsDenominator({ platforms: ['youtube', 'tiktok'], window }),
     );
 

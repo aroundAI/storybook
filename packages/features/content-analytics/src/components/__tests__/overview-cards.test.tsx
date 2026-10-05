@@ -33,7 +33,9 @@ vi.mock('@kit/ui/tooltip', () => ({
  */
 describe('SharesCard', () => {
   it('shows the total and says the breakdown is not collected', () => {
-    const { container } = renderWithCoverage(<SharesCard shares={1234} />);
+    const { container } = renderWithCoverage(
+      <SharesCard shares={measured(1234)} />,
+    );
 
     expect(screen.getByText('1,234')).toBeDefined();
     expect(
@@ -146,7 +148,7 @@ describe('RevenueCard', () => {
 describe('CommentsCard', () => {
   it('names the most discussed item only when given one', () => {
     const { container, rerender } = renderWithCoverage(
-      <CommentsCard comments={0} mostDiscussed={null} />,
+      <CommentsCard comments={measured(0)} mostDiscussed={null} />,
     );
 
     expect(container.textContent).not.toContain('drew');
@@ -154,7 +156,7 @@ describe('CommentsCard', () => {
 
     rerender(
       <CommentsCard
-        comments={12}
+        comments={measured(12)}
         mostDiscussed={{ title: 'Episode 3', comments: 9 }}
       />,
     );

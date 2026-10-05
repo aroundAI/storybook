@@ -187,11 +187,12 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
           publishedAt: projectPublishes.map((p) => p.published_at),
         };
 
+        // Nothing published: nothing measured, never 0 (KB-167, KB-192).
         if (videoIds.length === 0) {
           return {
-            totalViews: 0,
-            totalLikes: 0,
-            totalComments: 0,
+            totalViews: null,
+            totalLikes: null,
+            totalComments: null,
             ...denominatorScope,
           };
         }
@@ -207,15 +208,15 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
             ...denominatorScope,
           };
         } catch (err) {
-          // ClickHouse unavailable — log and return zeros
+          // ClickHouse unavailable: nothing was read, which is not 0 (KB-192).
           const { getLogger } = await import('@kit/shared/logger');
           getLogger().then((logger) =>
             logger.warn({ err }, 'ClickHouse unavailable for project snapshot'),
           );
           return {
-            totalViews: 0,
-            totalLikes: 0,
-            totalComments: 0,
+            totalViews: null,
+            totalLikes: null,
+            totalComments: null,
             ...denominatorScope,
           };
         }
@@ -275,8 +276,9 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
         // Likes and comments per view, shares left out (KB-171), recorded.
         avgEngagementRate: recordedLikesAndCommentsPercent(
           {
-            likes: analyticsSnapshot.totalLikes,
-            comments: analyticsSnapshot.totalComments,
+            // An unmeasured count adds none (KB-192).
+            likes: analyticsSnapshot.totalLikes ?? 0,
+            comments: analyticsSnapshot.totalComments ?? 0,
             views: analyticsSnapshot.totalViews ?? 0,
           },
           recordViewsDenominator({

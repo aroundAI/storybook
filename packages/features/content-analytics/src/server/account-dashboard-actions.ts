@@ -294,7 +294,10 @@ async function getAccountFigures(
           {
             ...currentAnalyticsTotals,
             views: currentAnalyticsTotals.views,
-            // X's unmeasured shares add none (FILM-1727).
+            // An unmeasured count adds none: X's shares (FILM-1727), or
+            // none read (KB-192).
+            likes: currentAnalyticsTotals.likes ?? 0,
+            comments: currentAnalyticsTotals.comments ?? 0,
             shares: currentAnalyticsTotals.shares ?? 0,
           },
           recordViewsDenominator({
@@ -351,16 +354,16 @@ function mapToAnalyticsTotals(
 
 /**
  * No projects, no publishes, or no answer from ClickHouse: nothing was
- * measured, so views are null, never 0 (KB-167), and revenue is Not
- * measured, never $0 (FILM-1726).
+ * measured, so views and every other count are null, never 0 (KB-167,
+ * KB-192), and revenue is Not measured, never $0 (FILM-1726).
  */
 function getEmptyDashboardData(): Omit<AccountDashboardData, 'revenueAccess'> {
   return {
     totals: {
       views: null,
-      likes: 0,
-      comments: 0,
-      shares: 0,
+      likes: null,
+      comments: null,
+      shares: null,
       // Nothing measured (KB-162).
       watchTimeSeconds: null,
       subscribersGained: null,
@@ -371,9 +374,9 @@ function getEmptyDashboardData(): Omit<AccountDashboardData, 'revenueAccess'> {
     engagementRate: null,
     previousPeriodTotals: {
       views: null,
-      likes: 0,
-      comments: 0,
-      shares: 0,
+      likes: null,
+      comments: null,
+      shares: null,
       // Nothing measured (KB-162).
       watchTimeSeconds: null,
       subscribersGained: null,

@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatDate, formatNumber, formatPercent } from '../../lib/format';
-import type { Measured } from '../../lib/measured';
+import { ABSENT, type Measured, measured } from '../../lib/measured';
 import { mostDiscussed } from '../../lib/most-discussed';
 import type { ProjectRevenue } from '../../lib/project-revenue';
 import { viewsShare, viewsToAdd } from '../../lib/views';
@@ -181,18 +181,19 @@ export function OverviewGrid({
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {/* Row 1: Views, Likes, Platform Split, Comments */}
-      {/* `null` when the figures could not be read, never a 0 (KB-16). */}
+      {/* Absent when the figures could not be read (KB-16), null when not
+          measured (KB-192): never a 0. */}
       <ViewsCard
-        views={totals ? totals.views : null}
+        views={totals ? measured(totals.views) : ABSENT}
         sparklineDataPoints={viewsSparklineData}
       />
       <LikesCard
-        likes={totals ? totals.likes : null}
+        likes={totals ? measured(totals.likes) : ABSENT}
         barDataPoints={likesSparklineData}
       />
       <PlatformSplitCard platforms={platforms} />
       <CommentsCard
-        comments={totals ? totals.comments : null}
+        comments={totals ? measured(totals.comments) : ABSENT}
         mostDiscussed={topCommented}
       />
 
@@ -214,7 +215,7 @@ export function OverviewGrid({
         insights={aiInsights}
         onViewReport={onViewAIReport}
       />
-      <SharesCard shares={totals ? totals.shares : null} />
+      <SharesCard shares={totals ? measured(totals.shares) : ABSENT} />
 
       {/* Row 3: Top Content (2 cols), Revenue, Regions */}
       <TopContentCard content={topContent} onViewAll={onViewAllContent} />
