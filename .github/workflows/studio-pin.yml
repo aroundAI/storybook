@@ -1,0 +1,81 @@
+# The storybookstudio pin follows fork main. A submodule records one commit;
+# this opens (or refreshes) the one pull request that moves it, whenever the
+# fork's main changes (its notify job sends storybookstudio-main) and daily
+# in case a notice was lost. You queue it; nothing merges on its own.
+#
+# The pull request must be opened with STUDIO_PIN_TOKEN, not GITHUB_TOKEN: a
+# pull request GITHUB_TOKEN opens triggers no workflow, so ✅ CI result would
+# never post and the merge queue could never take it.
+name: StorybookStudio pin
+
+on:
+  repository_dispatch:
+    types: [storybookstudio-main]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studio-pin
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: 📌 StorybookStudio pin
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: chore/storybookstudio-pin
+    steps:
+      - name: STUDIO_PIN_TOKEN is set
+        env:
+          TOKEN: ${{ secrets.STUDIO_PIN_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::STUDIO_PIN_TOKEN is not set. A pull request opened with GITHUB_TOKEN triggers no CI, so it could never be queued. Add a fine-grained token with Contents and Pull requests read and write on aroundAI/storybook (or a GitHub App token) as the repository secret STUDIO_PIN_TOKEN."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.STUDIO_PIN_TOKEN }}
+
+      - name: Move the pin to fork main
+        id: pin
+        run: |
+          result=$(bash scripts/ci/studio-pin.sh "$RUNNER_TEMP/pin")
+          echo "$result"
+          echo "state=${result%% *}" >> "$GITHUB_OUTPUT"
+
+      - name: Open or refresh the pull request
+        if: steps.pin.outputs.state == 'bumped'
+        env:
+          GH_TOKEN: ${{ secrets.STUDIO_PIN_TOKEN }}
+        run: |
+          # Every commit carries the owner's identity (CLAUDE.md, Commit messages).
+          git config user.name 'Shauryadeep Chaudhuri'
+          git config user.email 'shaurya@aroundai.co'
+          git checkout -B "$BRANCH"
+          git add storybookstudio
+          git commit --quiet -F "$RUNNER_TEMP/pin/commit.txt"
+          # The bot owns this branch: it is rebuilt from main on every run.
+          git push --force origin "$BRANCH"
+          title=$(cat "$RUNNER_TEMP/pin/title")
+          if number=$(gh pr view "$BRANCH" --json number,state --jq 'select(.state == "OPEN") | .number') && [ -n "$number" ]; then
+            gh pr edit "$number" --title "$title" --body-file "$RUNNER_TEMP/pin/body.md"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/pin/body.md" --label 'type: chore'
+          fi
+
+      - name: Close a pull request main no longer needs
+        if: steps.pin.outputs.state == 'unchanged'
+        env:
+          GH_TOKEN: ${{ secrets.STUDIO_PIN_TOKEN }}
+        run: |
+          number=$(gh pr view "$BRANCH" --json number,state --jq 'select(.state == "OPEN") | .number' 2>/dev/null || true)
+          if [ -n "$number" ]; then
+            gh pr close "$number" --delete-branch --comment 'main already pins fork main; nothing to move.'
+          fi

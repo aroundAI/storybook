@@ -37,6 +37,8 @@ check 'a package web does not depend on' "$SKIP_ALL" packages/sandbox/src/a.ts
 SCOPE_AFFECTED='@kit/sandbox' check '... named by turbo' "$SKIP_ALL" packages/sandbox/src/a.ts
 check 'guard README is prose' "$SKIP_ALL" tooling/mutation-guards/README.md
 check 'a nested package.json is the graph, not root config' 'full=false' packages/shared/package.json
+check 'the storybookstudio pin: no StoryBook code reads it' "$SKIP_ALL" storybookstudio
+check 'a pin bump with its records' "$SKIP_ALL" storybookstudio specs/INDEX.md specs/phase-20-storybookstudio/FILM-2018-compositions-and-semantic-effects.yaml
 
 # --- Playwright follows turbo's affected set
 SCOPE_AFFECTED=$'@kit/shared\nweb' check 'a package web depends on' 'test=true skip_test=false supabase=false skip_supabase=true' packages/shared/src/a.ts
