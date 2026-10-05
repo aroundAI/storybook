@@ -41,19 +41,18 @@ describe('engagementRatio: the one definition (FILM-1713)', () => {
     expect(displayedEngagementRatePercent(COUNTS)).toBe(10);
   });
 
-  it('is not measured, never 0, over zero or null views or an unmeasured count (KB-194)', () => {
+  it('is not measured, never 0, over zero or null views, or when no count is measured (KB-194)', () => {
     expect(displayedEngagementRatePercent({ ...COUNTS, views: 0 })).toBeNull();
     expect(
       displayedEngagementRatePercent({ ...COUNTS, views: null }),
     ).toBeNull();
     expect(
-      displayedEngagementRatePercent({ ...COUNTS, likes: null }),
-    ).toBeNull();
-    expect(
-      displayedEngagementRatePercent({ ...COUNTS, comments: null }),
-    ).toBeNull();
-    expect(
-      displayedEngagementRatePercent({ ...COUNTS, shares: null }),
+      displayedEngagementRatePercent({
+        views: 1000,
+        likes: null,
+        comments: null,
+        shares: null,
+      }),
     ).toBeNull();
     expect(
       displayedEngagementRatePercent({
@@ -63,6 +62,19 @@ describe('engagementRatio: the one definition (FILM-1713)', () => {
         shares: 0,
       }),
     ).toBe(0);
+  });
+
+  it('keeps the rate when one count is unmeasured: it adds nothing (KB-192)', () => {
+    // Shares unmeasured, views and likes measured: (50 + 20) / 1000.
+    expect(
+      displayedEngagementRatePercent({ ...COUNTS, shares: null }),
+    ).toBeCloseTo(7, 10);
+    expect(
+      displayedEngagementRatePercent({ ...COUNTS, likes: null }),
+    ).toBeCloseTo(5, 10);
+    expect(
+      displayedEngagementRatePercent({ ...COUNTS, comments: null }),
+    ).toBeCloseTo(8, 10);
   });
 });
 

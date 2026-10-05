@@ -394,24 +394,31 @@ export type MeasuredEngagementCounts = {
 /**
  * The engagement percentage the dashboards show: the one definition, over
  * the stored views column. Null (not measured, never 0) when the views are
- * null or zero, or when a numerator count (likes, comments, shares) is
- * null.
+ * null or zero, or when likes, comments and shares are all unmeasured. One
+ * unmeasured count adds nothing to the numerator, as `addMeasured` adds
+ * nothing for it (KB-192).
  *
  * Until 2026-10-05 this returned 0 there. That was held deliberately until
  * FILM-1722 could explain a changed figure on screen (owner, 2026-09-22,
- * FILM-1722 §12). The owner lifted the hold for the unmeasured case only
- * on 2026-10-05 (KB-194): nothing else about the rate changes, and it is
- * not switched to engaged views. New surfaces read `computeMeasure`.
+ * FILM-1722 §12). The owner lifted the hold for the case of no views on
+ * 2026-10-05 (KB-194): nothing else about the rate changes, and it is not
+ * switched to engaged views. New surfaces read `computeMeasure`.
  */
 export function displayedEngagementRatePercent(
   totals: MeasuredEngagementCounts,
 ): number | null {
   const { views, likes, comments, shares } = totals;
 
-  if (views === null || likes === null || comments === null || shares === null)
+  if (
+    views === null ||
+    (likes === null && comments === null && shares === null)
+  )
     return null;
 
-  const value = engagementRatio({ likes, comments, shares }, views);
+  const value = engagementRatio(
+    { likes: likes ?? 0, comments: comments ?? 0, shares: shares ?? 0 },
+    views,
+  );
 
   return value === null ? null : value * 100;
 }
@@ -892,7 +899,7 @@ export function recordedEngagementRatePercent(
  * Likes and comments per view, as a percentage: the figure two surfaces
  * label engagement while leaving shares out (KB-171). A second numerator,
  * kept as it is so no measured figure moves, over the same rule: null when
- * views are null or zero or a count is null (KB-194).
+ * views are null or zero or likes and comments are both unmeasured (KB-194).
  */
 export function recordedLikesAndCommentsPercent(
   totals: Pick<MeasuredEngagementCounts, 'views' | 'likes' | 'comments'>,
@@ -900,9 +907,9 @@ export function recordedLikesAndCommentsPercent(
 ): RecordedRate | null {
   const { views, likes, comments } = totals;
 
-  if (views === null || likes === null || comments === null) return null;
+  if (views === null || (likes === null && comments === null)) return null;
 
-  const value = ratio(likes + comments, views);
+  const value = ratio((likes ?? 0) + (comments ?? 0), views);
 
   return value === null ? null : { value: value * 100, denominator };
 }
