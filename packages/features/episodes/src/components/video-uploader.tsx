@@ -149,6 +149,7 @@ export function VideoUploader({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={handleClick}
+      data-test="shot-video-dropzone"
     >
       <div
         className={cn(
