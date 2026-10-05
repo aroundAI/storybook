@@ -57,8 +57,8 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "CI packages the app for macOS arm64 on a pull request"
-    reason: "ci.yml stops at vite build; electron-builder runs only in release.yml on a release"
-    closed_by: "FILM-2015"
+    reason: "ci.yml stops at vite build; electron-builder runs only in release.yml on a release. A fork CI job that packages the app on every PR is in progress (fork PR ci(FILM-2010): every PR packages the macOS app); not met until it merges and is pinned"
+    closed_by: "FILM-2010"
   - criterion: "The macOS caption engine downloads on first use"
     reason: "the first caption download on macOS answers 404 until the whisper-mac-engine release is published (README.md:136; the build is .github/workflows/whisper-mac-engine.yml, run by hand with publish set); a machine that already has the engine is unaffected"
     closed_by: "owner"
