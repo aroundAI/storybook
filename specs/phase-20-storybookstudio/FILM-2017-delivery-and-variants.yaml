@@ -3,7 +3,7 @@ title: "Delivery Presets, Shorts Reframe and Send to StoryBook"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-2003"
@@ -60,11 +60,8 @@ test_plan:
     - {text: "Against local StoryBook: deliver two presets for the fixture; episode_renders has two ready rows, episodes.status is ready, final_video_url is the 16:9 render; retry after a planted version bump hits TARGET_CHANGED and succeeds after re-sync", met: true, evidence: "aroundAI/storybookstudio#10 (storybookstudio@69426c2 tests/studio/deliver.test.mjs:102). M3 exit check met 2026-10-05, headless, fork main-process code against a local StoryBook integration build, 20-shot episode: pull and rough cut 11.4 s; Short variant and reframe 4.0 s (face found on 6/6 keyframes, largest step 0.15, 3 testsrc shots centred and flagged); confirm:true without a token FORBIDDEN; first deliver_edit TARGET_CHANGED (currentVersion 4, expected 3) with 2 renders finalized; the retry done at episodeVersion 4, both renders reused, nothing re-uploaded; whole run 59.4 s. episode_renders has 2 ready rows (youtube_16x9 99.00 s, 149,044,242 B, QA pass, VTT; shorts_9x16 18.00 s, 20,984,975 B, QA pass, 3 reframe warnings); the episode is ready with final_video_url the youtube_16x9 render; edit_sessions.summary matches the report; edit_events hold qa_run x2, version_created and delivered once each; the youtube file measures -14.6 LUFS, -2.6 dBTP, 1920x1080 h264/aac; the publish page lists the renders"}
     - {text: "QA on each delivered file passes on the fixture; a planted loud music bed fails and 'Fix with AI' repairs it", met: true, evidence: "QA passes on each fixture file (inline QA, see above). The loud-bed repair is covered by aroundAI/storybookstudio#12 (storybookstudio@31127e4 tests/studio/review-loop.test.mjs:39 plants loud music and silence and QA passes after repair; tests/studio/review-mcp.test.mjs:45 QA fails the loud music, studio_repair fixes it into a version and the next review clears it). Not the delivery-path loud-bed case specifically: those tests run the review loop, not a delivery render, and a +18 dB bed passed the earlier inline QA at -14.0 LUFS because loudnorm hides the balance, which FILM-2014's bus-level check measures instead"}
   e2e:
-    - {text: "Packaged app: Deliver screen → confirmation → progress → 'Sent to StoryBook'; the web publish page lists the renders", met: false, reason: "not run: the Deliver screen is FILM-2015's; the main-process IPC it calls (deliverSummary, deliverConfirm, deliverStart, deliverRetry, createVariant, chooseExportFolder) is built and tested"}
-remaining:
-  - criterion: "Packaged app: Deliver screen to Sent to StoryBook"
-    reason: "the main-process delivery and its IPC are built; the Deliver screen and the packaged run are FILM-2015"
-    closed_by: "FILM-2015"
+    - {text: "Packaged app: Deliver screen → confirmation → progress → 'Sent to StoryBook'; the web publish page lists the renders", met: true, evidence: "run in the packaged app by FILM-2015 (aroundAI/storybookstudio#16, merged as 95d54c6; the Deliver screen src/components/studio/DeliverScreen.jsx:110, :23 Confirmation, :174 deliverConfirm, :179 deliverStart; the badge fix aroundAI/storybookstudio#20, merged as 1b4fd5b). FILM-2015 Re-run 2 (StoryBook integration build f05f90c83, 20-shot seed, token sign-in): Export to file took 23 s and wrote youtube_16x9-en.mp4 (h264 1920x1080, aac, 94.000 s) with a passing qa-report.json and the badge reading QA passed; Send to StoryBook said Sent to StoryBook in 25 s; in StoryBook episode_renders youtube_16x9 en was ready, 94.0 s, qa.pass true, the episode ready with final_video_url set, and the publish page Ready with the master video 132.39 MB. Re-run 3 repeated the path after the rename (aroundAI/storybookstudio#24, merged as e1f0b0b): Export to file rendered 90.000 s in 19 s and QA stopped it correctly on the fixture's empty last shot, the badge reading 1 issue with Fix with AI"}
+remaining: []
 open_questions:
   - "Burn captions into 9:16 renders by default (platform norms) or sidecar only? Recommended: burn for shorts/tiktok/reels, sidecar for youtube_16x9 and master."
 notes: >
@@ -97,8 +94,8 @@ notes: >
   token never matched after a save; it now ignores that field. A delivery
   summary also no longer journals a save as an 'ai save_project' op. FILM-2014
   (aroundAI/storybookstudio#12) replaced the interim renderer and inline QA
-  with the media-preparation queue and qa.js. The Deliver screen e2e stays
-  with the FILM-2015 re-run.
+  with the media-preparation queue and qa.js. The Deliver screen e2e was run in
+  FILM-2015's packaged-app Re-runs 2 and 3 (see that record).
 feature:
   database: {tables: [], columns_added: []}
   queries: []

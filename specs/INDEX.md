@@ -690,7 +690,7 @@ StoryBook gets its post-production half: a fork of the upstream GPL-3.0 editor, 
 | FILM-2014 | [render-qa-critic](./phase-20-storybookstudio/FILM-2014-render-qa-critic.yaml) | PARTIAL | L | FILM-2012, FILM-2013 |
 | FILM-2015 | [studio-ui](./phase-20-storybookstudio/FILM-2015-studio-ui.yaml) | PARTIAL | L | FILM-2011, FILM-2012, FILM-2013 |
 | FILM-2016 | [audio-buses-and-captions](./phase-20-storybookstudio/FILM-2016-audio-buses-and-captions.yaml) | DONE | M | FILM-2012, FILM-2004 |
-| FILM-2017 | [delivery-and-variants](./phase-20-storybookstudio/FILM-2017-delivery-and-variants.yaml) | PARTIAL | L | FILM-2003, FILM-2014, FILM-2016, FILM-2011 |
+| FILM-2017 | [delivery-and-variants](./phase-20-storybookstudio/FILM-2017-delivery-and-variants.yaml) | DONE | L | FILM-2003, FILM-2014, FILM-2016, FILM-2011 |
 | FILM-2018 | [compositions-and-semantic-effects](./phase-20-storybookstudio/FILM-2018-compositions-and-semantic-effects.yaml) | DEFERRED | XL | FILM-2013, FILM-2014, FILM-2004 |
 | FILM-2019 | [localization-lanes](./phase-20-storybookstudio/FILM-2019-localization-lanes.yaml) | DEFERRED | L | FILM-2007, FILM-2016, FILM-2017 |
 
