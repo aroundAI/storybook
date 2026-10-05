@@ -7,7 +7,9 @@ import { useForm } from 'react-hook-form';
 
 import {
   type EditPolicy,
+  MAX_SILENCE_SECONDS_LIMIT,
   POLICY_CAPTION_STYLES,
+  POLICY_DIALOGUE_CUTS,
   POLICY_TRANSITIONS,
 } from '@kit/desktop-integration';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
@@ -48,6 +50,20 @@ const TRANSITION_LABEL: Record<(typeof POLICY_TRANSITIONS)[number], string> = {
 const CAPTION_STYLE_OPTIONS = POLICY_CAPTION_STYLES.map((value) => ({
   value,
   label: value === 'brand' ? "The project's brand" : 'Plain',
+}));
+
+const DIALOGUE_CUT_LABEL: Record<
+  (typeof POLICY_DIALOGUE_CUTS)[number],
+  string
+> = {
+  never: 'Never drop dialogue',
+  ask: 'Ask me for each drop',
+  allow: 'Drop dialogue when needed',
+};
+
+const DIALOGUE_CUT_OPTIONS = POLICY_DIALOGUE_CUTS.map((value) => ({
+  value,
+  label: DIALOGUE_CUT_LABEL[value],
 }));
 
 export function EditPolicySettingsForm({
@@ -108,6 +124,32 @@ export function EditPolicySettingsForm({
                 description="0.5-30, at least the shortest."
                 step={0.1}
                 dataTest="policy-max-shot"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Dialogue and silence</CardTitle>
+              <CardDescription>
+                What the AI may do to reach the target duration, and what the
+                quality check accepts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <SelectField
+                name="editPolicy.allowDialogueCuts"
+                label="Dropping dialogue"
+                description="Ask: the plan lists each drop for you to approve."
+                dataTest="policy-dialogue-cuts"
+                options={DIALOGUE_CUT_OPTIONS}
+              />
+              <NumberField
+                name="editPolicy.maxSilenceSeconds"
+                label="Longest silence (s)"
+                description={`Above 0, up to ${MAX_SILENCE_SECONDS_LIMIT}. Longer silences fail the quality check.`}
+                step={0.1}
+                dataTest="policy-max-silence"
               />
             </CardContent>
           </Card>
