@@ -1,0 +1,47 @@
+spec_id: "FILM-2210"
+title: "Studio: Master-Video Rough Cut and Render"
+phase: 22
+phase_name: "Master-video voiceover"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2206"
+    note: "the package's masterVideo block"
+  - spec_id: "FILM-2012"
+    note: "the rough-cut builder this extends"
+  - spec_id: "FILM-2016"
+    note: "dialogue bus, ducking and caption styling"
+  - spec_id: "FILM-2017"
+    note: "delivery through FILM-2003's tools"
+summary: >
+  In StorybookStudio, a package with workflow 'master_video' builds a cut of
+  one picture clip: the master video on V1 from 0 to its duration, its own
+  audio on the music/effects bus, each voiced line on the dialogue bus at its
+  timelineStartSeconds, the imported captions on the captions track. Ducking
+  from the series' edit policy (FILM-2004) lowers the video's audio under
+  dialogue. The capability tools that cut shots (tighten, reorder) are
+  disabled for this workflow with a message; mix, captions, QA, Shorts and
+  delivery work as for any episode, and deliver_edit sets the episode ready.
+acceptance_criteria:
+  - text: "Project builder branch for workflow master_video: one video clip, line clips at their starts, captions track, one marker per overrun line named with its seconds"
+  - text: "Capability profile hides or refuses shot-cutting intents for master-video projects with 'this episode's picture comes from its master video'"
+  - text: "QA (FILM-2014) adds a check that no dialogue clip extends past the next caption's start by more than the format's tolerance"
+  - text: "End to end on the 12-cue fixture: open from StoryBook, render 16:9, deliver; the episode reads ready and the publish page lists the render"
+test_plan:
+  unit:
+    - "Builder output for the fixture package"
+  integration:
+    - "Pull → build → render → deliver against a dev server, as FILM-2017's M3 run"
+  e2e: []
+open_questions: []
+notes: >
+  Work in aroundAI/storybookstudio (the storybookstudio/ submodule); the pin
+  follows fork main as for Phase 20.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  repo: "aroundAI/storybookstudio"

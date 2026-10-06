@@ -694,6 +694,22 @@ StoryBook gets its post-production half: a fork of the upstream GPL-3.0 editor, 
 | FILM-2018 | [compositions-and-semantic-effects](./phase-20-storybookstudio/FILM-2018-compositions-and-semantic-effects.yaml) | DONE | XL | FILM-2013, FILM-2014, FILM-2004 |
 | FILM-2019 | [localization-lanes](./phase-20-storybookstudio/FILM-2019-localization-lanes.yaml) | DONE | L | FILM-2007, FILM-2016, FILM-2017 |
 
+### Phase 22: Master-video voiceover
+
+See [phase-22-master-video-voiceover/README.md](./phase-22-master-video-voiceover/README.md) for the problem table, the flow, the format presets, locked decisions and open questions.
+
+A second way to make an episode: upload a finished video (rendered in Remotion) and an emotion-tagged subtitle file, and StoryBook voices every line with ElevenLabs in the series' cast, fitted to the cues, for the Studio or the creator's Remotion render to place under the picture. FILM-2201 to FILM-2206 are StoryBook work; FILM-2210 is work in the fork.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-2201 | [master-video-episode](./phase-22-master-video-voiceover/FILM-2201-master-video-episode.yaml) | DRAFT | M | FILM-2001 |
+| FILM-2202 | [subtitle-import](./phase-22-master-video-voiceover/FILM-2202-subtitle-import.yaml) | DRAFT | M | FILM-2201, FILM-2203 |
+| FILM-2203 | [voice-formats-and-cast](./phase-22-master-video-voiceover/FILM-2203-voice-formats-and-cast.yaml) | DRAFT | M | FILM-2004 |
+| FILM-2204 | [cue-timed-voicing](./phase-22-master-video-voiceover/FILM-2204-cue-timed-voicing.yaml) | DRAFT | L | FILM-2202, FILM-2203, FILM-1803 |
+| FILM-2205 | [voiceover-review](./phase-22-master-video-voiceover/FILM-2205-voiceover-review.yaml) | DRAFT | L | FILM-2204 |
+| FILM-2206 | [master-video-handoff](./phase-22-master-video-voiceover/FILM-2206-master-video-handoff.yaml) | DRAFT | M | FILM-2205, FILM-2001 |
+| FILM-2210 | [studio-master-video-rough-cut](./phase-22-master-video-voiceover/FILM-2210-studio-master-video-rough-cut.yaml) | DRAFT | M | FILM-2206, FILM-2012, FILM-2016, FILM-2017 |
+
 ### Spikes
 
 | Task ID | Name | Status | Effort | Dependencies |

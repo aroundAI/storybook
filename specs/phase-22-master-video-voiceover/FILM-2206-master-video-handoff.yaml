@@ -1,0 +1,52 @@
+spec_id: "FILM-2206"
+title: "Master-Video Handoff: Studio Package, Remotion Download and MCP Tools"
+phase: 22
+phase_name: "Master-video voiceover"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2205"
+    note: "handoff follows an approved voiceover"
+  - spec_id: "FILM-2001"
+    note: "get_edit_package gains the master video block"
+summary: >
+  Two ways out, the same lines at the same times. (A) get_edit_package for a
+  master-video episode carries workflow 'master_video' and a masterVideo
+  block (signed GET, duration, sha256) beside the existing dialogue and
+  captions, so the Studio builds the cut on it (FILM-2210); 'Open in Studio'
+  works as for any episode. (B) 'Download for Remotion' returns a zip:
+  voiceover.json ({version: 1, fps hint, durationSeconds, lines: [{id, file,
+  startSeconds, durationSeconds, speaker, emotion, text, fit}]}), the line
+  mp3s, the subtitles as imported, and, when any line overran, timings.json:
+  the cue starts and ends the audio needs, cues pushed later in order so no
+  line overlaps, for the creator to re-render the video to the voice. The
+  Remotion side is documented, not shipped: a loop of <Sequence from={start *
+  fps}><Audio src={file}/></Sequence>. Every step of the workflow gets an MCP
+  tool so Claude can run it end to end.
+acceptance_criteria:
+  - text: "Edit package schema (desktop-integration edit-package.schema.ts) gains workflow and masterVideo {media, durationSeconds}; additive, contract synced to the fork with scripts/sync-studio-contracts.mjs; etag covers the master video and every line's audio and start"
+  - text: "downloadRemotionHandoffAction streams the zip from R2 (no server transcoding); voiceover.json validated by an exported zod schema; timings.json present only when overruns exist and derived by a pure retimeCues(lines, cues) with tests"
+  - text: "docs: apps/web or docs/ gains 'Master-video voiceover with Remotion', with the composition snippet and the timings.json round trip"
+  - text: "MCP tools (Phase 19 registry, member role, studio:write unless read): create_master_video_episode, request_master_video_upload (presigned PUT), import_subtitles (text body, same parser), set_voice_cast, start_voiceover, get_voiceover (lines, fits, cost), approve_voiceover; contract-tested through the SDK client against /api/mcp"
+  - text: "Publish tab: for a master-video episode, attaching the final render (the existing upload) after a Remotion handoff sets final_video_url and moves the episode to ready"
+test_plan:
+  unit:
+    - "retimeCues: no overlap, order kept, unchanged cues unchanged"
+    - "voiceover.json schema round trip"
+  integration:
+    - "SDK contract test: the seven tools take the 12-cue fixture from nothing to an approved voiceover and a package with masterVideo"
+  e2e:
+    - "Playwright: download the handoff, unzip in the test, assert voiceover.json against the lines on the page"
+open_questions:
+  - "Should StoryBook also render a single full-length dialogue stem (WAV) for editors other than the Studio? That needs audio concatenation on the server, which FILM-607's guard currently bars; proposed: no, the Studio exports stems (FILM-2016)."
+notes: >
+  Option (B) keeps the creator's Remotion render as the single place the
+  picture is made, which is why timings.json exists: when the voice is longer
+  than the cue, re-rendering the picture is better than speeding the voice.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: [{name: "downloadRemotionHandoffAction"}]
+  ui: [{component: "HandoffPanel"}]
+  provider_integration: null

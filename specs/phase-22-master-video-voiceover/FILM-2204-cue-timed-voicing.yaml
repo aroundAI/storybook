@@ -1,0 +1,55 @@
+spec_id: "FILM-2204"
+title: "Cue-Timed Voicing with ElevenLabs v3"
+phase: 22
+phase_name: "Master-video voiceover"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2202"
+    note: "the lines to voice, with their cues"
+  - spec_id: "FILM-2203"
+    note: "the voice, settings, emotion map and pacing for each speaker"
+  - spec_id: "FILM-1803"
+    note: "the vendor sandbox must serve the new ElevenLabs endpoints before CI can run this"
+summary: >
+  One job voices a master-video episode. startVoiceoverAction (and the MCP
+  tool in FILM-2206) estimates the cost from the character count, refuses
+  unvoiced speakers and a missing key as start_voice_render does (FILM-1909),
+  and queues a voice-master job on StorybookVoiceQueue that continues itself
+  in batches as dub-episode does. Each line is voiced with
+  POST /v1/text-to-speech/{voice_id}/with-timestamps on the format's model
+  (eleven_v3 by default), the text sent as emotion audio tags followed by the
+  spoken text, so '[whispers] [nervous] Did you hear that?' reaches the voice
+  as written. The returned character alignment gives the measured length.
+  Fitting: window = next cue's start (or the video's end) − this cue's start
+  − 0.05 s; a line that fits is done; one that overruns is voiced again once
+  with the speed raised within the format's bounds; one that still overruns
+  is stored and flagged overrun with the seconds it needs. Nothing is cut.
+acceptance_criteria:
+  - text: "voice-master handler in apps/web/lambda/voice-worker, dispatched by index.ts, voices only lines without audio (or marked for regeneration), 15 per message, then re-queues itself; uploads each mp3 to R2 next to the generative workflow's dialogue audio; writes audio_url, status, generation_metadata {model, voiceId, tagsSent, measuredDurationSeconds, alignment (character start/end times), fit: 'fits'|'sped'|'overrun', overrunSeconds, speed, costCents}"
+  - text: "buildSpokenRequest(line, format) is pure: emotion free text maps to the format's audio tags (unknown emotion → the tag as written in square brackets), tags come first, spoken text is never altered; for a model without audio-tag support the tags are dropped and the emotion maps to voice settings (lower stability for heightened emotion) instead"
+  - text: "fitToCue(measured, window, pacing) is pure and decides fits / retry-at-speed / overrun; the retry speed never leaves the format's bounds (default 0.9–1.15)"
+  - text: "Cost estimate before queueing (characters × the model's rate, shown in the Voice tab's confirm); the account's own ElevenLabs key, as every voice job; per-line cost recorded as today"
+  - text: "episodes.status generating while the job runs, back to draft when it ends; the job's progress readable by get_render_progress (FILM-1909) as a voiceover entry: lines by status, overruns, cost"
+  - text: "The vendor sandbox (FILM-1803) serves /with-timestamps with a deterministic alignment for a given text, so the contract test can assert placement and fit without the real API"
+test_plan:
+  unit:
+    - "buildSpokenRequest for each template's emotion map; fitToCue boundaries (exact fit, 1 ms over, over after speed-up, last cue against the video end)"
+  integration:
+    - "Contract test against the sandbox: a 12-cue fixture with one deliberately long line voices 11 fits and 1 overrun with the measured seconds, re-queues across two messages, and a second run voices nothing"
+  e2e: []
+open_questions:
+  - "Request stitching (previous_text / next_text) for continuity between consecutive lines of one speaker: verify which models accept it before relying on it."
+  - "Does eleven_v3 accept voice_settings.speed? If not, the retry uses the fastest model that does, or skips straight to overrun. Verify against the API before this spec starts."
+notes: >
+  Today's voice worker strips square brackets, parentheses and asterisks from
+  the text (voice-generation.ts) and never sends dialogue_lines.emotion; that
+  path stays as it is for generative episodes. This job is a separate handler
+  so the generative path does not change behaviour.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: [{name: "startVoiceoverAction", file: "packages/features/audio-generation/src/server/voiceover-actions.ts"}]
+  ui: []
+  provider_integration: {vendor: "ElevenLabs", endpoints: ["POST /v1/text-to-speech/{voice_id}/with-timestamps (model eleven_v3, audio tags inline)"]}

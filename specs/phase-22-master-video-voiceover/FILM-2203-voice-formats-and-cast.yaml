@@ -1,0 +1,49 @@
+spec_id: "FILM-2203"
+title: "Voice Formats and Series Cast"
+phase: 22
+phase_name: "Master-video voiceover"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2004"
+    note: "projects.brand and projects.edit_policy are the pattern: a jsonb column, a zod schema, a settings tab"
+summary: >
+  A series knows who speaks and how. projects.voice_format (jsonb, zod
+  VoiceFormatSchema) holds the format key, language, ElevenLabs model
+  (default eleven_v3), the cast (speaker name, aliases, voice id, per-voice
+  stability, style and speed), the emotion style (which audio tags the
+  format uses and how a free-text emotion maps onto them), pacing (gap
+  allowed into the next cue, speed bounds for fitting) and a loudness hint
+  for the mix. Nine templates (README "Formats") ship as code constants; a
+  series picks one and edits the copy. The cast can point at an existing
+  character's elevenlabs_voice_id or at a voice chosen from the account's
+  ElevenLabs library. Import (FILM-2202) matches speakers case-insensitively
+  against names and aliases; an unmatched speaker can be added to the cast
+  from the import report in one step.
+acceptance_criteria:
+  - text: "Migration adds projects.voice_format jsonb null; VoiceFormatSchema in @kit/shared (or the package FILM-2004 used) parses every template and rejects unknown keys"
+  - text: "Templates: babu-chondro, history-teacher, detective, news, comic-talk, tech-journalist, tech-news-images, horror, reddit-story, each with cast slots, emotion style and pacing as in the README table; picking one copies it, never links it"
+  - text: "Settings → Voice format tab (react-hook-form, @kit/ui/form): template picker, language, model, cast rows with a voice picker (account library via the existing voice listing, plus 'use character X's voice'), a preview button that voices a sample line with that voice and emotion, emotion map and pacing fields"
+  - text: "resolveSpeakerVoice(format, speaker) → {voiceId, settings} | null is the one function import, voicing and the MCP tools use"
+  - text: "The import report's 'Add to cast' writes a cast row and re-runs matching for that episode's lines"
+test_plan:
+  unit:
+    - "Every template parses; resolveSpeakerVoice matches names and aliases case-insensitively and returns null for an unknown speaker"
+  integration: []
+  e2e:
+    - "Playwright: pick the horror template, assign a voice, save; reset and save a second time (the second submission rule); screenshots after each save"
+open_questions:
+  - "Cast per series only, or per-episode guest voices too (Detective Guy's suspects, Reddit's quoted people)? Proposed: series cast plus an episode-level override map stored on the episode's captions row."
+notes: >
+  voice_profiles is deprecated (voice-queries.ts); this does not revive it.
+  A voiceover-only channel has no character assets, which is why the cast
+  lives on the series rather than on character_details.
+feature:
+  database:
+    tables: []
+    columns_added: ["projects.voice_format (jsonb)"]
+  queries: []
+  actions: [{name: "updateVoiceFormatAction"}]
+  ui: [{component: "VoiceFormatSettings", file: "apps/web/app/home/[account]/studio/[projectSlug]/settings/voice-format/page.tsx"}]
+  provider_integration: {vendor: "ElevenLabs", endpoints: ["GET /v1/voices (library, existing listing)"]}

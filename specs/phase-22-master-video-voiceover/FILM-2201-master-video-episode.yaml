@@ -1,0 +1,49 @@
+spec_id: "FILM-2201"
+title: "Master-Video Episodes: a Second Way In"
+phase: 22
+phase_name: "Master-video voiceover"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2001"
+    note: "the edit package already reads episodes.master_video_asset_id's neighbours; FILM-2206 extends it"
+summary: >
+  An episode can start from a finished video instead of an idea.
+  episodes.workflow ('generative' default, or 'master_video') is chosen when
+  the episode is created and cannot change once lines are voiced. A
+  master-video episode shows Master, Voice, Publish and Edit record, not
+  Ideation, Story, Screenplay, Shot List and Audio. Master holds the video
+  upload (the presigned R2 path master-asset-manager.tsx uses today, moved
+  here) and the subtitle import (FILM-2202). Voice unlocks once a video and at
+  least one spoken cue exist; Publish once the voiceover is approved
+  (FILM-2205). The generative workflow is unchanged.
+acceptance_criteria:
+  - text: "Migration adds episodes.workflow text not null default 'generative' check (workflow in ('generative','master_video')); every existing episode reads 'generative'; types regenerated, not hand-edited"
+  - text: "The create-episode dialog offers 'Write it here' (generative) and 'I have the video' (master_video); the choice is stored and the new episode opens on its first tab (Ideation or Master)"
+  - text: "episode-workspace-tabs.tsx renders the tab set by workflow; getTabUnlockState for master_video: Master always, Voice when master_video_asset_id is set and the episode has ≥1 spoken dialogue line, Publish when the voiceover is approved; a URL to a generative tab on a master-video episode redirects to Master (and the reverse to Ideation)"
+  - text: "The Master tab uploads the video through the existing presign route and createAssetAction (type master_video), reads its duration from the file's metadata in the browser and stores it on the asset (metadata.durationSeconds), shows the player, and offers Replace; replacing a video whose lines are voiced warns that cue timings are checked again (FILM-2202)"
+  - text: "updateEpisode refuses to change workflow when any dialogue line has audio (WORKFLOW_LOCKED); RLS unchanged (the column rides the episode's policies), covered by a pgTAP test that a viewer cannot change it"
+test_plan:
+  unit:
+    - "getTabUnlockState for both workflows, every unlock edge"
+    - "workflow change refused once a line has audio"
+  integration:
+    - "pgTAP: default value, check constraint, member can set, viewer cannot"
+  e2e:
+    - "Playwright (seeded team, seedUser/seedTeamAccount): create a master-video episode, see Master/Voice/Publish only, Voice disabled until a video and subtitles exist; screenshots of both tab sets"
+open_questions: []
+notes: >
+  Status machine: a master-video episode is draft until voicing starts,
+  generating while the voice job runs, and ready only on delivery
+  (FILM-2003's deliver_edit through the Studio) or when the creator attaches
+  the final render on Publish (Remotion path). editing is set by the Studio
+  session as in Phase 20.
+feature:
+  database:
+    tables: []
+    columns_added: ["episodes.workflow (text, not null, default 'generative', check in ('generative','master_video'))"]
+  queries: []
+  actions: [{name: "createEpisodeAction", change: "accepts workflow"}, {name: "updateEpisodeAction", change: "refuses a workflow change once voiced"}]
+  ui: [{component: "EpisodeWorkspaceTabs", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx"}, {component: "MasterTab", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/master/page.tsx"}]
+  provider_integration: null

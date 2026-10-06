@@ -74,6 +74,7 @@ const PROVENANCE = 'Provenance & Signal (Ph 17)';
 const SANDBOX = 'Vendor Sandbox (Ph 18)';
 const DUAL_AI = 'Dual AI (Ph 19)';
 const STUDIO = 'StorybookStudio (Ph 20)';
+const VOICEOVER = 'Master-video Voiceover (Ph 22)';
 const SHARING = 'Public Sharing';
 
 /**
@@ -152,6 +153,11 @@ export const LAYOUT: Layout = {
       label: '20. StorybookStudio',
       scope: STUDIO,
     },
+    {
+      heading: 'Phase 22: Master-video voiceover',
+      label: '22. Master-video Voiceover',
+      scope: VOICEOVER,
+    },
     { heading: 'Spikes', label: 'Spikes', scope: MVP },
     { heading: 'Public Sharing', label: 'Public Sharing', scope: SHARING },
   ],
@@ -167,6 +173,7 @@ export const LAYOUT: Layout = {
     SANDBOX,
     DUAL_AI,
     STUDIO,
+    VOICEOVER,
     SHARING,
   ],
 };

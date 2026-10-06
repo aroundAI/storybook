@@ -1,0 +1,46 @@
+spec_id: "FILM-2205"
+title: "Voiceover Review and In-Browser Preview"
+phase: 22
+phase_name: "Master-video voiceover"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2204"
+    note: "the voiced lines, measured lengths and fit flags"
+summary: >
+  The Voice tab is where the creator hears the result before anything is
+  mixed. The master video plays with every voiced line scheduled at its cue
+  through the Web Audio API (one AudioBufferSourceNode per line, started
+  against the video's currentTime, rescheduled on seek, pause and rate change),
+  the video's own audio at an adjustable level underneath. A lane under the
+  player shows each cue's window and its line's measured length, overruns in
+  red. Each line can be played alone, re-tagged (edit emotion), re-worded
+  (spoken text only; the subtitle text is not touched unless asked), nudged
+  (±0.5 s within its window, stored as timeline_start_seconds), or
+  regenerated. 'Approve voiceover' records the approval and unlocks Publish
+  and the handoff (FILM-2206).
+acceptance_criteria:
+  - text: "Voice tab page (RSC data loading, client player): 'Voice all lines' with the cost estimate confirm (FILM-2204), live progress while the job runs, then the review view"
+  - text: "Preview player keeps every line within 40 ms of its cue measured over a 60-second fixture after a seek and a pause/resume, asserted in Playwright by reading the scheduled start times the player exposes on a data-test element"
+  - text: "Line lane: one block per cue (window) with the voiced line inside it (measured length), overrun lines red with '+1.3 s'; clicking a block selects the line and seeks the video to its cue"
+  - text: "Line editor (react-hook-form, @kit/ui/form): emotion tags, spoken text, nudge; Save marks the line for regeneration when text or tags changed; 'Regenerate' queues just that line; the second save after a reset keeps the right values (the second-submission rule)"
+  - text: "Approve voiceover is refused while any line is unvoiced or failed; overruns are allowed with a confirm that lists them; approval stored on the episode (edit_state.voiceover = {approvedAt, approvedBy, lineCount, overrunCount})"
+  - text: "data-test on the player, each line block and every control the spec touches"
+test_plan:
+  unit:
+    - "Scheduling maths: given currentTime and line starts, which lines start, at what offset, after seek and rate change"
+  integration: []
+  e2e:
+    - "Playwright against the sandbox-voiced fixture: voice, review, re-tag one line, regenerate, approve; screenshots of the lane before and after, the overrun state, the refused approval and the approved state, with measured offsets in the PR comment as a table"
+open_questions: []
+notes: >
+  No mixing happens here: the browser plays the original video and the line
+  files together. This is also why the preview cannot drift from the output,
+  because both outputs (FILM-2206) place the same files at the same times.
+feature:
+  database: {tables: [], columns_added: []}
+  queries: [{name: "loadVoiceoverReview"}]
+  actions: [{name: "updateVoiceLineAction"}, {name: "regenerateVoiceLineAction"}, {name: "approveVoiceoverAction"}]
+  ui: [{component: "VoiceTab", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/voice/page.tsx"}, {component: "VoiceoverPlayer"}, {component: "LineLane"}, {component: "LineEditor"}]
+  provider_integration: null

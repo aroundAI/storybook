@@ -1,0 +1,55 @@
+spec_id: "FILM-2202"
+title: "Emotion-Tagged Subtitle Import"
+phase: 22
+phase_name: "Master-video voiceover"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2201"
+    note: "the Master tab hosts the import; cues are checked against the master video's length"
+  - spec_id: "FILM-2203"
+    note: "speakers are matched to the series' cast on import"
+summary: >
+  One parser turns the creator's subtitle file into cues, each with start,
+  end, speaker, emotion tags and spoken text. Three inputs: StoryBook's own
+  JSON (the recommended export from Remotion), SRT and WebVTT, with the
+  speaker and emotion conventions below. Import writes a captions row
+  (language from the voice format, source 'imported') with one
+  caption_segment per cue, exactly as written, and one dialogue_line per
+  spoken cue: text with tags removed, character_name, emotion (the tags,
+  comma-joined), timeline_start_seconds = cue start, sequence_number in time
+  order, shot_id null, and caption_segment_id linking back. Re-import replaces
+  unvoiced lines and keeps a voiced line whose text, speaker and emotion are
+  unchanged (its timing may move); the import report says which.
+acceptance_criteria:
+  - text: "@kit/episodes exports parseSubtitles(input, {format?}) → {cues[], warnings[]}, pure and server/client safe, detecting json / srt / vtt from content when format is omitted"
+  - text: "JSON: {version: 1, cues: [{start, end, text, speaker?, emotion?, id?}]} in seconds; also accepts @remotion/captions' Caption[] (startMs, endMs, text), converting ms"
+  - text: "SRT and VTT: speaker as 'NAME: text', '[NAME] text' or VTT '<v NAME>'; emotion as leading square-bracket tags '[whispers] [nervous] text' or '(Tone: angry)' as CLAUDE.md's VEO dialogue syntax writes it; tags anywhere in the line are kept in order as audio tags; a cue with no words after tags (e.g. '[music]') is a caption, not a spoken line"
+  - text: "Validation, each with a line-numbered message: end ≤ start, overlapping cues of the same speaker, a cue past the master video's end (error), cues out of order (re-sorted, warning), an empty file, more than 2,000 cues"
+  - text: "importSubtitlesAction (enhanceAction, member role) stores the original file as an asset (type subtitles), writes captions/caption_segments/dialogue_lines in one transaction (a database function, as FILM-103's transaction functions do), and returns the report: cues, spoken lines, speakers found, speakers without a voice, kept and replaced voiced lines"
+  - text: "Migration adds dialogue_lines.caption_segment_id uuid references caption_segments(id) on delete set null, and captions.source text default 'generated' check in ('generated','imported'); types regenerated"
+  - text: "The voice worker's tag stripping (voice-generation.ts) no longer decides what is spoken for master-video lines: the spoken text is stored without tags at import, and the tags travel separately (FILM-2204)"
+test_plan:
+  unit:
+    - "Parser fixtures for each format and convention, including a real Remotion export once the owner sends one (README open question 4); malformed inputs produce line-numbered errors"
+    - "Re-import keeps an unchanged voiced line and replaces a changed one"
+  integration:
+    - "pgTAP: the import function is atomic (a failing cue writes nothing) and refuses a non-member"
+  e2e:
+    - "Playwright: upload an SRT with an error, see the line-numbered message; fix it, import, see the report; re-import with one changed line, see 1 replaced. Screenshots of both reports"
+open_questions:
+  - "Should a cue with two speakers ('A: … B: …') split into two lines at the cue's midpoint, or be refused? Proposed: refused with a message."
+notes: >
+  No SRT/VTT parser exists today; captions-actions.ts only writes SRT from
+  dialogue_lines. The upload validator already accepts .vtt
+  (packages/features/assets/src/lib/upload-validation.ts); .srt and .json
+  subtitle files are added to it.
+feature:
+  database:
+    tables: []
+    columns_added: ["dialogue_lines.caption_segment_id (uuid, FK caption_segments, on delete set null)", "captions.source (text, default 'generated')"]
+  queries: []
+  actions: [{name: "importSubtitlesAction", file: "packages/features/episodes/src/server/subtitle-import-actions.ts"}]
+  ui: [{component: "SubtitleImport", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/master/_components/subtitle-import.tsx"}]
+  provider_integration: null
