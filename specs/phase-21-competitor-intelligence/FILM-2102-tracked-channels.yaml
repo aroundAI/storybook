@@ -1,0 +1,58 @@
+spec_id: "FILM-2102"
+title: "Tracked Channels: Registry, Tracking and Access"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2101"
+    note: "which platforms and identifiers are supported"
+summary: >
+  The Postgres side of watching other people's channels. A global,
+  de-duplicated registry `external_channels` (one row per platform channel),
+  per-account tracking `account_competitors` (label, is_self, archived_at),
+  `vendor_quota_usage`, and the flag
+  `account_ai_settings.competitor_intelligence_enabled`. Adding goes through a
+  SECURITY DEFINER `add_competitor()` that checks owner/admin and the
+  per-account limit under an advisory lock; members can read. Design:
+  PRD-EDD.md sections 15.1 and 18, R-01 to R-07, R-55, R-57.
+acceptance_criteria:
+  - text: "Hand-written migration creates external_channels (unique platform, platform_channel_id), account_competitors (unique account_id, external_channel_id) and vendor_quota_usage, and adds account_ai_settings.competitor_intelligence_enabled default false; types regenerated, not hand-edited"
+    met: false
+    reason: "not met — not built"
+  - text: "RLS: account_competitors readable by has_role_on_account(account_id); external_channels readable only where an unarchived account_competitors row in one of the user's accounts points at it; writes service role or the definer functions only"
+    met: false
+    reason: "not met — not built"
+  - text: "add_competitor(account_id, platform, platform_channel_id, metadata) refuses a non owner/admin, a disabled flag, and an account at COMPETITOR_MAX_CHANNELS for that platform; two concurrent adds at limit-1 admit exactly one"
+    met: false
+    reason: "not met — not built"
+  - text: "archive_competitor sets archived_at; a registry row with no unarchived tracker is no longer claimed by the sync (FILM-2104)"
+    met: false
+    reason: "not met — not built"
+  - text: "addCompetitorAction and archiveCompetitorAction (enhanceAction, shared zod schema) return refusals as values with the reasons in PRD-EDD.md section 20"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit: []
+  integration:
+    - {text: "pgTAP competitor-intelligence.test.sql: cross-account isolation, role checks, limit under concurrency, flag off", met: false, reason: "not met — not built"}
+  e2e:
+    - {text: "Playwright: an owner adds and removes a channel against the vendor sandbox; a member sees no Add button; the eleventh add is refused with the limit stated", met: false, reason: "not met — not built"}
+remaining: []
+open_questions:
+  - "Q3: should COMPETITOR_MAX_CHANNELS depend on the billing plan?"
+feature:
+  database:
+    tables: ["external_channels", "account_competitors", "vendor_quota_usage"]
+    columns_added: ["account_ai_settings.competitor_intelligence_enabled"]
+  queries: []
+  actions:
+    - {name: "addCompetitorAction", file: "packages/features/competitor-intelligence/src/server/competitor-actions.ts"}
+    - {name: "archiveCompetitorAction", file: "packages/features/competitor-intelligence/src/server/competitor-actions.ts"}
+  ui: []
+  provider_integration: null
+notes: >
+  The registry is global because the data is public and polling is the cost:
+  ten accounts tracking one channel cost one poll. What is per account is the
+  decision to track it, and RLS hangs entirely off that row.

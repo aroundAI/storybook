@@ -1,0 +1,65 @@
+spec_id: "FILM-2105"
+title: "Public Performance Measures"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: library
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2104"
+    note: "snapshots are the input"
+  - spec_id: "FILM-1715"
+    note: "bandFor and shrinkLift are reused; the cohort is the competitor's own history"
+  - spec_id: "FILM-1716"
+    note: "format family is a cohort axis"
+summary: >
+  Pure functions that turn snapshots into "what's working": viewsAtAge
+  (interpolated between bracketing snapshots), channelTypicalCurve (p25,
+  median and p75 per age bucket over observed-from-birth videos of one format
+  family), curveEstimate (age-normalised views for back-catalogue videos first
+  seen past the age, labelled public_curve_estimated, refused below n = 5),
+  outlierScore (lift against the channel's own median at that age, shrunk by
+  FILM-1715's shrinkLift, banded by bandFor at
+  packages/clickhouse/src/lib/self-benchmark.ts:494), engagementPerK, takeoff,
+  cadence, durationProfile and publishTiming. A competitor's video is judged
+  only against that competitor's own history. Design: PRD-EDD.md section 13,
+  R-20 to R-25.
+acceptance_criteria:
+  - text: "packages/clickhouse/src/lib/public-measures.ts exports the measures in PRD-EDD.md section 13; each returns a value with its provenance method and composition (measured, ratio, interpolated)"
+    met: false
+    reason: "not met — not built"
+  - text: "outlierScore reuses CohortQuantiles, bandFor and shrinkLift from packages/clickhouse/src/lib/self-benchmark.ts:483 unchanged; the cohort is the same external channel, same format family, same age"
+    met: false
+    reason: "not met — not built"
+  - text: "curveEstimate returns not_judgable below 5 observed-from-birth videos in the family, and its results are never mixed with interpolated values without the estimated label"
+    met: false
+    reason: "not met — not built"
+  - text: "engagementPerK reads likes, comments and views from the same snapshot; a NULL views (not reported) yields NULL, never a rate over 0"
+    met: false
+    reason: "not met — not built"
+  - text: "ClickHouse queries over ext_* feeding these measures pass through assertCompetitorAccess; a guard lists every ext_* query and fails if a caller skips it, seen red"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "Every measure against a hand-computed fixture, including log-linear interpolation across a 30-hour gap and a batched counter", met: false, reason: "not met — not built"}
+  integration:
+    - {text: "verify-queries competitorSteps on ClickHouse 24.8 with hand-computed rows", met: false, reason: "not met — not built"}
+  e2e: []
+remaining: []
+open_questions: []
+library:
+  module_name: "public-measures"
+  file_path: "packages/clickhouse/src/lib/public-measures.ts"
+  exports: ["viewsAtAge", "channelTypicalCurve", "curveEstimate", "outlierScore", "engagementPerK", "takeoff", "cadence", "durationProfile", "publishTiming"]
+  algorithm: >
+    Age buckets 1, 3, 6, 12, 24, 48, 72 h and 7, 14, 30 d. viewsAtAge is linear
+    between bracketing snapshots, log-linear when they are more than 24 h
+    apart. curveEstimate(v, t) = lifetimeViews(now) x median_t / median_age(now).
+    outlierScore = shrinkLift(viewsAtAge(v, t) / median_t, n) with
+    shrinkLift(l, n) = 1 + (l - 1) n / (n + 15).
+notes: >
+  This keeps Phase 17's locked "your own history" rule: every verdict on a
+  competitor's video is relative to that competitor's own cohort. Comparison
+  between channels (FILM-2110) compares these self-relative results, never raw
+  counts.

@@ -1,0 +1,65 @@
+spec_id: "FILM-2101"
+title: "Public-Data Reference and Compliance Gates"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: strategy
+status: DRAFT
+effort: S
+dependencies:
+  - spec_id: "FILM-1721"
+    note: "the reference doc this extends; no field name enters code until it is documented there"
+  - spec_id: "FILM-1703"
+    note: "the provenance model gains the access state public and four derived methods"
+summary: >
+  Before any provider code, establish exactly what each platform exposes for a
+  channel the user does not own, and what its terms allow us to do with it.
+  Adds a "Public data (channels you do not own)" section to
+  docs/platform-capability-reference.md with a citation per field, extends the
+  FILM-1703 provenance model with access state `public` and the derived methods
+  public_snapshot_delta, public_age_interpolated, public_curve_estimated and
+  comment_timestamp_parse (no fifth support level), and records the four
+  launch gates: G1 YouTube derived-metrics acceptance (storage beyond 30 days,
+  derived metrics), G2 YouTube API audit for a quota increase, G3 the
+  Instagram Business Discovery scope set, G4 Meta Page Public Content Access.
+  Design: PRD-EDD.md Part 2 (sections 10 and 11).
+acceptance_criteria:
+  - text: "docs/platform-capability-reference.md documents, with a vendor citation each, every field FILM-2103 reads: YouTube channels.list (forHandle, statistics, contentDetails.relatedPlaylists.uploads), playlistItems.list, videos.list (statistics, contentDetails, snippet), commentThreads.list; Instagram business_discovery account and media fields; Facebook PPCA fields"
+    met: false
+    reason: "not met — not written"
+  - text: "The reference states, per platform, which metric families are unavailable for non-owned channels (retention_curve, watch_time, reach, traffic_sources, demographics, geography, device) and that Most Replayed is not in any official API"
+    met: false
+    reason: "not met — not written"
+  - text: "Q2 answered with a citation: whether Business Discovery returns a public view count for Reels in the pinned Graph version; FILM-2103 and FILM-2105 are corrected to match"
+    met: false
+    reason: "not met — not researched"
+  - text: "The YouTube Developer Policies' storage and derived-metrics clauses are quoted verbatim with section numbers in the reference, and PRD-EDD.md section 11 is corrected to match them"
+    met: false
+    reason: "not met — the policy pages were not reachable from the design session (egress blocked); the design paraphrases them from search results"
+  - text: "AccessState in packages/clickhouse/src/lib/data-provenance.ts:194 gains `public`, and DerivedMethod gains the four public methods, with the structural test extended; no new support level"
+    met: false
+    reason: "not met — not built"
+  - text: "G1 and G2 applications filed with the measure list from PRD-EDD.md section 13; filing date and outcome recorded in this spec's notes"
+    met: false
+    reason: "not met — owner action"
+  - text: "G3 and G4 status recorded: which scopes Business Discovery needs on our existing Instagram app, and whether Page Public Content Access review is pursued"
+    met: false
+    reason: "not met — owner action"
+remaining: []
+open_questions:
+  - "Q1: file the YouTube derived-metrics and audit applications now, before M1 code?"
+  - "Q2: does Business Discovery return a public view count for Reels?"
+strategy:
+  decisions:
+    - "Official APIs only; no scraping (R-58)"
+    - "Every ext_* statistics table carries a 30-day TTL until G1 is accepted"
+    - "The competitor YouTube key lives in its own GCP project so it cannot starve publishing quota"
+    - "Public data is labelled access `public`; AI readings are not metrics"
+  recommendation: >
+    File G1 and G2 together at the start of M1, using this phase's measure list
+    as the use-case description, and build M1 to M2 internal-only under the
+    30-day TTL while they are reviewed.
+notes: >
+  The design session could not open developers.google.com or
+  developers.facebook.com (egress blocked). Every vendor claim in PRD-EDD.md
+  Part 2 is therefore a design input for this spec to verify, not a verified
+  fact.

@@ -1,0 +1,60 @@
+spec_id: "FILM-2107"
+title: "Content Breakdown of Public Videos"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2104"
+    note: "only videos already in ext_video_dim can be analysed"
+  - spec_id: "FILM-1717"
+    note: "winners-vs-losers uses the genome's prevalence-gap rule"
+summary: >
+  Gemini watches a public YouTube video by URL and returns a structured,
+  enum-valued breakdown: hook (seconds, technique, on-screen text, first line),
+  pacing, structure beats, call to action, title pattern, thumbnail pattern,
+  topic, tone and a format-family guess. The AI gateway gains a Gemini media
+  part, which does not exist today, and accepts only a watch URL the server
+  builds from a stored platform_video_id. Results are stored once per video and
+  prompt version in external_video_analyses and shared across accounts. Runs
+  are automatic for the top and bottom 5 per channel per week and manual
+  otherwise, within a per-account weekly cap. Winners-vs-losers attributes use
+  MIN_PREVALENCE_GAP (packages/clickhouse/src/lib/genome.ts:57). Instagram is
+  analysed from caption and image only. Design: PRD-EDD.md section 16, R-29
+  and R-30.
+acceptance_criteria:
+  - text: "packages/ai-gateway (or packages/llm) accepts a media part for Gemini built only from a youtube.com/watch?v=<id> URL whose id exists in ext_video_dim; any other URL is refused before the vendor call"
+    met: false
+    reason: "not met — not built"
+  - text: "Prompt competitor-video-analysis.json (Gemini, JSON, temperature 0.2) and CompetitorVideoAnalysisSchema; job type registered in packages/features/prompt-engine/src/lib/llm-job-payloads.ts and handled by the llm-worker; dispatched through openRunForJob"
+    met: false
+    reason: "not met — not built"
+  - text: "external_video_analyses (unique per channel, video, prompt slug and version) with RLS as for external_channels; a video analysed for one account is not re-analysed for another"
+    met: false
+    reason: "not met — not built"
+  - text: "COMPETITOR_ANALYSES_PER_WEEK (default 30) enforced per account; over the cap requestVideoAnalysisAction returns a refusal with the reset date"
+    met: false
+    reason: "not met — not built"
+  - text: "Winners vs losers: attributes whose prevalence differs by at least 0.2 between the channel's top and bottom quartile by outlierScore, shown only with 5 or more analysed videos on each side, each labelled AI reading"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "Schema validation of recorded Gemini outputs; the URL guard refuses a foreign host and an unknown id", met: false, reason: "not met — not built"}
+  integration:
+    - {text: "llm-worker handler against a recorded response writes one row and is idempotent", met: false, reason: "not met — not built"}
+  e2e: []
+remaining: []
+open_questions: []
+feature:
+  database: {tables: ["external_video_analyses"], columns_added: []}
+  queries: []
+  actions:
+    - {name: "requestVideoAnalysisAction", file: "packages/features/competitor-intelligence/src/server/analysis-actions.ts"}
+  ui:
+    - {component: "ContentBreakdownDrawer", file: "packages/features/competitor-intelligence/src/components/videos/content-breakdown-drawer.tsx"}
+  provider_integration: {vendor: "Gemini", endpoints: ["generateContent with file_data.file_uri = public YouTube watch URL"]}
+notes: >
+  An AI reading is not a metric: it never enters a ClickHouse measure and is
+  always shown with its model and prompt version.

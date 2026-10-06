@@ -1,0 +1,46 @@
+spec_id: "FILM-2111"
+title: "Competitor MCP Tools"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: feature
+status: DRAFT
+effort: S
+dependencies:
+  - spec_id: "FILM-1904"
+    note: "the MCP endpoint, tokens and withMcpAuth"
+  - spec_id: "FILM-2108"
+    note: "the report service"
+  - spec_id: "FILM-2110"
+    note: "the gaps service"
+summary: >
+  Three read-only MCP tools so Claude can use competitor intelligence:
+  list_competitors, get_competitor_report and get_competitor_gaps, scoped to
+  the token's account through the same RLS client and assertCompetitorAccess.
+  Registered beside the analytics tools in
+  packages/features/studio-mcp/src/server/tools/. Design: PRD-EDD.md section
+  18, R-53.
+acceptance_criteria:
+  - text: "The three tools return the same figures and provenance as the pages for the same inputs"
+    met: false
+    reason: "not met — not built"
+  - text: "A token for account A cannot read account B's competitors (test)"
+    met: false
+    reason: "not met — not built"
+  - text: "The flag off returns a refusal naming the setting"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit: []
+  integration:
+    - {text: "MCP tool tests with a PAT against seeded data", met: false, reason: "not met — not built"}
+  e2e: []
+remaining: []
+open_questions: []
+feature:
+  database: {tables: [], columns_added: []}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+notes: >
+  No write tools: adding a competitor stays a human action in the app.
