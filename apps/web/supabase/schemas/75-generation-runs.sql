@@ -284,7 +284,7 @@ create trigger account_ai_settings_set_timestamps
 --   files the snapshot under the run's own account, target and stage.
 -- submit_generation_run_part(p_run_id uuid, p_part_key text, p_output jsonb,
 --   p_validation jsonb, p_accepted boolean, p_model text) returns jsonb
---   (FILM-1908, migrations/20261003121205): stores a part an external agent
+--   (FILM-1908, migrations/20261003151631): stores a part an external agent
 --   submitted; only the opener of an open external run, 1-100 character key,
 --   at most 256 KB. Accepted replaces the output and keeps the failures; a
 --   rejection is appended to validation.failures (newest 20) and never
@@ -312,7 +312,7 @@ create trigger require_team_account
 -- ==================================
 -- MCP connector monitoring (FILM-1911)
 -- ==================================
--- Mirrors migrations/20261003141814_film-1911-mcp-monitoring.sql.
+-- Mirrors migrations/20261003151633_film-1911-mcp-monitoring.sql.
 -- The panels the EDD's "Observability" section asks for, read by the super
 -- admin's MCP page (apps/web/app/admin/mcp), and the check behind the alert
 -- that an external run recorded a model call.

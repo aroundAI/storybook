@@ -18,7 +18,7 @@ type Client = McpPrincipal['supabase'];
 /**
  * `generation_run_parts`, as the tools see it: read under RLS (members of
  * the run's account), written only through `submit_generation_run_part`
- * (migration 20261003121205), which checks the caller drives an open
+ * (migration 20261003151631), which checks the caller drives an open
  * external run they opened.
  */
 export interface StoredPart {
