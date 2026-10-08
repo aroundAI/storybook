@@ -928,6 +928,29 @@ export default $config({
         ...(process.env.SUPABASE_DB_WEBHOOK_SECRET && {
           SUPABASE_DB_WEBHOOK_SECRET: process.env.SUPABASE_DB_WEBHOOK_SECRET,
         }),
+        // /api/mcp signs each caller's Supabase token with this (FILM-1904);
+        // without it every MCP request is a 500.
+        ...(process.env.SUPABASE_JWT_SECRET && {
+          SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET,
+        }),
+        // The MCP connector's optional settings, as production.env.example
+        // documents them; unset keeps the code's defaults.
+        ...Object.fromEntries(
+          [
+            'MCP_JWT_PRIVATE_KEY',
+            'MCP_JWT_KID',
+            'MCP_JWT_ALG',
+            'MCP_AUTH_SERVER',
+            'MCP_SUPABASE_OAUTH_ISSUER',
+            'MCP_RESOURCE_URL',
+            'MCP_ALLOWED_ORIGINS',
+            'MCP_RATE_LIMIT_CALLS_PER_MIN',
+            'MCP_RATE_LIMIT_WRITES_PER_MIN',
+            'MCP_OAUTH_REGISTRATIONS_PER_HOUR',
+          ].flatMap((key) =>
+            process.env[key] ? [[key, process.env[key]!]] : [],
+          ),
+        ),
 
         // Site configuration
         NEXT_PUBLIC_SITE_URL:
