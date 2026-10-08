@@ -34,7 +34,11 @@ function userClaims(
 
   return new SignJWT({
     role: 'authenticated',
-    aal: 'aal1',
+    // The connection was approved at aal2 (consent and token creation pass
+    // requireUser's MFA check), and the restrictive restrict_mfa_* policies
+    // hide an MFA user's own team from an aal1 token. is_super_admin()
+    // refuses provider 'mcp', so aal2 grants no super-admin access.
+    aal: 'aal2',
     is_anonymous: false,
     app_metadata: { provider: 'mcp', mcp_connection_id: connectionId },
     user_metadata: {},
