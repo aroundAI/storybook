@@ -216,13 +216,11 @@ echo ""
 
 echo -e "${YELLOW}📦 Installing dependencies...${NC}"
 
-# Check if node_modules exists
-if [ ! -d "node_modules" ]; then
-    echo "  Running pnpm install..."
-    pnpm install --frozen-lockfile
-else
-    echo -e "${GREEN}✓ Dependencies already installed${NC}"
-fi
+# Always install: an existing node_modules can predate a workspace package
+# added since, and the build then fails with "Module not found". A no-op
+# install takes seconds.
+pnpm install --frozen-lockfile
+echo -e "${GREEN}✓ Dependencies installed${NC}"
 
 echo ""
 
