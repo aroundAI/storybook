@@ -12,6 +12,7 @@ import {
   type McpToolContext,
   type McpToolDefinition,
   isWriteTool,
+  toolResultContent,
 } from '../registry';
 import { runWithMcpRequestContext } from '../request-context';
 import { hasScope } from '../scopes';
@@ -145,13 +146,7 @@ async function runTool(
     );
 
     return {
-      content: [
-        {
-          type: 'text',
-          text:
-            result.text ?? JSON.stringify(result.structuredContent, null, 2),
-        },
-      ],
+      content: toolResultContent(result),
       structuredContent: result.structuredContent,
     };
   } catch (error) {

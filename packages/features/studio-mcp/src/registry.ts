@@ -37,6 +37,20 @@ export interface McpToolResult {
   structuredContent: Record<string, unknown>;
 }
 
+/**
+ * The MCP `content` for a tool result: the summary first, then the JSON of
+ * `structuredContent`. A client that reads only text (Claude.ai) otherwise
+ * gets the summary without the ids every follow-up tool needs.
+ */
+export function toolResultContent(result: McpToolResult) {
+  const json = JSON.stringify(result.structuredContent, null, 2);
+
+  return [
+    ...(result.text ? [{ type: 'text' as const, text: result.text }] : []),
+    { type: 'text' as const, text: json },
+  ];
+}
+
 export interface McpToolDefinition<Shape extends ZodRawShape = ZodRawShape> {
   name: string;
   title: string;
