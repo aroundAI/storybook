@@ -295,6 +295,12 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
             (p) => p.id,
           ),
         ).toContain(project.id);
+        // A client that reads only content (Claude.ai) needs the ids too.
+        expect(
+          (listed.content as Array<{ text: string }>)
+            .map((block) => block.text)
+            .join('\n'),
+        ).toContain(project.id);
 
         const episode = await call('create_episode', {
           projectId: project.id,
