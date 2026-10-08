@@ -800,7 +800,9 @@ export default $config({
           '@aws-sdk/client-dynamodb',
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
-          'googleapis',
+          // Not googleapis: the worker imports @googleapis/youtube, which is
+          // bundled. googleapis@184 alone unzips to 239 MB, past Lambda's
+          // 250 MB limit.
           'ws',
         ],
       },
