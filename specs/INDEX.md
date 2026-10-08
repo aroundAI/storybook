@@ -694,6 +694,26 @@ StoryBook gets its post-production half: a fork of the upstream GPL-3.0 editor, 
 | FILM-2018 | [compositions-and-semantic-effects](./phase-20-storybookstudio/FILM-2018-compositions-and-semantic-effects.yaml) | DONE | XL | FILM-2013, FILM-2014, FILM-2004 |
 | FILM-2019 | [localization-lanes](./phase-20-storybookstudio/FILM-2019-localization-lanes.yaml) | DONE | L | FILM-2007, FILM-2016, FILM-2017 |
 
+### Phase 21: Competitor Intelligence
+
+See [phase-21-competitor-intelligence/README.md](./phase-21-competitor-intelligence/README.md) for the problem table, the three data tiers, locked decisions and known limits, and [PRD-EDD.md](./phase-21-competitor-intelligence/PRD-EDD.md) for the PRD, the EDD and the diagrams.
+
+A creator adds anyone's YouTube channel, Instagram professional account or Facebook Page and sees which of its videos are working, against that channel's own history; when its audience shows up (views-arrival and comment-activity heatmaps from public counts read on a schedule); and what its winners share (Gemini content breakdown). Linked to a project, the project's own channel is measured the same way and the gaps become experiments. Official APIs only; no competitor retention, CTR or Most Replayed, because no official API exposes them.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-2101 | [public-data-reference-and-compliance](./phase-21-competitor-intelligence/FILM-2101-public-data-reference-and-compliance.yaml) | DRAFT | S | FILM-1721, FILM-1703 |
+| FILM-2102 | [tracked-channels](./phase-21-competitor-intelligence/FILM-2102-tracked-channels.yaml) | DRAFT | M | FILM-2101 |
+| FILM-2103 | [public-data-providers](./phase-21-competitor-intelligence/FILM-2103-public-data-providers.yaml) | DRAFT | M | FILM-2101, FILM-2102 |
+| FILM-2104 | [snapshot-ingestion](./phase-21-competitor-intelligence/FILM-2104-snapshot-ingestion.yaml) | DRAFT | L | FILM-2103, FILM-2102, FILM-1716 |
+| FILM-2105 | [public-performance-measures](./phase-21-competitor-intelligence/FILM-2105-public-performance-measures.yaml) | DRAFT | M | FILM-2104, FILM-1715, FILM-1716 |
+| FILM-2106 | [timing-heatmaps-and-moments](./phase-21-competitor-intelligence/FILM-2106-timing-heatmaps-and-moments.yaml) | DRAFT | M | FILM-2104, FILM-2105 |
+| FILM-2107 | [content-breakdown](./phase-21-competitor-intelligence/FILM-2107-content-breakdown.yaml) | DRAFT | M | FILM-2104, FILM-1717 |
+| FILM-2108 | [competitor-report-ui](./phase-21-competitor-intelligence/FILM-2108-competitor-report-ui.yaml) | DRAFT | L | FILM-2105, FILM-2106, FILM-2102, FILM-1705 |
+| FILM-2109 | [project-comparison](./phase-21-competitor-intelligence/FILM-2109-project-comparison.yaml) | DRAFT | M | FILM-2105, FILM-2108 |
+| FILM-2110 | [gaps-and-recommendations](./phase-21-competitor-intelligence/FILM-2110-gaps-and-recommendations.yaml) | DRAFT | M | FILM-2109, FILM-2107, FILM-1724, FILM-1717 |
+| FILM-2111 | [competitor-mcp-tools](./phase-21-competitor-intelligence/FILM-2111-competitor-mcp-tools.yaml) | DRAFT | S | FILM-1904, FILM-2108, FILM-2110 |
+
 ### Spikes
 
 | Task ID | Name | Status | Effort | Dependencies |

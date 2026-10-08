@@ -71,7 +71,8 @@ specs/
 ├── phase-17-analytics-provenance/ # Provenance and signal
 ├── phase-18-local-vendor-sandbox/ # Local vendor sandbox
 ├── phase-19-dual-ai-mcp/          # Gemini in the app, Claude over MCP
-└── phase-20-storybookstudio/      # The desktop AI editor (the StorybookStudio repo): specs for both repos
+├── phase-20-storybookstudio/      # The desktop AI editor (the StorybookStudio repo): specs for both repos
+└── phase-21-competitor-intelligence/ # Watching other channels from public data; comparison with your own
 ```
 
 Every phase folder's own subdirectories (`database/`, `components/`,

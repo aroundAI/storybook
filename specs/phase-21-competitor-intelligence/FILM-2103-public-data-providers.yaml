@@ -1,0 +1,67 @@
+spec_id: "FILM-2103"
+title: "Public-Data Providers and the Channel Resolver"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: provider
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2101"
+    note: "every field name used here must be documented first"
+  - spec_id: "FILM-2102"
+    note: "the resolver feeds add_competitor"
+summary: >
+  Clients that read public data, and the resolver that turns what a user
+  pastes into a stable platform id. YouTube uses the Data API v3 with a
+  server-only API key in its own GCP project (YOUTUBE_PUBLIC_API_KEY); no
+  YouTube client in the repo uses a key today, all use OAuth
+  (packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:124).
+  Instagram uses Business Discovery as the account's own connected IG
+  professional account, within a fifth of that account's Meta budget. The
+  Facebook leg, Page Public Content Access, is DEFERRED until gate G4. Every
+  call is debited from vendor_quota_usage before it is made. The resolver never
+  fetches a user-supplied URL: it parses it and calls the vendor API. Design:
+  PRD-EDD.md sections 10.2, 14.3 to 14.5, 20 and 21.
+acceptance_criteria:
+  - text: "resolveChannelInput parses youtube.com/@handle, /channel/UC…, /c/name, /user/name, youtu.be and watch URLs (via the video's channel), bare @handle and UC ids, instagram.com/<user>, and facebook.com/<page>; anything else returns unsupported_platform; it performs no HTTP request to the pasted host"
+    met: false
+    reason: "not met — not built"
+  - text: "YouTube client: channels.list (forHandle or id), playlistItems.list over the uploads playlist, videos.list in batches of 50, commentThreads.list newest-first with a page cap; each call debits its unit cost first and a quotaExceeded 403 stops the vendor for the Pacific-time day"
+    met: false
+    reason: "not met — not built"
+  - text: "Instagram client: business_discovery account and media fields from the reference only, called with the account's IG connection; refuses personal accounts (ig_personal_account) and accounts with no IG connection (no_ig_connection); backs off on meta-usage headers"
+    met: false
+    reason: "not met — not built"
+  - text: "Facebook PPCA client exists behind a disabled switch and is not callable until G4 is recorded in FILM-2101"
+    met: false
+    reason: "not met — DEFERRED by design until G4"
+  - text: "Guard: CI fails if yt-dlp, ytdl-core, puppeteer, playwright or cheerio is a dependency of packages/features/competitor-intelligence; seen red with one added"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "Resolver over 30+ URL shapes, including tracking parameters and mobile hosts", met: false, reason: "not met — not built"}
+    - {text: "Quota ledger debits before the call and refuses at the cap", met: false, reason: "not met — not built"}
+  integration:
+    - {text: "Vendor-sandbox fakes for channels.list?forHandle, playlistItems.list, commentThreads.list (apps/vendor-sandbox/src/social/vendors/google/) and an IG Business Discovery fake", met: false, reason: "not met — not built"}
+  e2e: []
+remaining: []
+open_questions: []
+provider:
+  vendor: "YouTube Data API v3 (API key); Instagram Graph API Business Discovery; Facebook Page Public Content Access (deferred)"
+  file_path: "packages/features/competitor-intelligence/src/providers/"
+  base_url: "https://www.googleapis.com/youtube/v3; https://graph.facebook.com"
+  auth: "YouTube: API key (server-only, own GCP project). Instagram: the account's own IG connection token"
+  endpoints:
+    - {method: GET, path: "/channels", purpose: "resolve handle or id; totals; uploads playlist"}
+    - {method: GET, path: "/playlistItems", purpose: "list uploads, 50 per page"}
+    - {method: GET, path: "/videos", purpose: "public counts, duration, snippet, 50 ids per call"}
+    - {method: GET, path: "/commentThreads", purpose: "comment publish times and timestamp mentions for hot videos"}
+    - {method: GET, path: "/{ig-user-id}?fields=business_discovery.username(...)", purpose: "another professional account's totals and media"}
+  rate_limits: "YouTube 10,000 units/day per GCP project by default; Instagram within the account's own Meta budget, at most a fifth of the per-sync Instagram allowance"
+  webhooks: []
+notes: >
+  Forbidden Instagram names from the reference apply here too: impressions,
+  plays and video_views (docs/platform-capability-reference.md, "Names that
+  must not appear in our code"). The existing platform-field-names guard is
+  extended to scan this package's providers.

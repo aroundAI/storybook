@@ -1,0 +1,66 @@
+spec_id: "FILM-2106"
+title: "Timing Heatmaps and Moments Mentioned"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2104"
+    note: "hourly snapshots, comment buckets, mention bins"
+  - spec_id: "FILM-2105"
+    note: "publishTiming and the provenance shape"
+summary: >
+  Answers "when are people looking at it" for a channel whose Studio we cannot
+  see. The views-arrival heatmap sums hourly view-count deltas of hot-window
+  videos (first 72 h) into an hour-of-week grid in a chosen time zone. The
+  comment-activity heatmap does the same with comment publish times, an
+  independent reading of the same question. The moments-mentioned strip bins
+  timestamps viewers write in comments into 2% buckets of the video's
+  duration, the closest lawful proxy to Most Replayed. Each card states what
+  it measured and is never labelled watch time or retention. No heatmap exists
+  in analytics today; packages/features/content-analytics/src/components/charts/heatmap-grid.tsx
+  is unused and is reused here. Design: PRD-EDD.md sections 10.3 and 13, R-26
+  to R-28.
+acceptance_criteria:
+  - text: "viewsArrival(channel, tz): a delta spanning k hours with zeros either side is spread evenly and its cells marked interpolated; negative deltas count 0 and are flagged; cells with fewer than 5 contributing videos are greyed"
+    met: false
+    reason: "not met — not built"
+  - text: "commentActivity(channel, tz) over each upload's first 7 days; the card says whether its peak hours agree with viewsArrival's (top-3 cells overlap)"
+    met: false
+    reason: "not met — not built"
+  - text: "momentsMentioned(video) shows only at 20 or more in-range mentions, labelled 'Where viewers' comments point, not a replay graph'"
+    met: false
+    reason: "not met — not built"
+  - text: "Time-zone select defaults to the viewer's zone and offers the channel's country zone; the grid is recomputed, not shifted client-side"
+    met: false
+    reason: "not met — not built"
+  - text: "Each card carries a provenance chip (derived: public_snapshot_delta, native, comment_timestamp_parse) and a 'first 72 hours of each upload' caption where it applies"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "Hand-computed hour-of-week grid from a fixture of hourly snapshots, including a batched counter and a timezone with a DST change in the window", met: false, reason: "not met — not built"}
+  integration:
+    - {text: "Local ClickHouse: seeded snapshots read back as the hand-computed grid through the service", met: false, reason: "not met — not built"}
+  e2e:
+    - {text: "Evidence spec screenshots of both heatmaps and the moments strip, with the DOM-read cell values in the PR as a table", met: false, reason: "not met — not built"}
+remaining: []
+open_questions:
+  - "Q6: default heatmap time zone, the viewer's or the competitor channel's country?"
+feature:
+  database: {tables: [], columns_added: []}
+  queries:
+    - {name: "queryExtHourlyDeltas", purpose: "hourly view deltas per hot-window video", file: "packages/clickhouse/src/queries-competitor.ts"}
+    - {name: "queryExtCommentActivity", purpose: "comment counts by hour", file: "packages/clickhouse/src/queries-competitor.ts"}
+    - {name: "queryExtMomentMentions", purpose: "mention bins per video", file: "packages/clickhouse/src/queries-competitor.ts"}
+  actions: []
+  ui:
+    - {component: "ViewsArrivalHeatmap", file: "packages/features/competitor-intelligence/src/components/timing/views-arrival-heatmap.tsx"}
+    - {component: "CommentActivityHeatmap", file: "packages/features/competitor-intelligence/src/components/timing/comment-activity-heatmap.tsx"}
+    - {component: "MomentsMentionedStrip", file: "packages/features/competitor-intelligence/src/components/timing/moments-mentioned-strip.tsx"}
+  provider_integration: null
+notes: >
+  The same views-arrival computation can later run on owned channels (where
+  YouTube Analytics has no hour dimension either), but that is outside this
+  phase.

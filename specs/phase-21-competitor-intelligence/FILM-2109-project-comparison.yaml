@@ -1,0 +1,55 @@
+spec_id: "FILM-2109"
+title: "Project Comparison with Symmetric Measurement"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2105"
+    note: "the measures compared"
+  - spec_id: "FILM-2108"
+    note: "the report components reused side by side"
+summary: >
+  Links watched channels to a project (role peer or aspiration) and enrols the
+  project's own channel on that platform in the same public pipeline as an
+  external_channels row tracked with is_self = true and project role self. Every
+  compared figure is then the same measure computed by the same code on both
+  sides. A Competitors tab on the project analytics dashboard
+  (packages/features/content-analytics/src/components/analytics-dashboard.tsx:357)
+  shows the side-by-side, same platform only, with a labelled "Only visible for
+  your channel" panel of Studio-only figures (retention, CTR, traffic) that are
+  never compared with a public proxy. Design: PRD-EDD.md section 17, R-40 to
+  R-44, R-47.
+acceptance_criteria:
+  - text: "project_competitors (project_id, account_competitor_id, role peer, aspiration or self) with RLS: members of the project's account read, owner/admin write; pgTAP"
+    met: false
+    reason: "not met — not built"
+  - text: "linkProjectCompetitorsAction enrols the chosen own connection (from project_publishing_configs when there are several) as the self row; unlinking the last peer on a platform leaves the self row archived"
+    met: false
+    reason: "not met — not built"
+  - text: "The side-by-side refuses to place channels of different platforms in one comparison"
+    met: false
+    reason: "not met — not built"
+  - text: "Studio-only panel reads the project's existing analytics services and is visually separated and labelled; no value from it enters a comparison"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit: []
+  integration:
+    - {text: "pgTAP: project_competitors isolation and roles", met: false, reason: "not met — not built"}
+  e2e:
+    - {text: "Playwright: link three peers, self is enrolled, the side-by-side shows identical measure definitions for self and peers", met: false, reason: "not met — not built"}
+remaining: []
+open_questions: []
+feature:
+  database: {tables: ["project_competitors"], columns_added: []}
+  queries: []
+  actions:
+    - {name: "linkProjectCompetitorsAction", file: "packages/features/competitor-intelligence/src/server/project-actions.ts"}
+  ui:
+    - {component: "ProjectCompetitorsTab", file: "packages/features/competitor-intelligence/src/components/project/project-competitors-tab.tsx"}
+  provider_integration: null
+notes: >
+  Symmetry is the whole fairness argument: your channel is read through the
+  same API key, at the same cadence, by the same functions as theirs.

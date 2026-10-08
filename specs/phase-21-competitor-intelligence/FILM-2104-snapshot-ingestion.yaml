@@ -1,0 +1,73 @@
+spec_id: "FILM-2104"
+title: "Competitor Snapshot Ingestion"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2103"
+    note: "the clients and the quota ledger"
+  - spec_id: "FILM-2102"
+    note: "which channels are tracked"
+  - spec_id: "FILM-1716"
+    note: "format family on ext_video_dim"
+summary: >
+  Turns public counts into history. A 15-minute SST cron
+  (StorybookCompetitorSyncCron, lambda competitor-sync, POST
+  /api/competitors/sync with CRON_SECRET, the analytics-sync pattern) claims
+  due channels with FOR UPDATE SKIP LOCKED. It imports the back catalogue on
+  add (newest 500 uploads), discovers new uploads hourly, and snapshots each
+  video on an age-tiered cadence (hourly to 72 h, 6-hourly to 7 d, daily to
+  90 d, weekly after). It buckets comment publish times and parses timestamp
+  mentions for videos under 7 days, without storing comment text or authors.
+  Writes ClickHouse ext_video_dim, ext_video_snapshots, ext_channel_snapshots,
+  ext_comment_activity and ext_moment_mentions, each with a 30-day TTL. The
+  existing sync iterates publishes only
+  (packages/features/content-analytics/src/server/analytics-sync-cron.ts:348),
+  so this is a separate job. Design: PRD-EDD.md sections 14 and 15.2.
+acceptance_criteria:
+  - text: "ClickHouse migrations 025 to 027 create the five ext_* tables as specified, registered in run.ts, each with TTL 30 days; NULL means not reported, never 0"
+    met: false
+    reason: "not met — not built"
+  - text: "Back-catalogue import of a 500-upload channel completes within one tick and costs about 20 YouTube units"
+    met: false
+    reason: "not met — not built"
+  - text: "New uploads are detected within 60 minutes; first_seen_at is recorded so observed-from-birth videos (first seen within 2 h of publish) are identifiable"
+    met: false
+    reason: "not met — not built"
+  - text: "Age-tiered cadence as in PRD-EDD.md section 14.2; hot-window snapshot lag p95 at most 75 minutes over 7 days with 10 channels"
+    met: false
+    reason: "not met — not built"
+  - text: "Comment buckets are rewritten in full per hour read, so a re-read replaces rather than adds; no comment text or author id is written anywhere"
+    met: false
+    reason: "not met — not built"
+  - text: "Under quota pressure work is shed in the order of PRD-EDD.md section 14.4 and a quota_limited marker is written; hot snapshots and discovery are never shed"
+    met: false
+    reason: "not met — not built"
+  - text: "A channel missing from 3 consecutive polls becomes unavailable and stops polling; a registry row with no unarchived tracker is not claimed"
+    met: false
+    reason: "not met — not built"
+  - text: "Steady-state YouTube spend measured at no more than 134 units per channel per day over 7 days on the internal workspace"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "Cadence tiering, shed order, mention parsing (h:mm:ss, m:ss, out-of-range ignored)", met: false, reason: "not met — not built"}
+  integration:
+    - {text: "Local stack: sync against the vendor sandbox writes hand-computed rows; re-running a tick is idempotent; TTL present on every ext_* table (verify-queries competitorSteps)", met: false, reason: "not met — not built"}
+  e2e: []
+remaining: []
+open_questions: []
+feature:
+  database:
+    tables: ["ext_video_dim", "ext_video_snapshots", "ext_channel_snapshots", "ext_comment_activity", "ext_moment_mentions"]
+    columns_added: []
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+notes: >
+  The 30-day TTL is gate G1's default (FILM-2101). On acceptance a later
+  migration modifies the TTL to 36 months on all five tables; that migration
+  is not written until acceptance is recorded.

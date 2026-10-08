@@ -1,0 +1,60 @@
+spec_id: "FILM-2110"
+title: "Gaps, Hypotheses and Test This"
+phase: 21
+phase_name: "Competitor Intelligence"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2109"
+    note: "self and peers measured symmetrically"
+  - spec_id: "FILM-2107"
+    note: "attribute gaps"
+  - spec_id: "FILM-1724"
+    note: "Test this opens a channel experiment draft"
+  - spec_id: "FILM-1717"
+    note: "attribute gaps become concept briefs through the genome loop"
+summary: >
+  Computes evidence-bearing gaps between a project's channel and its peers on
+  one platform: cadence, format mix, duration, outlier rate (share of each
+  channel's videos above its own p75), engagement per 1,000, takeoff, publish
+  timing, and content attributes. A gap is emitted only with n of 5 or more on
+  both sides. An LLM phrases each gap as a headline, hypothesis and test idea
+  using only the figures supplied; items naming an unsupplied gap are dropped,
+  the defence apps/web/lambda/llm-worker/handlers/analytics-insights.ts:68
+  already uses. Test this pre-fills a FILM-1724 channel experiment or a
+  FILM-1717 concept brief. Design: PRD-EDD.md section 17, R-43 to R-46.
+acceptance_criteria:
+  - text: "packages/clickhouse/src/lib/competitor-gaps.ts computes Gap[] as typed in PRD-EDD.md section 17; similar means inside the peers' IQR; each gap carries both sides' values and n, confidence and evidence video ids"
+    met: false
+    reason: "not met — not built"
+  - text: "A Recommendation cannot be constructed without a Gap (type-level; @ts-expect-error test)"
+    met: false
+    reason: "not met — not built"
+  - text: "Prompt competitor-gap-analysis.json receives only Gap[] and titles; the handler keeps only items whose gapId was supplied; results cached in competitor_gap_reports by input hash"
+    met: false
+    reason: "not met — not built"
+  - text: "Test this on a numeric gap opens a channel experiment draft whose metric is the gap's measure on the project's own channel; on an attribute gap it opens a concept brief"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "Gap rules against hand-computed fixtures, including n below 5 on one side (no gap) and channels of very different size (outlier rate comparable)", met: false, reason: "not met — not built"}
+  integration:
+    - {text: "llm-worker handler drops an invented gapId from a recorded response", met: false, reason: "not met — not built"}
+  e2e:
+    - {text: "Playwright: seeded snapshots for self and two peers show a cadence gap with evidence; Test this opens a pre-filled experiment", met: false, reason: "not met — not built"}
+remaining: []
+open_questions: []
+feature:
+  database: {tables: ["competitor_gap_reports"], columns_added: []}
+  queries: []
+  actions:
+    - {name: "getCompetitorGapsAction", file: "packages/features/competitor-intelligence/src/server/gap-actions.ts"}
+  ui:
+    - {component: "GapCard", file: "packages/features/competitor-intelligence/src/components/project/gap-card.tsx"}
+  provider_integration: null
+notes: >
+  Diagnosis describes, it does not explain (Phase 17). A gap is a correlation
+  across channels; the product calls it a hypothesis and routes it to an
+  experiment, which is the only path to a causal claim.
