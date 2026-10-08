@@ -43,6 +43,12 @@ begin
         return false;
     end if;
 
+    -- An MCP token (aal2, provider 'mcp') is never a super admin.
+    -- Mirrors migrations/20261008053553_mcp-token-is-never-super-admin.sql.
+    if (auth.jwt() ->> 'app_metadata')::jsonb ->> 'provider' = 'mcp' then
+        return false;
+    end if;
+
     select (auth.jwt() ->> 'app_metadata')::jsonb ->> 'role' = 'super-admin' into is_super_admin;
 
     return coalesce(is_super_admin, false);

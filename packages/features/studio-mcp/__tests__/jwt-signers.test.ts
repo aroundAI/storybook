@@ -76,6 +76,8 @@ describe.each(['ES256', 'RS256'] as const)('asymmetric signer: %s', (alg) => {
 
     expect(payload.sub).toBe(USER);
     expect(payload.role).toBe('authenticated');
+    // aal2: restrict_mfa_* hides an MFA user's own team from an aal1 token.
+    expect(payload.aal).toBe('aal2');
     expect(payload.app_metadata).toEqual({
       provider: 'mcp',
       mcp_connection_id: CONNECTION,
@@ -166,5 +168,6 @@ describe('HS256 signer', () => {
     );
 
     expect(payload.sub).toBe(USER);
+    expect(payload.aal).toBe('aal2');
   });
 });
