@@ -1,0 +1,43 @@
+spec_id: "FILM-2206"
+title: "Follow-up From Analytics: the next episode starts from what worked"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DRAFT
+effort: S
+dependencies:
+  - spec_id: "FILM-2205"
+    note: "the start-from dialog it opens"
+  - spec_id: "FILM-1912"
+    note: "the performance context the snapshot comes from"
+summary: >
+  Make a follow-up on an episode's analytics page and on video-log rows
+  opens the new-episode dialog on the idea tile, in the same season, with a
+  What worked card. The new episode stores a frozen snapshot of the source
+  episode's findings in metadata.follow_up, and the story brief puts it
+  first in its performance context. create_episode takes followUpOf over
+  MCP. Design: EDD J5, §6.6, §7.5.
+acceptance_criteria:
+  - text: "Make a follow-up (data-test make-follow-up) opens the dialog on the idea tile with the title, season and a read-only What worked card"
+    met: false
+    reason: "not met — not built"
+  - text: "followUpOf (web and create_episode) refuses an episode from another project and writes metadata.follow_up {episode_id, snapshot}"
+    met: false
+    reason: "not met — not built"
+  - text: "The story brief's performance context leads with the snapshot, in both modes"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "brief builder puts the follow-up snapshot first", met: false, reason: "not met — not built"}
+  integration: []
+  e2e:
+    - {text: "MCP: create_episode with followUpOf, then start_generation story carries the snapshot", met: false, reason: "not met — not built"}
+open_questions: []
+notes: ""
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: ["make-follow-up button", "What worked card"]
+  provider_integration: null

@@ -75,6 +75,7 @@ const SANDBOX = 'Vendor Sandbox (Ph 18)';
 const DUAL_AI = 'Dual AI (Ph 19)';
 const STUDIO = 'StorybookStudio (Ph 20)';
 const COMPETITORS = 'Competitor Intelligence (Ph 21)';
+const FLEXIBLE = 'Flexible Production (Ph 22)';
 const SHARING = 'Public Sharing';
 
 /**
@@ -158,6 +159,11 @@ export const LAYOUT: Layout = {
       label: '21. Competitor Intelligence',
       scope: COMPETITORS,
     },
+    {
+      heading: 'Phase 22: Flexible Production',
+      label: '22. Flexible Production',
+      scope: FLEXIBLE,
+    },
     { heading: 'Spikes', label: 'Spikes', scope: MVP },
     { heading: 'Public Sharing', label: 'Public Sharing', scope: SHARING },
   ],
@@ -174,6 +180,7 @@ export const LAYOUT: Layout = {
     DUAL_AI,
     STUDIO,
     COMPETITORS,
+    FLEXIBLE,
     SHARING,
   ],
 };

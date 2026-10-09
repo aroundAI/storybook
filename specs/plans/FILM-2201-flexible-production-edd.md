@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Tickets | FILM-2201..FILM-2206 (phase 22, to be filed from §11) |
+| Tickets | FILM-2201..FILM-2206, filed in `specs/phase-22-flexible-production/` |
 | Builds on | FILM-302 (season CRUD), FILM-1143 (Generate Season), FILM-1905 (MCP author tools), FILM-1912 (performance context), FILM-2003 (episode renders), FILM-1504 (Reporting API ingest) |
 | Surfaces | Web studio (`apps/web/app/home/[account]/studio/[projectSlug]/`) and the Studio MCP server (`packages/features/studio-mcp/`) |
-| Status | **Design: awaiting owner approval. No code has been changed.** Revised 2026-10-09 with the owner's decisions (§14); channel import dropped. |
+| Status | **Approved by the owner, 2026-10-09.** Revised 2026-10-09 with the owner's decisions (§14); channel import dropped. |
 
 Evidence notation: `file:line` refers to `main` @ `ca2cbcf`.
 

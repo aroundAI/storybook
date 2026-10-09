@@ -1,0 +1,50 @@
+spec_id: "FILM-2205"
+title: "Start From and Progress Rail: begin with an idea, a script or a video"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-2202"
+    note: "unlocked stages and AttachVideoPanel"
+  - spec_id: "FILM-2203"
+    note: "seasons the dialog places an episode in"
+summary: >
+  The new-episode dialog asks how to start: from an idea (today's wizard),
+  from a script (paste or upload Fountain, Final Draft or plain text) or from
+  a finished video (upload or link). The episode workspace's tabs become a
+  progress rail showing each stage as done, empty or skipped, and an empty
+  stage offers its actions and a Skip. Script import writes through the
+  screenplay commit path, over the web and over MCP (start_generation mode
+  import). Design: EDD J2, J3, §6.4, §7.3, §7.4.
+acceptance_criteria:
+  - text: "The dialog's tiles (data-test start-from-idea, start-from-script, start-from-video) share one discriminated-union zod schema with the server action and the MCP input; the season select is controlled"
+    met: false
+    reason: "not met — not built"
+  - text: "From a script parses Fountain, .fdx and plain text into screenplay_data through the screenplay validator, stamps origin import, and skips ideation and story"
+    met: false
+    reason: "not met — not built"
+  - text: "From a finished video lands on Publish with ideation through audio skipped"
+    met: false
+    reason: "not met — not built"
+  - text: "The progress rail (an ol with aria-current) replaces the tabs; an empty stage shows StageEmptyState with Generate (disabled with the missing input named), its alternative, and Skip; writing to a skipped stage un-skips it"
+    met: false
+    reason: "not met — not built"
+  - text: "Playwright evidence of each tile, a second submission after reset, and the rail in each state"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "Fountain, FDX and plain-text readers against fixtures", met: false, reason: "not met — not built"}
+  integration: []
+  e2e:
+    - {text: "apps/e2e/tests/flexible-production/start-from.spec.ts", met: false, reason: "not met — not built"}
+open_questions: []
+notes: ""
+feature:
+  database: null
+  queries: []
+  actions: ["createEpisodeStartAction", "importScreenplayAction", "setStageSkippedAction"]
+  ui: ["create-episode-dialog", "ProgressRail", "StageEmptyState"]
+  provider_integration: null

@@ -714,6 +714,21 @@ A creator adds anyone's YouTube channel, Instagram professional account or Faceb
 | FILM-2110 | [gaps-and-recommendations](./phase-21-competitor-intelligence/FILM-2110-gaps-and-recommendations.yaml) | DRAFT | M | FILM-2109, FILM-2107, FILM-1724, FILM-1717 |
 | FILM-2111 | [competitor-mcp-tools](./phase-21-competitor-intelligence/FILM-2111-competitor-mcp-tools.yaml) | DRAFT | S | FILM-1904, FILM-2108, FILM-2110 |
 
+### Phase 22: Flexible Production
+
+See [phase-22-flexible-production/README.md](./phase-22-flexible-production/README.md) for the problem table and locked decisions, and the [EDD](./plans/FILM-2201-flexible-production-edd.md) for the journeys (web and MCP), the design and the milestones.
+
+Seasons can be created empty and filled later, every stage is optional, and an episode can be published with whatever video it has.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-2201 | [foundations](./phase-22-flexible-production/FILM-2201-foundations.yaml) | DRAFT | M | FILM-302, FILM-1905 |
+| FILM-2202 | [publish-what-you-have](./phase-22-flexible-production/FILM-2202-publish-what-you-have.yaml) | DRAFT | S | FILM-2201 |
+| FILM-2203 | [seasons-ui](./phase-22-flexible-production/FILM-2203-seasons-ui.yaml) | DRAFT | M | FILM-2201 |
+| FILM-2204 | [mcp-seasons-and-video](./phase-22-flexible-production/FILM-2204-mcp-seasons-and-video.yaml) | DRAFT | M | FILM-2201, FILM-1905 |
+| FILM-2205 | [start-from-and-progress-rail](./phase-22-flexible-production/FILM-2205-start-from-and-progress-rail.yaml) | DRAFT | L | FILM-2202, FILM-2203 |
+| FILM-2206 | [follow-up-from-analytics](./phase-22-flexible-production/FILM-2206-follow-up-from-analytics.yaml) | DRAFT | S | FILM-2205, FILM-1912 |
+
 ### Spikes
 
 | Task ID | Name | Status | Effort | Dependencies |

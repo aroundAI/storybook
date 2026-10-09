@@ -1,0 +1,58 @@
+spec_id: "FILM-2201"
+title: "Flexible Production Foundations: migration, season service, stage state"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-302"
+    note: "season CRUD actions this spec moves into a service"
+  - spec_id: "FILM-1905"
+    note: "MCP deriveStages, which becomes a mapper over the shared stage state"
+summary: >
+  The shared ground every later milestone stands on, with no visible UI
+  change. One hand-written migration adds seasons.version and cover_url,
+  episodes.entry_mode and skipped_stages, episode_renders.source, a unique
+  index on a publish's platform video, the reorder_seasons and
+  soft_delete_season functions and the episode_positions view. Season writes
+  move into one season.service.ts that the web actions call, and the
+  wizard's second, race-unsafe insert is deleted. Stage state moves into one
+  pure stage-state.ts (done, empty, skipped; canGenerate and missing), which
+  the MCP deriveStages maps over. Design: EDD §6.1-§6.3, §10.
+acceptance_criteria:
+  - text: "Hand-written migration adds seasons.version and cover_url; episodes.entry_mode (idea, script, video; default idea) and skipped_stages (subset of ideation, story, screenplay, shots, audio); episode_renders.source (studio, upload; default studio); a partial unique index on publishes (platform, platform_content_id) for live rows; reorder_seasons, soft_delete_season and the episode_positions view. Types regenerated, not hand-edited"
+    met: false
+    reason: "not met — not built"
+  - text: "reorder_seasons renumbers a project's live seasons 1..n in the order given and refuses a list that omits or repeats a season; soft_delete_season sets deleted_at under optimistic locking and moves the season's live episodes to season_id null, returning how many moved"
+    met: false
+    reason: "not met — not built"
+  - text: "season.service.ts holds insertSeason (number auto-assigned, retried on a unique violation), updateSeasonRow, reorderSeasons, softDeleteSeason, moveEpisodeToSeason and listSeasons; createSeasonAction, updateSeasonAction, deleteSeasonAction and getProjectSeasonsAction call it"
+    met: false
+    reason: "not met — not built"
+  - text: "The create-episode wizard's inline season insert (packages/features/episodes/src/server/actions.ts) calls insertSeason; no other insert into seasons remains outside the service and the season generator"
+    met: false
+    reason: "not met — not built"
+  - text: "stage-state.ts deriveStageViews returns, for ideation, story, screenplay, shots, audio, video and publish, a state of done, empty or skipped, canGenerate and the missing input stages; canPublish is true with a ready render, a final video, a localized video or an external publish"
+    met: false
+    reason: "not met — not built"
+  - text: "The MCP deriveStages (studio-mcp read/stage-status.ts) is computed from deriveStageViews, so the web and MCP cannot disagree; its existing output shape is unchanged until FILM-2204"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit:
+    - {text: "stage-state.test.ts: every combination of present, empty and skipped inputs; canPublish for each kind of video", met: false, reason: "not met — not built"}
+    - {text: "season.service.test.ts: auto number, retry on 23505, refusals", met: false, reason: "not met — not built"}
+  integration:
+    - {text: "pgTAP flexible-production.test.sql: a viewer can't create, reorder or delete a season; soft delete moves episodes and deletes none; reorder refuses a partial or repeated list; skipped_stages refuses an unknown stage", met: false, reason: "not met — not built"}
+  e2e: []
+open_questions: []
+notes: |
+  No UI change ships in this spec. The web tabs keep their current gates
+  until FILM-2202 switches them to deriveStageViews.
+feature:
+  database: "seasons, episodes, episode_renders, publishes (columns, index); reorder_seasons, soft_delete_season; episode_positions view"
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null

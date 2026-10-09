@@ -1,0 +1,50 @@
+spec_id: "FILM-2203"
+title: "Seasons UI: create empty seasons, manage them, move episodes between them"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-2201"
+    note: "season.service.ts, reorder_seasons, soft_delete_season, episode_positions"
+summary: >
+  The owner's first ask. The empty project offers Plan a season with AI
+  (today's Generate Season, unchanged), Start a season and Add a finished
+  video. A season can be created with only a name, renamed, given notes,
+  moved up or down and deleted (its episodes move to Unsorted). An empty
+  season shows New episode and Upload video. Episodes drag between seasons
+  or move from a menu, and show S1 · E3 labels and a status pill. Design:
+  EDD J1, §7.1, §7.2.
+acceptance_criteria:
+  - text: "The empty Episodes page shows three cards (data-test zero-plan-season, zero-start-season, zero-add-video); Plan a season opens today's Generate Season dialog unchanged"
+    met: false
+    reason: "not met — not built"
+  - text: "CreateSeasonDialog (react-hook-form, shared zod schema) creates a season with only a name; it appears as an empty section with New episode and Upload video"
+    met: false
+    reason: "not met — not built"
+  - text: "Season header menu: rename, edit notes, move up, move down, delete; delete confirms with the episode count and moves them to Unsorted"
+    met: false
+    reason: "not met — not built"
+  - text: "Episodes move between seasons and Unsorted by drag and by a keyboard-reachable Move to season menu; the move is optimistic and rolls back on refusal"
+    met: false
+    reason: "not met — not built"
+  - text: "Cards show S{n} · E{position} from episode_positions (Unsorted: #number) and a status pill: Draft; In production for story, storyboard, generating and editing (owner, 2026-10-09); Ready; Live"
+    met: false
+    reason: "not met — not built"
+  - text: "Playwright evidence for each state above, including after a rename and after a delete"
+    met: false
+    reason: "not met — not built"
+test_plan:
+  unit: []
+  integration: []
+  e2e:
+    - {text: "apps/e2e/tests/flexible-production/seasons.spec.ts: create empty, rename, reorder, move an episode, delete moves episodes", met: false, reason: "not met — not built"}
+open_questions: []
+notes: "Generate Season is not changed by this spec (owner, 2026-10-09)."
+feature:
+  database: null
+  queries: []
+  actions: ["createSeasonAction", "updateSeasonAction", "reorderSeasonsAction", "deleteSeasonAction", "moveEpisodeToSeasonAction"]
+  ui: ["episodes-zero-state", "CreateSeasonDialog", "collapsible-season-section", "season-header", "episode-card"]
+  provider_integration: null
