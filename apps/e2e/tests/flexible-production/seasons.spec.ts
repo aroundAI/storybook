@@ -111,6 +111,39 @@ test.describe('Seasons', () => {
       .toEqual(['Season 2', 'Season 1']);
   });
 
+  test('a season renamed from its menu keeps the new name', async ({
+    page,
+  }) => {
+    const { team, url, project } = await seeded({ seasons: 1 });
+
+    await signInAs(page, team);
+    await page.goto(url);
+
+    await byTest(page, 'season-menu-1').click();
+    await byTest(page, 'season-rename').click();
+    await byTest(page, 'season-name-input').fill('Origins');
+    await byTest(page, 'season-name-input').press('Enter');
+
+    await expect(page.getByText('Season renamed')).toBeVisible();
+    await expect(byTest(page, 'season-name-input')).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', { level: 3, name: /^Season 1\s*Origins/ }),
+    ).toBeVisible();
+
+    const [row] = await readRows<{ name: string }>(
+      'seasons',
+      `project_id=eq.${project.id}&select=name`,
+    );
+    expect(row?.name).toBe('Origins');
+
+    if (process.env.CAPTURE_EVIDENCE) {
+      await page.screenshot({
+        path: `${process.env.EVIDENCE_DIR ?? '/tmp'}/2203-after-rename.png`,
+        fullPage: true,
+      });
+    }
+  });
+
   test('an episode moves to another season and keeps its number', async ({
     page,
   }) => {
@@ -138,8 +171,9 @@ test.describe('Seasons', () => {
   test('deleting a season can keep its episodes, which move to Unsorted', async ({
     page,
   }) => {
+    // A second season keeps the grouped view: with none left, the list is flat
     const { team, url, episodeId } = await seeded({
-      seasons: 1,
+      seasons: 2,
       episodeInSeason: true,
     });
 

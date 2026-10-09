@@ -305,6 +305,8 @@ export function SeasonHeader({
                 onBlur={handleRename}
                 maxLength={255}
                 disabled={isPending}
+                aria-label="Season name"
+                data-test="season-name-input"
                 className="h-7 min-w-[180px] rounded border border-blue-300 bg-white/90 px-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-blue-600 dark:bg-gray-800 dark:text-white"
               />
             ) : (
@@ -380,13 +382,18 @@ export function SeasonHeader({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                aria-label={`Season ${seasonNumber} actions`}
+                data-test={`season-menu-${seasonNumber}`}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setIsEditing(true)}>
+              <DropdownMenuItem
+                onSelect={() => setIsEditing(true)}
+                data-test="season-rename"
+              >
                 <Pencil className="mr-2 h-4 w-4" />
                 Rename Season
               </DropdownMenuItem>
