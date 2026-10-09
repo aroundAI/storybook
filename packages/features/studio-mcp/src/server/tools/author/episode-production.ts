@@ -3,11 +3,13 @@ import 'server-only';
 import { z } from 'zod';
 
 import { SKIPPABLE_STAGES } from '@kit/episodes/lib/stage-state';
+import { ImportScreenplaySchema } from '@kit/episodes/schemas/create-episode-start';
 import {
   OptimisticLockError,
   setStageSkipped,
 } from '@kit/episodes/server/episode-service';
 import { saveEpisodeVideo } from '@kit/episodes/server/episode-video-service';
+import { importScreenplay } from '@kit/episodes/server/screenplay-import-service';
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
 import { MarkAsExternallyUploadedSchema } from '@kit/publishing/lib/schemas/upload-only';
 import { linkPublishedVideo } from '@kit/publishing/server/link-published-video';
@@ -292,6 +294,51 @@ export const linkPublishedVideoTool = defineTool({
         platform: input.platform,
         platformUrl: input.platformUrl,
       },
+    };
+  },
+});
+
+export const importScreenplayTool = defineTool({
+  name: 'import_screenplay',
+  title: 'Import a screenplay',
+  description:
+    "Stores a finished script as the episode's screenplay (FILM-2205): Fountain, Final Draft (.fdx) or plain text, read into the screenplay stage's scenes and checked with its schema, under optimistic locking (the version from get_episode). Needs no story. A script that cannot be read as scenes is refused with the reason; the shots stage then reads it as any screenplay.",
+  inputSchema: ImportScreenplaySchema.shape,
+  scope: 'studio:write',
+  annotations: { ...WRITE, idempotentHint: true },
+  async handler(input, context) {
+    const client = context.principal.supabase;
+
+    await requireEpisodeInAccount(
+      client,
+      context.accountId,
+      input.episodeId,
+      'id',
+    );
+
+    let result;
+
+    try {
+      result = await importScreenplay(client, input);
+    } catch (error) {
+      if (error instanceof OptimisticLockError) {
+        throw new McpToolError(
+          'TARGET_CHANGED',
+          'The episode changed since you read it. Call get_episode and retry with the new version.',
+          { details: { episodeId: input.episodeId, version: input.version } },
+        );
+      }
+
+      throw error;
+    }
+
+    if (!result.ok) {
+      throw refused(result.refusal, 'script');
+    }
+
+    return {
+      text: `Stored the screenplay: ${result.data.scenes} scene${result.data.scenes === 1 ? '' : 's'}; the episode is ${result.data.status} (version ${result.data.version}).`,
+      structuredContent: result.data,
     };
   },
 });

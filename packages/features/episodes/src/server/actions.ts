@@ -39,6 +39,7 @@ import {
 } from '../lib/schemas';
 import {
   CreateEpisodeStartSchema,
+  ImportScreenplaySchema,
   START_PLAN,
 } from '../lib/schemas/create-episode-start.schema';
 import { CreateEpisodeWithContextSchema } from '../lib/schemas/create-episode-wizard.schema';
@@ -1882,3 +1883,44 @@ const createEpisodeStart = enhanceAction(
 );
 
 export const createEpisodeStartAction = returnRefusals(createEpisodeStart);
+
+/**
+ * FILM-2205: stores a finished script as the episode's screenplay, from the
+ * screenplay stage when it is empty. The script must read as scenes; the
+ * write is at the version the page read.
+ */
+const importScreenplayHandler = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'episodes.importScreenplay',
+      episodeId: data.episodeId,
+    };
+    const client = getSupabaseServerClient();
+
+    let result;
+
+    try {
+      result = await importScreenplay(client, data);
+    } catch (error) {
+      if (error instanceof OptimisticLockError) {
+        throw new ActionRefusal(error.message);
+      }
+
+      logger.error({ ...ctx, error }, 'Failed to import the screenplay');
+      throw error;
+    }
+
+    if (!result.ok) {
+      throw new ActionRefusal(result.refusal);
+    }
+
+    logger.info({ ...ctx, scenes: result.data.scenes }, 'Screenplay imported');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'layout');
+
+    return result.data;
+  },
+  { schema: ImportScreenplaySchema },
+);
+
+export const importScreenplayAction = returnRefusals(importScreenplayHandler);

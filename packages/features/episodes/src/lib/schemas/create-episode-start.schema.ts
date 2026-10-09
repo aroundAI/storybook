@@ -50,3 +50,16 @@ export const START_PLAN: Record<
     landing: 'publish',
   },
 };
+
+/** FILM-2205: a finished script stored as an existing episode's screenplay */
+export const ImportScreenplaySchema = z.object({
+  episodeId: z.string().uuid(),
+  version: z.number().int().positive(),
+  script: z
+    .string()
+    .trim()
+    .min(1, 'Paste the script, or choose a file')
+    .max(MAX_SCRIPT_CHARS),
+});
+
+export type ImportScreenplayInput = z.infer<typeof ImportScreenplaySchema>;

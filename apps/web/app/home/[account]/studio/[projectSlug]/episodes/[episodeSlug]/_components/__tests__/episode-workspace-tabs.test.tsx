@@ -7,26 +7,42 @@ import { EpisodeWorkspaceTabs } from '../episode-workspace-tabs';
 configure({ testIdAttribute: 'data-test' });
 
 const navigation = vi.hoisted(() => ({ pathname: '' }));
+const fixture = vi.hoisted(() => ({
+  episode: {} as Record<string, unknown>,
+}));
+
+// The paste dialog is not under test here
+vi.mock('../import-script-dialog', () => ({ ImportScriptDialog: () => null }));
+
+vi.mock('@kit/episodes/server/actions', () => ({
+  setStageSkippedAction: vi.fn(),
+  importScreenplayAction: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({
   usePathname: () => navigation.pathname,
 }));
 
-// Every tab unlocked: story, screenplay and shot list all exist.
+// Story, screenplay and shot list all exist, unless a test says otherwise
+const FULL = {
+  id: 'episode-id',
+  slug: 'pilot',
+  version: 3,
+  storyData: {},
+  screenplayData: {},
+  shotList: {},
+  status: 'draft',
+  finalVideoUrl: null,
+  shots: [],
+  skippedStages: [],
+};
+
 vi.mock('../episode-context-provider', () => ({
   useEpisodeContext: () => ({
     accountSlug: 'team',
     projectSlug: 'film',
-    episode: {
-      id: 'episode-id',
-      slug: 'pilot',
-      storyData: {},
-      screenplayData: {},
-      shotList: {},
-      status: 'draft',
-      finalVideoUrl: null,
-      shots: [],
-    },
+    episode: fixture.episode,
+    refetchEpisode: vi.fn(),
   }),
 }));
 
@@ -49,6 +65,7 @@ function tabIds() {
 describe('EpisodeWorkspaceTabs (FILM-607)', () => {
   beforeEach(() => {
     navigation.pathname = `${BASE}/ideation`;
+    fixture.episode = FULL;
   });
 
   it('offers the story tabs and Publish, and no Edit Suite', () => {
@@ -60,6 +77,8 @@ describe('EpisodeWorkspaceTabs (FILM-607)', () => {
       'screenplay',
       'shot-list',
       'audio',
+      // FILM-2205: the rail's Video step opens Publish
+      'video',
       'publish',
       'edit',
     ]);
@@ -80,6 +99,7 @@ describe('EpisodeWorkspaceTabs (FILM-607)', () => {
       `${BASE}/visual-studio`,
       `${BASE}/audio-studio`,
       `${BASE}/publish`,
+      `${BASE}/publish`,
       `${BASE}/edit`,
     ]);
   });
@@ -92,8 +112,70 @@ describe('EpisodeWorkspaceTabs (FILM-607)', () => {
     expect(
       screen
         .getAllByTestId(/^episode-tab-/)
-        .filter((tab) => tab.getAttribute('aria-current') === 'page')
-        .map((tab) => tab.getAttribute('data-test')),
-    ).toEqual(['episode-tab-publish']);
+        .filter((tab) => tab.hasAttribute('aria-current'))
+        .map((tab) => [
+          tab.getAttribute('data-test'),
+          tab.getAttribute('aria-current'),
+        ]),
+    ).toEqual([['episode-tab-publish', 'step']]);
+  });
+});
+
+describe('progress rail (FILM-2205)', () => {
+  beforeEach(() => {
+    fixture.episode = FULL;
+  });
+
+  it('locks nothing: a new episode links every stage, and the empty screenplay says what it needs', () => {
+    fixture.episode = {
+      ...FULL,
+      storyData: null,
+      screenplayData: null,
+      shotList: null,
+    };
+    navigation.pathname = `${BASE}/screenplay`;
+
+    render(<EpisodeWorkspaceTabs />);
+
+    expect(
+      screen
+        .getAllByTestId(/^episode-tab-/)
+        .every((tab) => tab.tagName === 'A'),
+    ).toBe(true);
+    expect(
+      screen
+        .getByTestId('episode-tab-screenplay')
+        .getAttribute('data-stage-state'),
+    ).toBe('empty');
+    expect(screen.getByTestId('stage-banner').textContent).toMatch(
+      /No screenplay yet\. Generating it needs a story, or paste a script instead\./,
+    );
+    expect(screen.getByTestId('stage-banner-skip')).toBeTruthy();
+  });
+
+  it('shows a skipped stage as skipped, with Un-skip', () => {
+    fixture.episode = {
+      ...FULL,
+      storyData: null,
+      screenplayData: null,
+      shotList: null,
+      skippedStages: ['story'],
+    };
+    navigation.pathname = `${BASE}/story`;
+
+    render(<EpisodeWorkspaceTabs />);
+
+    expect(
+      screen.getByTestId('episode-tab-story').getAttribute('data-stage-state'),
+    ).toBe('skipped');
+    expect(screen.getByTestId('stage-banner-unskip')).toBeTruthy();
+  });
+
+  it('says nothing under a stage that has output', () => {
+    navigation.pathname = `${BASE}/story`;
+
+    render(<EpisodeWorkspaceTabs />);
+
+    expect(screen.queryByTestId('stage-banner')).toBeNull();
   });
 });

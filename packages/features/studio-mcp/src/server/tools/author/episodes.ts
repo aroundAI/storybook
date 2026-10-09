@@ -6,6 +6,10 @@ import {
   CreateEpisodeSchema,
   UpdateEpisodeSchema,
 } from '@kit/episodes/schemas';
+import {
+  START_FROM,
+  START_PLAN,
+} from '@kit/episodes/schemas/create-episode-start';
 import { CreateEpisodeWithContextSchema } from '@kit/episodes/schemas/create-episode-wizard';
 import {
   OptimisticLockError,
@@ -62,7 +66,7 @@ export const createEpisodeTool = defineTool({
   name: 'create_episode',
   title: 'Create episode',
   description:
-    'Creates an episode in draft, validated as the web dialog and wizard are: title 1-255 characters, optional description (the logline) up to 2000, optional episode number (auto-assigned when absent), optional season, and the creative direction the story stage reads: target duration 60-7200 seconds, content style (dialogue-heavy, action-heavy, balanced), visual tone and tone notes. Writes no story, screenplay or shots: those come from the generation tools.',
+    'Creates an episode in draft, validated as the web dialog and wizard are: title 1-255 characters, optional description (the logline) up to 2000, optional episode number (auto-assigned when absent), optional season, how it starts (startFrom: idea, script or video), and the creative direction the story stage reads: target duration 60-7200 seconds, content style (dialogue-heavy, action-heavy, balanced), visual tone and tone notes. Writes no story, screenplay or shots: those come from the generation tools, or import_screenplay for a finished script.',
   inputSchema: {
     ...CreateEpisodeSchema.shape,
     targetDuration: targetDuration.describe(
@@ -71,6 +75,12 @@ export const createEpisodeTool = defineTool({
     contentStyle,
     visualTone,
     toneNotes,
+    startFrom: z
+      .enum(START_FROM)
+      .optional()
+      .describe(
+        'How the episode starts (FILM-2205): idea (default), script (then import_screenplay; ideation and story are skipped) or video (then request_episode_video_upload or link_published_video; every stage before publish is skipped).',
+      ),
   },
   scope: 'studio:write',
   annotations: WRITE,
@@ -87,6 +97,8 @@ export const createEpisodeTool = defineTool({
       description: input.description ?? null,
       metadata: creativeDirectionMetadata(input),
       targetDurationSeconds: input.targetDuration ?? null,
+      entryMode: input.startFrom ?? 'idea',
+      skippedStages: START_PLAN[input.startFrom ?? 'idea'].skipped,
     });
 
     if (!result.ok) {

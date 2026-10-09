@@ -27,7 +27,7 @@ acceptance_criteria:
     evidence: null
   - text: "Four tabs display (Story, Visuals, Audio, Edit)"
     met: false
-    reason: "retired — superseded by seven stage tabs, Ideation to Publish (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:28`)"
+    reason: "retired — superseded by a seven-step progress rail, Idea to Publish, since FILM-2205 (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:29`)"
   - text: "Story Studio tab is fully functional"
     met: false
     reason: "unverified — no Playwright spec drives the story stages (ideation, story, screenplay)"
@@ -39,7 +39,7 @@ acceptance_criteria:
     evidence: null
   - text: "Active tab persists in URL query params"
     met: false
-    reason: "retired — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:150`)"
+    reason: "retired — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:40`, activeStage)"
   - text: "Quick actions menu displays options"
     met: true
     evidence: null
@@ -72,7 +72,7 @@ acceptance_criteria:
     evidence: null
   - text: "Accessibility (keyboard navigation, ARIA labels) - inherited from base components"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:57 (aria-label=\"Back to episodes\" on the icon-only back link); test apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/__tests__/episode-workspace-header.test.tsx; the tab bar already marks the current tab with aria-current=\"page\" (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:152, test episode-workspace-tabs.test.tsx)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:57 (aria-label=\"Back to episodes\" on the icon-only back link); test apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/__tests__/episode-workspace-header.test.tsx; the progress rail marks the current stage with aria-current=\"step\" since FILM-2205 (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:117, test episode-workspace-tabs.test.tsx)"
 test_plan:
   unit: []
   integration: []

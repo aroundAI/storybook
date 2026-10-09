@@ -187,9 +187,7 @@ create_episode(projectId, seasonId?, title, startFrom: "idea", …creative direc
 
 # script
 create_episode(projectId, seasonId?, title, startFrom: "script")
-start_generation(stage: "screenplay", episodeId, mode: "import")   # §6.4
-submit_generation(runId, partKey, output: <screenplay JSON>)
-finalize_generation(runId)
+import_screenplay(episodeId, version, script)                      # §6.4
 
 # finished video file
 create_episode(projectId, seasonId?, title, startFrom: "video")
@@ -431,6 +429,16 @@ defaults and copy, never permissions.
 | `idea` | today's behaviour | none |
 | `script` | none until the script is imported | `ideation`, `story` |
 | `video` | none until the video is attached | `ideation`, `story`, `screenplay`, `shots`, `audio` |
+
+**As built (FILM-2205):** the web and MCP both call `importScreenplay`:
+`parseScript` reads Fountain, Final Draft and plain text into the stage's
+scenes (checked with its `SceneSchema`), and `screenplayDataFromScenes`
+(extracted from the stage's commit) shapes them, stored in one write with
+origin `{kind: human, via: import}`. MCP uses an `import_screenplay` tool,
+not a mode of `start_generation`, whose screenplay stage needs a story. No
+dialogue lines are written on import: a commit of several writes needs a
+generation run, and the shots stage writes them. The design below was the
+plan.
 
 **Script import.** Web: the dialog posts the file to
 `importScreenplayAction`, which parses (Fountain and Final Draft .fdx with a

@@ -315,6 +315,30 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/components/origin-badge.tsx',
       ),
+      // FILM-2201..2205
+      '@kit/episodes/lib/stage-state': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/stage-state.ts',
+      ),
+      // FILM-2201..2205
+      '@kit/episodes/lib/season-position': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/season-position.ts',
+      ),
+      // FILM-2201..2205
+      '@kit/episodes/lib/script-import': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/script-import.ts',
+      ),
+      // FILM-2201..2205
+      '@kit/episodes/schemas/create-episode-start': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/schemas/create-episode-start.schema.ts',
+      ),
+      '@kit/episodes/server/actions': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/server/actions.ts',
+      ),
       '@kit/episodes/server': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/server/index.ts',

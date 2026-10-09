@@ -9,6 +9,7 @@ import {
   linkPublishedVideoTool,
   setStageSkippedTool,
 } from '../../src/server/tools/author/episode-production';
+import { createEpisodeTool } from '../../src/server/tools/author/episodes';
 import {
   createSeasonTool,
   deleteSeasonTool,
@@ -391,5 +392,45 @@ describe('MISSING_INPUTS (start_generation)', () => {
     await expect(
       refuseMissingInputs(client({}), 'story', EPISODE),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('create_episode startFrom (FILM-2205)', () => {
+  it('records how the episode starts and skips the stages that start passes', async () => {
+    const fake = createFakeClient({
+      projects: project,
+      episodes: (c: RecordedCall) =>
+        c.op === 'insert'
+          ? {
+              data: {
+                id: EPISODE,
+                project_id: PROJECT,
+                season_id: null,
+                number: 1,
+                slug: 'e',
+                title: 'Cut',
+                description: null,
+                status: 'draft',
+                version: 1,
+                metadata: {},
+                target_duration_seconds: null,
+                created_at: '2026-10-09T00:00:00Z',
+                updated_at: '2026-10-09T00:00:00Z',
+                ...(c.payload as object),
+              },
+            }
+          : { data: [] },
+    });
+
+    await call(createEpisodeTool, fake.client, {
+      projectId: PROJECT,
+      title: 'Cut',
+      startFrom: 'video',
+    });
+
+    expect(fake.calls.find((c) => c.op === 'insert')?.payload).toMatchObject({
+      entry_mode: 'video',
+      skipped_stages: ['ideation', 'story', 'screenplay', 'shots', 'audio'],
+    });
   });
 });

@@ -45,6 +45,7 @@ describe('get_workflow_guide', () => {
       // FILM-2204
       'create_season',
       'set_stage_skipped',
+      'import_screenplay',
       'request_episode_video_upload',
       'finalize_episode_video',
       'link_published_video',
@@ -93,6 +94,7 @@ describe('the default tool list', () => {
         'reorder_seasons',
         'delete_season',
         'set_stage_skipped',
+        'import_screenplay',
         'request_episode_video_upload',
         'finalize_episode_video',
         'link_published_video',

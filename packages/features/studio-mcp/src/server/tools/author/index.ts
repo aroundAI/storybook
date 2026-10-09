@@ -4,6 +4,7 @@ import type { McpToolDefinition } from '../../../registry';
 import { upsertAssetTool } from './assets';
 import {
   createEpisodeVideoTools,
+  importScreenplayTool,
   linkPublishedVideoTool,
   setStageSkippedTool,
 } from './episode-production';
@@ -34,6 +35,7 @@ export const authorTools: McpToolDefinition[] = [
     createEpisodeTool,
     updateEpisodeTool,
     setStageSkippedTool,
+    importScreenplayTool,
     upsertAssetTool,
     linkAssetsToEpisodeTool,
     linkPublishedVideoTool,
@@ -47,6 +49,7 @@ export {
   reorderSeasonsTool,
   deleteSeasonTool,
   setStageSkippedTool,
+  importScreenplayTool,
   linkPublishedVideoTool,
   createProjectTool,
   updateProjectTool,
