@@ -310,7 +310,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
 
       // Only a caller-chosen number is refused; this one is auto-assigned
       if (!insertedSeason.ok) {
-        throw new ActionRefusal(insertedSeason.refusal);
+        return { success: false as const, error: insertedSeason.refusal };
       }
 
       seasonId = insertedSeason.data.id;

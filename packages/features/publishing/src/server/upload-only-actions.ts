@@ -186,7 +186,7 @@ export const generateExportPackageAction = returnRefusals(
 /**
  * Mark content as externally uploaded and save the platform URL
  */
-export const markAsExternallyUploadedAction = enhanceAction(
+const markAsExternallyUploaded = enhanceAction(
   async ({ episodeId, platform, platformUrl }, user) => {
     const logger = await getLogger();
     const ctx = {
@@ -222,4 +222,8 @@ export const markAsExternallyUploadedAction = enhanceAction(
     schema: MarkAsExternallyUploadedSchema,
     auth: true,
   },
+);
+
+export const markAsExternallyUploadedAction = returnRefusals(
+  markAsExternallyUploaded,
 );

@@ -193,7 +193,7 @@ function LinkPublishedVideo({
   const onSubmit = form.handleSubmit((values) =>
     startLink(async () => {
       try {
-        await markAsExternallyUploadedAction(values);
+        await unwrap(markAsExternallyUploadedAction(values));
         toast.success('Video linked');
         form.reset({ episodeId, platform: values.platform, platformUrl: '' });
         onAttached();
