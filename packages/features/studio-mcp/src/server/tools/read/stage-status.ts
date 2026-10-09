@@ -1,3 +1,4 @@
+import { deriveStageViews } from '@kit/episodes/lib/stage-state';
 import { EpisodeStatusSchema } from '@kit/episodes/schemas';
 
 /**
@@ -72,36 +73,41 @@ export interface StageInputs {
 }
 
 /**
- * The same rule the workspace tabs apply (`episode-workspace-tabs.tsx`):
- * a stage unlocks when the one before has data, and is done when its own
- * data exists. Ideation is always open and has no stored output.
+ * The stage state @kit/episodes derives for the web (FILM-2201), in this
+ * tool's shape: a stage is done when it has output, available when its
+ * generator has its inputs, and locked otherwise. Publish is available
+ * once the episode has a video and done once it is published. Ideation is
+ * always open and has no stored output. (FILM-2204 replaces locked with
+ * empty and skipped.)
  */
 export function deriveStages(input: StageInputs): StageStatus[] {
-  const hasStory = input.storyData !== null && input.storyData !== undefined;
-  const hasScreenplay =
-    input.screenplayData !== null && input.screenplayData !== undefined;
-  const hasShots =
-    input.shotCount > 0 ||
-    (input.shotList !== null && input.shotList !== undefined);
-  const hasAudio = input.audioCueCount > 0;
-  const isPublished =
-    input.finalVideoUrl !== null || input.status === 'published';
+  const views = new Map(
+    deriveStageViews({
+      status: input.status,
+      storyData: input.storyData,
+      screenplayData: input.screenplayData,
+      shotList: input.shotList,
+      shotCount: input.shotCount,
+      audioCueCount: input.audioCueCount,
+      finalVideoUrl: input.finalVideoUrl,
+    }).map((view) => [view.key, view]),
+  );
 
-  const states: Record<StageKey, StageState> = {
-    ideation: 'available',
-    story: hasStory ? 'done' : 'available',
-    screenplay: hasScreenplay ? 'done' : hasStory ? 'available' : 'locked',
-    shots: hasShots ? 'done' : hasScreenplay ? 'available' : 'locked',
-    audio: hasAudio ? 'done' : hasShots ? 'available' : 'locked',
-    publish: isPublished ? 'done' : hasShots ? 'available' : 'locked',
-  };
+  return STAGE_ORDER.map((stage) => {
+    const view = views.get(stage.key);
 
-  return STAGE_ORDER.map((stage) => ({
-    key: stage.key,
-    label: stage.label,
-    state: states[stage.key],
-    origin: originOf(input.origin, stage.key),
-  }));
+    return {
+      key: stage.key,
+      label: stage.label,
+      state:
+        view?.state === 'done'
+          ? 'done'
+          : view?.canGenerate
+            ? 'available'
+            : 'locked',
+      origin: originOf(input.origin, stage.key),
+    };
+  });
 }
 
 /**

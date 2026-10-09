@@ -3,7 +3,7 @@ title: "Flexible Production Foundations: migration, season service, stage state"
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-302"
@@ -23,26 +23,26 @@ summary: >
 acceptance_criteria:
   - text: "Hand-written migration adds seasons.version and cover_url; episodes.entry_mode (idea, script, video; default idea) and skipped_stages (subset of ideation, story, screenplay, shots, audio); episode_renders.source (studio, upload; default studio); a partial unique index on publishes (platform, platform_content_id) for live rows; reorder_seasons, soft_delete_season and the episode_positions view. Types regenerated, not hand-edited"
     met: false
-    reason: "not met — not built"
+    reason: "not met — the migration waits on a local database to apply it and regenerate types: this environment's network policy blocks the Supabase images (public.ecr.aws, ghcr.io), 2026-10-09"
   - text: "reorder_seasons renumbers a project's live seasons 1..n in the order given and refuses a list that omits or repeats a season; soft_delete_season sets deleted_at under optimistic locking and moves the season's live episodes to season_id null, returning how many moved"
     met: false
-    reason: "not met — not built"
+    reason: "not met — part of the migration above"
   - text: "season.service.ts holds insertSeason (number auto-assigned, retried on a unique violation), updateSeasonRow, reorderSeasons, softDeleteSeason, moveEpisodeToSeason and listSeasons; createSeasonAction, updateSeasonAction, deleteSeasonAction and getProjectSeasonsAction call it"
     met: false
-    reason: "not met — not built"
+    reason: "partly met: insertSeason (packages/features/episodes/src/server/season.service.ts:46) holds numbering and the 23505 retry, and createSeasonAction calls it (packages/features/episodes/src/lib/server/mutations/season-actions.ts:51). updateSeasonRow, reorderSeasons, softDeleteSeason, moveEpisodeToSeason and listSeasons need the migration's version column and functions"
   - text: "The create-episode wizard's inline season insert (packages/features/episodes/src/server/actions.ts) calls insertSeason; no other insert into seasons remains outside the service and the season generator"
-    met: false
-    reason: "not met — not built"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): the wizard (packages/features/episodes/src/server/actions.ts:175) and Generate Season (packages/features/episodes/src/lib/server/mutations/season-generation-actions.ts:291) call insertSeason; neither retried a number race before. Generate Season keeps its name and description. Guard: __tests__/season-number-conflicts.test.ts 'one season insert' scans packages and apps/web for an insert into seasons outside the service, red on main naming all three copies"
   - text: "stage-state.ts deriveStageViews returns, for ideation, story, screenplay, shots, audio, video and publish, a state of done, empty or skipped, canGenerate and the missing input stages; canPublish is true with a ready render, a final video, a localized video or an external publish"
-    met: false
-    reason: "not met — not built"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): packages/features/episodes/src/lib/stage-state.ts:80 deriveStageViews, :76 canPublish. Test: __tests__/stage-state.test.ts (15)"
   - text: "The MCP deriveStages (studio-mcp read/stage-status.ts) is computed from deriveStageViews, so the web and MCP cannot disagree; its existing output shape is unchanged until FILM-2204"
-    met: false
-    reason: "not met — not built"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): packages/features/studio-mcp/src/server/tools/read/stage-status.ts:83 maps deriveStageViews to done, available or locked. Ideation to audio answer as before for all 16 input combinations (read-tools.test.ts, 'answers as before'). Publish now follows the video, not the shots: see notes"
 test_plan:
   unit:
-    - {text: "stage-state.test.ts: every combination of present, empty and skipped inputs; canPublish for each kind of video", met: false, reason: "not met — not built"}
-    - {text: "season.service.test.ts: auto number, retry on 23505, refusals", met: false, reason: "not met — not built"}
+    - {text: "stage-state.test.ts: every combination of present, empty and skipped inputs; canPublish for each kind of video", met: true, evidence: "packages/features/episodes/__tests__/stage-state.test.ts"}
+    - {text: "season.service.test.ts: auto number, retry on 23505, refusals", met: true, evidence: "packages/features/episodes/__tests__/season-number-conflicts.test.ts (insertSeason; the other service functions come with the migration)"}
   integration:
     - {text: "pgTAP flexible-production.test.sql: a viewer can't create, reorder or delete a season; soft delete moves episodes and deletes none; reorder refuses a partial or repeated list; skipped_stages refuses an unknown stage", met: false, reason: "not met — not built"}
   e2e: []
@@ -50,6 +50,19 @@ open_questions: []
 notes: |
   No UI change ships in this spec. The web tabs keep their current gates
   until FILM-2202 switches them to deriveStageViews.
+
+  One MCP answer changes now, deliberately: get_episode's publish stage is
+  available when the episode has a video (a final, localized or ready
+  render) and done when it is published. Before, it was available once
+  shots existed and done once a final video existed, so an episode with a
+  video but nothing published read as done. Red on the old rule:
+  read-tools.test.ts "opens publish when there is a video to publish".
+
+  Found while building it: deleteSeasonAction soft-deletes every episode
+  and shot in the season ("Delete Season & Episodes" in the season menu).
+  The EDD's soft_delete_season moves them to Unsorted instead. The existing
+  action is left as it is until the owner decides how FILM-2203 offers the
+  two.
 feature:
   database: "seasons, episodes, episode_renders, publishes (columns, index); reorder_seasons, soft_delete_season; episode_positions view"
   queries: []

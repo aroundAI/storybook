@@ -375,6 +375,90 @@ describe('deriveStages', () => {
   });
 });
 
+describe('deriveStages over the shared stage state (FILM-2201)', () => {
+  // The rule as get_episode applied it before FILM-2201, for every stage but
+  // publish: a stage is done with its output, available when the one before
+  // has output, locked otherwise.
+  function before(input: {
+    story: boolean;
+    screenplay: boolean;
+    shots: boolean;
+    audio: boolean;
+  }) {
+    return {
+      ideation: 'available',
+      story: input.story ? 'done' : 'available',
+      screenplay: input.screenplay
+        ? 'done'
+        : input.story
+          ? 'available'
+          : 'locked',
+      shots: input.shots ? 'done' : input.screenplay ? 'available' : 'locked',
+      audio: input.audio ? 'done' : input.shots ? 'available' : 'locked',
+    };
+  }
+
+  const combos = Array.from({ length: 16 }, (_, bits) => ({
+    story: Boolean(bits & 1),
+    screenplay: Boolean(bits & 2),
+    shots: Boolean(bits & 4),
+    audio: Boolean(bits & 8),
+  }));
+
+  it.each(combos)('answers as before for ideation to audio: %o', (combo) => {
+    const stages = deriveStages({
+      status: 'draft',
+      storyData: combo.story ? { logline: 'x' } : null,
+      screenplayData: combo.screenplay ? { scenes: [] } : null,
+      shotList: null,
+      finalVideoUrl: null,
+      shotCount: combo.shots ? 2 : 0,
+      dialogueLineCount: 0,
+      audioCueCount: combo.audio ? 1 : 0,
+      origin: null,
+    });
+
+    expect(
+      Object.fromEntries(
+        stages
+          .filter((stage) => stage.key !== 'publish')
+          .map((stage) => [stage.key, stage.state]),
+      ),
+    ).toEqual(before(combo));
+  });
+
+  const base: Parameters<typeof deriveStages>[0] = {
+    status: 'draft',
+    storyData: null,
+    screenplayData: null,
+    shotList: null,
+    finalVideoUrl: null,
+    shotCount: 0,
+    dialogueLineCount: 0,
+    audioCueCount: 0,
+    origin: null,
+  };
+  const publishOf = (input: typeof base) =>
+    deriveStages(input).find((stage) => stage.key === 'publish')?.state;
+
+  it('opens publish when there is a video to publish, not when shots exist', () => {
+    expect(publishOf({ ...base, shotCount: 3 })).toBe('locked');
+    expect(publishOf({ ...base, finalVideoUrl: 'https://cdn/final.mp4' })).toBe(
+      'available',
+    );
+  });
+
+  it('calls publish done once the episode is published', () => {
+    expect(
+      publishOf({
+        ...base,
+        status: 'published',
+        finalVideoUrl: 'https://cdn/final.mp4',
+      }),
+    ).toBe('done');
+  });
+});
+
 describe('get_screenplay', () => {
   const scenes = Array.from({ length: 5 }, (_, i) => ({
     number: i + 1,

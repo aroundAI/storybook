@@ -49,6 +49,7 @@ import type {
   ListEpisodesResponse,
 } from '../lib/types';
 import { insertEpisode, updateEpisodeRow } from './episode.service';
+import { insertSeason } from './season.service';
 
 /**
  * Create a new episode
@@ -171,34 +172,21 @@ const createEpisodeWithContext = enhanceAction(
     let seasonId = data.seasonId ?? null;
 
     if (data.newSeasonName && !seasonId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existingSeasons } = await (client as any)
-        .from('seasons')
-        .select('number')
-        .eq('project_id', data.projectId)
-        .is('deleted_at', null)
-        .order('number', { ascending: false })
-        .limit(1);
+      const newSeason = await insertSeason(
+        client,
+        { projectId: data.projectId, name: data.newSeasonName },
+        { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
+      ).catch((error) => {
+        logger.error({ ...ctx, error }, 'Failed to create season');
+        throw error;
+      });
 
-      const nextSeasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: newSeason, error: seasonError } = await (client as any)
-        .from('seasons')
-        .insert({
-          project_id: data.projectId,
-          number: nextSeasonNumber,
-          name: data.newSeasonName,
-        })
-        .select('id')
-        .single();
-
-      if (seasonError) {
-        logger.error({ ...ctx, error: seasonError }, 'Failed to create season');
-        throw new Error('Failed to create season');
+      // Only a caller-chosen number is refused; this one is auto-assigned
+      if (!newSeason.ok) {
+        throw new ActionRefusal(newSeason.refusal);
       }
 
-      seasonId = newSeason.id;
+      seasonId = newSeason.data.id;
       logger.info({ ...ctx, seasonId }, 'Created new season inline');
     }
 

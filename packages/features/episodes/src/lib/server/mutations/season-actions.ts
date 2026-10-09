@@ -15,6 +15,7 @@ import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { insertSeason } from '../../../server/season.service';
 import {
   CreateSeasonSchema,
   DeleteSeasonSchema,
@@ -29,12 +30,10 @@ import type {
 } from '../../types';
 
 /**
- * Creates a new season for a project
- * - Auto-assigns season number if not provided
- * - Prevents duplicate season numbers within same project
+ * Creates a new season for a project (numbering and retries: insertSeason)
  * - Creates audit log entry
  */
-export const createSeasonAction = enhanceAction(
+const createSeason = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'seasons.create', projectId: data.projectId };
@@ -49,67 +48,26 @@ export const createSeasonAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Auto-assign season number with retry logic for race conditions
-    const MAX_RETRIES = 3;
-    let season;
-    let lastError;
+    const inserted = await insertSeason(
+      client,
+      {
+        projectId: data.projectId,
+        number: data.number,
+        name: data.name,
+        description: data.description,
+        directionNotes: data.directionNotes,
+      },
+      { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
+    ).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to create season');
+      throw error;
+    });
 
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      let seasonNumber = data.number;
-      if (!seasonNumber) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: existingSeasons } = await (client as any)
-          .from('seasons')
-          .select('number')
-          .eq('project_id', data.projectId)
-          .is('deleted_at', null)
-          .order('number', { ascending: false })
-          .limit(1);
-
-        seasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedSeason, error } = await (client as any)
-        .from('seasons')
-        .insert({
-          project_id: data.projectId,
-          number: seasonNumber,
-          name: data.name,
-          description: data.description ?? null,
-          direction_notes: data.directionNotes ?? null,
-        })
-        .select()
-        .single();
-
-      if (!error) {
-        season = insertedSeason;
-        break;
-      }
-
-      // Check if it's a unique constraint violation (race condition)
-      const isUniqueViolation =
-        error.code === '23505' || error.message?.includes('unique');
-
-      if (isUniqueViolation && !data.number && attempt < MAX_RETRIES - 1) {
-        // Retry with a new auto-assigned number
-        logger.warn(
-          { ...ctx, attempt, error },
-          'Season number conflict, retrying',
-        );
-        continue;
-      }
-
-      lastError = error;
-      break;
+    if (!inserted.ok) {
+      throw new ActionRefusal(inserted.refusal);
     }
 
-    if (!season) {
-      logger.error({ ...ctx, error: lastError }, 'Failed to create season');
-      throw new Error(
-        `Failed to create season: ${lastError?.message ?? 'Unknown error'}`,
-      );
-    }
+    const season = inserted.data;
 
     // Get project for audit log scope
     const { data: project } = await client
@@ -148,6 +106,8 @@ export const createSeasonAction = enhanceAction(
     schema: CreateSeasonSchema,
   },
 );
+
+export const createSeasonAction = returnRefusals(createSeason);
 
 /**
  * Fetches all seasons for a project with episode counts
