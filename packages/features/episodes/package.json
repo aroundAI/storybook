@@ -43,6 +43,7 @@
     "./lib/openclaw-manifest": "./src/lib/openclaw-manifest.ts",
     "./lib/shot-row": "./src/lib/shot-row.ts",
     "./lib/stage-state": "./src/lib/stage-state.ts",
+    "./lib/season-position": "./src/lib/season-position.ts",
     "./lib/fcpxml-generator": "./src/lib/fcpxml-generator.ts",
     "./server/transition-analyzer": "./src/server/transition-analyzer.ts",
     "./lib/server/pdf-extractor": "./src/lib/server/pdf-extractor.ts",

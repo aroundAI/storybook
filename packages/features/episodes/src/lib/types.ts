@@ -21,6 +21,10 @@ export interface Season {
   name: string | null;
   description: string | null;
   direction_notes: string | null;
+  /** FILM-2201 */
+  cover_url?: string | null;
+  /** FILM-2201: optimistic lock */
+  version?: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

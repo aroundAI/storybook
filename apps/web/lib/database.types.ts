@@ -2371,6 +2371,7 @@ export type Database = {
           language: string
           preset: string
           qa: Json
+          source: string
           status: string
           thumbnail_url: string | null
         }
@@ -2390,6 +2391,7 @@ export type Database = {
           language?: string
           preset: string
           qa?: Json
+          source?: string
           status?: string
           thumbnail_url?: string | null
         }
@@ -2409,6 +2411,7 @@ export type Database = {
           language?: string
           preset?: string
           qa?: Json
+          source?: string
           status?: string
           thumbnail_url?: string | null
         }
@@ -2542,6 +2545,7 @@ export type Database = {
           description: string | null
           duration_seconds: number | null
           edit_state: Json
+          entry_mode: string
           final_video_url: string | null
           generation_origin: Json
           id: string
@@ -2556,6 +2560,7 @@ export type Database = {
           seo_metadata: Json | null
           shorts_groups: Json | null
           shot_list: Json | null
+          skipped_stages: string[]
           slug: string | null
           status: string
           story_data: Json | null
@@ -2573,6 +2578,7 @@ export type Database = {
           description?: string | null
           duration_seconds?: number | null
           edit_state?: Json
+          entry_mode?: string
           final_video_url?: string | null
           generation_origin?: Json
           id?: string
@@ -2587,6 +2593,7 @@ export type Database = {
           seo_metadata?: Json | null
           shorts_groups?: Json | null
           shot_list?: Json | null
+          skipped_stages?: string[]
           slug?: string | null
           status?: string
           story_data?: Json | null
@@ -2604,6 +2611,7 @@ export type Database = {
           description?: string | null
           duration_seconds?: number | null
           edit_state?: Json
+          entry_mode?: string
           final_video_url?: string | null
           generation_origin?: Json
           id?: string
@@ -2618,6 +2626,7 @@ export type Database = {
           seo_metadata?: Json | null
           shorts_groups?: Json | null
           shot_list?: Json | null
+          skipped_stages?: string[]
           slug?: string | null
           status?: string
           story_data?: Json | null
@@ -5355,6 +5364,7 @@ export type Database = {
       }
       seasons: {
         Row: {
+          cover_url: string | null
           created_at: string
           deleted_at: string | null
           description: string | null
@@ -5364,8 +5374,10 @@ export type Database = {
           number: number
           project_id: string
           updated_at: string
+          version: number
         }
         Insert: {
+          cover_url?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string | null
@@ -5375,8 +5387,10 @@ export type Database = {
           number: number
           project_id: string
           updated_at?: string
+          version?: number
         }
         Update: {
+          cover_url?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string | null
@@ -5386,6 +5400,7 @@ export type Database = {
           number?: number
           project_id?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -7382,6 +7397,28 @@ export type Database = {
         Returns: undefined
       }
       renew_generation_run_lease: { Args: { p_run_id: string }; Returns: Json }
+      reorder_seasons: {
+        Args: { p_project_id: string; p_season_ids: string[] }
+        Returns: {
+          cover_url: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          direction_notes: string | null
+          id: string
+          name: string | null
+          number: number
+          project_id: string
+          updated_at: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "seasons"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       replace_experiment_publishes: {
         Args: { p_experiment_id: string; p_publish_ids: string[] }
         Returns: undefined
@@ -7430,6 +7467,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["verification_status_enum"]
       }
       soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
+      soft_delete_season: {
+        Args: { p_season_id: string; p_version: number }
+        Returns: number
+      }
       submit_generation_run_part: {
         Args: {
           p_accepted: boolean

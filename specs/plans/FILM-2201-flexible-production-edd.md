@@ -364,16 +364,10 @@ listSeasons(client, { projectId })                       // with episode counts
 - Display label: `S{season.number} · E{position}` where `position` is the
   1-based index of the episode among the season's live episodes ordered by
   `number`. Unsorted episodes show `#{number}`.
-- Computed in SQL by a view, so web and MCP read the same value:
-
-```sql
-create view public.episode_positions with (security_invoker = true) as
-select e.id as episode_id,
-       e.season_id,
-       row_number() over (partition by e.season_id order by e.number) as season_position
-from public.episodes e
-where e.deleted_at is null;
-```
+- Computed by one pure function, `seasonPositions` in
+  `@kit/episodes/lib/season-position`, which web and MCP both call. (Built
+  first as an `episode_positions` view; PostgREST read the view as a second
+  target of every foreign key to `episodes`, so it was replaced.)
 
 - Moving an episode changes its position, never its `number`.
 
@@ -728,14 +722,6 @@ alter table public.episode_renders
   add column source text not null default 'studio'
     check (source in ('studio', 'upload'));
 
--- One episode per platform video (link_published_video refuses a video already
--- linked to another episode, so its analytics are never attributed twice)
-create unique index idx_publishes_platform_content_unique
-  on public.publishes (platform, platform_content_id)
-  where platform_content_id is not null and status <> 'deleted';
--- ⚠ before this index: query for existing duplicates in production and
---   resolve them (expected 0; verified in M0)
-
 -- Reorder seasons atomically (unique(project_id, number) blocks a naive swap)
 create or replace function public.reorder_seasons(p_project_id uuid, p_season_ids uuid[])
 returns setof public.seasons language plpgsql security invoker as $$ … $$;
@@ -745,9 +731,13 @@ returns setof public.seasons language plpgsql security invoker as $$ … $$;
 -- Soft delete a season and move its episodes to Unsorted in one transaction
 create or replace function public.soft_delete_season(p_season_id uuid, p_version int)
 returns integer language plpgsql security invoker as $$ … $$;  -- returns episodes moved
-
-create view public.episode_positions with (security_invoker = true) as …; -- §6.2
 ```
+
+As built (FILM-2201): no unique index on `publishes (platform,
+platform_content_id)`. Production rows were never checked for duplicates, and
+an index that fails to build fails the deploy, so `link_published_video` and
+the web link refuse a video already linked to another episode in the action.
+No `episode_positions` view (§6.2).
 
 **RLS.** `seasons`, `episodes`, `publishes` policies are unchanged (KB-48
 studio owner access applies). The two functions are `security invoker`,
@@ -757,8 +747,7 @@ so they run under the caller's policies. **pgTAP** in
 - a viewer can't create, reorder or delete a season;
 - `soft_delete_season` moves episodes to `null`, never deletes them;
 - `reorder_seasons` rejects a list that omits or repeats a season;
-- linking a video already linked to another episode is refused by the
-  unique index.
+
 
 **`episodes.status` CHECK is unchanged.**
 

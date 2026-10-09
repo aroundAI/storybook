@@ -3,7 +3,7 @@ title: "Flexible Production Foundations: migration, season service, stage state"
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-302"
@@ -13,23 +13,23 @@ dependencies:
 summary: >
   The shared ground every later milestone stands on, with no visible UI
   change. One hand-written migration adds seasons.version and cover_url,
-  episodes.entry_mode and skipped_stages, episode_renders.source, a unique
-  index on a publish's platform video, the reorder_seasons and
-  soft_delete_season functions and the episode_positions view. Season writes
+  episodes.entry_mode and skipped_stages, episode_renders.source, and the
+  reorder_seasons and soft_delete_season functions. A season position is
+  derived by the pure seasonPositions. Season writes
   move into one season.service.ts that the web actions call, and the
   wizard's second, race-unsafe insert is deleted. Stage state moves into one
   pure stage-state.ts (done, empty, skipped; canGenerate and missing), which
   the MCP deriveStages maps over. Design: EDD §6.1-§6.3, §10.
 acceptance_criteria:
-  - text: "Hand-written migration adds seasons.version and cover_url; episodes.entry_mode (idea, script, video; default idea) and skipped_stages (subset of ideation, story, screenplay, shots, audio); episode_renders.source (studio, upload; default studio); a partial unique index on publishes (platform, platform_content_id) for live rows; reorder_seasons, soft_delete_season and the episode_positions view. Types regenerated, not hand-edited"
-    met: false
-    reason: "not met — the migration waits on a local database to apply it and regenerate types: this environment's network policy blocks the Supabase images (public.ecr.aws, ghcr.io), 2026-10-09"
+  - text: "Hand-written migration adds seasons.version and cover_url; episodes.entry_mode (idea, script, video; default idea) and skipped_stages (subset of ideation, story, screenplay, shots, audio); episode_renders.source (studio, upload; default studio); reorder_seasons and soft_delete_season. Types regenerated, not hand-edited"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): apps/web/supabase/migrations/20261009132035_film-2201-flexible-production.sql, mirrored into schemas/30-film-studio.sql and 77-episode-renders.sql. Types from postgres-meta 0.99.0 (the image CLI 2.117.0 pins) with postgrest-typegen 0.2.0, the pair that reproduces main's committed public schema byte for byte; both copies updated. Changed from the EDD: no unique index on publishes (platform, platform_content_id), since production rows were never checked for duplicates and a failed index fails the deploy (FILM-2202 refuses a duplicate link in the action instead); no episode_positions view, since PostgREST read it as a second target of every foreign key to episodes (246 lines of relationships in the types, and embeds open to ambiguity), so positions are derived by seasonPositions (packages/features/episodes/src/lib/season-position.ts:14)"
   - text: "reorder_seasons renumbers a project's live seasons 1..n in the order given and refuses a list that omits or repeats a season; soft_delete_season sets deleted_at under optimistic locking and moves the season's live episodes to season_id null, returning how many moved"
-    met: false
-    reason: "not met — part of the migration above"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): both functions are security invoker, so seasons_update (project owner or admin) decides. pgTAP apps/web/supabase/tests/database/flexible-production.test.sql (22): a member is refused and nothing moves; a partial, repeated or foreign list is refused (22023); the owner's order lands as 1..n; a stale version is refused (40001); a delete moves two episodes to season_id null and deletes none; a deleted number is free again. Red: reorder made security definer fails tests 7, 8, 13; a delete that also deletes the episodes fails 19"
   - text: "season.service.ts holds insertSeason (number auto-assigned, retried on a unique violation), updateSeasonRow, reorderSeasons, softDeleteSeason, moveEpisodeToSeason and listSeasons; createSeasonAction, updateSeasonAction, deleteSeasonAction and getProjectSeasonsAction call it"
-    met: false
-    reason: "partly met: insertSeason (packages/features/episodes/src/server/season.service.ts:46) holds numbering and the 23505 retry, and createSeasonAction calls it (packages/features/episodes/src/lib/server/mutations/season-actions.ts:51). updateSeasonRow, reorderSeasons, softDeleteSeason, moveEpisodeToSeason and listSeasons need the migration's version column and functions"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): packages/features/episodes/src/server/season.service.ts insertSeason (:49), updateSeasonRow (:133), reorderSeasons (:198), softDeleteSeason (:221), moveEpisodeToSeason (:259), listSeasons (:325, paged with fetchAllRows); the actions call them (season-actions.ts:142, :209). deleteSeasonAction keeps its cascade (Delete Season & Episodes); the keep-episodes delete is deleteSeasonKeepEpisodesAction over softDeleteSeason. Tests: season-number-conflicts.test.ts, season-service-writes.test.ts"
   - text: "The create-episode wizard's inline season insert (packages/features/episodes/src/server/actions.ts) calls insertSeason; no other insert into seasons remains outside the service and the season generator"
     met: true
     evidence: "Met (branch claude/sweet-thompson-kgcale): the wizard (packages/features/episodes/src/server/actions.ts:175) and Generate Season (packages/features/episodes/src/lib/server/mutations/season-generation-actions.ts:291) call insertSeason; neither retried a number race before. Generate Season keeps its name and description. Guard: __tests__/season-number-conflicts.test.ts 'one season insert' scans packages and apps/web for an insert into seasons outside the service, red on main naming all three copies"
@@ -42,9 +42,9 @@ acceptance_criteria:
 test_plan:
   unit:
     - {text: "stage-state.test.ts: every combination of present, empty and skipped inputs; canPublish for each kind of video", met: true, evidence: "packages/features/episodes/__tests__/stage-state.test.ts"}
-    - {text: "season.service.test.ts: auto number, retry on 23505, refusals", met: true, evidence: "packages/features/episodes/__tests__/season-number-conflicts.test.ts (insertSeason; the other service functions come with the migration)"}
+    - {text: "season.service.test.ts: auto number, retry on 23505, refusals", met: true, evidence: "packages/features/episodes/__tests__/season-number-conflicts.test.ts, season-service-writes.test.ts, season-position.test.ts"}
   integration:
-    - {text: "pgTAP flexible-production.test.sql: a viewer can't create, reorder or delete a season; soft delete moves episodes and deletes none; reorder refuses a partial or repeated list; skipped_stages refuses an unknown stage", met: false, reason: "not met — not built"}
+    - {text: "pgTAP flexible-production.test.sql: a member can't reorder or delete a season; soft delete moves episodes and deletes none; reorder refuses a partial or repeated list; skipped_stages refuses an unknown stage", met: true, evidence: "apps/web/supabase/tests/database/flexible-production.test.sql (22), run against all 243 migrations and the seed on PostgreSQL 16 with pgTAP; the full suite there passes as before (2,177 to 2,199 tests; the three files that fail locally fail on main too: pg_tle, PostgreSQL 17's MAINTAIN privilege, and one query-plan check that reads differently on PostgreSQL 16)"}
   e2e: []
 open_questions: []
 notes: |
@@ -60,9 +60,13 @@ notes: |
 
   Found while building it: deleteSeasonAction soft-deletes every episode
   and shot in the season ("Delete Season & Episodes" in the season menu).
-  The EDD's soft_delete_season moves them to Unsorted instead. The existing
-  action is left as it is until the owner decides how FILM-2203 offers the
-  two.
+  The EDD's soft_delete_season moves them to Unsorted instead. Both stay:
+  FILM-2203 offers "Delete season, keep episodes" beside the existing one.
+
+  Verified without Docker: this environment's network policy blocks the
+  Supabase images, so the migrations, seed and pgTAP suite ran on the
+  container's PostgreSQL 16 with stand-ins for Supabase's auth, storage,
+  pg_net and pg_cron. CI's Supabase DB job is the run on the real image.
 feature:
   database: "seasons, episodes, episode_renders, publishes (columns, index); reorder_seasons, soft_delete_season; episode_positions view"
   queries: []

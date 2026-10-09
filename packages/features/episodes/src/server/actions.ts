@@ -32,6 +32,7 @@ import {
   ResetEpisodeSchema,
   ResetToStageSchema,
   ResetToStoryboardSchema,
+  SetStageSkippedSchema,
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
@@ -48,7 +49,11 @@ import type {
   EpisodeWithShots,
   ListEpisodesResponse,
 } from '../lib/types';
-import { insertEpisode, updateEpisodeRow } from './episode.service';
+import {
+  insertEpisode,
+  setStageSkipped,
+  updateEpisodeRow,
+} from './episode.service';
 import { insertSeason } from './season.service';
 
 /**
@@ -1751,3 +1756,43 @@ export const batchGetShotCountsAction = enhanceAction(
     schema: BatchShotCountSchema,
   },
 );
+
+/**
+ * FILM-2201: marks a stage skipped, or clears the mark. A skipped stage stays
+ * reachable; the progress rail shows it as skipped until it has output.
+ */
+const setStageSkippedHandler = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'episodes.setStageSkipped',
+      episodeId: data.episodeId,
+      stage: data.stage,
+    };
+    const client = getSupabaseServerClient();
+
+    let result;
+
+    try {
+      result = await setStageSkipped(client, data);
+    } catch (error) {
+      if (error instanceof OptimisticLockError) {
+        throw new ActionRefusal(error.message);
+      }
+
+      logger.error({ ...ctx, error }, 'Failed to set the stage skipped');
+      throw error;
+    }
+
+    if (!result.ok) {
+      throw new ActionRefusal(result.refusal);
+    }
+
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'layout');
+
+    return result.data;
+  },
+  { schema: SetStageSkippedSchema },
+);
+
+export const setStageSkippedAction = returnRefusals(setStageSkippedHandler);

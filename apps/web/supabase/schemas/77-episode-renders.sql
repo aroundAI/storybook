@@ -43,6 +43,10 @@ create table public.episode_renders (
   qa jsonb not null default '{}'::jsonb check (jsonb_typeof(qa) = 'object'),
   status text not null default 'uploading'
     check (status in ('uploading', 'ready', 'failed', 'superseded')),
+  -- FILM-2201: studio (an edit session delivered it) or upload (attached without one)
+  source text not null default 'studio'
+    constraint episode_renders_source_check
+    check (source in ('studio', 'upload')),
   -- why a render failed: the object was missing or the wrong size, or it
   -- was never finalized
   failure_reason text check (char_length(failure_reason) <= 500),
