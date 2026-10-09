@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Tickets | FILM-2201..FILM-2208 (phase 22, to be filed from §11) |
+| Tickets | FILM-2201..FILM-2206 (phase 22, to be filed from §11) |
 | Builds on | FILM-302 (season CRUD), FILM-1143 (Generate Season), FILM-1905 (MCP author tools), FILM-1912 (performance context), FILM-2003 (episode renders), FILM-1504 (Reporting API ingest) |
 | Surfaces | Web studio (`apps/web/app/home/[account]/studio/[projectSlug]/`) and the Studio MCP server (`packages/features/studio-mcp/`) |
-| Status | **Design: awaiting owner approval. No code has been changed.** |
+| Status | **Design: awaiting owner approval. No code has been changed.** Revised 2026-10-09 with the owner's decisions (§14); channel import dropped. |
 
 Evidence notation: `file:line` refers to `main` @ `ca2cbcf`.
 
@@ -21,9 +21,9 @@ Evidence notation: `file:line` refers to `main` @ `ca2cbcf`.
 2. **The producer with material.** Already has a script, or a finished cut
    made in another tool. Wants Storybook's publishing, localisation and
    analytics, not its ideation-to-shots pipeline.
-3. **The analyst.** Has a live channel. Came for the analytics (retention,
-   genome, deep dive, revenue) and wants to make the *next* episode from what
-   the numbers say.
+3. **The creator who iterates.** Publishes through Storybook, reads the
+   analytics (retention, genome, deep dive, revenue), and wants the *next*
+   episode to build on what the numbers say.
 
 **Problem.** Storybook offers one path: *Project → Generate Season →
 Episodes → Ideation → Story → Screenplay → Shots → Audio → Publish*. Each
@@ -34,11 +34,11 @@ step is a gate on the next:
 - **Publish opens only after a shot list exists**
   (`episode-workspace-tabs.tsx:104`), even though the publish screen already
   has an upload dialog for a finished video.
-- Analytics can only see videos that belong to an episode
-  (`publishes.episode_id not null`, `film-studio-tables.sql:470`), and an
-  episode can only be published after its shots exist. Every video on the
-  channel that Storybook did not make is folded into one anonymous
-  **channel residual** row (FILM-1504), so the analyst can't drill into it.
+- Analytics see a video once it is published through Storybook (a
+  `publishes` row; `publishes.episode_id not null`,
+  `film-studio-tables.sql:470`), and an episode can only reach Publish after
+  its shots exist. So a creator with a finished cut gets no per-episode
+  analytics unless they walk the whole pipeline first.
 
 **What the user gets when this ships:**
 
@@ -47,8 +47,8 @@ step is a gate on the next:
 - An episode can start **from an idea**, **from a script**, or **from a
   finished video**. Every stage is optional. Publish opens as soon as there
   is a video.
-- Videos already on a connected channel can be **imported** as episodes.
-  They stop being residual and get the full analytics treatment.
+- An episode published this way gets the same analytics as any other: the
+  publish records the platform video id, and ingest matches on it.
 - From any published episode's analytics, **"Make a follow-up"** starts a
   new episode whose brief already carries what worked.
 - Everything above can also be done over **MCP** by an external AI, with the
@@ -59,19 +59,25 @@ step is a gate on the next:
 - A new user can create a project, an empty season and an episode with an
   uploaded video, and publish it, without opening Ideation, Story,
   Screenplay or Shots. Measured by an E2E spec and by the funnel event in §8.
-- An imported channel video's metrics appear on its episode's analytics page
-  and **disappear from the residual by the same amount**, so channel totals
-  stay the same.
+- An episode published from an uploaded video shows its own analytics the
+  day after its first Reporting API ingest, like any pipeline episode.
 - An MCP client can do each of the three journeys in §3 using only tools
   listed in `get_workflow_guide`.
 
 **Failure** (what the user must never see):
 
-- A channel total that changes because a video was imported (double count).
 - A stage that was skipped showing as "locked" or as an error.
 - An episode with a published video that the analytics page can't find.
 - A season that disappears with its episodes still inside it. Deleting a
   season moves its episodes to *Unsorted*; it never deletes them.
+
+**Out of scope** (owner, 2026-10-09):
+
+- **Importing videos already on a channel** that were published outside
+  Storybook. Episodes get analytics by being published through Storybook.
+  Import, and the analytics backfill it would need, can be its own EDD later.
+- **Changes to Generate Season.** It works exactly as today: same dialog,
+  same numbering, same placement.
 
 ---
 
@@ -115,9 +121,7 @@ a shot list before publishing.**
 | Fact | Evidence |
 |---|---|
 | Reporting API rows are matched to Storybook by `publishes.platform_content_id` → episode → project | `content-analytics/src/server/reporting/report-ingest.ts:707-725` |
-| Unmatched rows are summed into one **channel residual** row per channel per day (FILM-1504) | `report-ingest.ts`; `specs/plans/FILM-1504-edd.md` §1 |
-| Per-video history can be fetched from the YouTube Analytics API | `content-analytics/src/providers/youtube/youtube-analytics.ts:146` (`getVideoAnalytics`), `:276` (`getDailyMetrics`) |
-| YouTube provider can read the channel and playlists, but has **no "list channel uploads"** | `publishing/src/providers/youtube/youtube-provider.ts:168-278` |
+| So any episode published through Storybook, however it was made, is attributed with no analytics change | follows from the row above |
 | FILM-1912 already feeds past performance into new generation briefs (DONE) | `specs/phase-19-dual-ai-mcp/FILM-1912-performance-context.yaml` |
 
 ### 2.5 Gaps this design closes
@@ -128,8 +132,7 @@ a shot list before publishing.**
 4. Publish requires shots.
 5. MCP cannot attach a finished video outside StorybookStudio, cannot link a
    published URL, and cannot move an episode between seasons.
-6. Channel videos not made in Storybook can't be analysed one by one.
-7. No path from analytics back into a new episode.
+6. No path from analytics back into a new episode.
 
 ---
 
@@ -146,8 +149,9 @@ rows through the same service functions (§6.1).
    *Plan a season with AI* · *Start a season* · *Add a finished video*.
 2. **Start a season** → dialog: Name (required), Description, Direction
    notes (collapsed). Save.
-3. The season appears as an empty section showing three actions:
-   **+ New episode** · **✨ Generate episodes** · **⬆ Upload video**.
+3. The season appears as an empty section showing two actions:
+   **+ New episode** · **⬆ Upload video** (which opens J2 on the *finished
+   video* tile).
 4. **+ New episode** opens the *How do you want to start?* dialog (J2),
    with the season already filled in.
 5. Season header ⋯ menu: Rename · Edit notes · Move up / Move down ·
@@ -239,35 +243,7 @@ publishReadiness: { hasVideo: true, languages: ["en"],
                     connectedChannels: 2, blockers: [] }
 ```
 
-### J5. Import a channel's videos and analyse them
-
-**UI**
-
-1. Project → **Analytics** → new **Channel library** panel, or Project →
-   Episodes → *Add a finished video* → **Import from channel**.
-2. Choose a connected channel. A table lists its uploads **not yet linked to
-   any episode**: thumbnail, title, published date, duration, views (from the
-   residual-period Analytics API).
-3. Select rows, choose a target season (or Unsorted), **Import N videos**.
-4. Each becomes an episode with `entry_mode = 'import'`, a `publishes` row
-   (status `published`, `upload_method: 'import'`), and every stage before
-   Publish skipped. A banner shows *"Backfilling analytics for N videos…"*
-   until the backfill job (§6.6) finishes.
-
-**MCP**
-
-```
-list_channels()                                        # exists
-list_channel_videos(connectionId, linked: false, cursor?)
-  → { videos: [{ platformContentId, title, publishedAt, durationSeconds,
-                 thumbnailUrl, views }], nextCursor }
-import_channel_videos(projectId, connectionId, platformContentIds: [...],
-                      seasonId?)
-  → { episodes: [...], backfillJobId }
-get_episode_analytics(episodeId)                        # exists
-```
-
-### J6. Make a follow-up from analytics
+### J5. Make a follow-up from analytics
 
 **UI**: on an episode's Analytics page and on each row of the project video
 log: **Make a follow-up**. It opens the J2 dialog on the *From an idea* tile,
@@ -299,13 +275,11 @@ start_generation(stage: "story", episodeId)
 - **S5** Move an episode into, out of, or between seasons. Its episode
   `number` (production number) does not change; its **position in the
   season** is derived (§6.2).
-- **S6** Generate Season can target an existing season (adds episodes) as
-  well as create a new one.
 
 ### Episodes and stages
 
 - **E1** Create an episode with `startFrom ∈ {idea, script, video}` (UI and
-  MCP); `import` is set only by J5.
+  MCP).
 - **E2** Every stage is reachable at any time. Stage state is `done`,
   `empty` or `skipped`, never `locked`.
 - **E3** A generate action checks its own inputs and refuses with the
@@ -325,14 +299,9 @@ start_generation(stage: "story", episodeId)
 - **V4** Status follows content: attaching a video sets `ready` unless the
   episode is already `published`.
 
-### Channel import and analytics
+### Analytics
 
-- **A1** List a connected channel's uploads that aren't linked to any
-  publish.
-- **A2** Import selected uploads as episodes in one transaction per video.
-- **A3** After import, the video's metrics are attributed to its episode,
-  and the channel totals do not change (§6.6).
-- **A4** "Make a follow-up" creates an episode carrying a snapshot of the
+- **A1** "Make a follow-up" creates an episode carrying a snapshot of the
   source episode's findings, which the story brief reads.
 
 ---
@@ -342,13 +311,12 @@ start_generation(stage: "story", episodeId)
 | Requirement | Target |
 |---|---|
 | Parity | Every write in §4 is reachable from both web and MCP, via one service function. A test asserts each MCP author tool and its web action call the same function (pattern in `studio-mcp/__tests__`). |
-| Tenancy | All new writes run under the user's RLS client (web: server client; MCP: `context.principal.supabase`). No service-role writes except the backfill worker, which is scoped by `project_id`. |
+| Tenancy | All new writes run under the user's RLS client (web: server client; MCP: `context.principal.supabase`). No new service-role writes. |
 | Concurrency | Season create/reorder safe under parallel calls (unique violations retried or done in one RPC). Episode writes keep optimistic locking (`version`). |
-| Row cap | Channel listing and backfill page every read (`fetchAllRows`, `fetchAllByIds`) per CLAUDE.md "Reading More Than 1000 Rows". |
-| Quota | YouTube Data API: `playlistItems.list` costs 1 unit per 50 videos; `videos.list` 1 unit per 50. A 2,000-video channel lists for ~80 units. Backfill uses the Analytics API, which has its own quota; jobs are rate-limited per connection. |
+| Row cap | Season and episode lists page every read (`fetchAllRows`) per CLAUDE.md "Reading More Than 1000 Rows". |
 | Upload size | Same as today: presigned PUT, 500 MB per file for renders (`request_render_upload`), the publish screen's limit for web. |
 | Accessibility | New dialogs keyboard-navigable; tiles are radio buttons with labels; progress rail is an `ol` with `aria-current`. |
-| No regressions | The existing path (Generate Season → Ideation → … → Publish) is unchanged in behaviour; only its gates are removed. |
+| No regressions | The existing path (Generate Season → Ideation → … → Publish) is unchanged in behaviour; only its gates are removed. Generate Season itself is untouched. |
 
 ---
 
@@ -363,9 +331,9 @@ start_generation(stage: "story", episodeId)
 | D3 | **Keep `episodes.number` project-wide**; derive "S2 · E3" from order within season | KB-175 made the number unique per project; renumbering on move would break slugs, URLs and links | Per-season numbering: migration on every move, slug churn |
 | D4 | **Skipped stages stored explicitly** (`episodes.skipped_stages text[]`) | "Empty" and "deliberately skipped" look different to the user and to the MCP agent | Infer skipped from empty: the agent would keep offering to generate |
 | D5 | **A video attached outside StorybookStudio is an `episode_renders` row** with `edit_session_id = null`, `source = 'upload'` | One table answers "does this episode have a video?"; the publish render picker already reads it | New table: two places to check |
-| D6 | **Import = `episodes` + `publishes` rows**; analytics attribution follows automatically via `platform_content_id` | Reuses FILM-1504 matching; no analytics code path needs to know about imports except the backfill | A separate "external videos" table: analytics would need a second join everywhere |
+| D6 | **No analytics changes.** An episode gets analytics by being published through Storybook, whatever path made its video | Ingest already matches on `publishes.platform_content_id` | Import channel videos as episodes: dropped by the owner (§1 Out of scope) |
 | D7 | **Platform publishing stays web-only over MCP** | Unchanged from FILM-1905: per-platform OAuth consent is a human act | Publish tool now: needs consent design first |
-| D8 | **Status follows content** for the two new transitions only (video attached → `ready`; import → `published`). Other transitions untouched | Minimal change to a CHECK enum many queries read | Derive status entirely from content: large blast radius |
+| D8 | **Status follows content** for one new transition only (video attached → `ready`). Other transitions untouched | Minimal change to a CHECK enum many queries read | Derive status entirely from content: large blast radius |
 
 ### 6.1 Season service — one function per write
 
@@ -450,7 +418,7 @@ generators):
   `deriveStageViews`. No tab is disabled.
 - `studio-mcp/.../read/stage-status.ts` `deriveStages` becomes a mapper over
   `deriveStageViews` (adds `origin`). Its `STAGE_ORDER[].needs` text is
-  rewritten (§9.4).
+  rewritten (§9.3).
 - Server-side generator entry points (`start_generation`, the web
   generate actions) call `deriveStageViews` and refuse with `missing` when
   `canGenerate` is false. **This is the one place the order is enforced.**
@@ -469,7 +437,6 @@ defaults and copy, never permissions.
 | `idea` | today's behaviour | none |
 | `script` | none until the script is imported | `ideation`, `story` |
 | `video` | none until the video is attached | `ideation`, `story`, `screenplay`, `shots`, `audio` |
-| `import` (J5 only) | episode + publish in one RPC | all before `publish` |
 
 **Script import.** Web: the dialog posts the file to
 `importScreenplayAction`, which parses (Fountain and Final Draft .fdx with a
@@ -503,66 +470,7 @@ a URL field.
 `finalizeEpisodeVideo`) that the web action also calls. The StorybookStudio
 tools are unchanged.
 
-### 6.6 Channel import and analytics backfill
-
-**Listing (A1).** New `YouTubeProvider.listUploads(cursor)`:
-`channels.list(part=contentDetails)` → uploads playlist id →
-`playlistItems.list(maxResults=50)` → `videos.list(part=contentDetails,
-statistics)` per page. The service filters out ids that already exist in
-`publishes.platform_content_id` for that account (chunked `.in()` via
-`fetchAllByIds`).
-
-**Import (A2).** One RPC per video, `import_channel_video(...)`
-(`security invoker`), which in one transaction:
-
-1. inserts the episode at the next project number (same rule as
-   `insertEpisodesAtNextNumbers`), `entry_mode = 'import'`,
-   `skipped_stages = {ideation,story,screenplay,shots,audio}`,
-   `status = 'published'`, `title`, `thumbnail_url`, `duration_seconds`;
-2. inserts the `publishes` row: `platform = 'youtube'`,
-   `platform_connection_id = <connection>`, `platform_content_id`,
-   `platform_url`, `status = 'published'`, `published_at`,
-   `metadata = {upload_method: 'import'}`;
-3. fails with a refusal if the `platform_content_id` is already linked in
-   this account (new partial unique index, §10).
-
-**Attribution and the double count (A3).** From the next Reporting API
-ingest, the video's rows match the new publish and leave the residual.
-**History** is the risk: residual rows already summed this video for past
-days. Writing per-video history on top would count it twice in channel
-totals (FILM-1504's YPP watch hours, daily subscribers).
-
-The backfill job (an `analytics-backfill` message handled by the existing
-`apps/web/lambda/report-ingest` and `analytics-sync` workers) does, per
-imported video:
-
-1. **Days the Reporting API still holds (≤ 60 days):** re-run ingest for
-   those report files. Matching now attributes the video's rows to the
-   episode, and the residual is recomputed from what is left, the same
-   code path as any ingest. No new arithmetic.
-2. **Older days:** fetch per-video daily metrics from the Analytics API
-   (`getDailyMetrics`) and write them with `source = 'analytics_api_backfill'`,
-   and **subtract the same values from that day's residual row**: the
-   `channel_daily` / `channel_reach_daily` residual row for that day is
-   rewritten whole with the new totals, the same replace-on-redelivery rule
-   ingest already relies on (`report-ingest.ts:426-429`). No negative-delta
-   rows.
-3. Writes a `channel_totals_check` log line: residual + matched before vs
-   after, which must be equal. The job fails (and the banner says so) if
-   they differ.
-
-**This needs owner sign-off (Q2):** step 2 changes residual history. The
-alternative is to backfill only ≤ 60 days and leave older history in the
-residual, with the UI saying "history before ‹date› is in channel totals
-only".
-
-**Verification.** Local ClickHouse (`./scripts/local-env.sh up`) with
-seeded residual rows and a hand-computed answer, as
-`experiments-evidence.spec.ts` does: channel totals before and after an
-import must be equal, and the episode's totals must equal the seeded
-per-video values.
-
-### 6.7 Follow-up from analytics
+### 6.6 Follow-up from analytics
 
 - `create_episode` / `createEpisodeWithContextAction` gain
   `followUpOf?: uuid`. The service checks the source episode is in the same
@@ -594,8 +502,8 @@ All components use `@kit/ui` (Shadcn). New interactive elements carry
 │  │ Plan a season       │ │ Start a season     │ │ Add a finished     ││
 │  │ with AI             │ │                    │ │ video              ││
 │  │ Outline N episodes  │ │ Name it now, add   │ │ Upload a file or   ││
-│  │ from your premise.  │ │ episodes later.    │ │ import from your   ││
-│  │                     │ │                    │ │ channel.           ││
+│  │ from your premise.  │ │ episodes later.    │ │ paste a YouTube    ││
+│  │                     │ │                    │ │ link.              ││
 │  └────────────────────┘ └────────────────────┘ └────────────────────┘│
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -620,7 +528,7 @@ All components use `@kit/ui` (Shadcn). New interactive elements carry
  ▾ Season 2 · Untitled           0 episodes                 ⋯
    ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
      This season is empty.
-     [ + New episode ]  [ ✨ Generate episodes ]  [ ⬆ Upload video ]
+     [ + New episode ]  [ ⬆ Upload video ]
    └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
 
  ▾ Unsorted                      2 episodes
@@ -633,12 +541,12 @@ All components use `@kit/ui` (Shadcn). New interactive elements carry
 - `episode-card.tsx`: adds `StageDots` (7 dots: filled = done, hollow =
   empty, dashed ring = skipped) and a status pill mapped from
   `episodes.status`: `draft` → Draft, `story|storyboard|generating|editing`
-  → In production, `ready` → Ready, `published` → Live.
+  → In production (owner, 2026-10-09), `ready` → Ready, `published` → Live.
 - **Drag and drop**: cards drag between season sections and Unsorted
   (`@dnd-kit/core`, already a dependency of `web` and `@kit/episodes`). Keyboard alternative: card ⋯ → *Move to season…*.
   Calls `moveEpisodeToSeasonAction`. Optimistic, rolled back on refusal.
 - **+ New episode ▾** splits into: *New episode* (J2 dialog) · *Generate
-  episodes* · *Import from channel*.
+  season* (today's Generate Season dialog, unchanged).
 - **+ New season** opens `CreateSeasonDialog`.
 
 ### 7.3 *How do you want to start?* dialog
@@ -708,29 +616,7 @@ Replaces `episode-workspace-tabs.tsx`'s tab strip.
 - The Publish page with no video renders `AttachVideoPanel` (§6.5) instead
   of the publish form.
 
-### 7.5 Channel import
-
-`ImportChannelVideosDialog` (from Episodes ▾ and from Analytics → Channel
-library):
-
-```
- Import from channel                                             ✕
- Channel  [ My Channel (YouTube) ▾ ]      Into  [ Unsorted ▾ ]
- ─────────────────────────────────────────────────────────────────
- ☐  thumb  How we built the gate      12 Mar 2026   8:41   12.4K views
- ☑  thumb  Ashes — teaser             02 Apr 2026   0:58   48.1K views
- ☑  thumb  Origins Ep. 3              19 Apr 2026  11:02    9.8K views
- …                                                   [ Load more ]
- ─────────────────────────────────────────────────────────────────
- 2 selected · Already-linked videos are hidden    [ Import 2 videos ]
-```
-
-- Paged by the YouTube cursor; selection survives paging.
-- After import: toast *"2 videos imported. Backfilling analytics…"*; the
-  cards show a small spinner badge until the backfill job reports done
-  (polled via React Query on `analytics_backfill_jobs`).
-
-### 7.6 Analytics → follow-up
+### 7.5 Analytics → follow-up
 
 Episode Analytics page header and project video-log rows gain
 **Make a follow-up** (`data-test="make-follow-up"`). It opens §7.3 with the
@@ -747,8 +633,6 @@ Episode Analytics page header and project video-log rows gain
 | `episode_created` | `startFrom`, `via`, `hasSeason` |
 | `stage_skipped` / `stage_unskipped` | `stage`, `via` |
 | `episode_video_attached` | `via`, `kind: upload|link` |
-| `channel_videos_imported` | `count`, `via` |
-| `analytics_backfill_finished` | `videos`, `days`, `totalsEqual: bool` |
 | `follow_up_created` | `via`, `sourceStatus` |
 
 **Funnel** for the success metric: `episode_created(startFrom=video)` →
@@ -794,18 +678,7 @@ Example description (house style, see `create_episode`):
 | `link_published_video` | **new.** `episodeId, platform, url` → `{ publish }` (wraps the `markAsExternallyUploaded` service) | `studio:write` |
 | `start_generation` | **+ `mode: "import"`** for `stage: "screenplay"` (§6.4); refuses with `MISSING_INPUTS` + `missing[]` when `canGenerate` is false (replaces the stage-lock check) | `studio:write` |
 
-### 9.3 Channel tools (`tools/analytics/channel-library.ts`)
-
-| Tool | Scope | Input | Output |
-|---|---|---|---|
-| `list_channel_videos` | `studio:read` | `connectionId, linked?: bool (default false), cursor?` | `{ videos[], nextCursor }` |
-| `import_channel_videos` | `studio:write` | `projectId, connectionId, platformContentIds[1..50], seasonId?` | `{ episodes[], skipped: [{ id, reason }], backfillJobId }` |
-| `get_backfill_status` | `studio:read` | `backfillJobId` | `{ status, videosDone, videosTotal, totalsEqual }` |
-
-`list_channel_videos` calls YouTube with the account's stored token, like
-`list_channels`. It's `openWorldHint: true`.
-
-### 9.4 Workflow guide
+### 9.3 Workflow guide
 
 `tools/workflow-guide.ts` and `STAGE_ORDER[].needs` are rewritten:
 
@@ -815,13 +688,13 @@ Example description (house style, see `create_episode`):
   them. Mark a stage you will not do with `set_stage_skipped`."*
 - Add **Three ways to start an episode** (idea / script / video) with the
   tool sequences from J2.
-- Add **Seasons** (J1 sequence) and **Channel library** (J5 sequence).
+- Add **Seasons** (J1 sequence) and **Follow-ups** (J5 sequence).
 - Publish line: *"Publishing to a platform is a web action. Over MCP you
   can attach the video (`request_episode_video_upload`) or link one already
   published (`link_published_video`); `get_episode().publishReadiness`
   says what the web publish will need."*
 
-### 9.5 Contract change and compatibility
+### 9.4 Contract change and compatibility
 
 `get_episode().stages[].state` no longer emits `locked` and adds `empty`
 and `skipped`. Clients that treat `locked` as "don't touch" now see
@@ -843,10 +716,10 @@ alter table public.seasons
   add column cover_url text,
   add column version integer not null default 1;
 
--- Episodes: how it started, what was skipped, where it came from
+-- Episodes: how it started, and what was skipped
 alter table public.episodes
   add column entry_mode text not null default 'idea'
-    check (entry_mode in ('idea', 'script', 'video', 'import')),
+    check (entry_mode in ('idea', 'script', 'video')),
   add column skipped_stages text[] not null default '{}'
     check (skipped_stages <@ array['ideation','story','screenplay','shots','audio']::text[]);
 
@@ -855,7 +728,8 @@ alter table public.episode_renders
   add column source text not null default 'studio'
     check (source in ('studio', 'upload'));
 
--- One episode per platform video, per account (import and link refuse duplicates)
+-- One episode per platform video (link_published_video refuses a video already
+-- linked to another episode, so its analytics are never attributed twice)
 create unique index idx_publishes_platform_content_unique
   on public.publishes (platform, platform_content_id)
   where platform_content_id is not null and status <> 'deleted';
@@ -872,43 +746,19 @@ returns setof public.seasons language plpgsql security invoker as $$ … $$;
 create or replace function public.soft_delete_season(p_season_id uuid, p_version int)
 returns integer language plpgsql security invoker as $$ … $$;  -- returns episodes moved
 
--- Import one channel video as an episode + publish
-create or replace function public.import_channel_video(
-  p_project_id uuid, p_connection_id uuid, p_season_id uuid,
-  p_platform_content_id text, p_title text, p_url text,
-  p_published_at timestamptz, p_duration_seconds int, p_thumbnail_url text)
-returns uuid language plpgsql security invoker as $$ … $$;   -- episode id
-
--- Backfill jobs (read by the UI badge and get_backfill_status)
-create table public.analytics_backfill_jobs (
-  id uuid primary key default extensions.uuid_generate_v4(),
-  project_id uuid not null references public.projects(id) on delete cascade,
-  connection_id uuid not null references public.platform_connections(id) on delete cascade,
-  publish_ids uuid[] not null,
-  status text not null default 'queued' check (status in ('queued','running','done','failed')),
-  videos_done integer not null default 0,
-  totals_equal boolean,
-  error text,
-  created_by uuid not null references auth.users(id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-alter table public.analytics_backfill_jobs enable row level security;
--- select: has_role_on_account(project's account); insert: same; update: service role only
-
 create view public.episode_positions with (security_invoker = true) as …; -- §6.2
 ```
 
 **RLS.** `seasons`, `episodes`, `publishes` policies are unchanged (KB-48
-studio owner access applies). The three functions are `security invoker`,
+studio owner access applies). The two functions are `security invoker`,
 so they run under the caller's policies. **pgTAP** in
 `apps/web/supabase/tests/database/flexible-production.test.sql`:
 
 - a viewer can't create, reorder or delete a season;
 - `soft_delete_season` moves episodes to `null`, never deletes them;
 - `reorder_seasons` rejects a list that omits or repeats a season;
-- `import_channel_video` refuses a second import of the same video;
-- `analytics_backfill_jobs` is invisible across accounts.
+- linking a video already linked to another episode is refused by the
+  unique index.
 
 **`episodes.status` CHECK is unchanged.**
 
@@ -924,15 +774,13 @@ CLAUDE.md. UI milestones carry Playwright evidence screenshots.
 | FILM-2201 | **M0 Foundations**: migration (§10), `season.service.ts`, `stage-state.ts`, delete the duplicate season insert, MCP `deriveStages` maps over `deriveStageViews` | M | — |
 | FILM-2202 | **M1 Publish what you have** (web): tabs never lock; Publish opens on `canPublish`; `AttachVideoPanel`; `attachEpisodeVideoAction`; status → ready | S | 2201 |
 | FILM-2203 | **M2 Seasons UI**: zero state (§7.1), `CreateSeasonDialog`, season header menu, empty slot, reorder, delete-moves-episodes, move episode (drag + menu), S·E labels | M | 2201 |
-| FILM-2204 | **M3 MCP seasons and video**: §9.1 tools, `update_episode.seasonId`, `set_stage_skipped`, `request_episode_video_upload`, `finalize_episode_video`, `link_published_video`, new `get_episode` stage shape, workflow guide (§9.4) | M | 2201 |
+| FILM-2204 | **M3 MCP seasons and video**: §9.1 tools, `update_episode.seasonId`, `set_stage_skipped`, `request_episode_video_upload`, `finalize_episode_video`, `link_published_video`, new `get_episode` stage shape, workflow guide (§9.3) | M | 2201 |
 | FILM-2205 | **M4 Start-from dialog and progress rail**: §7.3, §7.4, `StageEmptyState`, skip/un-skip, script import (web + `start_generation mode: import`) | L | 2202, 2203 |
-| FILM-2206 | **M5 Channel library**: `listUploads`, import RPC, `ImportChannelVideosDialog`, MCP §9.3 | M | 2201 |
-| FILM-2207 | **M6 Analytics backfill**: worker, re-ingest ≤60 days, older-day path per Q2, totals check, banner | L | 2206 |
-| FILM-2208 | **M7 Follow-up**: `followUpOf` (web + MCP), snapshot, FILM-1912 brief reads it, analytics buttons | S | 2205 |
+| FILM-2206 | **M5 Follow-up**: `followUpOf` (web + MCP), snapshot, FILM-1912 brief reads it, analytics buttons | S | 2205 |
 
 M1 and M2 together deliver the two original asks (empty seasons; publish
-without ideation-to-shots). M3 lands MCP parity for them. M4–M7 build on
-top.
+without ideation-to-shots). M3 lands MCP parity for them. M4 and M5 build
+on top.
 
 ### Test plan per milestone
 
@@ -943,9 +791,9 @@ top.
 | Parity | Each MCP author tool and its web action call the same service function | `studio-mcp/__tests__/parity.test.ts` |
 | pgTAP | §10 list | `supabase/tests/database/flexible-production.test.sql` |
 | E2E (web) | J1, J2 (all three tiles), J3 skip/un-skip, J4 publish with upload, **second submission** of the start dialog after reset | `apps/e2e/tests/flexible-production/*.spec.ts`, seeded via `seedUser`/`seedTeamAccount` |
-| E2E (MCP) | J1, J2 video + script, J5 against a mocked YouTube, J6 brief contains snapshot | `apps/e2e/tests/mcp/flexible-production.spec.ts` |
-| ClickHouse | Totals unchanged after import + backfill, on local CH 24.8 with seeded residual | `apps/e2e/tests/analytics/import-backfill-evidence.spec.ts` |
-| Evidence | Screenshots of §7.1–§7.6, including after-save states and error states | `CAPTURE_EVIDENCE=1` specs |
+| E2E (MCP) | J1, J2 video + script, J5 brief contains snapshot | `apps/e2e/tests/mcp/flexible-production.spec.ts` |
+| ClickHouse | An episode published from an uploaded video gets its seeded per-video rows on its analytics page, on local CH 24.8 | `apps/e2e/tests/analytics/uploaded-episode-evidence.spec.ts` |
+| Evidence | Screenshots of §7.1–§7.5, including after-save states and error states | `CAPTURE_EVIDENCE=1` specs |
 
 Red-before-green: each guard is shown failing against `main` (e.g., the
 Publish tab test fails on `publish: hasShotList`) before the fix.
@@ -957,11 +805,10 @@ Publish tab test fails on `publish: hasShotList`) before the fix.
 - **Flag:** `enableFlexibleProduction` in `apps/web/config/feature-flags.config.ts`
   (`NEXT_PUBLIC_ENABLE_FLEXIBLE_PRODUCTION`, default off; added to
   `sst.config.ts` and kept in step by `feature-flags-parity.test.ts`) gates
-  the UI changes in M1–M5 and the new MCP tools' registration. The migration and
+  the UI changes in M1, M2, M4 and M5 and the new MCP tools' registration. The migration and
   services ship ungated; they're additive.
 - **Order:** M0 → M1 + M2 behind the flag on staging → owner review with
-  evidence → flag on in production → M3 (MCP) → M4 → M5/M6 together (import
-  without backfill would show empty analytics) → M7.
+  evidence → flag on in production → M3 (MCP) → M4 → M5.
 - **Rollback:** flag off restores the old UI. Data written meanwhile is
   still valid for the old UI (seasons, episodes with fewer stages, publishes).
   An episode with a video but no shots shows a locked Publish tab again,
@@ -973,26 +820,21 @@ Publish tab test fails on `publish: hasShotList`) before the fix.
 
 | Risk | Mitigation |
 |---|---|
-| Channel totals change after import (double count) | §6.6 step 3 totals check fails the job; CH evidence spec; Q2 decides older-day handling |
 | Existing duplicate `platform_content_id` rows block the unique index | M0 queries production first; migration resolves or the index is scoped to `status = 'published'` |
-| YouTube quota on large channels | Paged listing, 1 unit per 50 videos; backfill rate-limited per connection; resumable via `analytics_backfill_jobs` |
 | External AI floods `start_generation` now that nothing is "locked" | Same `MISSING_INPUTS` refusal; existing generation rate limits (`tools/generation/limits.ts`) unchanged |
 | Users skip everything and get worse content | Skipping is explicit and reversible; Ideation stays the default tile |
 | Script parser accepts malformed input | Writes through the screenplay validator; rejection lists fields, as `submit_generation` does |
 
 ---
 
-## 14. Open questions for the owner
+## 14. Owner decisions (2026-10-09)
 
-1. **Status pill mapping.** Is "In production" right for
-   `story/storyboard/generating/editing`, or do you want to keep showing the
-   raw step?
-2. **Older history on import (§6.6 step 2).** Rewrite residual for days
-   older than 60, or backfill only what the Reporting API still holds and
-   label the rest "in channel totals only"?
-3. **Plan limits.** Do imported episodes count toward an account's episode
-   limit?
-4. **Non-YouTube imports.** TikTok/Instagram listing is out of scope here.
-   Confirm.
-5. **Generate Season into an existing season (S6).** Append after the last
-   episode, or let the user choose positions?
+1. **Status pill.** "In production" for `story/storyboard/generating/editing`.
+   Applied in §7.2.
+2. **Channel import.** Dropped. Episodes get analytics by being published
+   through Storybook (§1 Out of scope, D6). This also settles the earlier
+   questions on older analytics history, plan limits for imported episodes,
+   and non-YouTube imports: none of them arise.
+3. **Generate Season.** Works exactly as today. Nothing in this EDD changes
+   it; the former requirement to generate into an existing season is
+   removed.
