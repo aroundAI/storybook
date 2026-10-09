@@ -9,6 +9,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-2202: publish what you have. An episode with no story, screenplay or
@@ -44,14 +45,15 @@ test.describe('Publish what you have', () => {
     await page.goto(`${url}/story`);
 
     for (const tab of ['screenplay', 'shot-list', 'audio', 'publish']) {
-      const link = page.locator(`[data-test="episode-tab-${tab}"]`);
+      const link = byTest(page, `episode-tab-${tab}`);
 
       await expect(link).toHaveAttribute('href', /\/episodes\//);
     }
 
-    await expect(
-      page.locator('[data-test="episode-tab-screenplay"]'),
-    ).toHaveAttribute('data-stage-state', 'empty');
+    await expect(byTest(page, 'episode-tab-screenplay')).toHaveAttribute(
+      'data-stage-state',
+      'empty',
+    );
   });
 
   test('an episode with nothing but a title publishes an uploaded video', async ({
@@ -62,9 +64,7 @@ test.describe('Publish what you have', () => {
     await signInAs(page, team);
     await page.goto(`${url}/publish`);
 
-    await expect(
-      page.locator('[data-test="attach-video-panel"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'attach-video-panel')).toBeVisible();
     await expect(page.getByText('Publishing Locked')).toHaveCount(0);
 
     await page.locator('[data-test="attach-video-input"]').setInputFiles({
@@ -76,10 +76,8 @@ test.describe('Publish what you have', () => {
     });
 
     // The publish form replaces the panel once the episode has a video
-    await expect(page.locator('[data-test="publish-all"]')).toBeVisible();
-    await expect(page.locator('[data-test="attach-video-panel"]')).toHaveCount(
-      0,
-    );
+    await expect(byTest(page, 'publish-all')).toBeVisible();
+    await expect(byTest(page, 'attach-video-panel')).toHaveCount(0);
 
     if (process.env.CAPTURE_EVIDENCE) {
       await page.screenshot({
@@ -97,14 +95,12 @@ test.describe('Publish what you have', () => {
     await signInAs(page, team);
     await page.goto(`${url}/publish`);
 
-    await page
-      .locator('[data-test="link-published-video-url"]')
-      .fill(`https://www.youtube.com/watch?v=${uniqueStamp().slice(0, 11)}`);
-    await page.locator('[data-test="link-published-video-submit"]').click();
-
-    await expect(page.locator('[data-test="attach-video-panel"]')).toHaveCount(
-      0,
+    await byTest(page, 'link-published-video-url').fill(
+      `https://www.youtube.com/watch?v=${uniqueStamp().slice(0, 11)}`,
     );
+    await byTest(page, 'link-published-video-submit').click();
+
+    await expect(byTest(page, 'attach-video-panel')).toHaveCount(0);
   });
 
   test('refuses a bad link inline and keeps the panel', async ({ page }) => {
@@ -113,15 +109,11 @@ test.describe('Publish what you have', () => {
     await signInAs(page, team);
     await page.goto(`${url}/publish`);
 
-    await page
-      .locator('[data-test="link-published-video-url"]')
-      .fill('not a link');
-    await page.locator('[data-test="link-published-video-submit"]').click();
+    await byTest(page, 'link-published-video-url').fill('not a link');
+    await byTest(page, 'link-published-video-submit').click();
 
     await expect(page.getByText('Please enter a valid URL')).toBeVisible();
-    await expect(
-      page.locator('[data-test="attach-video-panel"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'attach-video-panel')).toBeVisible();
 
     if (process.env.CAPTURE_EVIDENCE) {
       await page.screenshot({

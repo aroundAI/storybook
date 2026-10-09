@@ -10,6 +10,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-2206: Make a follow-up on an episode's analytics page opens the new
@@ -42,19 +43,17 @@ test('Make a follow-up starts the next episode from what worked', async ({
     `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/analytics`,
   );
 
-  await page.locator('[data-test="make-follow-up"]').click();
+  await byTest(page, 'make-follow-up').click();
 
-  await expect(page.locator('[data-test="create-episode-title"]')).toHaveValue(
+  await expect(byTest(page, 'create-episode-title')).toHaveValue(
     'Follow-up to The Gate',
   );
-  await expect(page.locator('[data-test="start-from-idea"]')).toHaveAttribute(
+  await expect(byTest(page, 'start-from-idea')).toHaveAttribute(
     'data-state',
     'checked',
   );
-  await expect(
-    page.locator('[data-test="create-episode-season"]'),
-  ).toContainText('Season 1');
-  const card = page.locator('[data-test="follow-up-card"]');
+  await expect(byTest(page, 'create-episode-season')).toContainText('Season 1');
+  const card = byTest(page, 'follow-up-card');
   await expect(card).toContainText('From Episode 1, “The Gate”');
   await expect(card).toContainText('Hook: “A door opens itself.”');
 
@@ -65,7 +64,7 @@ test('Make a follow-up starts the next episode from what worked', async ({
     });
   }
 
-  await page.locator('[data-test="create-episode-submit"]').click();
+  await byTest(page, 'create-episode-submit').click();
   await expect(page).toHaveURL(/\/episodes\/[^/]+$/);
 
   const rows = await readRows<{

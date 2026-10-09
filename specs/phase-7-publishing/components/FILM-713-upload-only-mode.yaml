@@ -58,7 +58,7 @@ acceptance_criteria:
     reason: "no longer true — built (`packages/features/publishing/src/components/upload-only-mode.tsx:357`), but no page has ever rendered `UploadOnlyMode`"
   - text: "Mark publish as external with URL tracking"
     met: false
-    reason: "no longer true — `markAsExternallyUploadedAction` (`packages/features/publishing/src/server/upload-only-actions.ts:189`) is called only from that never-rendered component"
+    reason: "not met in this component: `markAsExternallyUploadedAction` (`packages/features/publishing/src/server/upload-only-actions.ts:227`) is called from the Publish page's link form instead (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/attach-video-panel.tsx:196`, FILM-2202, #661), whose Playwright spec has not run yet; `UploadOnlyMode` is still never rendered"
 test_plan:
   unit:
     - text: "Test content ID extraction from URLs"

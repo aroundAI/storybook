@@ -10,6 +10,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-2203: seasons first. A season can be created with only a name and
@@ -65,16 +66,14 @@ test.describe('Seasons', () => {
     await signInAs(page, team);
     await page.goto(url);
 
-    await expect(page.locator('[data-test="zero-start-season"]')).toBeVisible();
-    await page.locator('[data-test="zero-start-season-button"]').click();
-    await page.locator('[data-test="create-season-name"]').fill('Origins');
-    await page.locator('[data-test="create-season-submit"]').click();
+    await expect(byTest(page, 'zero-start-season')).toBeVisible();
+    await byTest(page, 'zero-start-season-button').click();
+    await byTest(page, 'create-season-name').fill('Origins');
+    await byTest(page, 'create-season-submit').click();
 
-    const section = page.locator('[data-test="season-section-1"]');
+    const section = byTest(page, 'season-section-1');
     await expect(section).toContainText('Origins');
-    await expect(
-      section.locator('[data-test="empty-season-slot"]'),
-    ).toBeVisible();
+    await expect(byTest(section, 'empty-season-slot')).toBeVisible();
 
     if (process.env.CAPTURE_EVIDENCE) {
       await page.screenshot({
@@ -84,15 +83,11 @@ test.describe('Seasons', () => {
     }
 
     // The second submission: the dialog again, after the first landed
-    await page.locator('[data-test="create-season-trigger"]').click();
-    await expect(page.locator('[data-test="create-season-name"]')).toHaveValue(
-      '',
-    );
-    await page.locator('[data-test="create-season-name"]').fill('Ashes');
-    await page.locator('[data-test="create-season-submit"]').click();
-    await expect(page.locator('[data-test="season-section-2"]')).toContainText(
-      'Ashes',
-    );
+    await byTest(page, 'create-season-trigger').click();
+    await expect(byTest(page, 'create-season-name')).toHaveValue('');
+    await byTest(page, 'create-season-name').fill('Ashes');
+    await byTest(page, 'create-season-submit').click();
+    await expect(byTest(page, 'season-section-2')).toContainText('Ashes');
   });
 
   test('a season moves down, and the numbers follow', async ({ page }) => {
@@ -101,8 +96,8 @@ test.describe('Seasons', () => {
     await signInAs(page, team);
     await page.goto(url);
 
-    await page.locator('[data-test="season-menu-1"]').click();
-    await page.locator('[data-test="season-move-down"]').click();
+    await byTest(page, 'season-menu-1').click();
+    await byTest(page, 'season-move-down').click();
 
     await expect
       .poll(async () =>
@@ -127,16 +122,12 @@ test.describe('Seasons', () => {
     await signInAs(page, team);
     await page.goto(url);
 
-    await expect(page.locator('[data-test="episode-label"]')).toHaveText(
-      'S1 · E1',
-    );
+    await expect(byTest(page, 'episode-label')).toHaveText('S1 · E1');
 
-    await page.locator('[data-test="episode-actions"]').click();
-    await page.locator('[data-test="move-to-season-2"]').click();
+    await byTest(page, 'episode-actions').click();
+    await byTest(page, 'move-to-season-2').click();
 
-    await expect(page.locator('[data-test="episode-label"]')).toHaveText(
-      'S2 · E1',
-    );
+    await expect(byTest(page, 'episode-label')).toHaveText('S2 · E1');
     const [row] = await readRows<{ number: number }>(
       'episodes',
       `id=eq.${episodeId}&select=number`,
@@ -155,16 +146,12 @@ test.describe('Seasons', () => {
     await signInAs(page, team);
     await page.goto(url);
 
-    await page.locator('[data-test="season-menu-1"]').click();
-    await page.locator('[data-test="season-delete-keep-episodes"]').click();
-    await page
-      .locator('[data-test="season-delete-keep-episodes-confirm"]')
-      .click();
+    await byTest(page, 'season-menu-1').click();
+    await byTest(page, 'season-delete-keep-episodes').click();
+    await byTest(page, 'season-delete-keep-episodes-confirm').click();
 
-    await expect(page.locator('[data-test="unsorted-section"]')).toContainText(
-      'Pilot',
-    );
-    await expect(page.locator('[data-test="episode-label"]')).toHaveText('#1');
+    await expect(byTest(page, 'unsorted-section')).toContainText('Pilot');
+    await expect(byTest(page, 'episode-label')).toHaveText('#1');
 
     const [row] = await readRows<{
       season_id: string | null;

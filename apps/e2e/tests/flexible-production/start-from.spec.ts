@@ -9,6 +9,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-2205: a new episode starts from an idea, a script or a finished
@@ -42,19 +43,21 @@ test.describe('Start from what you have', () => {
     await signInAs(page, team);
     await page.goto(list);
 
-    await page.locator('[data-test="create-episode-trigger"]').click();
-    await page.locator('[data-test="create-episode-title"]').fill('The Gate');
-    await page.locator('[data-test="start-from-script"]').click();
-    await page.locator('[data-test="create-episode-script"]').fill(SCRIPT);
-    await page.locator('[data-test="create-episode-submit"]').click();
+    await byTest(page, 'create-episode-trigger').click();
+    await byTest(page, 'create-episode-title').fill('The Gate');
+    await byTest(page, 'start-from-script').click();
+    await byTest(page, 'create-episode-script').fill(SCRIPT);
+    await byTest(page, 'create-episode-submit').click();
 
     await expect(page).toHaveURL(/\/screenplay$/);
-    await expect(
-      page.locator('[data-test="episode-tab-screenplay"]'),
-    ).toHaveAttribute('data-stage-state', 'done');
-    await expect(
-      page.locator('[data-test="episode-tab-story"]'),
-    ).toHaveAttribute('data-stage-state', 'skipped');
+    await expect(byTest(page, 'episode-tab-screenplay')).toHaveAttribute(
+      'data-stage-state',
+      'done',
+    );
+    await expect(byTest(page, 'episode-tab-story')).toHaveAttribute(
+      'data-stage-state',
+      'skipped',
+    );
 
     const [row] = await readRows<{
       entry_mode: string;
@@ -84,18 +87,17 @@ test.describe('Start from what you have', () => {
     await signInAs(page, team);
     await page.goto(list);
 
-    await page.locator('[data-test="create-episode-trigger"]').click();
-    await page.locator('[data-test="create-episode-title"]').fill('Finished');
-    await page.locator('[data-test="start-from-video"]').click();
-    await page.locator('[data-test="create-episode-submit"]').click();
+    await byTest(page, 'create-episode-trigger').click();
+    await byTest(page, 'create-episode-title').fill('Finished');
+    await byTest(page, 'start-from-video').click();
+    await byTest(page, 'create-episode-submit').click();
 
     await expect(page).toHaveURL(/\/publish$/);
-    await expect(
-      page.locator('[data-test="attach-video-panel"]'),
-    ).toBeVisible();
-    await expect(
-      page.locator('[data-test="episode-tab-shot-list"]'),
-    ).toHaveAttribute('data-stage-state', 'skipped');
+    await expect(byTest(page, 'attach-video-panel')).toBeVisible();
+    await expect(byTest(page, 'episode-tab-shot-list')).toHaveAttribute(
+      'data-stage-state',
+      'skipped',
+    );
   });
 
   test('a script that reads as no scenes is refused, and the second try works after reset', async ({
@@ -106,10 +108,10 @@ test.describe('Start from what you have', () => {
     await signInAs(page, team);
     await page.goto(list);
 
-    await page.locator('[data-test="create-episode-trigger"]').click();
-    await page.locator('[data-test="create-episode-title"]').fill('Empty');
-    await page.locator('[data-test="start-from-script"]').click();
-    await page.locator('[data-test="create-episode-submit"]').click();
+    await byTest(page, 'create-episode-trigger').click();
+    await byTest(page, 'create-episode-title').fill('Empty');
+    await byTest(page, 'start-from-script').click();
+    await byTest(page, 'create-episode-submit').click();
 
     await expect(
       page.getByText('Paste the script, or choose a file'),
@@ -118,8 +120,8 @@ test.describe('Start from what you have', () => {
       await readRows('episodes', `project_id=eq.${project.id}&select=id`),
     ).toHaveLength(0);
 
-    await page.locator('[data-test="create-episode-script"]').fill(SCRIPT);
-    await page.locator('[data-test="create-episode-submit"]').click();
+    await byTest(page, 'create-episode-script').fill(SCRIPT);
+    await byTest(page, 'create-episode-submit').click();
     await expect(page).toHaveURL(/\/screenplay$/);
   });
 
@@ -140,17 +142,19 @@ test.describe('Start from what you have', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/screenplay`,
     );
 
-    const banner = page.locator('[data-test="stage-banner"]');
+    const banner = byTest(page, 'stage-banner');
     await expect(banner).toContainText('Generating it needs a story');
 
-    await page.locator('[data-test="stage-banner-skip"]').click();
-    await expect(
-      page.locator('[data-test="episode-tab-screenplay"]'),
-    ).toHaveAttribute('data-stage-state', 'skipped');
+    await byTest(page, 'stage-banner-skip').click();
+    await expect(byTest(page, 'episode-tab-screenplay')).toHaveAttribute(
+      'data-stage-state',
+      'skipped',
+    );
 
-    await page.locator('[data-test="stage-banner-unskip"]').click();
-    await expect(
-      page.locator('[data-test="episode-tab-screenplay"]'),
-    ).toHaveAttribute('data-stage-state', 'empty');
+    await byTest(page, 'stage-banner-unskip').click();
+    await expect(byTest(page, 'episode-tab-screenplay')).toHaveAttribute(
+      'data-stage-state',
+      'empty',
+    );
   });
 });
