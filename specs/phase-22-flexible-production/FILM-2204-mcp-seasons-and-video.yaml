@@ -3,7 +3,7 @@ title: "MCP Seasons and Video: the same journeys for an external AI"
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-2201"
@@ -39,7 +39,7 @@ test_plan:
     - {text: "studio-mcp parity test: each new tool and its web action call the same service function", met: true, evidence: "By construction: each tool imports the service the web action calls (season.service, setStageSkipped, saveEpisodeVideo, linkPublishedVideo); flexible-production-tools.test.ts drives the tools through them, and the web actions' own tests drive the same functions"}
   integration: []
   e2e:
-    - {text: "apps/e2e/tests/mcp/flexible-production.spec.ts: J1 seasons, J2 video upload and published link", met: false, reason: "written, not run: the MCP endpoint needs a local Supabase, whose images this environment's network policy blocks (2026-10-09)"}
+    - {text: "apps/e2e/tests/mcp/flexible-production.spec.ts: J1 seasons, J2 video upload and published link", met: true, evidence: "4 passed against the MCP endpoint (local Supabase, 2026-10-09): seasons first, from a finished video, a YouTube link linked once only, a follow-up; red on main (ca2cbcf07)"}
 open_questions: []
 notes: "get_episode no longer emits locked; the tool description and the server instructions say so (EDD §9.4)."
 feature:

@@ -3,7 +3,7 @@ title: "Seasons UI: create empty seasons, manage them, move episodes between the
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-2201"
@@ -33,13 +33,13 @@ acceptance_criteria:
     met: true
     evidence: "Met (#661): the page computes one label per episode with seasonPositions and episodeLabel (packages/features/episodes/src/lib/season-position.ts); the row shows it and a status pill (STATUS_PILL in episode-list-item.tsx). The position view the spec named was replaced by this function (FILM-2201)"
   - text: "Playwright evidence for each state above, including after a rename and after a delete"
-    met: false
-    reason: "not met: apps/e2e/tests/flexible-production/seasons.spec.ts is written (empty season and a second create, move down, move an episode keeping its number, delete keeping episodes; screenshots under CAPTURE_EVIDENCE) but not run; the app needs a local Supabase, whose images this environment's network policy blocks"
+    met: true
+    evidence: "Met (#661): seasons.spec.ts, 5 passed (local Supabase, 2026-10-09), all red on main (ca2cbcf07): a season with only a name shows empty, with New episode and Upload video, and a second create works; move down swaps the numbers; rename from the menu shows the new name and stores it; an episode moves season keeping its number (S1 · E1 to S2 · E1); delete keeping episodes leaves Pilot in Unsorted as #1, row not deleted. Running it found the menu trigger unlabelled and without data-test (now 'Season N actions', season-menu-N). Screenshots in the PR"
 test_plan:
   unit: []
   integration: []
   e2e:
-    - {text: "apps/e2e/tests/flexible-production/seasons.spec.ts: create empty, reorder, move an episode, delete moves episodes", met: false, reason: "written, not run (no local Supabase in this environment)"}
+    - {text: "apps/e2e/tests/flexible-production/seasons.spec.ts: create empty, reorder, move an episode, delete moves episodes", met: true, evidence: "5 passed, rename included (local Supabase, 2026-10-09); red on main (ca2cbcf07)"}
 open_questions: []
 notes: "Generate Season is not changed by this spec (owner, 2026-10-09)."
 feature:

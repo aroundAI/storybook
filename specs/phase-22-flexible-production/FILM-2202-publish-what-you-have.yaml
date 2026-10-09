@@ -3,7 +3,7 @@ title: "Publish What You Have: no locked stages, publish any episode with a vide
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: PARTIAL
+status: DONE
 effort: S
 dependencies:
   - spec_id: "FILM-2201"
@@ -18,7 +18,7 @@ summary: >
 acceptance_criteria:
   - text: "episode-workspace-tabs uses deriveStageViews; no tab is disabled"
     met: true
-    evidence: "Met (#661): every tab is a link; each shows its stage state (done, not started, skipped) from deriveStageViews in data-stage-state and its title. Audio shows none, since the workspace does not load the audio cue count and a guess would be wrong. The publish page's own lock ('Publishing Locked' until shots existed) is gone too. Typecheck and lint clean; not yet seen in a browser (see the evidence criterion)"
+    evidence: "Met (#661): every tab is a link; each shows its stage state (done, not started, skipped) from deriveStageViews in data-stage-state and its title. Audio shows none, since the workspace does not load the audio cue count and a guess would be wrong. The publish page's own lock ('Publishing Locked' until shots existed) is gone too. Seen in a browser: publish-what-you-have.spec.ts 'no stage is locked', red on main (ca2cbcf07) where the tab has no href"
   - text: "Publish opens when canPublish is true (a final, localized or ready video, or a publish already made); with none the page renders AttachVideoPanel (drop zone and published-link field) instead of the publish form"
     met: true
     evidence: "Met (#661): publish/page.tsx reads canPublish (packages/features/episodes/src/lib/stage-state.ts:76) with the episode's publishes from the publish screen's own query; AttachVideoPanel (publish/_components/attach-video-panel.tsx) uploads through the existing presigned path and links through markAsExternallyUploadedAction. canPublish: stage-state.test.ts"
@@ -29,13 +29,13 @@ acceptance_criteria:
     met: true
     evidence: "Met (#661): linkPublishedVideo (packages/features/publishing/src/server/link-published-video.service.ts:20) refuses a platform video already linked to another live episode, since analytics would count it twice; the action and FILM-2204's tool call it. Test: upload-only-flow.test.ts 'refuses a video already linked', red with the check removed"
   - text: "Playwright evidence: an episode with no story, screenplay or shots uploads a video and reaches the publish form; screenshots before and after"
-    met: false
-    reason: "not met: the spec is written (apps/e2e/tests/flexible-production/publish-what-you-have.spec.ts) but not run; the app needs a local Supabase, whose images this environment's network policy blocks"
+    met: true
+    evidence: "Met (#661): publish-what-you-have.spec.ts, 4 passed (local Supabase, 2026-10-09), all red on main (ca2cbcf07). A title-only episode shows Add the finished video; an uploaded MP4 replaces it with the publish form (Publish All). A bad link is refused inline and the panel stays. Screenshots in the PR"
 test_plan:
   unit: []
   integration: []
   e2e:
-    - {text: "apps/e2e/tests/flexible-production/publish-what-you-have.spec.ts, red against the hasShotList gate", met: false, reason: "written, not run: the app needs a local Supabase, whose images this environment's network policy blocks (2026-10-09)"}
+    - {text: "apps/e2e/tests/flexible-production/publish-what-you-have.spec.ts, red against the hasShotList gate", met: true, evidence: "4 passed (local Supabase, 2026-10-09); red on main (ca2cbcf07), the shot-list tab a locked div"}
 open_questions: []
 notes: ""
 feature:

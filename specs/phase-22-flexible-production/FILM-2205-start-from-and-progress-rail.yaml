@@ -3,7 +3,7 @@ title: "Start From and Progress Rail: begin with an idea, a script or a video"
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: PARTIAL
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-2202"
@@ -33,14 +33,14 @@ acceptance_criteria:
     met: true
     evidence: "Met (#661): episode-workspace-tabs.tsx: a nav with an ol of seven steps (Video and Publish open the Publish page), aria-current step, a mark for done, not started and skipped; Edit record a separate link. StageBanner, under it, names what an empty stage's generator needs (screenplay: 'or paste a script', with ImportScriptDialog), and skips or un-skips through setStageSkippedAction; output on a skipped stage reads as done (deriveStageViews). Audio shows no state: the workspace does not load its cue count. workspace-tabs.spec.ts updated to the rail (video step, aria-current step)"
   - text: "Playwright evidence of each tile, a second submission after reset, and the rail in each state"
-    met: false
-    reason: "not met: apps/e2e/tests/flexible-production/start-from.spec.ts is written (script, video, a refused then accepted second submission, skip and un-skip) but not run; the app needs a local Supabase, whose images this environment's network policy blocks"
+    met: true
+    evidence: "Met (#661): start-from.spec.ts, 4 passed (local Supabase, 2026-10-09), all red on main (ca2cbcf07). From a script the episode opens on Screenplay with Idea and Story skipped; from a video, on Publish with every earlier stage skipped; skip then un-skip from the rail's banner. The idea tile: follow-up.spec.ts. Running it found a real bug: an untouched script field was refused with Zod's bare 'Required', not 'Paste the script, or choose a file' (fixed in the schema; create-episode-start-schema.test.ts, red first). Screenshot in the PR"
 test_plan:
   unit:
     - {text: "Fountain, FDX and plain-text readers against fixtures", met: true, evidence: "packages/features/episodes/__tests__/script-import.test.ts, screenplay-import.test.ts; MCP: flexible-production-tools.test.ts (create_episode startFrom)"}
   integration: []
   e2e:
-    - {text: "apps/e2e/tests/flexible-production/start-from.spec.ts", met: false, reason: "written, not run (no local Supabase in this environment)"}
+    - {text: "apps/e2e/tests/flexible-production/start-from.spec.ts", met: true, evidence: "4 passed (local Supabase, 2026-10-09); red on main (ca2cbcf07)"}
 open_questions: []
 notes: ""
 feature:

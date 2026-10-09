@@ -3,7 +3,7 @@ title: "Follow-up From Analytics: the next episode starts from what worked"
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: PARTIAL
+status: DONE
 effort: S
 dependencies:
   - spec_id: "FILM-2205"
@@ -28,15 +28,15 @@ acceptance_criteria:
     met: true
     evidence: "Met (#661): storyStage.prepare reads followUpOf(episode.metadata), defuses its strings with sanitizeStrings (KB-101), and puts renderFollowUp ahead of renderPerformanceContext; the snapshot also goes in the brief's context as followUp. prepare builds the brief for both modes. Test: stages.test.ts 'a follow-up's snapshot comes first', with and without the run's block (red with the follow-up dropped from the text)"
   - text: "Playwright evidence of the dialog and the stored snapshot"
-    met: false
-    reason: "not met: apps/e2e/tests/flexible-production/follow-up.spec.ts and the follow-up test in tests/mcp/flexible-production.spec.ts are written but not run; the app needs a local Supabase, whose images this environment's network policy blocks"
+    met: true
+    evidence: "Met (#661): follow-up.spec.ts and the follow-up test in tests/mcp/flexible-production.spec.ts pass (local Supabase, 2026-10-09), both red on main (ca2cbcf07). The dialog opens on From an idea with the What worked card; the new episode stores metadata.follow_up naming its source. Screenshot in the PR"
 test_plan:
   unit:
     - {text: "brief builder puts the follow-up snapshot first", met: true, evidence: "packages/features/generation/__tests__/stages.test.ts; follow-up.test.ts (snapshot, medians, project scope)"}
   integration: []
   e2e:
-    - {text: "MCP: create_episode with followUpOf, then start_generation story carries the snapshot", met: false, reason: "written (tests/mcp/flexible-production.spec.ts), not run (no local Supabase in this environment)"}
-    - {text: "apps/e2e/tests/flexible-production/follow-up.spec.ts", met: false, reason: "written, not run (no local Supabase in this environment)"}
+    - {text: "MCP: create_episode with followUpOf, then start_generation story carries the snapshot", met: true, evidence: "passed (local Supabase, 2026-10-09); red on main (ca2cbcf07)"}
+    - {text: "apps/e2e/tests/flexible-production/follow-up.spec.ts", met: true, evidence: "passed (local Supabase, 2026-10-09); red on main (ca2cbcf07)"}
 open_questions: []
 notes: ""
 feature:

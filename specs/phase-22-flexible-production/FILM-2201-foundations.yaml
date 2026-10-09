@@ -67,6 +67,8 @@ notes: |
   Supabase images, so the migrations, seed and pgTAP suite ran on the
   container's PostgreSQL 16 with stand-ins for Supabase's auth, storage,
   pg_net and pg_cron. CI's Supabase DB job is the run on the real image.
+  Since re-run on a local Supabase (2026-10-09): the migration applies and
+  flexible-production.test.sql passes 21/21.
 feature:
   database: "seasons, episodes, episode_renders, publishes (columns, index); reorder_seasons, soft_delete_season; episode_positions view"
   queries: []
