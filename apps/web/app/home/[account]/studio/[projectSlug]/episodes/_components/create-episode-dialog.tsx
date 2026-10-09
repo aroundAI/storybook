@@ -47,9 +47,11 @@ import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
+import { FollowUpCard } from './follow-up-card';
+
 export interface SeasonOption {
   id: string;
-  name: string;
+  name: string | null;
   number: number;
 }
 
@@ -61,6 +63,8 @@ interface CreateEpisodeDialogProps {
   /** The season the episode goes in; null for Unsorted */
   defaultSeasonId?: string | null;
   defaultStartFrom?: StartFrom;
+  /** FILM-2206: the episode this one follows up, from its analytics */
+  followUp?: { episodeId: string; title: string };
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   triggerButton?: boolean;
@@ -106,6 +110,7 @@ export function CreateEpisodeDialog({
   seasons = [],
   defaultSeasonId = null,
   defaultStartFrom = 'idea',
+  followUp,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   triggerButton = true,
@@ -119,9 +124,10 @@ export function CreateEpisodeDialog({
     ({
       projectId,
       seasonId: defaultSeasonId,
-      title: '',
+      title: followUp ? `Follow-up to ${followUp.title}` : '',
       description: '',
-      startFrom: defaultStartFrom,
+      startFrom: followUp ? 'idea' : defaultStartFrom,
+      ...(followUp ? { followUpOf: followUp.episodeId } : {}),
     }) as CreateEpisodeStartInput;
 
   // A discriminated union: inference from the defaults would fix the form to
@@ -280,6 +286,13 @@ export function CreateEpisodeDialog({
                 </FormItem>
               )}
             />
+
+            {followUp && startFrom === 'idea' && (
+              <FollowUpCard
+                projectId={projectId}
+                episodeId={followUp.episodeId}
+              />
+            )}
 
             {startFrom === 'script' && (
               <FormField

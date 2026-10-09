@@ -29,7 +29,7 @@ export const WORKFLOW_GUIDE_TEXT = [
   '',
   '## Three ways to start an episode',
   '',
-  '- **From an idea**: `create_episode`, then generate the story, screenplay and shots in order.',
+  '- **From an idea**: `create_episode`, then generate the story, screenplay and shots in order. To build on an episode that performed, pass `followUpOf`: its traits and numbers are frozen into the new episode, and the story brief leads with them (FILM-2206).',
   '- **From a script**: `create_episode(startFrom: script)` (ideation and story are skipped), then `import_screenplay` with the script (Fountain, Final Draft or plain text).',
   '- **From a finished video**: `create_episode(startFrom: video)` (every stage before publish is skipped), then `request_episode_video_upload`, PUT the file, `finalize_episode_video`; or `link_published_video` for one already on a platform.',
   '',

@@ -21,6 +21,7 @@
     "./server/season-service": "./src/server/season.service.ts",
     "./server/episode-video-service": "./src/server/episode-video.service.ts",
     "./server/screenplay-import-service": "./src/server/screenplay-import.service.ts",
+    "./server/follow-up-service": "./src/server/follow-up.service.ts",
     "./server/season-generation": "./src/lib/server/mutations/season-generation-actions.ts",
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",

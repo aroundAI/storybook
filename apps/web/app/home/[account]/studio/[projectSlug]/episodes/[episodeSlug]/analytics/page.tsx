@@ -11,9 +11,12 @@
  * swallowed by an `if (response.ok)` and the page rendered "No analytics
  * data available yet." for every episode, always (FILM-1616).
  */
+import { useState } from 'react';
+
 import dynamic from 'next/dynamic';
 
 import { useQuery } from '@tanstack/react-query';
+import { Repeat } from 'lucide-react';
 
 import {
   EditStyleCard,
@@ -29,9 +32,12 @@ import {
   getRetentionCurveAction,
 } from '@kit/content-analytics/server/diagnostics-actions';
 import type { EpisodeEditStyleResult } from '@kit/content-analytics/server/diagnostics-service';
+import { getProjectSeasonsAction } from '@kit/episodes/server';
+import { Button } from '@kit/ui/button';
 import { PageBody, PageHeader } from '@kit/ui/page';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { CreateEpisodeDialog } from '../../_components/create-episode-dialog';
 import { useEpisodeContext } from '../_components/episode-context-provider';
 
 const EpisodeAnalytics = dynamic(
@@ -46,7 +52,16 @@ const EpisodeAnalytics = dynamic(
 );
 
 export default function EpisodeAnalyticsPage() {
-  const { episode, projectId } = useEpisodeContext();
+  const { episode, projectId, projectSlug, accountSlug } = useEpisodeContext();
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+
+  // The dialog's season picker, read once a follow-up is asked for
+  const seasonsQuery = useQuery({
+    queryKey: ['project-seasons', projectId],
+    queryFn: async () =>
+      (await getProjectSeasonsAction({ projectId })).data.seasons,
+    enabled: followUpOpen,
+  });
 
   const analyticsQuery = useQuery({
     queryKey: ['episode-analytics', episode.id],
@@ -82,7 +97,33 @@ export default function EpisodeAnalyticsPage() {
       <PageHeader
         title="Episode Analytics"
         description="Track performance for this episode."
-      />
+      >
+        <Button
+          variant="outline"
+          onClick={() => setFollowUpOpen(true)}
+          data-test="make-follow-up"
+        >
+          <Repeat className="mr-2 h-4 w-4" />
+          Make a follow-up
+        </Button>
+      </PageHeader>
+
+      {/* FILM-2206: the next episode, in the same season, starting from
+          what this one did. Mounted only while open, so the snapshot is
+          read when asked for. */}
+      {followUpOpen && (
+        <CreateEpisodeDialog
+          projectId={projectId}
+          projectSlug={projectSlug}
+          account={accountSlug}
+          seasons={seasonsQuery.data ?? []}
+          defaultSeasonId={episode.seasonId}
+          followUp={{ episodeId: episode.id, title: episode.title }}
+          open
+          onOpenChange={setFollowUpOpen}
+          triggerButton={false}
+        />
+      )}
       <PageBody>
         {/* Its own read, beside the figures and not inside them: a failed
             sync has to be visible whether or not there are figures to show,

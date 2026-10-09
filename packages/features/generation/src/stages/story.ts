@@ -37,6 +37,7 @@ import {
   ref,
   resultRows,
 } from '../commit-plan';
+import { followUpOf, renderFollowUp } from '../follow-up';
 import { jobCompletedWrite } from '../jobs';
 import { renderPerformanceContext } from '../performance-context';
 import { registerStage } from '../registry';
@@ -232,8 +233,14 @@ export const storyStage: StageDefinition<
     const genre = snapshot.genre ?? 'general';
     const targetAudience = snapshot.targetAudience ?? 'general';
 
-    // Payload text is the user's: defused before the model sees it (KB-101)
-    const performanceText = renderPerformanceContext(ctx.performanceContext);
+    // FILM-2206: a follow-up leads with what worked in the episode it
+    // follows up, frozen when it was created. Its strings (a title, a hook)
+    // are the user's: defused before the model sees them (KB-101)
+    const storedFollowUp = followUpOf(episode?.metadata);
+    const followUp = storedFollowUp ? sanitizeStrings(storedFollowUp) : null;
+    const performanceText =
+      renderFollowUp(followUp) +
+      renderPerformanceContext(ctx.performanceContext);
 
     const orchestrator: StoryBriefContext = {
       episodeTitle: sanitizeForPrompt(target.title),
@@ -307,6 +314,7 @@ export const storyStage: StageDefinition<
         ...(ctx.performanceContext
           ? { performanceContext: ctx.performanceContext }
           : {}),
+        ...(followUp ? { followUp } : {}),
       },
       outputSchema: StoryStageOutputSchema,
       constraints: {

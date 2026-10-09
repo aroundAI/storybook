@@ -36,6 +36,17 @@ vi.stubEnv(
   'https://pub-0123456789abcdef0123456789abcdef.r2.dev',
 );
 
+// FILM-2206: the follow-up snapshot reads performance through the
+// FILM-1912 reader; here ClickHouse is off
+vi.mock('@kit/content-analytics/server/performance-reader', () => ({
+  createPerformanceReader: () => ({
+    videos: async () => ({
+      status: 'unmeasured',
+      reason: 'ClickHouse is off.',
+    }),
+  }),
+}));
+
 const ACCOUNT = '22222222-2222-4222-8222-222222222222';
 const PROJECT = '44444444-4444-4444-8444-444444444444';
 const SEASON = '55555555-5555-4555-8555-555555555555';
@@ -432,5 +443,116 @@ describe('create_episode startFrom (FILM-2205)', () => {
       entry_mode: 'video',
       skipped_stages: ['ideation', 'story', 'screenplay', 'shots', 'audio'],
     });
+  });
+});
+
+describe('create_episode followUpOf (FILM-2206)', () => {
+  const SOURCE = '77777777-7777-4777-8777-777777777777';
+
+  function client(source: Record<string, unknown> | null) {
+    return createFakeClient({
+      projects: project,
+      shots: [],
+      episodes: (c: RecordedCall) =>
+        c.op === 'insert'
+          ? {
+              data: {
+                id: EPISODE,
+                project_id: PROJECT,
+                season_id: null,
+                number: 2,
+                slug: 'e',
+                title: 'Next',
+                description: null,
+                status: 'draft',
+                version: 1,
+                metadata: {},
+                target_duration_seconds: null,
+                created_at: '2026-10-09T00:00:00Z',
+                updated_at: '2026-10-09T00:00:00Z',
+                ...(c.payload as object),
+              },
+            }
+          : c.filters.some(
+                (f) =>
+                  f.method === 'eq' &&
+                  f.args[0] === 'id' &&
+                  f.args[1] === SOURCE,
+              )
+            ? { data: source ? [source] : [] }
+            : { data: [] },
+    });
+  }
+
+  it('freezes the source episode into metadata.follow_up', async () => {
+    const fake = client({
+      id: SOURCE,
+      number: 1,
+      title: 'The Gate',
+      duration_seconds: null,
+      story_data: { viralStructure: { openingHook: 'A door opens.' } },
+      screenplay_data: null,
+    });
+
+    await call(createEpisodeTool, fake.client, {
+      projectId: PROJECT,
+      title: 'Next',
+      followUpOf: SOURCE,
+    });
+
+    const read = fake.calls.find(
+      (c) => c.table === 'episodes' && c.op === 'select',
+    );
+    expect(read?.filters).toContainEqual({
+      method: 'eq',
+      args: ['project_id', PROJECT],
+    });
+    expect(fake.calls.find((c) => c.op === 'insert')?.payload).toMatchObject({
+      metadata: {
+        follow_up: {
+          episode_id: SOURCE,
+          snapshot: {
+            title: 'The Gate',
+            traits: { hook: 'A door opens.' },
+            performance: {
+              status: 'unmeasured',
+              reason: 'ClickHouse is off.',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it('refuses an episode it cannot see in the project, and creates nothing', async () => {
+    const fake = client(null);
+
+    const error = await rejection(
+      call(createEpisodeTool, fake.client, {
+        projectId: PROJECT,
+        title: 'Next',
+        followUpOf: SOURCE,
+      }),
+    );
+
+    expect(error.code).toBe('VALIDATION_FAILED');
+    expect(error.message).toContain('live episode of this project');
+    expect(fake.calls.some((c) => c.op === 'insert')).toBe(false);
+  });
+
+  it('refuses a follow-up that does not start from an idea', async () => {
+    const fake = client(null);
+
+    const error = await rejection(
+      call(createEpisodeTool, fake.client, {
+        projectId: PROJECT,
+        title: 'Next',
+        startFrom: 'script',
+        followUpOf: SOURCE,
+      }),
+    );
+
+    expect(error.message).toContain('starts from an idea');
+    expect(fake.calls.some((c) => c.op === 'insert')).toBe(false);
   });
 });

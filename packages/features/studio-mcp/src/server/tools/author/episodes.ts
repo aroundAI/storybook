@@ -16,6 +16,7 @@ import {
   insertEpisode,
   updateEpisodeRow,
 } from '@kit/episodes/server/episode-service';
+import { followUpMetadata } from '@kit/episodes/server/follow-up-service';
 import { moveEpisodeToSeason } from '@kit/episodes/server/season-service';
 
 import { McpToolError } from '../../../errors';
@@ -81,6 +82,13 @@ export const createEpisodeTool = defineTool({
       .describe(
         'How the episode starts (FILM-2205): idea (default), script (then import_screenplay; ideation and story are skipped) or video (then request_episode_video_upload or link_published_video; every stage before publish is skipped).',
       ),
+    followUpOf: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        'FILM-2206: an episode of the same project this one follows up. Its traits and numbers are frozen into this episode, and the story brief leads its performance context with them.',
+      ),
   },
   scope: 'studio:write',
   annotations: WRITE,
@@ -89,13 +97,33 @@ export const createEpisodeTool = defineTool({
 
     await requireProjectInAccount(client, context.accountId, input.projectId);
 
+    let followUp: Record<string, unknown> = {};
+
+    if (input.followUpOf) {
+      // Only the story brief reads it, and a script or video skips story
+      if ((input.startFrom ?? 'idea') !== 'idea') {
+        throw refused(
+          'A follow-up starts from an idea: its story brief is what reads the episode it follows up.',
+          'followUpOf',
+        );
+      }
+
+      const built = await followUpMetadata(client, {
+        projectId: input.projectId,
+        episodeId: input.followUpOf,
+      });
+
+      if (!built.ok) throw refused(built.refusal, 'followUpOf');
+      followUp = built.metadata;
+    }
+
     const result = await insertEpisode(client, {
       projectId: input.projectId,
       seasonId: input.seasonId ?? null,
       number: input.number,
       title: input.title,
       description: input.description ?? null,
-      metadata: creativeDirectionMetadata(input),
+      metadata: { ...creativeDirectionMetadata(input), ...followUp },
       targetDurationSeconds: input.targetDuration ?? null,
       entryMode: input.startFrom ?? 'idea',
       skippedStages: START_PLAN[input.startFrom ?? 'idea'].skipped,

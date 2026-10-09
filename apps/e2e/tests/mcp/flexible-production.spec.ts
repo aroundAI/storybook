@@ -2,12 +2,19 @@ import { expect, test } from '@playwright/test';
 
 import { callMcpTool, mintPersonalAccessToken } from '../utils/mcp';
 import { headerOnlyMp4 } from '../utils/mp4';
-import { seedProject, seedTeamAccount, uniqueStamp } from '../utils/seed';
+import {
+  insertRow,
+  seedProject,
+  seedTeamAccount,
+  serviceRoleAuth,
+  uniqueStamp,
+} from '../utils/seed';
 
 /**
  * FILM-2204: an external AI makes seasons and publishes what it has, over
  * MCP, through the functions the web calls. J1 (seasons first) and J2 (an
- * episode from a finished video, and from a video already on YouTube).
+ * episode from a finished video, and from a video already on YouTube), and
+ * FILM-2206 J5 (a follow-up).
  */
 test.describe('Flexible production over MCP', () => {
   async function connect() {
@@ -163,5 +170,66 @@ test.describe('Flexible production over MCP', () => {
     });
     expect(again.isError).toBe(true);
     expect(again.text).toMatch(/already linked to another episode/);
+  });
+
+  // FILM-2206: the follow-up's snapshot is frozen at creation and leads
+  // the story brief
+  test('a follow-up carries what its source did into the story brief', async () => {
+    const { project, call } = await connect();
+
+    const source = await call('create_episode', {
+      projectId: project.id,
+      title: 'The Gate',
+      description: 'A keeper opens a door that was never there.',
+    });
+    const sourceId = (source.structuredContent.episode as { id: string }).id;
+
+    const followUp = await call('create_episode', {
+      projectId: project.id,
+      title: 'Through the Gate',
+      description: 'What came through the door.',
+      followUpOf: sourceId,
+    });
+    expect(followUp.isError, followUp.text).toBe(false);
+    const followUpId = (followUp.structuredContent.episode as { id: string })
+      .id;
+
+    const started = await call('start_generation', {
+      stage: 'story',
+      episodeId: followUpId,
+    });
+    expect(started.isError, started.text).toBe(false);
+
+    const brief = started.structuredContent.brief as {
+      instructions: string;
+      context: { followUp?: { episodeId: string; title: string } };
+    };
+    expect(brief.instructions).toContain(
+      'This episode follows up Episode 1, "The Gate"',
+    );
+    expect(brief.context.followUp).toMatchObject({
+      episodeId: sourceId,
+      title: 'The Gate',
+    });
+
+    // An episode of another project is refused, and nothing is created
+    const other = await seedProject(await seedTeamAccount());
+    const stray = await insertRow<{ id: string }>(
+      'episodes',
+      {
+        project_id: other.id,
+        number: 1,
+        title: 'Elsewhere',
+        slug: `elsewhere-${uniqueStamp()}`,
+      },
+      serviceRoleAuth(),
+    );
+    const refused = await call('create_episode', {
+      projectId: project.id,
+      title: 'Stray',
+      followUpOf: stray.id,
+    });
+    expect(refused.isError).toBe(true);
+    expect(refused.text).toMatch(/live episode of this project/);
   });
 });

@@ -21,7 +21,11 @@ export const START_FROM = ['idea', 'script', 'video'] as const;
 export type StartFrom = (typeof START_FROM)[number];
 
 export const CreateEpisodeStartSchema = z.discriminatedUnion('startFrom', [
-  base.extend({ startFrom: z.literal('idea') }),
+  base.extend({
+    startFrom: z.literal('idea'),
+    /** FILM-2206: the episode of this project it follows up */
+    followUpOf: z.string().uuid().optional(),
+  }),
   base.extend({
     startFrom: z.literal('script'),
     script: z
@@ -60,6 +64,12 @@ export const ImportScreenplaySchema = z.object({
     .trim()
     .min(1, 'Paste the script, or choose a file')
     .max(MAX_SCRIPT_CHARS),
+});
+
+/** FILM-2206: what a follow-up would carry, read before it is created */
+export const FollowUpPreviewSchema = z.object({
+  projectId: z.string().uuid(),
+  episodeId: z.string().uuid(),
 });
 
 export type ImportScreenplayInput = z.infer<typeof ImportScreenplaySchema>;

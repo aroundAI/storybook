@@ -258,6 +258,15 @@ start_generation(stage: "story", episodeId)
   → brief.context.performance includes the source episode's findings
 ```
 
+**As built (FILM-2206):** on the Analytics page only, not video-log rows.
+The card shows the source's hook, scene count, pacing and dialogue density,
+and each video's retention and first-week views against the project median
+(no retention moments or genome findings: the snapshot holds what
+`episodeTraits` and the FILM-1912 reader give). The snapshot is frozen into
+`metadata.follow_up` at creation; the story brief puts it ahead of the
+performance block and in `brief.context.followUp`. MCP refuses `followUpOf`
+on a script or video start.
+
 ---
 
 ## 4. Functional requirements

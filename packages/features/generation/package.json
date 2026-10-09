@@ -19,6 +19,7 @@
     "./testing": "./src/testing/index.ts",
     "./canon": "./src/canon/index.ts",
     "./episode-rows": "./src/episode-rows.ts",
+    "./follow-up": "./src/follow-up.ts",
     "./formatters": "./src/formatters.ts",
     "./performance-context": "./src/performance-context.ts",
     "./project-type": "./src/project-type.ts",

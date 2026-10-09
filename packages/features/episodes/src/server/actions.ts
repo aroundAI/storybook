@@ -39,6 +39,7 @@ import {
 } from '../lib/schemas';
 import {
   CreateEpisodeStartSchema,
+  FollowUpPreviewSchema,
   ImportScreenplaySchema,
   START_PLAN,
 } from '../lib/schemas/create-episode-start.schema';
@@ -61,6 +62,7 @@ import {
   setStageSkipped,
   updateEpisodeRow,
 } from './episode.service';
+import { followUpMetadata } from './follow-up.service';
 import { importScreenplay } from './screenplay-import.service';
 import { insertSeason } from './season.service';
 
@@ -1811,6 +1813,23 @@ const setStageSkippedHandler = enhanceAction(
 export const setStageSkippedAction = returnRefusals(setStageSkippedHandler);
 
 /**
+ * FILM-2206: the snapshot a follow-up of `episodeId` would carry, for the
+ * dialog's What worked card. Read again, and frozen, when it is created.
+ */
+const getFollowUpPreview = enhanceAction(
+  async (data) => {
+    const result = await followUpMetadata(getSupabaseServerClient(), data);
+
+    if (!result.ok) throw new ActionRefusal(result.refusal);
+
+    return result.snapshot;
+  },
+  { schema: FollowUpPreviewSchema },
+);
+
+export const getFollowUpPreviewAction = returnRefusals(getFollowUpPreview);
+
+/**
  * FILM-2205: creates an episode the way it starts. From an idea it opens on
  * Ideation, as before. From a script, the script is read first (a script
  * that cannot be read creates nothing), stored as the screenplay, and
@@ -1832,6 +1851,18 @@ const createEpisodeStart = enhanceAction(
       if (!parsed.ok) throw new ActionRefusal(parsed.error);
     }
 
+    let metadata: Record<string, unknown> | undefined;
+
+    if (data.startFrom === 'idea' && data.followUpOf) {
+      const followUp = await followUpMetadata(client, {
+        projectId: data.projectId,
+        episodeId: data.followUpOf,
+      });
+
+      if (!followUp.ok) throw new ActionRefusal(followUp.refusal);
+      metadata = followUp.metadata;
+    }
+
     const plan = START_PLAN[data.startFrom];
     const inserted = await insertEpisode(
       client,
@@ -1842,6 +1873,7 @@ const createEpisodeStart = enhanceAction(
         description: data.description ?? null,
         entryMode: data.startFrom,
         skippedStages: plan.skipped,
+        metadata,
       },
       { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
     ).catch((error) => {
