@@ -82,7 +82,8 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
   });
 
   const markUploadedMutation = useMutation({
-    mutationFn: markAsExternallyUploadedAction,
+    mutationFn: (input: Parameters<typeof markAsExternallyUploadedAction>[0]) =>
+      unwrap(markAsExternallyUploadedAction(input)),
     onSuccess: () => {
       toast.success('Marked as uploaded successfully');
       setPlatformUrl('');

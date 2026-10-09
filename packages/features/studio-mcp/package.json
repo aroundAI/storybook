@@ -30,6 +30,7 @@
     "@kit/generation": "workspace:*",
     "@kit/projects": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
+    "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/storage": "workspace:*",
     "@kit/supabase": "workspace:*",

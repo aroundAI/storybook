@@ -14,9 +14,9 @@
     {
       "name": "KB-123 updatePublishedVideo checks nothing",
       "kind": "unit",
-      "file": "packages/features/episodes/src/lib/server/mutations/publish-actions.ts",
-      "find": "      next: [videoUrl],",
-      "replace": "      next: [],",
+      "file": "packages/features/episodes/src/server/episode-video.service.ts",
+      "find": "    next: [input.videoUrl],",
+      "replace": "    next: [],",
       "cwd": "packages/features/episodes",
       "test": "__tests__/episode-video-save.test.ts",
       "pattern": "refuses another episode"

@@ -149,6 +149,8 @@ function setup() {
   const tools = createGenerationTools(() => ({
     runs,
     episodeContext: () => async () => EPISODE_CONTEXT,
+    // The fixtures carry no story; FILM-2204's input check has its own tests
+    inputs: async () => {},
   }));
   const tool = (name: string) =>
     tools.find((candidate) => candidate.name === name) as McpToolDefinition;
@@ -280,6 +282,29 @@ describe('generation tools (FILM-1908)', () => {
       clientName: 'test',
     });
     expect(error.message).toContain('Ada Owner');
+  });
+
+  it('start_generation refuses a stage whose inputs the episode lacks, with MISSING_INPUTS, before opening a run (FILM-2204)', async () => {
+    const { runs, fake } = setup();
+    const tools = createGenerationTools(() => ({
+      runs,
+      episodeContext: () => async () => EPISODE_CONTEXT,
+    }));
+    const start = tools.find(
+      (candidate) => candidate.name === 'start_generation',
+    ) as McpToolDefinition;
+
+    // The fixture episode has no story: a screenplay run has nothing to read
+    const error = await rejection(
+      start.handler(
+        { stage: 'screenplay', episodeId: EPISODE_ID } as never,
+        fakeContext(fake.client),
+      ),
+    );
+
+    expect(error.code).toBe('MISSING_INPUTS');
+    expect(error.details).toMatchObject({ missing: ['story'] });
+    expect(runs.opened).toHaveLength(0);
   });
 
   it("start_generation asks for a stage's missing inputs field by field, under options", async () => {

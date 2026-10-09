@@ -16,11 +16,23 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  insertSeason,
+  listSeasons,
+  moveEpisodeToSeason,
+  reorderSeasons,
+  softDeleteSeason,
+  updateSeasonRow,
+} from '../../../server/season.service';
+import {
   CreateSeasonSchema,
+  DeleteSeasonKeepEpisodesSchema,
   DeleteSeasonSchema,
   GetProjectSeasonsSchema,
+  MoveEpisodeToSeasonSchema,
+  ReorderSeasonsSchema,
   UpdateSeasonSchema,
 } from '../../schemas/season.schema';
+import { OptimisticLockError } from '../../status-workflow';
 import type {
   DeleteSeasonResponse,
   GetProjectSeasonsResponse,
@@ -29,12 +41,10 @@ import type {
 } from '../../types';
 
 /**
- * Creates a new season for a project
- * - Auto-assigns season number if not provided
- * - Prevents duplicate season numbers within same project
+ * Creates a new season for a project (numbering and retries: insertSeason)
  * - Creates audit log entry
  */
-export const createSeasonAction = enhanceAction(
+const createSeason = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'seasons.create', projectId: data.projectId };
@@ -49,67 +59,26 @@ export const createSeasonAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Auto-assign season number with retry logic for race conditions
-    const MAX_RETRIES = 3;
-    let season;
-    let lastError;
+    const inserted = await insertSeason(
+      client,
+      {
+        projectId: data.projectId,
+        number: data.number,
+        name: data.name,
+        description: data.description,
+        directionNotes: data.directionNotes,
+      },
+      { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
+    ).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to create season');
+      throw error;
+    });
 
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      let seasonNumber = data.number;
-      if (!seasonNumber) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: existingSeasons } = await (client as any)
-          .from('seasons')
-          .select('number')
-          .eq('project_id', data.projectId)
-          .is('deleted_at', null)
-          .order('number', { ascending: false })
-          .limit(1);
-
-        seasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedSeason, error } = await (client as any)
-        .from('seasons')
-        .insert({
-          project_id: data.projectId,
-          number: seasonNumber,
-          name: data.name,
-          description: data.description ?? null,
-          direction_notes: data.directionNotes ?? null,
-        })
-        .select()
-        .single();
-
-      if (!error) {
-        season = insertedSeason;
-        break;
-      }
-
-      // Check if it's a unique constraint violation (race condition)
-      const isUniqueViolation =
-        error.code === '23505' || error.message?.includes('unique');
-
-      if (isUniqueViolation && !data.number && attempt < MAX_RETRIES - 1) {
-        // Retry with a new auto-assigned number
-        logger.warn(
-          { ...ctx, attempt, error },
-          'Season number conflict, retrying',
-        );
-        continue;
-      }
-
-      lastError = error;
-      break;
+    if (!inserted.ok) {
+      throw new ActionRefusal(inserted.refusal);
     }
 
-    if (!season) {
-      logger.error({ ...ctx, error: lastError }, 'Failed to create season');
-      throw new Error(
-        `Failed to create season: ${lastError?.message ?? 'Unknown error'}`,
-      );
-    }
+    const season = inserted.data;
 
     // Get project for audit log scope
     const { data: project } = await client
@@ -149,6 +118,8 @@ export const createSeasonAction = enhanceAction(
   },
 );
 
+export const createSeasonAction = returnRefusals(createSeason);
+
 /**
  * Fetches all seasons for a project with episode counts
  * Orders by season number
@@ -168,54 +139,13 @@ export const getProjectSeasonsAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch seasons first
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: seasons, error } = await (client as any)
-      .from('seasons')
-      .select(
-        `
-        id, project_id, number, name, description, direction_notes,
-        created_at, updated_at, deleted_at
-      `,
-      )
-      .eq('project_id', data.projectId)
-      .is('deleted_at', null)
-      .order('number', { ascending: true });
-
-    if (error) {
+    const seasonsWithCount: SeasonWithEpisodeCount[] = await listSeasons(
+      client,
+      { projectId: data.projectId },
+    ).catch((error) => {
       logger.error({ ...ctx, error }, 'Failed to fetch seasons');
       throw new Error('Failed to fetch seasons');
-    }
-
-    // Fetch episode counts separately, excluding soft-deleted episodes
-    const seasonIds = (seasons ?? []).map((s: Season) => s.id);
-    const episodeCounts: Record<string, number> = {};
-
-    if (seasonIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: counts, error: countError } = await (client as any)
-        .from('episodes')
-        .select('season_id')
-        .in('season_id', seasonIds)
-        .is('deleted_at', null);
-
-      if (!countError && counts) {
-        for (const episode of counts) {
-          if (episode.season_id) {
-            episodeCounts[episode.season_id] =
-              (episodeCounts[episode.season_id] ?? 0) + 1;
-          }
-        }
-      }
-    }
-
-    // Transform response to include episode count from our separate query
-    const seasonsWithCount: SeasonWithEpisodeCount[] = (seasons ?? []).map(
-      (season: Season) => ({
-        ...season,
-        episodeCount: episodeCounts[season.id] ?? 0,
-      }),
-    );
+    });
 
     logger.info(
       { ...ctx, count: seasonsWithCount.length },
@@ -273,33 +203,30 @@ const updateSeason = enhanceAction(
       'Season not found',
     );
 
-    // Build update object (only include provided fields)
-    const updates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
+    let updated;
 
-    if (data.name !== undefined) updates.name = data.name;
-    if (data.description !== undefined) updates.description = data.description;
-    if (data.directionNotes !== undefined)
-      updates.direction_notes = data.directionNotes;
+    try {
+      updated = await updateSeasonRow(client, {
+        seasonId: data.seasonId,
+        version: data.version,
+        name: data.name,
+        description: data.description,
+        directionNotes: data.directionNotes,
+      });
+    } catch (error) {
+      if (error instanceof OptimisticLockError) {
+        throw new ActionRefusal(error.message);
+      }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: season, error: updateError } = await (client as any)
-      .from('seasons')
-      .update(updates)
-      .eq('id', data.seasonId)
-      .is('deleted_at', null)
-      .select()
-      .single();
-
-    if (updateError) {
-      logger.error({ ...ctx, error: updateError }, 'Failed to update season');
+      logger.error({ ...ctx, error }, 'Failed to update season');
       throw new Error('Failed to update season');
     }
 
-    if (!season) {
-      throw new ActionRefusal('Season not found');
+    if (!updated.ok) {
+      throw new ActionRefusal(updated.refusal);
     }
+
+    const season = updated.data;
 
     // Create audit log
     const accountId = currentSeason.project?.account_id;
@@ -508,3 +435,143 @@ const deleteSeason = enhanceAction(
 );
 
 export const deleteSeasonAction = returnRefusals(deleteSeason);
+
+/**
+ * FILM-2201: renumbers a project's seasons in the order given. Project owner
+ * or admin (seasons_update); a list that leaves a season out or repeats one
+ * is refused.
+ */
+const reorderSeasonsHandler = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'seasons.reorder', projectId: data.projectId };
+    const client = getSupabaseServerClient();
+
+    const result = await reorderSeasons(client, data).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to reorder seasons');
+      throw error;
+    });
+
+    if (!result.ok) {
+      throw new ActionRefusal(result.refusal);
+    }
+
+    logger.info(ctx, 'Seasons reordered');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
+
+    return { seasons: result.data as Season[] };
+  },
+  { schema: ReorderSeasonsSchema },
+);
+
+export const reorderSeasonsAction = returnRefusals(reorderSeasonsHandler);
+
+/**
+ * FILM-2201: deletes a season and moves its episodes to Unsorted. Nothing of
+ * the episodes is deleted ("Delete Season & Episodes" stays deleteSeasonAction).
+ */
+const deleteSeasonKeepEpisodes = enhanceAction(
+  async (data, user) => {
+    const logger = await getLogger();
+    const ctx = { name: 'seasons.deleteKeepEpisodes', seasonId: data.seasonId };
+    const client = getSupabaseServerClient();
+
+    const { data: season } = await client
+      .from('seasons')
+      .select('id, project_id, number, name, project:projects(account_id)')
+      .eq('id', data.seasonId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    let result;
+
+    try {
+      result = await softDeleteSeason(client, data);
+    } catch (error) {
+      if (error instanceof OptimisticLockError) {
+        throw new ActionRefusal(error.message);
+      }
+
+      logger.error({ ...ctx, error }, 'Failed to delete season');
+      throw error;
+    }
+
+    if (!result.ok) {
+      throw new ActionRefusal(result.refusal);
+    }
+
+    const accountId = season?.project?.account_id;
+
+    if (season && accountId) {
+      try {
+        await createAuditLog({
+          accountId,
+          userId: user.id,
+          action: 'delete',
+          objectType: 'season',
+          objectId: season.id,
+          objectName: season.name ?? `Season ${season.number}`,
+          before: season,
+          scopes: [
+            { type: 'account', id: accountId },
+            { type: 'project', id: season.project_id },
+          ],
+          ...(await extractNetworkContext()),
+        });
+      } catch (auditError) {
+        logger.error(
+          { ...ctx, error: auditError },
+          'Failed to create audit log for season deletion (non-critical)',
+        );
+      }
+    }
+
+    logger.info(
+      { ...ctx, episodesMoved: result.data.episodesMoved },
+      'Season deleted, episodes kept',
+    );
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
+
+    return result.data;
+  },
+  { schema: DeleteSeasonKeepEpisodesSchema },
+);
+
+export const deleteSeasonKeepEpisodesAction = returnRefusals(
+  deleteSeasonKeepEpisodes,
+);
+
+/** FILM-2201: moves an episode into a season of its project, or to Unsorted. */
+const moveEpisodeToSeasonHandler = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.moveToSeason', episodeId: data.episodeId };
+    const client = getSupabaseServerClient();
+
+    let result;
+
+    try {
+      result = await moveEpisodeToSeason(client, data);
+    } catch (error) {
+      if (error instanceof OptimisticLockError) {
+        throw new ActionRefusal(error.message);
+      }
+
+      logger.error({ ...ctx, error }, 'Failed to move episode');
+      throw error;
+    }
+
+    if (!result.ok) {
+      throw new ActionRefusal(result.refusal);
+    }
+
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
+
+    return result.data;
+  },
+  { schema: MoveEpisodeToSeasonSchema },
+);
+
+export const moveEpisodeToSeasonAction = returnRefusals(
+  moveEpisodeToSeasonHandler,
+);

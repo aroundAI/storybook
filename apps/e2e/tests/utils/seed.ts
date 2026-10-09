@@ -458,8 +458,8 @@ export async function seedAdditionalPublish(
 }
 
 /**
- * An episode with one shot, which is what unlocks its publish page — the page
- * renders "Publishing Locked" until Visual Studio has produced shots.
+ * An episode with one shot. (Its publish page once needed one to unlock; since
+ * FILM-2202 it opens with any video, and shows the attach panel without.)
  */
 export async function seedEpisodeWithShot(
   projectId: string,

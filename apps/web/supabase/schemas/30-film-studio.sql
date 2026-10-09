@@ -31,6 +31,9 @@ create table if not exists public.seasons (
   name varchar(255),
   description text,
   direction_notes text,
+  -- FILM-2201: a cover, and optimistic locking like episodes.version
+  cover_url text,
+  version integer not null default 1,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,
@@ -88,6 +91,13 @@ create table if not exists public.episodes (
   -- FILM-2002: EditState {sessionId, editedBy, since, lastDeliveredAt, editedIn, versions}
   edit_state jsonb default '{}'::jsonb not null
     constraint episodes_edit_state_object check (jsonb_typeof(edit_state) = 'object'),
+  -- FILM-2201: how the episode started, and the stages its author skipped
+  entry_mode text not null default 'idea'
+    constraint episodes_entry_mode_check
+    check (entry_mode in ('idea', 'script', 'video')),
+  skipped_stages text[] not null default '{}'
+    constraint episodes_skipped_stages_check
+    check (skipped_stages <@ array['ideation', 'story', 'screenplay', 'shots', 'audio']::text[]),
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,

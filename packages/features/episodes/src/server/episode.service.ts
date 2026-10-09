@@ -5,7 +5,9 @@ import type { Database, Json } from '@kit/supabase/database';
 import type { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { generateEpisodeSlug } from '../lib/slug-utils';
+import { SKIPPABLE_STAGES, type SkippableStage } from '../lib/stage-state';
 import { OptimisticLockError } from '../lib/status-workflow';
+import type { EntryMode } from '../lib/types';
 
 export { OptimisticLockError };
 
@@ -34,6 +36,9 @@ export interface InsertEpisodeInput {
   targetDurationSeconds?: number | null;
   /** Creative direction the wizard seeds the story with; never set over MCP. */
   storyData?: Record<string, unknown> | null;
+  /** FILM-2205: how the episode starts, and the stages that start skips */
+  entryMode?: EntryMode;
+  skippedStages?: SkippableStage[];
 }
 
 export type InsertEpisodeResult =
@@ -142,6 +147,9 @@ export async function insertEpisode(
     if (input.storyData !== undefined) {
       row.story_data = input.storyData as Json;
     }
+
+    if (input.entryMode) row.entry_mode = input.entryMode;
+    if (input.skippedStages) row.skipped_stages = input.skippedStages;
 
     const { data: inserted, error } = await client
       .from('episodes')
@@ -466,4 +474,72 @@ export async function linkAssetsToEpisode(
   }
 
   throw new OptimisticLockError('episode');
+}
+
+/**
+ * Marks a stage skipped, or clears the mark (FILM-2201), at the version the
+ * caller read. A skipped stage that gets output reads as done anyway
+ * (deriveStageViews), so writing to it needs no un-skip.
+ */
+export async function setStageSkipped(
+  client: Client,
+  input: {
+    episodeId: string;
+    version: number;
+    stage: SkippableStage;
+    skipped: boolean;
+  },
+): Promise<
+  | {
+      ok: true;
+      data: { id: string; skipped_stages: string[]; version: number };
+    }
+  | { ok: false; refusal: string }
+> {
+  const { data: episode, error: readError } = await client
+    .from('episodes')
+    .select('id, skipped_stages, version')
+    .eq('id', input.episodeId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(`Failed to read episode: ${readError.message}`);
+  }
+
+  if (!episode) {
+    return { ok: false, refusal: 'Episode not found.' };
+  }
+
+  if (episode.version !== input.version) {
+    throw new OptimisticLockError('episode');
+  }
+
+  const others = episode.skipped_stages.filter(
+    (stage) => stage !== input.stage,
+  );
+  const skippedStages = input.skipped
+    ? SKIPPABLE_STAGES.filter(
+        (stage) => stage === input.stage || others.includes(stage),
+      )
+    : others;
+
+  const { data, error } = await client
+    .from('episodes')
+    .update({ skipped_stages: skippedStages })
+    .eq('id', input.episodeId)
+    .eq('version', input.version)
+    .is('deleted_at', null)
+    .select('id, skipped_stages, version')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to update episode: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new OptimisticLockError('episode');
+  }
+
+  return { ok: true, data };
 }

@@ -33,7 +33,7 @@ acceptance_criteria:
     reason: "retired — `pipeline-progress.tsx` went with the legacy StoryStudio in e2d42522; the route tabs show lock state instead"
   - text: "Active tab persists in URL query params"
     met: false
-    reason: "retired — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:150`)"
+    reason: "retired — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:40`, activeStage)"
   - text: "Polls episode during generation"
     met: false
     reason: "unverified — the job is polled with backoff (`packages/features/episodes/src/hooks/use-active-generation-job.ts:111`); no test drives it"

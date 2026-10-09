@@ -12,6 +12,7 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { insertEpisodesAtNextNumbers } from '../../../server/episode.service';
+import { insertSeason } from '../../../server/season.service';
 import {
   AnalyzeSeasonSchema,
   GenerateSeasonEpisodesSchema,
@@ -284,43 +285,37 @@ export const generateSeasonEpisodesAction = enhanceAction(
       // 4. Create Season Record
       let seasonId: string | null = null;
 
-      // Get the next season number
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existingSeasons } = await (client as any)
-        .from('seasons')
-        .select('number')
-        .eq('project_id', data.projectId)
-        .is('deleted_at', null)
-        .order('number', { ascending: false })
-        .limit(1);
+      let insertedSeason;
 
-      const nextSeasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
-
-      // Create the season
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedSeason, error: seasonError } = await (client as any)
-        .from('seasons')
-        .insert({
-          project_id: data.projectId,
-          number: nextSeasonNumber,
-          name: data.seasonName || `Season ${nextSeasonNumber}`,
-          description: data.premise || null,
-        })
-        .select()
-        .single();
-
-      if (seasonError) {
+      try {
+        insertedSeason = await insertSeason(
+          client,
+          {
+            projectId: data.projectId,
+            name: data.seasonName,
+            description: data.premise || null,
+          },
+          { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
+        );
+      } catch (seasonError) {
         console.error('[Season Generate] Season creation failed:', seasonError);
         return {
           success: false as const,
-          error: `Failed to create season: ${seasonError.message}`,
+          error:
+            seasonError instanceof Error
+              ? seasonError.message
+              : 'Failed to create season',
         };
       }
 
-      seasonId = insertedSeason.id;
+      // Only a caller-chosen number is refused; this one is auto-assigned
+      if (!insertedSeason.ok) {
+        return { success: false as const, error: insertedSeason.refusal };
+      }
+
+      seasonId = insertedSeason.data.id;
       logger.info(
-        { ...ctx, seasonId, seasonNumber: nextSeasonNumber },
+        { ...ctx, seasonId, seasonNumber: insertedSeason.data.number },
         'Season created',
       );
 

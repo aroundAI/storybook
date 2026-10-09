@@ -1,0 +1,46 @@
+spec_id: "FILM-2202"
+title: "Publish What You Have: no locked stages, publish any episode with a video"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DONE
+effort: S
+dependencies:
+  - spec_id: "FILM-2201"
+    note: "deriveStageViews, canPublish, episode_renders.source"
+summary: >
+  The web half of the owner's second ask. The episode tabs stop locking:
+  each is reachable, and an empty one says what it needs. Publish opens when
+  the episode has any video. With none, the Publish page is the upload
+  surface: a drop zone and a field for an already-published link. An upload
+  is stored where the publish screen keeps one (localized_videos) and moves
+  the episode to ready. Design: EDD J4, §6.5.
+acceptance_criteria:
+  - text: "episode-workspace-tabs uses deriveStageViews; no tab is disabled"
+    met: true
+    evidence: "Met (#661): every tab is a link; each shows its stage state (done, not started, skipped) from deriveStageViews in data-stage-state and its title. Audio shows none, since the workspace does not load the audio cue count and a guess would be wrong. The publish page's own lock ('Publishing Locked' until shots existed) is gone too. Seen in a browser: publish-what-you-have.spec.ts 'no stage is locked', red on main (ca2cbcf07) where the tab has no href"
+  - text: "Publish opens when canPublish is true (a final, localized or ready video, or a publish already made); with none the page renders AttachVideoPanel (drop zone and published-link field) instead of the publish form"
+    met: true
+    evidence: "Met (#661): publish/page.tsx reads canPublish (packages/features/episodes/src/lib/stage-state.ts:76) with the episode's publishes from the publish screen's own query; AttachVideoPanel (publish/_components/attach-video-panel.tsx) uploads through the existing presigned path and links through markAsExternallyUploadedAction. canPublish: stage-state.test.ts"
+  - text: "An uploaded video is stored through saveEpisodeVideo, the one function the publish screen and the MCP tools share, and moves the episode to ready unless it is already published"
+    met: true
+    evidence: "Met (#661): packages/features/episodes/src/server/episode-video.service.ts:19 saveEpisodeVideo, called by updatePublishedVideoAction. Changed from the spec: no episode_renders row (the publish screen already stores an upload in localized_videos, and a render row needs an open Studio session under RLS). Ready follows deliver_edit, which also sets ready from any status but published. Test: episode-video-save.test.ts (ready, published kept, removal keeps the status)"
+  - text: "A pasted published link goes through markAsExternallyUploadedAction; a video already linked to another episode is refused with a message"
+    met: true
+    evidence: "Met (#661): linkPublishedVideo (packages/features/publishing/src/server/link-published-video.service.ts:20) refuses a platform video already linked to another live episode, since analytics would count it twice; the action and FILM-2204's tool call it. Test: upload-only-flow.test.ts 'refuses a video already linked', red with the check removed"
+  - text: "Playwright evidence: an episode with no story, screenplay or shots uploads a video and reaches the publish form; screenshots before and after"
+    met: true
+    evidence: "Met (#661): publish-what-you-have.spec.ts, 4 passed (local Supabase, 2026-10-09), all red on main (ca2cbcf07). A title-only episode shows Add the finished video; an uploaded MP4 replaces it with the publish form (Publish All). A bad link is refused inline and the panel stays. Screenshots in the PR"
+test_plan:
+  unit: []
+  integration: []
+  e2e:
+    - {text: "apps/e2e/tests/flexible-production/publish-what-you-have.spec.ts, red against the hasShotList gate", met: true, evidence: "4 passed (local Supabase, 2026-10-09); red on main (ca2cbcf07), the shot-list tab a locked div"}
+open_questions: []
+notes: ""
+feature:
+  database: null
+  queries: []
+  actions: ["updatePublishedVideoAction", "markAsExternallyUploadedAction"]
+  ui: ["episode-workspace-tabs", "AttachVideoPanel"]
+  provider_integration: null

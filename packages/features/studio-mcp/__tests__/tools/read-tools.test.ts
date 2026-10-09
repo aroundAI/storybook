@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { deriveStageViews } from '@kit/episodes/lib/stage-state';
+
 import { McpToolError } from '../../src/errors';
 import {
   PAGE_LIMIT_MAX,
@@ -34,9 +36,10 @@ const PAGED_TOOLS = [
 ];
 
 describe('read tool registration', () => {
-  it('registers the eight read tools, all studio:read and read-only', () => {
+  it('registers the nine read tools, all studio:read and read-only', () => {
     expect(readTools.map((tool) => tool.name).sort()).toEqual(
       [
+        'list_seasons',
         'get_dialogue',
         'get_episode',
         'get_project',
@@ -205,6 +208,10 @@ describe('list_episodes and get_episode', () => {
       ),
     ).toBe(true);
 
+    // list_episodes reads episodes more than once (season positions); the
+    // scope check is get_episode's first read
+    const before = fake.calls.length;
+
     await expect(
       getEpisodeTool.handler(
         { episodeId: EPISODE_ID },
@@ -212,7 +219,9 @@ describe('list_episodes and get_episode', () => {
       ),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
 
-    const getSelect = fake.calls.filter((call) => call.table === 'episodes')[1];
+    const getSelect = fake.calls
+      .slice(before)
+      .find((call) => call.table === 'episodes');
     expect(
       getSelect?.filters.some(
         (filter) =>
@@ -296,13 +305,17 @@ describe('list_episodes and get_episode', () => {
       'screenplay',
       'shots',
       'audio',
+      'video',
       'publish',
     ]);
     expect(content.stages.find((s) => s.key === 'story')?.state).toBe('done');
     expect(content.stages.find((s) => s.key === 'shots')?.state).toBe('done');
-    expect(content.stages.find((s) => s.key === 'audio')?.state).toBe(
-      'available',
-    );
+    // FILM-2204: empty, with its generator's inputs present
+    expect(content.stages.find((s) => s.key === 'audio')).toMatchObject({
+      state: 'empty',
+      canGenerate: true,
+      missing: [],
+    });
     expect(content.stages.find((s) => s.key === 'story')?.origin).toEqual({
       kind: 'external',
       clientName: 'Claude',
@@ -318,39 +331,91 @@ describe('list_episodes and get_episode', () => {
   });
 });
 
-describe('deriveStages', () => {
-  it('follows the workspace tabs: a stage unlocks when the one before has data', () => {
-    const stages = deriveStages({
-      status: 'draft',
-      storyData: null,
-      screenplayData: null,
-      shotList: null,
-      finalVideoUrl: null,
-      shotCount: 0,
-      dialogueLineCount: 0,
-      audioCueCount: 0,
-      origin: null,
-    });
+describe('deriveStages (FILM-2204)', () => {
+  const base: Parameters<typeof deriveStages>[0] = {
+    status: 'draft',
+    storyData: null,
+    screenplayData: null,
+    shotList: null,
+    finalVideoUrl: null,
+    shotCount: 0,
+    dialogueLineCount: 0,
+    audioCueCount: 0,
+    origin: null,
+  };
 
-    expect(stages.map((s) => [s.key, s.state])).toEqual([
-      ['ideation', 'available'],
-      ['story', 'available'],
-      ['screenplay', 'locked'],
-      ['shots', 'locked'],
-      ['audio', 'locked'],
-      ['publish', 'locked'],
+  it('locks nothing: a new episode is empty everywhere, with what each generator needs', () => {
+    const stages = deriveStages(base);
+
+    expect(
+      stages.map((s) => [s.key, s.state, s.canGenerate, s.missing]),
+    ).toEqual([
+      ['ideation', 'empty', true, []],
+      ['story', 'empty', true, []],
+      ['screenplay', 'empty', false, ['story']],
+      ['shots', 'empty', false, ['screenplay']],
+      ['audio', 'empty', false, ['shots']],
+      ['video', 'empty', false, []],
+      ['publish', 'empty', false, ['video']],
     ]);
+  });
+
+  // The web workspace reads deriveStageViews; MCP must answer the same for
+  // every combination of earlier output
+  const combos = Array.from({ length: 16 }, (_, bits) => ({
+    story: Boolean(bits & 1),
+    screenplay: Boolean(bits & 2),
+    shots: Boolean(bits & 4),
+    video: Boolean(bits & 8),
+  }));
+
+  it.each(combos)('matches the web workspace for %o', (combo) => {
+    const inputs = {
+      ...base,
+      storyData: combo.story ? { logline: 'x' } : null,
+      screenplayData: combo.screenplay ? { scenes: [] } : null,
+      shotCount: combo.shots ? 2 : 0,
+      finalVideoUrl: combo.video ? 'https://cdn/final.mp4' : null,
+      skippedStages: ['ideation'],
+    };
+
+    const web = deriveStageViews(inputs);
+    const mcp = deriveStages(inputs);
+
+    expect(
+      mcp.map(({ key, state, canGenerate, missing }) => ({
+        key,
+        state,
+        canGenerate,
+        missing,
+      })),
+    ).toEqual(web);
+  });
+
+  it('opens publish with a video, not with shots, and calls it done once published', () => {
+    const publishOf = (input: typeof base) =>
+      deriveStages(input).find((stage) => stage.key === 'publish');
+
+    expect(publishOf({ ...base, shotCount: 3 })?.canGenerate).toBe(false);
+    expect(
+      publishOf({ ...base, finalVideoUrl: 'https://cdn/final.mp4' }),
+    ).toMatchObject({ state: 'empty', canGenerate: true });
+    expect(
+      publishOf({
+        ...base,
+        status: 'published',
+        finalVideoUrl: 'https://cdn/final.mp4',
+      })?.state,
+    ).toBe('done');
   });
 
   it('reads per-stage origin from episodes.generation_origin when present', () => {
     const stages = deriveStages({
+      ...base,
       status: 'storyboard',
       storyData: { logline: 'x' },
       screenplayData: { scenes: [] },
-      shotList: null,
-      finalVideoUrl: null,
       shotCount: 3,
-      dialogueLineCount: 0,
       audioCueCount: 1,
       origin: {
         story: { kind: 'external', client_name: 'Claude' },
@@ -367,11 +432,11 @@ describe('deriveStages', () => {
       kind: 'server',
       model: 'gemini',
     });
-    expect(stages.find((s) => s.key === 'audio')?.origin).toEqual({
-      kind: 'server',
+    expect(stages.find((s) => s.key === 'audio')).toMatchObject({
+      state: 'done',
+      origin: { kind: 'server' },
     });
     expect(stages.find((s) => s.key === 'shots')?.origin).toBeNull();
-    expect(stages.find((s) => s.key === 'audio')?.state).toBe('done');
   });
 });
 

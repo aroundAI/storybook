@@ -25,15 +25,18 @@ const EVIDENCE = process.env.CAPTURE_EVIDENCE
   ? (process.env.EVIDENCE_DIR ?? 'evidence')
   : null;
 
+// FILM-2205: the stages are a progress rail (aria-current="step"); Video
+// opens Publish, whose step is the one marked; Edit record is a page link
 const TABS = [
-  { id: 'ideation', path: 'ideation' },
-  { id: 'story', path: 'story' },
-  { id: 'screenplay', path: 'screenplay' },
-  { id: 'shot-list', path: 'visual-studio' },
-  { id: 'audio', path: 'audio-studio' },
-  { id: 'publish', path: 'publish' },
+  { id: 'ideation', path: 'ideation', current: 'step' },
+  { id: 'story', path: 'story', current: 'step' },
+  { id: 'screenplay', path: 'screenplay', current: 'step' },
+  { id: 'shot-list', path: 'visual-studio', current: 'step' },
+  { id: 'audio', path: 'audio-studio', current: 'step' },
+  { id: 'video', path: 'publish', current: null },
+  { id: 'publish', path: 'publish', current: 'step' },
   // FILM-2006: the read-only Edit record, not the retired Edit Suite
-  { id: 'edit', path: 'edit' },
+  { id: 'edit', path: 'edit', current: 'page' },
 ];
 
 const NOT_FOUND = 'Sorry, this page does not exist.';
@@ -111,7 +114,9 @@ test.describe('Episode workspace tabs (FILM-607)', () => {
           timeout: 5_000,
         });
       }).toPass({ timeout: 60_000 });
-      await expect(link).toHaveAttribute('aria-current', 'page');
+      if (tab.current) {
+        await expect(link).toHaveAttribute('aria-current', tab.current);
+      }
       await expect(page.getByText(NOT_FOUND)).toHaveCount(0);
     }
 

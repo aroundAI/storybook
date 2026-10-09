@@ -51,7 +51,9 @@ vi.mock('@kit/supabase/server-client', () => ({
       const builder = {
         select: () => builder,
         eq: () => builder,
+        is: () => builder,
         single: async () => ({ data: state.stored, error: null }),
+        maybeSingle: async () => ({ data: state.stored, error: null }),
         update: (payload: unknown) => {
           state.updates.push(payload);
           return {
@@ -67,7 +69,7 @@ vi.mock('@kit/supabase/server-client', () => ({
 }));
 
 beforeEach(() => {
-  state.stored = {};
+  state.stored = { status: 'draft' };
   state.updates = [];
 });
 
@@ -80,7 +82,24 @@ describe('updatePublishedVideoAction', () => {
     });
 
     expect(result).toEqual({ ok: true, data: { success: true } });
-    expect(state.updates).toEqual([{ localized_videos: { en: own } }]);
+    // FILM-2202: an episode with a video is ready to publish, whatever its stages
+    expect(state.updates).toEqual([
+      { localized_videos: { en: own }, status: 'ready' },
+    ]);
+  });
+
+  it('leaves a published episode published', async () => {
+    state.stored = { status: 'published' };
+
+    await updatePublishedVideoAction({
+      episodeId: E,
+      language: 'en',
+      videoUrl: own,
+    });
+
+    expect(state.updates).toEqual([
+      { localized_videos: { en: own }, status: 'published' },
+    ]);
   });
 
   it("refuses another episode's video and writes nothing (the KB-123 reproduction)", async () => {
@@ -95,7 +114,10 @@ describe('updatePublishedVideoAction', () => {
   });
 
   it('keeps a video the episode already holds, and still removes one', async () => {
-    state.stored = { localized_videos: { hi: legacy, en: own } };
+    state.stored = {
+      status: 'editing',
+      localized_videos: { hi: legacy, en: own },
+    };
 
     expect(
       (
@@ -115,9 +137,13 @@ describe('updatePublishedVideoAction', () => {
         })
       ).ok,
     ).toBe(true);
+    // A removal leaves the status as it was
     expect(state.updates).toEqual([
-      { localized_videos: { hi: legacy, en: own, es: legacy } },
-      { localized_videos: { hi: legacy } },
+      {
+        localized_videos: { hi: legacy, en: own, es: legacy },
+        status: 'ready',
+      },
+      { localized_videos: { hi: legacy }, status: 'editing' },
     ]);
   });
 });

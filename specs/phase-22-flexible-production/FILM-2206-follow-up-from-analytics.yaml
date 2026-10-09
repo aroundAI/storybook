@@ -1,0 +1,48 @@
+spec_id: "FILM-2206"
+title: "Follow-up From Analytics: the next episode starts from what worked"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DONE
+effort: S
+dependencies:
+  - spec_id: "FILM-2205"
+    note: "the start-from dialog it opens"
+  - spec_id: "FILM-1912"
+    note: "the performance context the snapshot comes from"
+summary: >
+  Make a follow-up on an episode's analytics page and on video-log rows
+  opens the new-episode dialog on the idea tile, in the same season, with a
+  What worked card. The new episode stores a frozen snapshot of the source
+  episode's findings in metadata.follow_up, and the story brief puts it
+  first in its performance context. create_episode takes followUpOf over
+  MCP. Design: EDD J5, §6.6, §7.5.
+acceptance_criteria:
+  - text: "Make a follow-up (data-test make-follow-up) opens the dialog on the idea tile with the title, season and a read-only What worked card"
+    met: true
+    evidence: "Met (#661): the analytics page (episodes/[episodeSlug]/analytics/page.tsx) has Make a follow-up in its header; it opens CreateEpisodeDialog with followUp, which sets the idea tile, the title 'Follow-up to <title>', the episode's season (the picker reads the project's seasons once it opens) and followUpOf, and shows FollowUpCard (data-test follow-up-card): the source's hook, scenes, pacing and dialogue density, and each video's retention and first-week views against the project median, or why there are none, read through getFollowUpPreviewAction. Changed from the spec: not on video-log rows, only the analytics page"
+  - text: "followUpOf (web and create_episode) refuses an episode from another project and writes metadata.follow_up {episode_id, snapshot}"
+    met: true
+    evidence: "Met (#661): followUpMetadata (packages/features/episodes/src/server/follow-up.service.ts) builds the snapshot with buildFollowUpSnapshot (packages/features/generation/src/follow-up.ts), which reads the source only as a live episode of the same project (null otherwise, refused as 'must be a live episode of this project'), and returns {follow_up: {episode_id, snapshot}} for createEpisodeStartAction and MCP create_episode alike. MCP also refuses followUpOf on a script or video start, which skips the story that reads it. Tests: follow-up.test.ts (generation), flexible-production-tools.test.ts (written, refused, refused for a script start; red with the metadata dropped)"
+  - text: "The story brief's performance context leads with the snapshot, in both modes"
+    met: true
+    evidence: "Met (#661): storyStage.prepare reads followUpOf(episode.metadata), defuses its strings with sanitizeStrings (KB-101), and puts renderFollowUp ahead of renderPerformanceContext; the snapshot also goes in the brief's context as followUp. prepare builds the brief for both modes. Test: stages.test.ts 'a follow-up's snapshot comes first', with and without the run's block (red with the follow-up dropped from the text)"
+  - text: "Playwright evidence of the dialog and the stored snapshot"
+    met: true
+    evidence: "Met (#661): follow-up.spec.ts and the follow-up test in tests/mcp/flexible-production.spec.ts pass (local Supabase, 2026-10-09), both red on main (ca2cbcf07). The dialog opens on From an idea with the What worked card; the new episode stores metadata.follow_up naming its source. Screenshot in the PR"
+test_plan:
+  unit:
+    - {text: "brief builder puts the follow-up snapshot first", met: true, evidence: "packages/features/generation/__tests__/stages.test.ts; follow-up.test.ts (snapshot, medians, project scope)"}
+  integration: []
+  e2e:
+    - {text: "MCP: create_episode with followUpOf, then start_generation story carries the snapshot", met: true, evidence: "passed (local Supabase, 2026-10-09); red on main (ca2cbcf07)"}
+    - {text: "apps/e2e/tests/flexible-production/follow-up.spec.ts", met: true, evidence: "passed (local Supabase, 2026-10-09); red on main (ca2cbcf07)"}
+open_questions: []
+notes: ""
+feature:
+  database: null
+  queries: []
+  actions: ["createEpisodeStartAction (followUpOf)", "getFollowUpPreviewAction"]
+  mcp_tools: ["create_episode (followUpOf)"]
+  ui: ["make-follow-up button", "FollowUpCard (What worked)"]
+  provider_integration: null

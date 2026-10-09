@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { SKIPPABLE_STAGES } from './stage-state';
+
 /**
  * Episode status enum matching database CHECK constraint
  * Workflow: draft → story → storyboard → generating → editing → ready → published
@@ -77,6 +79,14 @@ export const GetEpisodeSchema = z.object({
  * Schema for updating episode status with workflow validation
  * Requires version for optimistic locking
  */
+/** FILM-2201: mark a stage skipped, or clear the mark */
+export const SetStageSkippedSchema = z.object({
+  episodeId: z.string().uuid(),
+  version: z.number().int().positive(),
+  stage: z.enum(SKIPPABLE_STAGES),
+  skipped: z.boolean(),
+});
+
 export const UpdateEpisodeStatusSchema = z.object({
   episodeId: z.string().uuid(),
   status: EpisodeStatusSchema,
@@ -319,6 +329,9 @@ export {
   GetProjectSeasonsSchema,
   UpdateSeasonSchema,
   DeleteSeasonSchema,
+  ReorderSeasonsSchema,
+  DeleteSeasonKeepEpisodesSchema,
+  MoveEpisodeToSeasonSchema,
   type CreateSeasonInput,
   type GetProjectSeasonsInput,
   type UpdateSeasonInput,

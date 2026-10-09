@@ -25,6 +25,8 @@ export const GetProjectSeasonsSchema = z.object({
  */
 export const UpdateSeasonSchema = z.object({
   seasonId: z.string().uuid(),
+  /** The version read; when given, a season that moved since is refused (FILM-2201) */
+  version: z.number().int().positive().optional(),
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(1000).optional(),
   directionNotes: z.string().max(5000).optional(),
@@ -35,6 +37,28 @@ export const UpdateSeasonSchema = z.object({
  */
 export const DeleteSeasonSchema = z.object({
   seasonId: z.string().uuid(),
+});
+
+/**
+ * FILM-2201: renumber a project's seasons in the order given (every live
+ * season, once)
+ */
+export const ReorderSeasonsSchema = z.object({
+  projectId: z.string().uuid(),
+  seasonIds: z.array(z.string().uuid()).min(1).max(500),
+});
+
+/** FILM-2201: delete a season and move its episodes to Unsorted */
+export const DeleteSeasonKeepEpisodesSchema = z.object({
+  seasonId: z.string().uuid(),
+  version: z.number().int().positive(),
+});
+
+/** FILM-2201: move an episode into a season of its project, or to Unsorted (null) */
+export const MoveEpisodeToSeasonSchema = z.object({
+  episodeId: z.string().uuid(),
+  version: z.number().int().positive(),
+  seasonId: z.string().uuid().nullable(),
 });
 
 export type CreateSeasonInput = z.infer<typeof CreateSeasonSchema>;

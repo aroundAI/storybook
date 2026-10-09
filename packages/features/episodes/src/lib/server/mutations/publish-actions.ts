@@ -12,6 +12,8 @@ import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { episodeVideoSaveRefusal } from '@kit/storage/episode-video';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { saveEpisodeVideo } from '../../../server/episode-video.service';
+
 const PublishVideoSchema = z.object({
   episodeId: z.string().uuid(),
   language: z.string(),
@@ -19,60 +21,19 @@ const PublishVideoSchema = z.object({
 });
 
 /**
- * Update full video URL for a specific language. A new video must be one of
- * the episode's own uploads (KB-123); an empty `videoUrl` removes it.
+ * Update full video URL for a specific language (rules: saveEpisodeVideo).
  */
 const updatePublishedVideo = enhanceAction(
   async ({ episodeId, language, videoUrl }) => {
-    const client = getSupabaseServerClient();
-
-    const { data: episode, error: fetchError } = await client
-      .from('episodes')
-      .select('project_id, final_video_url, localized_videos, shorts_groups')
-      .eq('id', episodeId)
-      .single();
-
-    if (fetchError) {
-      throw new Error(`Failed to fetch episode: ${fetchError.message}`);
-    }
-
-    const refusal = episodeVideoSaveRefusal({
+    const result = await saveEpisodeVideo(getSupabaseServerClient(), {
       episodeId,
-      projectId: episode.project_id,
-      stored: episode,
-      next: [videoUrl],
+      language,
+      videoUrl,
     });
 
-    if (refusal) {
-      throw new ActionRefusal(refusal);
+    if (!result.ok) {
+      throw new ActionRefusal(result.refusal);
     }
-
-    const currentVideos =
-      (episode.localized_videos as Record<string, string>) || {};
-    const updatedVideos = { ...currentVideos };
-
-    if (videoUrl) {
-      updatedVideos[language] = videoUrl;
-    } else {
-      delete updatedVideos[language];
-    }
-
-    const { data: updated, error: updateError } = await client
-      .from('episodes')
-      .update({ localized_videos: updatedVideos })
-      .eq('id', episodeId)
-      .select('id');
-
-    if (updateError) {
-      throw new Error(
-        `Failed to update published video: ${updateError.message}`,
-      );
-    }
-
-    requireAffectedRows(
-      updated,
-      "You can't change this episode's published videos.",
-    );
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,

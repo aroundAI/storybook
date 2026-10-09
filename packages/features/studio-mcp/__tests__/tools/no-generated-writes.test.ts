@@ -70,7 +70,7 @@ describe('author tools never carry generated-content inputs', () => {
     },
   );
 
-  it('registers exactly the six author tools, all studio:write and not read-only', () => {
+  it('registers exactly the author tools, all studio:write and not read-only', () => {
     expect(authorTools.map((tool) => tool.name).sort()).toEqual(
       [
         'create_episode',
@@ -79,13 +79,26 @@ describe('author tools never carry generated-content inputs', () => {
         'update_episode',
         'update_project',
         'upsert_asset',
+        // FILM-2204
+        'create_season',
+        'update_season',
+        'reorder_seasons',
+        'delete_season',
+        'set_stage_skipped',
+        'import_screenplay',
+        'request_episode_video_upload',
+        'finalize_episode_video',
+        'link_published_video',
       ].sort(),
     );
 
     for (const tool of authorTools) {
       expect(tool.scope).toBe('studio:write');
       expect(tool.annotations.readOnlyHint).toBe(false);
-      expect(tool.annotations.destructiveHint).toBe(false);
+      // Deleting a season deletes it (its episodes move to Unsorted)
+      expect(tool.annotations.destructiveHint).toBe(
+        tool.name === 'delete_season',
+      );
     }
   });
 });

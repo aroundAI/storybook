@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 import { sanitizeFilename } from '../src/lib/upload-only-format';
 
 /**
@@ -20,6 +22,7 @@ const state = vi.hoisted(() => ({
   writeError: null as { message: string } | null,
   inserted: [] as Record<string, unknown>[],
   updated: [] as Record<string, unknown>[],
+  elsewhere: [] as Array<{ id: string }>,
 }));
 
 vi.mock('server-only', () => ({}));
@@ -44,6 +47,9 @@ function query(table: string) {
   const builder = {
     select: () => builder,
     eq: () => builder,
+    neq: () => builder,
+    is: () => builder,
+    limit: async () => ({ data: state.elsewhere, error: null }),
     insert: (row: Record<string, unknown>) => {
       mode = 'insert';
       state.inserted.push(row);
@@ -99,6 +105,7 @@ beforeEach(() => {
   state.writeError = null;
   state.inserted = [];
   state.updated = [];
+  state.elsewhere = [];
 });
 
 describe('generateExportPackageAction', () => {
@@ -216,13 +223,34 @@ describe('generateExportPackageAction', () => {
 });
 
 describe('markAsExternallyUploadedAction', () => {
+  it('refuses a video already linked to another episode, and writes nothing', async () => {
+    // FILM-2202: analytics attribute a video by its platform id; a second
+    // link would count it twice
+    state.elsewhere = [{ id: 'other-publish' }];
+
+    await expect(
+      unwrap(
+        markAsExternallyUploadedAction({
+          episodeId: EPISODE,
+          platform: 'youtube',
+          platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
+        }),
+      ),
+    ).rejects.toThrow('already linked to another episode');
+
+    expect(state.inserted).toEqual([]);
+    expect(state.updated).toEqual([]);
+  });
+
   it('records the upload as a publish with no OAuth connection', async () => {
     await expect(
-      markAsExternallyUploadedAction({
-        episodeId: EPISODE,
-        platform: 'youtube',
-        platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
-      }),
+      unwrap(
+        markAsExternallyUploadedAction({
+          episodeId: EPISODE,
+          platform: 'youtube',
+          platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
+        }),
+      ),
     ).resolves.toEqual({ publishId: PUBLISH });
 
     expect(state.inserted).toEqual([
@@ -243,11 +271,13 @@ describe('markAsExternallyUploadedAction', () => {
     state.existingPublish = { id: 'existing-publish' };
 
     await expect(
-      markAsExternallyUploadedAction({
-        episodeId: EPISODE,
-        platform: 'youtube',
-        platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
-      }),
+      unwrap(
+        markAsExternallyUploadedAction({
+          episodeId: EPISODE,
+          platform: 'youtube',
+          platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
+        }),
+      ),
     ).resolves.toEqual({ publishId: 'existing-publish' });
 
     expect(state.inserted).toEqual([]);
@@ -261,11 +291,13 @@ describe('markAsExternallyUploadedAction', () => {
   });
 
   it('keeps the link even when no content id can be read from it', async () => {
-    await markAsExternallyUploadedAction({
-      episodeId: EPISODE,
-      platform: 'tiktok',
-      platformUrl: 'https://www.tiktok.com/@someone',
-    });
+    await unwrap(
+      markAsExternallyUploadedAction({
+        episodeId: EPISODE,
+        platform: 'tiktok',
+        platformUrl: 'https://www.tiktok.com/@someone',
+      }),
+    );
 
     expect(state.inserted[0]).toMatchObject({
       platform_url: 'https://www.tiktok.com/@someone',
@@ -277,21 +309,25 @@ describe('markAsExternallyUploadedAction', () => {
     state.writeError = { message: 'boom' };
 
     await expect(
-      markAsExternallyUploadedAction({
-        episodeId: EPISODE,
-        platform: 'youtube',
-        platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
-      }),
+      unwrap(
+        markAsExternallyUploadedAction({
+          episodeId: EPISODE,
+          platform: 'youtube',
+          platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
+        }),
+      ),
     ).rejects.toThrow('Failed to create publish record');
   });
 
   it('rejects a link that is not a URL, and writes nothing', async () => {
     await expect(async () =>
-      markAsExternallyUploadedAction({
-        episodeId: EPISODE,
-        platform: 'youtube',
-        platformUrl: 'my video',
-      }),
+      unwrap(
+        markAsExternallyUploadedAction({
+          episodeId: EPISODE,
+          platform: 'youtube',
+          platformUrl: 'my video',
+        }),
+      ),
     ).rejects.toThrow('Please enter a valid URL');
 
     expect(state.inserted).toEqual([]);

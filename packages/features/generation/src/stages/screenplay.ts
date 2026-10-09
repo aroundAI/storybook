@@ -32,6 +32,7 @@ import { StageOutputRejected } from '../checks';
 import { applyCommit, eq, is } from '../commit-plan';
 import { jobCompletedWrite } from '../jobs';
 import { registerStage } from '../registry';
+import { screenplayDataFromScenes } from '../screenplay-data';
 import type {
   Brief,
   CheckError,
@@ -561,47 +562,15 @@ async function commitScreenplay(
   const costCents = 0; // Agent orchestrator tracks cost internally
   const generatedAt = new Date().toISOString();
 
-  const uniqueLocations = [
-    ...new Set(
-      scenes
-        .map((scene) => scene.location)
-        .filter((loc): loc is string => Boolean(loc)),
-    ),
-  ];
-
-  const uniqueCharacters = [
-    ...new Set(
-      scenes
-        .flatMap((scene) => scene.dialogue || [])
-        .map((line) => line.character)
-        .filter((char): char is string => Boolean(char)),
-    ),
-  ];
-
-  const totalEstimatedDuration = scenes.reduce(
-    (sum, scene) => sum + (scene.estimatedDuration || 0),
-    0,
-  );
-
-  const screenplayData = {
-    scenes,
+  const screenplayData = screenplayDataFromScenes(scenes, {
     generatedAt,
     generatedBy: {
       model: 'screenplay-orchestrator',
       provider: 'multi-agent',
       costCents,
     },
-    totalDialogueLines: scenes.flatMap((s) => s.dialogue || []).length,
-    estimatedDuration: totalEstimatedDuration,
-    approvedAt: null,
-    // Full metadata for episode header display
-    metadata: {
-      locations: uniqueLocations,
-      characters: uniqueCharacters,
-      totalScenes: scenes.length,
-      estimatedDuration: totalEstimatedDuration,
-    },
-  };
+  });
+  const totalEstimatedDuration = screenplayData.estimatedDuration;
 
   // Guard: skip the write if the episode was deleted during generation
   const { data: currentEpisode } = await ctx.client
