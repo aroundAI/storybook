@@ -19,6 +19,7 @@
     "./server/actions": "./src/server/actions.ts",
     "./server/episode-service": "./src/server/episode.service.ts",
     "./server/season-service": "./src/server/season.service.ts",
+    "./server/episode-video-service": "./src/server/episode-video.service.ts",
     "./server/season-generation": "./src/lib/server/mutations/season-generation-actions.ts",
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",

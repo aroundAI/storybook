@@ -2312,6 +2312,9 @@ importers:
       '@kit/prompt-engine':
         specifier: workspace:*
         version: link:../prompt-engine
+      '@kit/publishing':
+        specifier: workspace:*
+        version: link:../publishing
       '@kit/shared':
         specifier: workspace:*
         version: link:../../shared

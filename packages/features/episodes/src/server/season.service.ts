@@ -112,10 +112,12 @@ async function nextSeasonNumber(client: Client, input: InsertSeasonInput) {
   return (data?.[0]?.number ?? 0) + 1;
 }
 
-/** A refusal the caller can show; a database failure throws instead. */
+export type SeasonRefusalReason = 'invalid' | 'forbidden' | 'not_found';
+
+/** A refusal the caller can show, and why; a database failure throws instead. */
 export type SeasonWriteResult<T> =
   | { ok: true; data: T }
-  | { ok: false; refusal: string };
+  | { ok: false; refusal: string; reason: SeasonRefusalReason };
 
 export interface UpdateSeasonInput {
   seasonId: string;
@@ -148,7 +150,7 @@ export async function updateSeasonRow(
   }
 
   if (!current) {
-    return { ok: false, refusal: 'Season not found.' };
+    return { ok: false, refusal: 'Season not found.', reason: 'not_found' };
   }
 
   if (input.version !== undefined && current.version !== input.version) {
@@ -188,6 +190,7 @@ export async function updateSeasonRow(
       ok: false,
       refusal:
         "The season wasn't changed: you can't edit it, or it changed. Reload the page.",
+      reason: 'forbidden',
     };
   }
 
@@ -209,7 +212,7 @@ export async function reorderSeasons(
 
   if (error) {
     const refusal = seasonRefusal(error);
-    if (refusal) return { ok: false, refusal };
+    if (refusal) return { ok: false, ...refusal };
     throw new Error(`Failed to reorder seasons: ${error.message}`);
   }
 
@@ -233,7 +236,7 @@ export async function softDeleteSeason(
   if (error) {
     if (error.code === '40001') throw new OptimisticLockError('season');
     const refusal = seasonRefusal(error);
-    if (refusal) return { ok: false, refusal };
+    if (refusal) return { ok: false, ...refusal };
     throw new Error(`Failed to delete season: ${error.message}`);
   }
 
@@ -241,14 +244,24 @@ export async function softDeleteSeason(
 }
 
 /** The refusals reorder_seasons and soft_delete_season raise, by SQLSTATE. */
-function seasonRefusal(error: { code?: string; message: string }) {
+function seasonRefusal(error: {
+  code?: string;
+  message: string;
+}): { refusal: string; reason: SeasonRefusalReason } | null {
   switch (error.code) {
     case '22023':
-      return 'Give every season of the project exactly once.';
+      return {
+        refusal: 'Give every season of the project exactly once.',
+        reason: 'invalid',
+      };
     case '42501':
-      return "You can't change this project's seasons (project owner or admin).";
+      return {
+        refusal:
+          "You can't change this project's seasons (project owner or admin).",
+        reason: 'forbidden',
+      };
     case 'P0002':
-      return 'Season not found.';
+      return { refusal: 'Season not found.', reason: 'not_found' };
     default:
       return null;
   }
@@ -277,7 +290,7 @@ export async function moveEpisodeToSeason(
   }
 
   if (!episode) {
-    return { ok: false, refusal: 'Episode not found.' };
+    return { ok: false, refusal: 'Episode not found.', reason: 'not_found' };
   }
 
   if (episode.version !== input.version) {
@@ -298,7 +311,11 @@ export async function moveEpisodeToSeason(
     }
 
     if (!season) {
-      return { ok: false, refusal: 'That season is not in this project.' };
+      return {
+        ok: false,
+        refusal: 'That season is not in this project.',
+        reason: 'invalid',
+      };
     }
   }
 

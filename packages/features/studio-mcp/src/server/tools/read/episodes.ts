@@ -4,9 +4,12 @@ import { z } from 'zod';
 
 import { parseEditState } from '@kit/desktop-integration';
 import { getOpenEditSession } from '@kit/desktop-integration/server';
+import { seasonPositions } from '@kit/episodes/lib/season-position';
 import { EpisodeStatusSchema } from '@kit/episodes/schemas';
+import { fetchAllRows } from '@kit/shared/pagination';
 
 import { McpToolError } from '../../../errors';
+import type { McpPrincipal } from '../../../principal';
 import { defineTool } from '../../../registry';
 import {
   AfterCursor,
@@ -46,12 +49,14 @@ export interface EpisodeRowLike {
   duration_seconds?: number | null;
   thumbnail_url?: string | null;
   final_video_url?: string | null;
+  entry_mode?: string;
+  skipped_stages?: string[];
   created_at: string;
   updated_at: string;
 }
 
 export const EPISODE_LIST_COLUMNS =
-  'id, project_id, season_id, number, slug, title, description, status, version, metadata, target_duration_seconds, duration_seconds, thumbnail_url, final_video_url, created_at, updated_at';
+  'id, project_id, season_id, number, slug, title, description, status, version, metadata, target_duration_seconds, duration_seconds, thumbnail_url, final_video_url, entry_mode, skipped_stages, created_at, updated_at';
 
 /**
  * An episode as the tools present it. The creative direction the wizard
@@ -83,9 +88,48 @@ export function episodeSummary(row: EpisodeRowLike) {
     durationSeconds: row.duration_seconds ?? null,
     thumbnailUrl: row.thumbnail_url ?? null,
     finalVideoUrl: row.final_video_url ?? null,
+    // FILM-2204: how the episode started, and the stages its author skipped
+    entryMode: row.entry_mode ?? 'idea',
+    skippedStages: row.skipped_stages ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/**
+ * Each live episode's 1-based position in its season (Unsorted counting as
+ * one group), from every episode of the project: the S·E label the web
+ * shows (seasonPositions, FILM-2201). Paged past max_rows.
+ */
+type Client = McpPrincipal['supabase'];
+
+export async function projectSeasonPositions(
+  client: Client,
+  projectId: string,
+) {
+  const rows = await fetchAllRows<{
+    id: string;
+    season_id: string | null;
+    number: number;
+  }>(
+    (from, to) =>
+      client
+        .from('episodes')
+        .select('id, season_id, number')
+        .eq('project_id', projectId)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'episode season positions',
+  );
+
+  return seasonPositions(
+    rows.map((row) => ({
+      id: row.id,
+      seasonId: row.season_id,
+      number: row.number,
+    })),
+  );
 }
 
 export const listEpisodesTool = defineTool({
@@ -97,7 +141,14 @@ export const listEpisodesTool = defineTool({
       .string()
       .uuid()
       .describe('The project id (from list_projects).'),
-    seasonId: z.string().uuid().optional().describe('Only this season.'),
+    seasonId: z
+      .string()
+      .uuid()
+      .nullable()
+      .optional()
+      .describe(
+        'Only this season; null for the Unsorted episodes (in no season).',
+      ),
     status: EpisodeStatusSchema.optional().describe(
       `Only this status; the order is ${EPISODE_STATUS_ORDER.join(' → ')}.`,
     ),
@@ -120,6 +171,7 @@ export const listEpisodesTool = defineTool({
       .is('deleted_at', null);
 
     if (input.seasonId) query = query.eq('season_id', input.seasonId);
+    if (input.seasonId === null) query = query.is('season_id', null);
     if (input.status) query = query.eq('status', input.status);
     if (after !== undefined) query = query.gt('number', after);
 
@@ -135,7 +187,11 @@ export const listEpisodesTool = defineTool({
       (data ?? []) as unknown as EpisodeRowLike[],
       input.limit,
     );
-    const episodes = items.map(episodeSummary);
+    const positions = await projectSeasonPositions(client, input.projectId);
+    const episodes = items.map((row) => ({
+      ...episodeSummary(row),
+      seasonPosition: positions.get(row.id) ?? null,
+    }));
     const last = episodes[episodes.length - 1];
 
     return {
@@ -172,16 +228,18 @@ type EpisodeDetailRow = EpisodeRowLike &
     shot_list: unknown;
     generation_origin: unknown;
     final_video_url: string | null;
+    localized_videos: unknown;
+    skipped_stages: string[] | null;
     edit_state: unknown;
   };
 
-const EPISODE_DETAIL_COLUMNS = `${EPISODE_LIST_COLUMNS}, story_data, screenplay_data, shot_list, generation_origin, edit_state`;
+const EPISODE_DETAIL_COLUMNS = `${EPISODE_LIST_COLUMNS}, story_data, screenplay_data, shot_list, generation_origin, localized_videos, edit_state`;
 
 export const getEpisodeTool = defineTool({
   name: 'get_episode',
   title: 'Get episode',
   description:
-    'One episode with its stage status (the workflow draft → story → storyboard → generating → editing → ready → published, and each studio stage as locked, available or done), the story, a screenplay summary, counts of scenes, shots, dialogue lines and assets, the origin of each stage when recorded, and its StorybookStudio edit state (editState, and editSession while one is open). Use get_screenplay, get_shots and get_dialogue for the full stage content.',
+    'One episode with its stage status (the workflow draft → story → storyboard → generating → editing → ready → published, and each studio stage as done, empty or skipped, with canGenerate and the stages its generator still needs; no stage is locked), its position in its season, publishReadiness, the story, a screenplay summary, counts of scenes, shots, dialogue lines and assets, the origin of each stage when recorded, and its StorybookStudio edit state (editState, and editSession while one is open). Use get_screenplay, get_shots and get_dialogue for the full stage content.',
   inputSchema: {
     episodeId: z
       .string()
@@ -205,40 +263,52 @@ export const getEpisodeTool = defineTool({
       ...((metadata.location_ids as string[] | undefined) ?? []),
     ];
 
-    const [shots, dialogue, audioCues, attachedAssets, editSession] =
-      await Promise.all([
-        client
-          .from('shots')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id)
-          .is('deleted_at', null),
-        client
-          .from('dialogue_lines')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id),
-        client
-          .from('audio_cues')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id),
-        client
-          .from('assets')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id)
-          .is('deleted_at', null),
-        // FILM-2002: who is editing it in the Studio, if anyone
-        getOpenEditSession(client, episode.id).catch(() => {
-          throw new McpToolError(
-            'INTERNAL',
-            'Could not read the edit session.',
-          );
-        }),
-      ]);
+    const [
+      shots,
+      dialogue,
+      audioCues,
+      attachedAssets,
+      publishes,
+      positions,
+      editSession,
+    ] = await Promise.all([
+      client
+        .from('shots')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id)
+        .is('deleted_at', null),
+      client
+        .from('dialogue_lines')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id),
+      client
+        .from('audio_cues')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id),
+      client
+        .from('assets')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id)
+        .is('deleted_at', null),
+      // FILM-2204: a publish made anywhere counts as something to publish
+      client
+        .from('publishes')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id)
+        .neq('status', 'deleted'),
+      projectSeasonPositions(client, episode.project.id),
+      // FILM-2002: who is editing it in the Studio, if anyone
+      getOpenEditSession(client, episode.id).catch(() => {
+        throw new McpToolError('INTERNAL', 'Could not read the edit session.');
+      }),
+    ]);
 
     if (
       shots.error ||
       dialogue.error ||
       audioCues.error ||
-      attachedAssets.error
+      attachedAssets.error ||
+      publishes.error
     ) {
       throw new McpToolError(
         'INTERNAL',
@@ -263,6 +333,10 @@ export const getEpisodeTool = defineTool({
       assets: (attachedAssets.count ?? 0) + taggedAssetIds.length,
     };
 
+    const languages = Object.keys(
+      (episode.localized_videos as Record<string, string> | null) ?? {},
+    );
+
     const stages = deriveStages({
       status: episode.status,
       storyData: episode.story_data,
@@ -272,8 +346,21 @@ export const getEpisodeTool = defineTool({
       shotCount: counts.shots,
       dialogueLineCount: counts.dialogueLines,
       audioCueCount: audioCues.count ?? 0,
+      localizedVideoCount: languages.length,
+      externalPublishCount: publishes.count ?? 0,
+      skippedStages: episode.skipped_stages ?? [],
       origin,
     });
+
+    // FILM-2204: what the web publish will have to work with
+    const publishReadiness = {
+      hasVideo: languages.length > 0 || Boolean(episode.final_video_url),
+      languages,
+      publishes: publishes.count ?? 0,
+      canPublish:
+        stages.find((stage) => stage.key === 'publish')?.canGenerate ?? false,
+      note: 'Publishing to a platform is a web action. Attach a video with request_episode_video_upload, or link one already published with link_published_video.',
+    };
 
     const screenplaySummary = screenplay
       ? {
@@ -312,7 +399,9 @@ export const getEpisodeTool = defineTool({
           slug: episode.project.slug,
         },
         statusOrder: EPISODE_STATUS_ORDER,
+        seasonPosition: positions.get(episode.id) ?? null,
         stages,
+        publishReadiness,
         editState: parseEditState(episode.edit_state),
         editSession: editSession
           ? {

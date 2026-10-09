@@ -29,6 +29,7 @@ describe('get_workflow_guide', () => {
       'screenplay',
       'shots',
       'audio',
+      'video',
       'publish',
     ]);
 
@@ -41,9 +42,18 @@ describe('get_workflow_guide', () => {
       'create_episode',
       'upsert_asset',
       'get_episode',
+      // FILM-2204
+      'create_season',
+      'set_stage_skipped',
+      'request_episode_video_upload',
+      'finalize_episode_video',
+      'link_published_video',
+      'MISSING_INPUTS',
     ]) {
       expect(WORKFLOW_GUIDE_TEXT).toContain(tool);
     }
+    // No stage is locked any more (FILM-2204)
+    expect(WORKFLOW_GUIDE_TEXT).not.toMatch(/unlock/);
     expect(WORKFLOW_GUIDE_TEXT).toMatch(/draft/);
     expect(WORKFLOW_GUIDE_TEXT).toMatch(/published/);
   });
@@ -76,6 +86,16 @@ describe('the default tool list', () => {
         'list_assets',
         'create_project',
         'update_project',
+        // FILM-2204's seasons, skipped stages and finished videos
+        'list_seasons',
+        'create_season',
+        'update_season',
+        'reorder_seasons',
+        'delete_season',
+        'set_stage_skipped',
+        'request_episode_video_upload',
+        'finalize_episode_video',
+        'link_published_video',
         'create_episode',
         'update_episode',
         'upsert_asset',

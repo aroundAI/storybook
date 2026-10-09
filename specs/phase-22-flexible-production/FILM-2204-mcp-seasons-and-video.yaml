@@ -3,7 +3,7 @@ title: "MCP Seasons and Video: the same journeys for an external AI"
 phase: 22
 phase_name: "Flexible Production"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-2201"
@@ -20,26 +20,26 @@ summary: >
   rewritten. Publishing to a platform stays a web action. Design: EDD §9.
 acceptance_criteria:
   - text: "list_seasons (studio:read), create_season, update_season, reorder_seasons and delete_season (studio:write; delete destructive) call season.service.ts"
-    met: false
-    reason: "not met — not built"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): packages/features/studio-mcp/src/server/tools/read/seasons.ts and author/seasons.ts. Refusals carry a reason from the service (invalid, forbidden, not_found) and answer VALIDATION_FAILED, FORBIDDEN or NOT_FOUND; a stale version is TARGET_CHANGED. Tests: __tests__/tools/flexible-production-tools.test.ts"
   - text: "update_episode accepts seasonId (uuid or null for Unsorted); set_stage_skipped marks or clears a skipped stage under optimistic locking"
-    met: false
-    reason: "not met — not built"
-  - text: "request_episode_video_upload and finalize_episode_video attach a video with no edit session, through the same service as the web action; link_published_video links an already-published URL"
-    met: false
-    reason: "not met — not built"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): update_episode moves through moveEpisodeToSeason after any field edit, at the version that edit produced, and reads the episode back once; set_stage_skipped (author/episode-production.ts) calls setStageSkipped. Test: 'keeps the skipped stages in workspace order'"
+  - text: "request_episode_video_upload and finalize_episode_video attach a video with no edit session, through the same function as the web; link_published_video links an already-published URL"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): the upload signs the publish screen's own path (episodes/{id}/videos/{lang}-{ts}.ext) after can_write_project_storage, and finalize checks the key is that episode's and language's, that a file is stored, then calls saveEpisodeVideo (the web's); link_published_video calls linkPublishedVideo. Tests: flexible-production-tools.test.ts (path, refused writer, foreign key, missing file, ready, duplicate link)"
   - text: "get_episode returns stages as {key, state: done|empty|skipped, canGenerate, missing, origin}, seasonPosition, entryMode and publishReadiness; start_generation refuses with MISSING_INPUTS naming the missing stages"
-    met: false
-    reason: "not met — not built"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): read/stage-status.ts deriveStages is deriveStageViews plus origin, with a video stage; MCP and the web agree for all 16 combinations of earlier output (read-tools.test.ts 'matches the web workspace'). MISSING_INPUTS is a new error code; start_generation checks before opening a run (generation/stage-inputs.ts), red with the call removed. list_episodes and get_episode carry seasonPosition (seasonPositions, paged)"
   - text: "get_workflow_guide describes optional stages, the three ways to start an episode, seasons and follow-ups; it no longer says a stage unlocks when the one before has data"
-    met: false
-    reason: "not met — not built"
+    met: true
+    evidence: "Met (branch claude/sweet-thompson-kgcale): tools/workflow-guide.ts; workflow-guide.test.ts asserts the new tool names and MISSING_INPUTS appear and that 'unlock' does not. Follow-ups are named once FILM-2206 adds followUpOf"
 test_plan:
   unit:
-    - {text: "studio-mcp parity test: each new tool and its web action call the same service function", met: false, reason: "not met — not built"}
+    - {text: "studio-mcp parity test: each new tool and its web action call the same service function", met: true, evidence: "By construction: each tool imports the service the web action calls (season.service, setStageSkipped, saveEpisodeVideo, linkPublishedVideo); flexible-production-tools.test.ts drives the tools through them, and the web actions' own tests drive the same functions"}
   integration: []
   e2e:
-    - {text: "apps/e2e/tests/mcp/flexible-production.spec.ts: J1 seasons, J2 video upload and published link", met: false, reason: "not met — not built"}
+    - {text: "apps/e2e/tests/mcp/flexible-production.spec.ts: J1 seasons, J2 video upload and published link", met: false, reason: "written, not run: the MCP endpoint needs a local Supabase, whose images this environment's network policy blocks (2026-10-09)"}
 open_questions: []
 notes: "get_episode no longer emits locked; the tool description and the server instructions say so (EDD §9.4)."
 feature:

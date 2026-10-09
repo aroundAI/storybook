@@ -35,6 +35,7 @@ import {
 import type { McpRunCtx, RunApi, RunLike } from './run-api';
 import { holderOf, toRunToolError } from './run-errors';
 import type { BriefRef, SubmitGenerationResult } from './schemas';
+import { refuseMissingInputs } from './stage-inputs';
 import { type StartTargetInput, resolveStageTarget } from './target';
 
 type Client = McpToolContext['principal']['supabase'];
@@ -52,6 +53,12 @@ export interface GenerationToolDeps {
    * FILM-1906 services by default, a fake in tests.
    */
   performance?: (client: Client) => PerformanceReader;
+  /**
+   * FILM-2204: refuses a run whose stage reads output the episode lacks,
+   * with MISSING_INPUTS. refuseMissingInputs by default; a test of other
+   * behaviour over fixtures without that output passes a no-op.
+   */
+  inputs?: typeof refuseMissingInputs;
 }
 
 export function mcpRunCtx(
@@ -407,6 +414,13 @@ export class GenerationService {
     originName: string,
   ) {
     const stage = this.stage(input.stage);
+
+    await (this.deps.inputs ?? refuseMissingInputs)(
+      this.client,
+      stage.key,
+      input.episodeId,
+    );
+
     const { target, runTarget } = await resolveStageTarget(
       this.client,
       {

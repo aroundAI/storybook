@@ -18,21 +18,22 @@ function rpcClient(result: { data: unknown; error: unknown }) {
 
 describe('season RPC refusals', () => {
   it.each([
-    ['22023', 'Give every season of the project exactly once.'],
+    ['22023', 'Give every season of the project exactly once.', 'invalid'],
     [
       '42501',
       "You can't change this project's seasons (project owner or admin).",
+      'forbidden',
     ],
-    ['P0002', 'Season not found.'],
-  ])('%s becomes a refusal', async (code, refusal) => {
+    ['P0002', 'Season not found.', 'not_found'],
+  ])('%s becomes a refusal', async (code, refusal, reason) => {
     const client = rpcClient({ data: null, error: { code, message: 'x' } });
 
     await expect(
       reorderSeasons(client, { projectId: 'p', seasonIds: ['s'] }),
-    ).resolves.toEqual({ ok: false, refusal });
+    ).resolves.toEqual({ ok: false, refusal, reason });
     await expect(
       softDeleteSeason(client, { seasonId: 's', version: 1 }),
-    ).resolves.toEqual({ ok: false, refusal });
+    ).resolves.toEqual({ ok: false, refusal, reason });
   });
 
   it('a delete at a stale version is an optimistic-lock conflict', async () => {

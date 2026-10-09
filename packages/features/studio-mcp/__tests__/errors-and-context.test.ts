@@ -22,12 +22,13 @@ const principal = {
 } as unknown as McpPrincipal;
 
 describe('the error contract', () => {
-  it('names the nine codes the spec lists', () => {
+  it('names the ten codes the specs list (MISSING_INPUTS: FILM-2204)', () => {
     expect([...MCP_ERROR_CODES]).toEqual([
       'UNAUTHORIZED',
       'FORBIDDEN',
       'NOT_FOUND',
       'VALIDATION_FAILED',
+      'MISSING_INPUTS',
       'RUN_IN_PROGRESS',
       'TARGET_CHANGED',
       'RUN_EXPIRED',

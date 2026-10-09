@@ -122,7 +122,7 @@ function requireOwnOpenSession(session: SessionRow, userId: string) {
   }
 }
 
-interface SignedPut {
+export interface SignedPut {
   key: string;
   uploadUrl: string;
   method: 'PUT';
@@ -130,7 +130,7 @@ interface SignedPut {
   expiresIn: number;
 }
 
-async function signPut(
+export async function signPut(
   client: Client,
   storage: StorageAdapter,
   key: string,

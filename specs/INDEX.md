@@ -725,7 +725,7 @@ Seasons can be created empty and filled later, every stage is optional, and an e
 | FILM-2201 | [foundations](./phase-22-flexible-production/FILM-2201-foundations.yaml) | DONE | M | FILM-302, FILM-1905 |
 | FILM-2202 | [publish-what-you-have](./phase-22-flexible-production/FILM-2202-publish-what-you-have.yaml) | PARTIAL | S | FILM-2201 |
 | FILM-2203 | [seasons-ui](./phase-22-flexible-production/FILM-2203-seasons-ui.yaml) | DRAFT | M | FILM-2201 |
-| FILM-2204 | [mcp-seasons-and-video](./phase-22-flexible-production/FILM-2204-mcp-seasons-and-video.yaml) | DRAFT | M | FILM-2201, FILM-1905 |
+| FILM-2204 | [mcp-seasons-and-video](./phase-22-flexible-production/FILM-2204-mcp-seasons-and-video.yaml) | PARTIAL | M | FILM-2201, FILM-1905 |
 | FILM-2205 | [start-from-and-progress-rail](./phase-22-flexible-production/FILM-2205-start-from-and-progress-rail.yaml) | DRAFT | L | FILM-2202, FILM-2203 |
 | FILM-2206 | [follow-up-from-analytics](./phase-22-flexible-production/FILM-2206-follow-up-from-analytics.yaml) | DRAFT | S | FILM-2205, FILM-1912 |
 

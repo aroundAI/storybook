@@ -36,6 +36,7 @@
     "./server/oauth-app-credentials": "./src/server/oauth-app-credentials.ts",
     "./server/queries": "./src/server/publishing-queries.ts",
     "./server/upload-only": "./src/server/upload-only-actions.ts",
+    "./server/link-published-video": "./src/server/link-published-video.service.ts",
     "./lib/export-package-types": "./src/lib/export-package-types.ts",
     "./lib/schemas/upload-only": "./src/lib/schemas/upload-only.schema.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",

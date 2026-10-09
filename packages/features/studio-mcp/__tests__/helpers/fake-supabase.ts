@@ -135,6 +135,15 @@ export function createFakeClient(
         const result = answer(call);
         let data = result.data;
 
+        // range(from, to) pages a list as PostgREST does, so a paged read
+        // (fetchAllRows) sees its last page come back short
+        const range = call.filters.findLast((f) => f.method === 'range');
+
+        if (range && !single && Array.isArray(data)) {
+          const [from, to] = range.args as [number, number];
+          data = data.slice(from, to + 1);
+        }
+
         if (single && Array.isArray(data)) {
           data = data[0] ?? null;
 

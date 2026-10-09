@@ -47,11 +47,16 @@ route serves by default.
 | `whoami` | any | user, team, scopes, generation mode (FILM-1904) |
 | `get_workflow_guide` | read | stage order, what each stage needs, how brief/submit/finalize work; also the `workflow_guide` prompt |
 | `list_projects`, `get_project` | read | projects of the bound team with their series settings; episode, character and location counts |
-| `list_episodes`, `get_episode` | read | episodes without deleted ones; `get_episode` adds stage status (locked/available/done per stage), the story, a screenplay summary, counts and per-stage origin (null until FILM-1903) |
+| `list_seasons` | read | a project's live seasons with their episode counts and versions (FILM-2204) |
+| `list_episodes`, `get_episode` | read | episodes without deleted ones, each with its position in its season (`seasonId: null` lists Unsorted); `get_episode` adds stage status (done/empty/skipped per stage, with `canGenerate` and `missing`; FILM-2204), `publishReadiness`, the story, a screenplay summary, counts and per-stage origin |
 | `get_screenplay`, `get_shots`, `get_dialogue` | read | full stage content, paged by scene |
 | `list_assets` | read | characters (with details) and locations, other types on request |
 | `create_project`, `update_project` | write | name, description, slug, status, and the studio settings page's series settings |
-| `create_episode`, `update_episode` | write | title, description (logline), target duration, content style, visual tone, tone notes; `update_episode` is optimistic-locked (`TARGET_CHANGED`) |
+| `create_season`, `update_season`, `reorder_seasons`, `delete_season` | write | an empty season; name and notes; renumbering; a delete that moves the episodes to Unsorted (FILM-2204, through `season.service.ts`) |
+| `create_episode`, `update_episode` | write | title, description (logline), target duration, content style, visual tone, tone notes, and the season (`seasonId`, null for Unsorted); `update_episode` is optimistic-locked (`TARGET_CHANGED`) |
+| `set_stage_skipped` | write | marks a stage the author will not do, or clears the mark (FILM-2204) |
+| `request_episode_video_upload`, `finalize_episode_video` | write | a finished video with no StorybookStudio session, stored where the publish screen keeps one (`saveEpisodeVideo`); the episode moves to ready (FILM-2204) |
+| `link_published_video` | write | a video already on a platform, as the publish screen's link does; refused when another episode has it (FILM-2204) |
 | `upsert_asset` | write | a character or a location, by `assetId` or by type and name |
 | `start_voice_render` | render | ElevenLabs voice for one line or the whole episode, through the web's own render start (FILM-1909) |
 | `start_audio_render` | render | music, SFX or ambience for one audio cue (`audio-file-generation`), through the web's own render start |
