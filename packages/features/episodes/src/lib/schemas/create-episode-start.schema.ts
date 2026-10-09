@@ -16,6 +16,15 @@ const base = z.object({
   description: z.string().max(2000).optional(),
 });
 
+const NO_SCRIPT = 'Paste the script, or choose a file';
+
+// A field never typed in is absent, not empty: both say what to do
+const script = z
+  .string({ required_error: NO_SCRIPT })
+  .trim()
+  .min(1, NO_SCRIPT)
+  .max(MAX_SCRIPT_CHARS);
+
 export const START_FROM = ['idea', 'script', 'video'] as const;
 
 export type StartFrom = (typeof START_FROM)[number];
@@ -28,11 +37,7 @@ export const CreateEpisodeStartSchema = z.discriminatedUnion('startFrom', [
   }),
   base.extend({
     startFrom: z.literal('script'),
-    script: z
-      .string()
-      .trim()
-      .min(1, 'Paste the script, or choose a file')
-      .max(MAX_SCRIPT_CHARS),
+    script,
   }),
   base.extend({ startFrom: z.literal('video') }),
 ]);
@@ -59,11 +64,7 @@ export const START_PLAN: Record<
 export const ImportScreenplaySchema = z.object({
   episodeId: z.string().uuid(),
   version: z.number().int().positive(),
-  script: z
-    .string()
-    .trim()
-    .min(1, 'Paste the script, or choose a file')
-    .max(MAX_SCRIPT_CHARS),
+  script,
 });
 
 /** FILM-2206: what a follow-up would carry, read before it is created */
