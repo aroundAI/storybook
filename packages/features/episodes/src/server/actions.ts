@@ -18,6 +18,7 @@ import {
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
+import type { Database } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -36,7 +37,12 @@ import {
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
+import {
+  CreateEpisodeStartSchema,
+  START_PLAN,
+} from '../lib/schemas/create-episode-start.schema';
 import { CreateEpisodeWithContextSchema } from '../lib/schemas/create-episode-wizard.schema';
+import { parseScript } from '../lib/script-import';
 import { webRunCtx } from '../lib/server/web-run-ctx';
 import {
   InvalidStatusTransitionError,
@@ -54,7 +60,39 @@ import {
   setStageSkipped,
   updateEpisodeRow,
 } from './episode.service';
+import { importScreenplay } from './screenplay-import.service';
 import { insertSeason } from './season.service';
+
+/** The audit entry every episode create writes, scoped to its account. */
+async function auditEpisodeCreated(
+  client: ReturnType<typeof getSupabaseServerClient<Database>>,
+  userId: string,
+  episode: { id: string; project_id: string; title: string },
+) {
+  const { data: project } = await client
+    .from('projects')
+    .select('account_id')
+    .eq('id', episode.project_id)
+    .single();
+
+  if (!project) return;
+
+  await createAuditLog({
+    accountId: project.account_id,
+    userId,
+    action: 'create',
+    objectType: 'episode',
+    objectId: episode.id,
+    objectName: episode.title,
+    after: episode,
+    scopes: [
+      { type: 'account', id: project.account_id },
+      { type: 'project', id: episode.project_id },
+      { type: 'episode', id: episode.id },
+    ],
+    ...(await extractNetworkContext()),
+  });
+}
 
 /**
  * Create a new episode
@@ -100,33 +138,7 @@ const createEpisode = enhanceAction(
 
     const episode = inserted.data;
 
-    // Get project for audit log scope
-    const { data: project } = await client
-      .from('projects')
-      .select('account_id')
-      .eq('id', data.projectId)
-      .single();
-
-    // Create audit log
-    if (project) {
-      const networkContext = await extractNetworkContext();
-
-      await createAuditLog({
-        accountId: project.account_id,
-        userId: user.id,
-        action: 'create',
-        objectType: 'episode',
-        objectId: episode.id,
-        objectName: episode.title,
-        after: episode,
-        scopes: [
-          { type: 'account', id: project.account_id },
-          { type: 'project', id: data.projectId },
-          { type: 'episode', id: episode.id },
-        ],
-        ...networkContext,
-      });
-    }
+    await auditEpisodeCreated(client, user.id, episode);
 
     logger.info({ ...ctx, episodeId: episode.id }, 'Episode created');
     revalidatePath('/home/[account]/projects/[id]', 'page');
@@ -1796,3 +1808,77 @@ const setStageSkippedHandler = enhanceAction(
 );
 
 export const setStageSkippedAction = returnRefusals(setStageSkippedHandler);
+
+/**
+ * FILM-2205: creates an episode the way it starts. From an idea it opens on
+ * Ideation, as before. From a script, the script is read first (a script
+ * that cannot be read creates nothing), stored as the screenplay, and
+ * ideation and story are skipped. From a finished video, every stage
+ * before Publish is skipped and the episode opens on Publish to attach it.
+ */
+const createEpisodeStart = enhanceAction(
+  async (data, user) => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'episodes.createStart',
+      projectId: data.projectId,
+      startFrom: data.startFrom,
+    };
+    const client = getSupabaseServerClient();
+
+    if (data.startFrom === 'script') {
+      const parsed = parseScript(data.script);
+      if (!parsed.ok) throw new ActionRefusal(parsed.error);
+    }
+
+    const plan = START_PLAN[data.startFrom];
+    const inserted = await insertEpisode(
+      client,
+      {
+        projectId: data.projectId,
+        seasonId: data.seasonId,
+        title: data.title,
+        description: data.description ?? null,
+        entryMode: data.startFrom,
+        skippedStages: plan.skipped,
+      },
+      { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
+    ).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to create episode');
+      throw error;
+    });
+
+    if (!inserted.ok) {
+      throw new ActionRefusal(inserted.refusal);
+    }
+
+    const episode = inserted.data;
+
+    if (data.startFrom === 'script') {
+      const imported = await importScreenplay(client, {
+        episodeId: episode.id,
+        script: data.script,
+      });
+
+      if (!imported.ok) {
+        throw new ActionRefusal(
+          `The episode was created, but its script was not stored: ${imported.refusal}`,
+        );
+      }
+    }
+
+    await auditEpisodeCreated(client, user.id, episode);
+
+    logger.info({ ...ctx, episodeId: episode.id }, 'Episode created');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'layout');
+
+    return {
+      episodeId: episode.id,
+      slug: episode.slug ?? episode.id,
+      landing: plan.landing,
+    };
+  },
+  { schema: CreateEpisodeStartSchema },
+);
+
+export const createEpisodeStartAction = returnRefusals(createEpisodeStart);

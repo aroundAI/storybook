@@ -7,6 +7,7 @@ import type { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { generateEpisodeSlug } from '../lib/slug-utils';
 import { SKIPPABLE_STAGES, type SkippableStage } from '../lib/stage-state';
 import { OptimisticLockError } from '../lib/status-workflow';
+import type { EntryMode } from '../lib/types';
 
 export { OptimisticLockError };
 
@@ -35,6 +36,9 @@ export interface InsertEpisodeInput {
   targetDurationSeconds?: number | null;
   /** Creative direction the wizard seeds the story with; never set over MCP. */
   storyData?: Record<string, unknown> | null;
+  /** FILM-2205: how the episode starts, and the stages that start skips */
+  entryMode?: EntryMode;
+  skippedStages?: SkippableStage[];
 }
 
 export type InsertEpisodeResult =
@@ -143,6 +147,9 @@ export async function insertEpisode(
     if (input.storyData !== undefined) {
       row.story_data = input.storyData as Json;
     }
+
+    if (input.entryMode) row.entry_mode = input.entryMode;
+    if (input.skippedStages) row.skipped_stages = input.skippedStages;
 
     const { data: inserted, error } = await client
       .from('episodes')

@@ -1,13 +1,32 @@
 'use client';
 
-import { useContext } from 'react';
+import { useContext, useTransition } from 'react';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-import { ChevronRight, Mic, Music, Pencil, Volume2 } from 'lucide-react';
+import {
+  ChevronRight,
+  FolderInput,
+  Mic,
+  MoreHorizontal,
+  Music,
+  Volume2,
+} from 'lucide-react';
 
+import { moveEpisodeToSeasonAction } from '@kit/episodes/server';
 import type { Episode } from '@kit/episodes/types';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Checkbox } from '@kit/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
+import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import {
@@ -15,7 +34,32 @@ import {
   EditingInStudioBadge,
 } from '../[episodeSlug]/_components/editing-in-studio-badge';
 import { AssetChipBar } from './asset-chip-bar';
+import type { SeasonOption } from './create-episode-dialog';
 import { SelectionContext } from './episode-list-wrapper';
+import { useEpisodeDrag } from './season-drag';
+
+/**
+ * The status a person reads (FILM-2203): the pipeline steps between draft
+ * and ready read as "In production" (owner, 2026-10-09).
+ */
+const STATUS_PILL: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Draft', className: 'bg-slate-500/15 text-slate-400' },
+  story: { label: 'In production', className: 'bg-blue-500/15 text-blue-400' },
+  storyboard: {
+    label: 'In production',
+    className: 'bg-blue-500/15 text-blue-400',
+  },
+  generating: {
+    label: 'In production',
+    className: 'bg-blue-500/15 text-blue-400',
+  },
+  editing: {
+    label: 'In production',
+    className: 'bg-blue-500/15 text-blue-400',
+  },
+  ready: { label: 'Ready', className: 'bg-amber-500/15 text-amber-400' },
+  published: { label: 'Live', className: 'bg-emerald-500/15 text-emerald-400' },
+};
 
 const LANG_FLAGS: Record<string, { flag: string }> = {
   en: { flag: '🇺🇸' },
@@ -53,6 +97,10 @@ interface EpisodeListItemProps {
   validAssetIds?: string[];
   isFirst?: boolean;
   isLast?: boolean;
+  /** FILM-2203: "S1 · E2" in a season, "#7" when Unsorted */
+  label?: string;
+  /** FILM-2203: the seasons it can move to */
+  seasons?: SeasonOption[];
 }
 
 /**
@@ -131,7 +179,33 @@ export function EpisodeListItem({
   validAssetIds,
   isFirst: _isFirst = false,
   isLast: _isLast = false,
+  label,
+  seasons = [],
 }: EpisodeListItemProps) {
+  const router = useRouter();
+  const [isMoving, startMove] = useTransition();
+  const drag = useEpisodeDrag(episode);
+  const pill = STATUS_PILL[episode.status] ?? STATUS_PILL.draft!;
+
+  /** FILM-2203: into another season of the project, or to Unsorted */
+  function moveTo(seasonId: string | null) {
+    startMove(async () => {
+      try {
+        await unwrap(
+          moveEpisodeToSeasonAction({
+            episodeId: episode.id,
+            version: episode.version,
+            seasonId,
+          }),
+        );
+        toast.success(seasonId ? 'Episode moved' : 'Episode moved to Unsorted');
+        router.refresh();
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to move the episode'));
+      }
+    });
+  }
+
   const href = `/home/${account}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}`;
   const stages = getStageStatus(episode);
   const selection = useContext(SelectionContext);
@@ -155,8 +229,25 @@ export function EpisodeListItem({
     >
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
+          <h3 className="mb-1 flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+            {label && (
+              <span
+                className="font-mono text-xs font-medium text-slate-400"
+                data-test="episode-label"
+              >
+                {label}
+              </span>
+            )}
             {episode.title}
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                pill.className,
+              )}
+              data-test="episode-status-pill"
+            >
+              {pill.label}
+            </span>
           </h3>
           {episode.editingInStudio && (
             <EditingInStudioBadge
@@ -266,23 +357,21 @@ export function EpisodeListItem({
             )}
         </div>
 
-        {/* Actions */}
         {!inSelectionMode && (
-          <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-            <button className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300">
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
         )}
       </div>
     </div>
   );
 
   return (
-    <div className="group flex items-start gap-4">
+    <div
+      className={cn(
+        'group flex items-start gap-4',
+        drag.isDragging && 'opacity-80',
+      )}
+      style={drag.style}
+    >
       {/* Checkbox in selection mode */}
       {inSelectionMode && (
         <div className="mt-5 flex-shrink-0">
@@ -295,7 +384,16 @@ export function EpisodeListItem({
       )}
 
       {/* Number circle - floating with gradient */}
-      <div className="relative z-10 mt-4 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-sm font-semibold text-slate-300 ring-1 ring-white/10">
+      {/* Number circle: also the handle that drags it to another season */}
+      <div
+        {...(inSelectionMode ? {} : drag.handleProps)}
+        aria-label={`Drag ${episode.title} to another season`}
+        data-test="episode-drag-handle"
+        className={cn(
+          'relative z-10 mt-4 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-sm font-semibold text-slate-300 ring-1 ring-white/10',
+          !inSelectionMode && 'cursor-grab active:cursor-grabbing',
+        )}
+      >
         {String(episode.number).padStart(2, '0')}
       </div>
 
@@ -308,6 +406,48 @@ export function EpisodeListItem({
         <Link href={href} className="flex-1">
           {cardContent}
         </Link>
+      )}
+
+      {/* Outside the link, so opening it never navigates; reachable by keyboard */}
+      {!inSelectionMode && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Actions for ${episode.title}`}
+              data-test="episode-actions"
+              disabled={isMoving}
+              className="mt-4 rounded-md p-1.5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/5 hover:text-gray-200 focus-visible:opacity-100 data-[state=open]:opacity-100"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel className="flex items-center gap-2 text-xs">
+              <FolderInput className="h-3.5 w-3.5" />
+              Move to season
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {seasons.map((season) => (
+              <DropdownMenuItem
+                key={season.id}
+                disabled={season.id === episode.seasonId}
+                onSelect={() => moveTo(season.id)}
+                data-test={`move-to-season-${season.number}`}
+              >
+                Season {season.number}
+                {season.name ? ` · ${season.name}` : ''}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuItem
+              disabled={episode.seasonId === null}
+              onSelect={() => moveTo(null)}
+              data-test="move-to-unsorted"
+            >
+              Unsorted
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </div>
   );

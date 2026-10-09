@@ -22,6 +22,7 @@
     "./formatters": "./src/formatters.ts",
     "./performance-context": "./src/performance-context.ts",
     "./project-type": "./src/project-type.ts",
+    "./screenplay-data": "./src/screenplay-data.ts",
     "./slug": "./src/slug.ts"
   },
   "dependencies": {

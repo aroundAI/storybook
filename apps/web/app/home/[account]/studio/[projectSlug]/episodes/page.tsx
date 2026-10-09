@@ -5,6 +5,10 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft, Film } from 'lucide-react';
 
+import {
+  episodeLabel,
+  seasonPositions,
+} from '@kit/episodes/lib/season-position';
 import type {
   EpisodeStatus,
   ScreenplayData,
@@ -18,10 +22,12 @@ import { editingInStudioOf } from './[episodeSlug]/_components/editing-in-studio
 import { CollapsibleSeasonSection } from './_components/collapsible-season-section';
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
 import { CreateEpisodeWizardWrapper } from './_components/create-episode-wizard-wrapper';
+import { CreateSeasonDialog } from './_components/create-season-dialog';
 import { EpisodeListItem } from './_components/episode-list-item';
 import { EpisodeListWrapper } from './_components/episode-list-wrapper';
 import { EpisodesZeroState } from './_components/episodes-zero-state';
 import { ExportContentDialog } from './_components/export-content-dialog';
+import { DroppableSeason, SeasonDragProvider } from './_components/season-drag';
 import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
 
 interface EpisodesPageProps {
@@ -58,6 +64,7 @@ interface Season {
   name: string | null;
   description: string | null;
   direction_notes: string | null;
+  version: number;
 }
 
 interface Episode {
@@ -102,8 +109,9 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const [seasonsResult, episodesResult, unassignedResult] = await Promise.all([
     client
       .from('seasons')
-      .select('id, number, name, description, direction_notes')
+      .select('id, number, name, description, direction_notes, version')
       .eq('project_id', project.id)
+      .is('deleted_at', null)
       .order('number', { ascending: true }),
     // Episodes with computed boolean checks instead of fetching full JSON blobs
     client
@@ -238,9 +246,15 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
     }
   }
 
-  // Group episodes by season
+  // Group episodes by season; an empty season shows too (FILM-2203)
   const episodesBySeason = groupEpisodesBySeason(episodes ?? [], seasons ?? []);
   const hasSeasons = (seasons?.length ?? 0) > 0;
+  const seasonOptions = (seasons ?? []).map((season) => ({
+    id: season.id,
+    name: season.name ?? '',
+    number: season.number,
+  }));
+  const labels = episodeLabels(episodes ?? [], seasons ?? []);
 
   return (
     <>
@@ -274,11 +288,13 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                 }))}
               />
             )}
+            <CreateSeasonDialog projectId={project.id} />
             <SeasonGeneratorDialog projectId={project.id} />
             <CreateEpisodeDialog
               projectId={project.id}
               projectSlug={project.slug ?? project.id}
               account={account}
+              seasons={seasonOptions}
             />
             <CreateEpisodeWizardWrapper
               projectId={project.id}
@@ -295,7 +311,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        {episodes && episodes.length > 0 ? (
+        {(episodes && episodes.length > 0) || hasSeasons ? (
           <div className="space-y-6 p-6">
             <EpisodeListWrapper
               episodes={(episodes ?? []).map((e) => ({
@@ -307,7 +323,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
             >
               {/* Render episodes grouped by season */}
               {hasSeasons ? (
-                <>
+                <SeasonDragProvider>
                   {episodesBySeason.map(
                     ({ season, episodes: seasonEpisodes }) => (
                       <CollapsibleSeasonSection
@@ -326,46 +342,54 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                         validAssetIds={validAssetIds}
                         seasonDescription={season.description}
                         directionNotes={season.direction_notes}
+                        seasonVersion={season.version}
+                        seasons={seasonOptions}
+                        labels={labels}
                       />
                     ),
                   )}
 
-                  {/* Unassigned episodes (not in any season) */}
+                  {/* Episodes in no season (FILM-2203: Unsorted) */}
                   {unassignedEpisodes.length > 0 && (
-                    <div>
-                      <div className="mb-6">
-                        <h2 className="text-lg font-semibold text-muted-foreground">
-                          Standalone Episodes
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                          Episodes not assigned to any season
-                        </p>
-                      </div>
-                      <div className="cinema-panel p-6">
-                        <div className="relative space-y-0">
-                          {unassignedEpisodes.map((episode, index) => (
-                            <EpisodeListItem
-                              key={episode.id}
-                              episode={mapEpisode(episode)}
-                              account={account}
-                              projectSlug={project.slug ?? project.id}
-                              availableLanguages={languageMap.get(episode.id)}
-                              audioStats={audioStatsMap.get(episode.id)}
-                              validAssetIds={validAssetIds}
-                              isFirst={index === 0}
-                              isLast={index === unassignedEpisodes.length - 1}
-                            />
-                          ))}
+                    <DroppableSeason seasonId={null}>
+                      <div data-test="unsorted-section">
+                        <div className="mb-6">
+                          <h2 className="text-lg font-semibold text-muted-foreground">
+                            Unsorted
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            Episodes in no season. Drag one onto a season by its
+                            number, or use its menu.
+                          </p>
+                        </div>
+                        <div className="cinema-panel p-6">
+                          <div className="relative space-y-0">
+                            {unassignedEpisodes.map((episode, index) => (
+                              <EpisodeListItem
+                                key={episode.id}
+                                episode={mapEpisode(episode)}
+                                account={account}
+                                projectSlug={project.slug ?? project.id}
+                                availableLanguages={languageMap.get(episode.id)}
+                                audioStats={audioStatsMap.get(episode.id)}
+                                validAssetIds={validAssetIds}
+                                isFirst={index === 0}
+                                isLast={index === unassignedEpisodes.length - 1}
+                                label={labels.get(episode.id)}
+                                seasons={seasonOptions}
+                              />
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </DroppableSeason>
                   )}
-                </>
+                </SeasonDragProvider>
               ) : (
                 /* No seasons - flat list of episodes */
                 <div className="cinema-panel p-6">
                   <div className="relative space-y-0">
-                    {episodes.map((episode, index) => (
+                    {(episodes ?? []).map((episode, index) => (
                       <EpisodeListItem
                         key={episode.id}
                         episode={mapEpisode(episode)}
@@ -375,7 +399,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                         audioStats={audioStatsMap.get(episode.id)}
                         validAssetIds={validAssetIds}
                         isFirst={index === 0}
-                        isLast={index === episodes.length - 1}
+                        isLast={index === (episodes ?? []).length - 1}
+                        label={labels.get(episode.id)}
                       />
                     ))}
                   </div>
@@ -402,14 +427,39 @@ function groupEpisodesBySeason(
   episodes: Episode[],
   seasons: Season[],
 ): Array<{ season: Season; episodes: Episode[] }> {
-  return seasons
-    .map((season) => ({
-      season,
-      episodes: episodes
-        .filter((ep) => ep.season_id === season.id)
-        .sort((a, b) => a.number - b.number),
-    }))
-    .filter((group) => group.episodes.length > 0);
+  return seasons.map((season) => ({
+    season,
+    episodes: episodes
+      .filter((ep) => ep.season_id === season.id)
+      .sort((a, b) => a.number - b.number),
+  }));
+}
+
+/** "S1 · E2" in a season, "#7" when Unsorted: one label per episode (FILM-2203) */
+function episodeLabels(episodes: Episode[], seasons: Season[]) {
+  const seasonNumber = new Map(
+    seasons.map((season) => [season.id, season.number]),
+  );
+  const positions = seasonPositions(
+    episodes.map((episode) => ({
+      id: episode.id,
+      seasonId: episode.season_id,
+      number: episode.number,
+    })),
+  );
+
+  return new Map(
+    episodes.map((episode) => [
+      episode.id,
+      episodeLabel({
+        seasonNumber: episode.season_id
+          ? (seasonNumber.get(episode.season_id) ?? null)
+          : null,
+        position: positions.get(episode.id),
+        number: episode.number,
+      }),
+    ]),
+  );
 }
 
 /**

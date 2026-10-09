@@ -6,8 +6,11 @@ import type { Episode } from '@kit/episodes/types';
 import { Checkbox } from '@kit/ui/checkbox';
 import { cn } from '@kit/ui/utils';
 
+import type { SeasonOption } from './create-episode-dialog';
+import { EmptySeasonSlot } from './empty-season-slot';
 import { EpisodeListItem } from './episode-list-item';
 import { SelectionContext } from './episode-list-wrapper';
+import { DroppableSeason } from './season-drag';
 import { SeasonHeader } from './season-header';
 
 interface SeasonAnalyticsSummary {
@@ -39,6 +42,10 @@ interface CollapsibleSeasonSectionProps {
   validAssetIds?: string[];
   seasonDescription?: string | null;
   directionNotes?: string | null;
+  /** FILM-2203 */
+  seasonVersion?: number;
+  seasons?: SeasonOption[];
+  labels?: Map<string, string>;
 }
 
 export function CollapsibleSeasonSection({
@@ -56,6 +63,9 @@ export function CollapsibleSeasonSection({
   validAssetIds,
   seasonDescription,
   directionNotes,
+  seasonVersion,
+  seasons = [],
+  labels,
 }: CollapsibleSeasonSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const selection = useContext(SelectionContext);
@@ -94,7 +104,11 @@ export function CollapsibleSeasonSection({
   }
 
   return (
-    <div key={seasonId} className="space-y-3">
+    <div
+      key={seasonId}
+      className="space-y-3"
+      data-test={`season-section-${seasonNumber}`}
+    >
       <div className="flex items-start gap-3">
         {selection?.selectionMode && (
           <div className="mt-5 flex-shrink-0">
@@ -131,28 +145,44 @@ export function CollapsibleSeasonSection({
             onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
             seasonDescription={seasonDescription}
             directionNotes={directionNotes}
+            seasonVersion={seasonVersion}
+            seasonOrder={seasons.map((season) => season.id)}
           />
         </div>
       </div>
 
       {/* Episode list - collapsible */}
-      {!isCollapsed && (
-        <div className="space-y-3 duration-200 animate-in fade-in slide-in-from-top-2">
-          {episodes.map((episode, index) => (
-            <EpisodeListItem
-              key={episode.id}
-              episode={episode}
-              account={account}
-              projectSlug={projectSlug}
-              availableLanguages={languageMap?.get(episode.id)}
-              audioStats={audioStatsMap?.get(episode.id)}
-              validAssetIds={validAssetIds}
-              isFirst={index === 0}
-              isLast={index === episodes.length - 1}
-            />
-          ))}
-        </div>
-      )}
+      <DroppableSeason seasonId={seasonId}>
+        {!isCollapsed && episodes.length === 0 && (
+          <EmptySeasonSlot
+            seasonId={seasonId}
+            seasons={seasons}
+            projectId={projectId}
+            projectSlug={projectSlug}
+            account={account}
+          />
+        )}
+
+        {!isCollapsed && episodes.length > 0 && (
+          <div className="space-y-3 duration-200 animate-in fade-in slide-in-from-top-2">
+            {episodes.map((episode, index) => (
+              <EpisodeListItem
+                key={episode.id}
+                episode={episode}
+                account={account}
+                projectSlug={projectSlug}
+                availableLanguages={languageMap?.get(episode.id)}
+                audioStats={audioStatsMap?.get(episode.id)}
+                validAssetIds={validAssetIds}
+                isFirst={index === 0}
+                isLast={index === episodes.length - 1}
+                label={labels?.get(episode.id)}
+                seasons={seasons}
+              />
+            ))}
+          </div>
+        )}
+      </DroppableSeason>
     </div>
   );
 }

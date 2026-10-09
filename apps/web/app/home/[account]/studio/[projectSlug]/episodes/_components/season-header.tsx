@@ -5,8 +5,11 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronDown,
   ChevronUp,
+  FolderInput,
   FolderOpen,
   Loader2,
   MoreVertical,
@@ -21,6 +24,8 @@ import {
 import {
   bulkResetToStageAction,
   deleteSeasonAction,
+  deleteSeasonKeepEpisodesAction,
+  reorderSeasonsAction,
   updateSeasonAction,
 } from '@kit/episodes/server';
 import type { Episode } from '@kit/episodes/types';
@@ -82,6 +87,9 @@ interface SeasonHeaderProps {
   onToggleCollapse?: () => void;
   seasonDescription?: string | null;
   directionNotes?: string | null;
+  /** FILM-2203: the version a delete passes, and every season id in order */
+  seasonVersion?: number;
+  seasonOrder?: string[];
 }
 
 export function SeasonHeader({
@@ -98,11 +106,14 @@ export function SeasonHeader({
   onToggleCollapse,
   seasonDescription,
   directionNotes,
+  seasonVersion,
+  seasonOrder = [],
 }: SeasonHeaderProps) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [showBulkGenerate, setShowBulkGenerate] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showKeepDialog, setShowKeepDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetTargetStage, setResetTargetStage] = useState<
     'draft' | 'story' | 'screenplay'
@@ -175,6 +186,50 @@ export function SeasonHeader({
         toast.error(refusalMessage(error, 'Failed to delete season'));
       } finally {
         setShowDeleteDialog(false);
+      }
+    });
+  }
+
+  const position = seasonOrder.indexOf(seasonId);
+
+  /** FILM-2203: swap with the neighbour, and renumber every season */
+  function handleMove(offset: -1 | 1) {
+    const target = position + offset;
+    if (position < 0 || target < 0 || target >= seasonOrder.length) return;
+
+    const order = [...seasonOrder];
+    [order[position], order[target]] = [order[target]!, order[position]!];
+
+    startTransition(async () => {
+      try {
+        await unwrap(reorderSeasonsAction({ projectId, seasonIds: order }));
+        router.refresh();
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to move the season'));
+      }
+    });
+  }
+
+  /** FILM-2203: the season goes; its episodes move to Unsorted */
+  function handleDeleteKeepEpisodes() {
+    if (seasonVersion === undefined) return;
+
+    startTransition(async () => {
+      try {
+        const result = await unwrap(
+          deleteSeasonKeepEpisodesAction({ seasonId, version: seasonVersion }),
+        );
+
+        toast.success(
+          result.episodesMoved > 0
+            ? `Season deleted; ${result.episodesMoved} ${result.episodesMoved === 1 ? 'episode' : 'episodes'} moved to Unsorted`
+            : 'Season deleted',
+        );
+        router.refresh();
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to delete season'));
+      } finally {
+        setShowKeepDialog(false);
       }
     });
   }
@@ -283,26 +338,30 @@ export function SeasonHeader({
 
         <div className="flex items-center gap-3">
           {/* Bulk Generate button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowBulkGenerate(true)}
-            className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
-          >
-            <Wand2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Bulk Generate</span>
-          </Button>
+          {totalEpisodes > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBulkGenerate(true)}
+              className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+            >
+              <Wand2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Bulk Generate</span>
+            </Button>
+          )}
 
           {/* Generate All Sound button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowModal(true)}
-            className="gap-2 border-violet-200 text-violet-600 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950"
-          >
-            <Volume2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Generate All Sound</span>
-          </Button>
+          {totalEpisodes > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowModal(true)}
+              className="gap-2 border-violet-200 text-violet-600 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950"
+            >
+              <Volume2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Generate All Sound</span>
+            </Button>
+          )}
 
           {/* Completion percentage */}
           <div className="text-right">
@@ -338,6 +397,26 @@ export function SeasonHeader({
                 {isEditingNotes
                   ? 'Hide Direction Notes'
                   : 'Edit Direction Notes'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={position <= 0 || isPending}
+                onSelect={() => handleMove(-1)}
+                data-test="season-move-up"
+              >
+                <ArrowUp className="mr-2 h-4 w-4" />
+                Move up
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={
+                  position < 0 ||
+                  position >= seasonOrder.length - 1 ||
+                  isPending
+                }
+                onSelect={() => handleMove(1)}
+                data-test="season-move-down"
+              >
+                <ArrowDown className="mr-2 h-4 w-4" />
+                Move down
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuSub>
@@ -385,8 +464,17 @@ export function SeasonHeader({
               </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                disabled={seasonVersion === undefined}
+                onSelect={() => setShowKeepDialog(true)}
+                data-test="season-delete-keep-episodes"
+              >
+                <FolderInput className="mr-2 h-4 w-4" />
+                Delete season, keep episodes
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onSelect={() => setShowDeleteDialog(true)}
+                data-test="season-delete-with-episodes"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Season & Episodes
@@ -453,6 +541,30 @@ export function SeasonHeader({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isPending ? 'Deleting…' : 'Delete Season'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete the season, keep its episodes (FILM-2203) */}
+      <AlertDialog open={showKeepDialog} onOpenChange={setShowKeepDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Season {seasonNumber}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {totalEpisodes > 0
+                ? `Its ${totalEpisodes} ${totalEpisodes === 1 ? 'episode moves' : 'episodes move'} to Unsorted. No episode is deleted.`
+                : 'The season has no episodes.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteKeepEpisodes}
+              disabled={isPending}
+              data-test="season-delete-keep-episodes-confirm"
+            >
+              {isPending ? 'Deleting…' : 'Delete season'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
