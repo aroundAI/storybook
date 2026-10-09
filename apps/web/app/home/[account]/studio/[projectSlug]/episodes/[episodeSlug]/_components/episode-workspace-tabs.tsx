@@ -5,15 +5,21 @@ import { usePathname } from 'next/navigation';
 
 import {
   BookOpen,
+  Check,
   Film,
   Lightbulb,
   ListOrdered,
-  Lock,
   Music,
   Scissors,
   Share2,
 } from 'lucide-react';
 
+import {
+  type StageKey,
+  type StageView,
+  deriveStageViews,
+} from '@kit/episodes/lib/stage-state';
+import type { EpisodeWithShots } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeContext } from './episode-context-provider';
@@ -81,41 +87,50 @@ const POST_TABS: TabConfig[] = [
   },
 ];
 
-function getTabUnlockState(
-  episode: {
-    storyData: unknown;
-    screenplayData: unknown;
-    shotList: unknown;
-    status: string;
-    finalVideoUrl: string | null;
-  },
-  _hasCompletedShots: boolean,
-): Record<string, boolean> {
-  const hasStoryData = episode.storyData !== null;
-  const hasScreenplayData = episode.screenplayData !== null;
-  const hasShotList = episode.shotList !== null;
+/**
+ * The studio stage each tab shows a state for. Audio has none here: the
+ * workspace does not load the audio cue count, and a guessed "not started"
+ * would be wrong. The Edit record tab is not a stage.
+ */
+const TAB_STAGE: Partial<Record<string, StageKey>> = {
+  ideation: 'ideation',
+  story: 'story',
+  screenplay: 'screenplay',
+  'shot-list': 'shots',
+  publish: 'publish',
+};
 
-  return {
-    ideation: true, // Always accessible
-    story: true, // Always accessible (can view even without data)
-    screenplay: hasStoryData, // Unlocked when story exists
-    'shot-list': hasScreenplayData, // Unlocked when screenplay exists
-    audio: hasShotList, // Unlocked when shot list exists
-    publish: hasShotList, // Unlocked when shot list exists (user can upload video directly)
-    edit: true, // Read-only: says when nothing was delivered from the Studio yet (FILM-2006)
-  };
+/**
+ * Each tab's stage state (FILM-2202). No tab is locked: a stage is reachable
+ * whatever came before it, and an empty one says what it needs.
+ */
+function stageStates(episode: EpisodeWithShots): Map<StageKey, StageView> {
+  const views = deriveStageViews({
+    status: episode.status,
+    storyData: episode.storyData,
+    screenplayData: episode.screenplayData,
+    shotList: episode.shotList,
+    shotCount: episode.shots?.length ?? 0,
+    audioCueCount: 0, // not loaded here; the audio tab shows no state
+    finalVideoUrl: episode.finalVideoUrl,
+    localizedVideoCount: Object.keys(episode.localizedVideos ?? {}).length,
+    skippedStages: episode.skippedStages,
+  });
+
+  return new Map(views.map((view) => [view.key, view]));
 }
+
+const STATE_LABEL: Record<StageView['state'], string> = {
+  done: 'Done',
+  empty: 'Not started',
+  skipped: 'Skipped',
+};
 
 export function EpisodeWorkspaceTabs() {
   const pathname = usePathname() ?? '';
   const { episode, accountSlug, projectSlug } = useEpisodeContext();
 
-  // Check if any shots have completed videos
-  const hasCompletedShots = episode.shots?.some(
-    (shot) => shot.status === 'completed' && shot.videoUrl,
-  );
-
-  const tabUnlockState = getTabUnlockState(episode, hasCompletedShots ?? false);
+  const states = stageStates(episode);
 
   // Get base path for episode using slugs
   const episodeSlug = episode.slug ?? episode.id;
@@ -137,28 +152,17 @@ export function EpisodeWorkspaceTabs() {
 
   const renderTab = (tab: TabConfig) => {
     const isActive = activeTab === tab.id;
-    const isUnlocked = tabUnlockState[tab.id];
+    const stage = TAB_STAGE[tab.id];
+    const view = stage ? states.get(stage) : undefined;
     const TabIcon = tab.icon;
-
-    if (!isUnlocked) {
-      return (
-        <div
-          key={tab.id}
-          data-test={`episode-tab-${tab.id}`}
-          className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400"
-          title={`Complete previous steps to unlock ${tab.label}`}
-        >
-          <Lock className="h-3.5 w-3.5" />
-          <span>{tab.label}</span>
-        </div>
-      );
-    }
 
     return (
       <Link
         key={tab.id}
         href={`${basePath}/${tab.path}`}
         data-test={`episode-tab-${tab.id}`}
+        data-stage-state={view?.state}
+        title={view ? `${tab.label}: ${STATE_LABEL[view.state]}` : tab.label}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
           'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none',
@@ -168,7 +172,17 @@ export function EpisodeWorkspaceTabs() {
         )}
       >
         <TabIcon className="h-3.5 w-3.5" />
-        <span>{tab.label}</span>
+        <span
+          className={cn(view?.state === 'skipped' && 'line-through opacity-60')}
+        >
+          {tab.label}
+        </span>
+        {view?.state === 'done' ? (
+          <Check
+            aria-label="Done"
+            className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
+          />
+        ) : null}
       </Link>
     );
   };

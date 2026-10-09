@@ -356,6 +356,9 @@ export interface ShortsGroup {
   videos: Record<string, string>;
 }
 
+/** FILM-2201: how an episode started (episodes.entry_mode) */
+export type EntryMode = 'idea' | 'script' | 'video';
+
 export interface Episode {
   id: string;
   slug: string | null;
@@ -381,6 +384,10 @@ export interface Episode {
   /** Raw `episodes.generation_origin`, keyed by stage (FILM-1903); read with latestStageOrigin */
   generationOrigin?: unknown;
   version: number;
+  /** FILM-2201: stages the author chose not to do */
+  skippedStages?: string[];
+  /** FILM-2201: how the episode started */
+  entryMode?: EntryMode;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

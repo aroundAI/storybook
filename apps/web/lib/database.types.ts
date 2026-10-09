@@ -2371,7 +2371,6 @@ export type Database = {
           language: string
           preset: string
           qa: Json
-          source: string
           status: string
           thumbnail_url: string | null
         }
@@ -2391,7 +2390,6 @@ export type Database = {
           language?: string
           preset: string
           qa?: Json
-          source?: string
           status?: string
           thumbnail_url?: string | null
         }
@@ -2411,7 +2409,6 @@ export type Database = {
           language?: string
           preset?: string
           qa?: Json
-          source?: string
           status?: string
           thumbnail_url?: string | null
         }

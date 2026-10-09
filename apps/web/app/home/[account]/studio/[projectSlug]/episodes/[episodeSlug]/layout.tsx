@@ -12,6 +12,7 @@ import {
 import { STUDIO_SHOT_COLUMNS, shotFromRow } from '@kit/episodes/lib/shot-row';
 import { listOpenExternalRuns } from '@kit/episodes/lib/stage-runs';
 import type {
+  EntryMode,
   EpisodeMetadata,
   EpisodeStatus,
   EpisodeWithShots,
@@ -144,6 +145,7 @@ async function EpisodeWorkspaceLayout({
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
         master_video_asset_id, generation_origin, edit_state,
+        skipped_stages, entry_mode,
         season:seasons(id, name, number),
         master_video:assets!episodes_master_video_asset_id_fkey(*),
         title_cards:assets!assets_episode_id_fkey(*)
@@ -196,6 +198,8 @@ async function EpisodeWorkspaceLayout({
     metadata: episodeData.metadata as EpisodeMetadata | null,
     generationOrigin: episodeData.generation_origin,
     version: episodeData.version,
+    skippedStages: episodeData.skipped_stages,
+    entryMode: episodeData.entry_mode as EntryMode,
     createdAt: episodeData.created_at,
     updatedAt: episodeData.updated_at,
     deletedAt: episodeData.deleted_at,

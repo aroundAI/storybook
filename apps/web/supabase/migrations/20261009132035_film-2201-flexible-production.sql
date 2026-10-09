@@ -1,9 +1,8 @@
 -- FILM-2201: Flexible Production foundations (EDD specs/plans/FILM-2201-flexible-production-edd.md §10).
 --
 -- Seasons become first-class (created empty, reordered, deleted without
--- losing their episodes), an episode records how it started and which
--- stages its author skipped, and a render can come from an upload rather
--- than a StorybookStudio session. No policy changes: both functions run as
+-- losing their episodes), and an episode records how it started and which
+-- stages its author skipped. No policy changes: both functions run as
 -- the caller, so the existing seasons and episodes policies decide.
 
 -- Seasons: a cover, and optimistic locking like episodes.version
@@ -27,15 +26,6 @@ comment on column public.episodes.entry_mode is
   'FILM-2201: how the episode started: from an idea, a script or a finished video';
 comment on column public.episodes.skipped_stages is
   'FILM-2201: stages the author chose not to do; writing to a stage un-skips it';
-
--- Renders: one made in StorybookStudio, or a finished video uploaded on its own
-alter table public.episode_renders
-  add column source text not null default 'studio'
-    constraint episode_renders_source_check
-    check (source in ('studio', 'upload'));
-
-comment on column public.episode_renders.source is
-  'FILM-2201: studio (an edit session delivered it) or upload (attached without one)';
 
 -- Reorders a project's live seasons to the order given, numbered 1..n.
 -- Live numbers are unique (seasons_project_id_number_active_idx), so the

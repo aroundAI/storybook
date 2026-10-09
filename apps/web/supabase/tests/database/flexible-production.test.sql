@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(22);
+select plan(21);
 
 -- FILM-2201. reorder_seasons and soft_delete_season run as the caller, so
 -- the seasons and episodes policies decide who may use them: seasons_update
@@ -64,13 +64,6 @@ select throws_ok(
   $$update public.episodes set skipped_stages = '{publish}' where id = '22010000-0000-4000-8000-0000000000e1'$$,
   '23514', null,
   'skipped_stages refuses a stage that cannot be skipped'
-);
-
-select throws_ok(
-  $$insert into public.episode_renders (episode_id, preset, language, aspect, file_path, file_size_bytes, created_by, source)
-    values ('22010000-0000-4000-8000-0000000000e1', 'master', 'en', '16:9', 'k', 1, tests.get_supabase_uid('fp_owner'), 'other')$$,
-  '23514', null,
-  'a render comes from the studio or an upload'
 );
 
 select is(

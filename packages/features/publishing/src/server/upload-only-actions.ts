@@ -16,11 +16,11 @@ import {
   MarkAsExternallyUploadedSchema,
 } from '../lib/schemas/upload-only.schema';
 import {
-  extractContentId,
   formatDescriptionForPlatform,
   generateDefaultTags,
   sanitizeFilename,
 } from '../lib/upload-only-format';
+import { linkPublishedVideo } from './link-published-video.service';
 
 /**
  * Platform-specific upload instructions
@@ -199,76 +199,20 @@ export const markAsExternallyUploadedAction = enhanceAction(
 
     logger.info(ctx, 'Marking as externally uploaded');
 
-    const client = getSupabaseServerClient();
+    const linked = await linkPublishedVideo(
+      getSupabaseServerClient(),
+      { episodeId, platform, platformUrl },
+      logger,
+    ).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to link the published video');
+      throw error;
+    });
 
-    // Extract platform content ID from URL if possible
-    const platformContentId = extractContentId(platformUrl, platform, logger);
-
-    // Check for existing publish record
-    const { data: existingPublish } = await client
-      .from('publishes')
-      .select('id')
-      .eq('episode_id', episodeId)
-      .eq('platform', platform)
-      .maybeSingle();
-
-    let publishId: string;
-
-    if (existingPublish) {
-      // Update existing record
-      const { data: updated, error: updateError } = await client
-        .from('publishes')
-        .update({
-          platform_url: platformUrl,
-          platform_content_id: platformContentId,
-          status: 'published',
-          published_at: new Date().toISOString(),
-          metadata: { upload_method: 'external' },
-        })
-        .eq('id', existingPublish.id)
-        .select('id')
-        .single();
-
-      if (updateError) {
-        logger.error(
-          { ...ctx, error: updateError },
-          'Failed to update publish',
-        );
-        throw new Error('Failed to update publish record');
-      }
-
-      publishId = updated.id;
-    } else {
-      // Create new record for external upload (no OAuth connection required)
-      // Migration 20251210164448 makes platform_connection_id nullable for external uploads
-      // TODO: Remove type override after running `pnpm supabase:web:typegen` to regenerate types
-      const { data: created, error: createError } = await client
-        .from('publishes')
-        .insert({
-          episode_id: episodeId,
-          platform,
-          platform_url: platformUrl,
-          platform_content_id: platformContentId,
-          // Type override: platform_connection_id is nullable after migration 20251210164448
-          // The generated types still show it as required until typegen is run
-          platform_connection_id: null as unknown as string,
-          status: 'published',
-          published_at: new Date().toISOString(),
-          metadata: { upload_method: 'external' },
-        })
-        .select('id')
-        .single();
-
-      if (createError) {
-        logger.error(
-          { ...ctx, error: createError },
-          'Failed to create publish',
-        );
-        throw new Error('Failed to create publish record');
-      }
-
-      publishId = created.id;
+    if (!linked.ok) {
+      throw new ActionRefusal(linked.refusal);
     }
+
+    const { publishId } = linked;
 
     logger.info({ ...ctx, publishId }, 'Marked as externally uploaded');
 

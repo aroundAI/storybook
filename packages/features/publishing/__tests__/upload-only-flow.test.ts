@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   writeError: null as { message: string } | null,
   inserted: [] as Record<string, unknown>[],
   updated: [] as Record<string, unknown>[],
+  elsewhere: [] as Array<{ id: string }>,
 }));
 
 vi.mock('server-only', () => ({}));
@@ -44,6 +45,9 @@ function query(table: string) {
   const builder = {
     select: () => builder,
     eq: () => builder,
+    neq: () => builder,
+    is: () => builder,
+    limit: async () => ({ data: state.elsewhere, error: null }),
     insert: (row: Record<string, unknown>) => {
       mode = 'insert';
       state.inserted.push(row);
@@ -99,6 +103,7 @@ beforeEach(() => {
   state.writeError = null;
   state.inserted = [];
   state.updated = [];
+  state.elsewhere = [];
 });
 
 describe('generateExportPackageAction', () => {
@@ -216,6 +221,23 @@ describe('generateExportPackageAction', () => {
 });
 
 describe('markAsExternallyUploadedAction', () => {
+  it('refuses a video already linked to another episode, and writes nothing', async () => {
+    // FILM-2202: analytics attribute a video by its platform id; a second
+    // link would count it twice
+    state.elsewhere = [{ id: 'other-publish' }];
+
+    await expect(
+      markAsExternallyUploadedAction({
+        episodeId: EPISODE,
+        platform: 'youtube',
+        platformUrl: 'https://www.youtube.com/watch?v=abc123DEF45',
+      }),
+    ).rejects.toThrow('already linked to another episode');
+
+    expect(state.inserted).toEqual([]);
+    expect(state.updated).toEqual([]);
+  });
+
   it('records the upload as a publish with no OAuth connection', async () => {
     await expect(
       markAsExternallyUploadedAction({
