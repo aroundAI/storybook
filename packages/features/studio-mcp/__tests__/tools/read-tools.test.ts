@@ -208,6 +208,10 @@ describe('list_episodes and get_episode', () => {
       ),
     ).toBe(true);
 
+    // list_episodes reads episodes more than once (season positions); the
+    // scope check is get_episode's first read
+    const before = fake.calls.length;
+
     await expect(
       getEpisodeTool.handler(
         { episodeId: EPISODE_ID },
@@ -215,7 +219,9 @@ describe('list_episodes and get_episode', () => {
       ),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
 
-    const getSelect = fake.calls.filter((call) => call.table === 'episodes')[1];
+    const getSelect = fake.calls
+      .slice(before)
+      .find((call) => call.table === 'episodes');
     expect(
       getSelect?.filters.some(
         (filter) =>

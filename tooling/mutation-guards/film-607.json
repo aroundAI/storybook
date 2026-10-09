@@ -11,8 +11,8 @@
       "name": "W1 the Edit Suite tab is back in the episode workspace",
       "kind": "unit",
       "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx",
-      "find": "const POST_TABS: TabConfig[] = [\n",
-      "replace": "const POST_TABS: TabConfig[] = [\n  {\n    id: 'edit-suite',\n    label: 'Edit Suite',\n    icon: Share2,\n    path: 'edit-suite',\n    studioMode: 'post',\n  },\n",
+      "find": "        <div className=\"h-8 w-px bg-gray-300 dark:bg-white/10\" />\n",
+      "replace": "        <div className=\"h-8 w-px bg-gray-300 dark:bg-white/10\" />\n        <Link href={`${basePath}/edit-suite`} data-test=\"episode-tab-edit-suite\">\n          Edit Suite\n        </Link>\n",
       "cwd": "apps/web",
       "test": "app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/__tests__/episode-workspace-tabs.test.tsx",
       "pattern": "no Edit Suite"
