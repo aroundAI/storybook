@@ -26,6 +26,7 @@ import { revokeAtVendor } from '../oauth/revokers';
 import type { ConnectionStatus, PlatformType } from '../types';
 import { analyticsScopesEnabled } from './analytics-scope-switch';
 import { resolveFollowerCounts } from './follower-counts';
+import { getProjectChannelIds } from './project-channels';
 
 // ============================================================================
 // FILM-906: Platform Connections Settings Actions
@@ -561,9 +562,13 @@ function linkedMetaAccountName(
  * Used by the Publish Hub
  */
 export const getConnectedPlatformsAction = enhanceAction(
-  async ({ accountId }, _user) => {
+  async ({ accountId, projectId }, _user) => {
     const logger = await getLogger();
-    const ctx = { name: 'publishing.getConnectedPlatforms', accountId };
+    const ctx = {
+      name: 'publishing.getConnectedPlatforms',
+      accountId,
+      projectId,
+    };
 
     logger.info(ctx, 'Fetching connected platforms');
 
@@ -595,8 +600,13 @@ export const getConnectedPlatformsAction = enhanceAction(
     // We return a unified structure compatible with both Publish Page and Settings Page
     // A kept row on a removed or hidden platform is not somewhere to
     // publish (FILM-717; X while `X_ENABLED` is off).
-    const publishable = (connections ?? []).filter((connection) =>
-      isOfferedPlatform(connection.platform),
+    const projectChannels = projectId
+      ? await getProjectChannelIds(client, projectId)
+      : undefined;
+    const publishable = (connections ?? []).filter(
+      (connection) =>
+        isOfferedPlatform(connection.platform) &&
+        (!projectChannels || projectChannels.has(connection.id)),
     );
 
     const followerCounts = await resolveFollowerCounts(

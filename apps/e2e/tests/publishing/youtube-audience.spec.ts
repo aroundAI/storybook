@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs';
 
 import {
   type SeededTeam,
+  addProjectChannels,
   episodeVideoUrl,
   readRows,
   seedEpisodeWithShot,
@@ -69,6 +70,7 @@ async function seedUndeclaredChannel(page: Page): Promise<Fixture> {
       accessTokenEncrypted: 'kb30-not-a-real-token',
     },
   );
+  await addProjectChannels(project.id, [connectionId]);
 
   await signInAs(page, team);
 
@@ -247,10 +249,9 @@ test.describe('YouTube uploads declare the audience the creator chose (KB-30)', 
       .toEqual({ youtube_made_for_kids: false, youtube_category_id: '27' });
 
     await page.goto(fixture.publishUrl);
-    // Rendered once connections load: hydrated, so "not set" is really absent.
-    await expect(
-      page.getByRole('button', { name: 'Manage Channels' }),
-    ).toBeVisible();
+    // Rendered once the project's channels load: hydrated, so "not set" is
+    // really absent.
+    await expect(byTest(page, 'channel-badge').first()).toBeVisible();
     await expect(byTest(page, 'youtube-audience-not-set')).toBeHidden();
     await byTest(page, 'publish-all').click();
     await expect(byTest(page, 'confirm-youtube-audience-row')).toHaveText(

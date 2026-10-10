@@ -71,6 +71,7 @@ import { TwitterProvider } from '../providers/twitter';
 import { TWITTER_CONSTRAINTS } from '../providers/twitter/types';
 import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
+import { assertConnectionOfProject } from './project-channels';
 import { uploadToYouTube } from './youtube-upload';
 
 // Initialize SQS client
@@ -331,15 +332,19 @@ const publishToAllHandler = enhanceAction(
 
     // KB-109: every channel is one of the episode's account, asked before
     // any token is decrypted or refreshed
-    for (const connectionId of new Set(
+    const connectionIds = new Set(
       platforms.map((platform) => platform.connectionId),
-    )) {
+    );
+    for (const connectionId of connectionIds) {
       await assertConnectionOfAccount(
         client,
         connectionId,
         episode.project.account_id,
       );
     }
+
+    // An episode publishes only to its project's channels
+    await assertConnectionOfProject(client, connectionIds, episode.project_id);
 
     // KB-104: a thumbnail is downloaded and sent to the channel, so only one
     // of this episode's own uploads may be named. Checked before anything is
@@ -791,6 +796,11 @@ const retryPublish = enhanceAction(
       client,
       publish.platform_connection_id,
       episode.project.account_id,
+    );
+    await assertConnectionOfProject(
+      client,
+      [publish.platform_connection_id],
+      episode.project_id,
     );
 
     const tokenResult = await getAccessToken(publish.platform_connection_id);

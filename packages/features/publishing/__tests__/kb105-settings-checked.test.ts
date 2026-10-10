@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 /**
  * KB-105: an update RLS filters to no rows answers `{ data: [], error: null }`,
  * as one that worked. A channel's language and a project's publishing
- * settings were reported saved either way; each now refuses when its update
+ * channels were reported saved either way; each now refuses when its update
  * changed nothing.
  */
 
@@ -37,28 +37,23 @@ vi.mock('@kit/supabase/require-user', () => ({
 }));
 
 function query(table: string) {
-  let updating = false;
+  let writing = false;
+  const write = () => {
+    writing = true;
+    return builder;
+  };
   const builder = {
-    select: () => (updating ? resolved() : builder),
-    update: () => {
-      updating = true;
-      return builder;
-    },
-    insert: async () => ({ error: null }),
-    delete: () => builder,
+    select: () => (writing ? resolved() : builder),
+    update: write,
+    delete: write,
+    upsert: write,
     eq: () => builder,
-    in: async () => ({ error: null }),
+    in: () => builder,
     then: (resolve: (value: unknown) => unknown) =>
       resolve({
         data:
           table === 'project_publishing_configs'
-            ? [
-                {
-                  id: CONFIG,
-                  platform_connection_id: CONNECTION,
-                  language: 'en',
-                },
-              ]
+            ? [{ id: CONFIG, platform_connection_id: CONNECTION }]
             : [],
         error: null,
       }),
@@ -107,37 +102,41 @@ describe("a channel's language (KB-105)", () => {
   });
 });
 
-describe("a project's publishing settings (KB-105)", () => {
-  const input = {
-    projectId: PROJECT,
-    configs: [
-      {
-        id: CONFIG,
-        platformConnectionId: CONNECTION,
-        language: 'en' as const,
-        isEnabled: false,
-      },
-    ],
-  };
+describe("a project's channels (KB-105)", () => {
+  // The project keeps its one channel: an upsert that must save one row
+  const input = { projectId: PROJECT, connectionIds: [CONNECTION] };
 
-  it('refuses when the update changed no row', async () => {
-    const { updateProjectPublishingConfigsAction } = await import(
+  it('refuses when the save changed no row', async () => {
+    const { setProjectChannelsAction } = await import(
       '../src/server/project-publishing-actions'
     );
 
-    await expect(updateProjectPublishingConfigsAction(input)).resolves.toEqual({
+    await expect(setProjectChannelsAction(input)).resolves.toEqual({
       success: false,
-      error: "You can't change this project's publishing settings.",
+      error: "You can't change this project's channels.",
     });
   });
 
-  it('saves when it changed the setting', async () => {
-    state.changed = [{ id: CONFIG }];
-    const { updateProjectPublishingConfigsAction } = await import(
+  it('refuses when removing a channel deleted no row', async () => {
+    const { setProjectChannelsAction } = await import(
       '../src/server/project-publishing-actions'
     );
 
-    await expect(updateProjectPublishingConfigsAction(input)).resolves.toEqual({
+    await expect(
+      setProjectChannelsAction({ projectId: PROJECT, connectionIds: [] }),
+    ).resolves.toEqual({
+      success: false,
+      error: "You can't change this project's channels.",
+    });
+  });
+
+  it('saves when it changed the project', async () => {
+    state.changed = [{ id: CONFIG }];
+    const { setProjectChannelsAction } = await import(
+      '../src/server/project-publishing-actions'
+    );
+
+    await expect(setProjectChannelsAction(input)).resolves.toEqual({
       success: true,
     });
   });

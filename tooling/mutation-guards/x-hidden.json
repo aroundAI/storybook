@@ -55,8 +55,8 @@
       "name": "XH6 the publish screen offers a kept X channel",
       "kind": "unit",
       "file": "packages/features/publishing/src/server/connection-actions.ts",
-      "find": "    const publishable = (connections ?? []).filter((connection) =>\n      isOfferedPlatform(connection.platform),\n    );",
-      "replace": "    const publishable = (connections ?? []).filter(\n      (connection) =>\n        isOfferedPlatform(connection.platform) ||\n        connection.platform === 'twitter',\n    );",
+      "find": "        isOfferedPlatform(connection.platform) &&\n",
+      "replace": "        (isOfferedPlatform(connection.platform) ||\n          connection.platform === 'twitter') &&\n",
       "cwd": "packages/features/publishing",
       "test": "__tests__/connection-actions.test.ts",
       "pattern": "is not offered on the publish screen while X is hidden"

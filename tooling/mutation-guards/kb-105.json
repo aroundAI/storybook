@@ -42,14 +42,24 @@
       "pattern": "a channel's language"
     },
     {
-      "name": "C1 project publishing settings RLS refused are reported saved",
+      "name": "C1 a project's channels RLS refused are reported saved",
       "kind": "unit",
       "file": "packages/features/publishing/src/server/project-publishing-actions.ts",
-      "find": "          if (!updated?.length) {\n",
-      "replace": "          if (false) {\n",
+      "find": "        if (saved.length !== chosen.size) throw new Error(REFUSED);\n",
+      "replace": "",
       "cwd": "packages/features/publishing",
       "test": "__tests__/kb105-settings-checked.test.ts",
-      "pattern": "a project's publishing settings"
+      "pattern": "refuses when the save changed no row"
+    },
+    {
+      "name": "C2 a project's channel RLS kept is reported removed",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/project-publishing-actions.ts",
+      "find": "        if (deleted.length !== toDelete.length) throw new Error(REFUSED);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/kb105-settings-checked.test.ts",
+      "pattern": "refuses when removing a channel deleted no row"
     }
   ]
 }

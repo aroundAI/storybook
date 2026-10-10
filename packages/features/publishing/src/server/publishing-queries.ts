@@ -2,9 +2,10 @@ import 'server-only';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { isOfferedPlatform } from '../lib/platforms';
 import type { PlatformConnection } from './episode-publishing-actions';
 import type { GlobalOAuthApp } from './global-oauth-actions';
-import type { ProjectPublishingConfig } from './project-publishing-actions';
+import { getProjectChannelIds } from './project-channels';
 
 /*
  * Reads for server components. Not `'use server'`: every export of such a
@@ -34,20 +35,25 @@ export async function getAccountPlatformConnections(
     )
     .eq('account_id', accountId)
     .eq('is_active', true)
+    // A disconnected channel is history, not somewhere to publish (KB-22).
+    .is('disconnected_at', null)
     .order('platform', { ascending: true });
 
   if (error) {
     throw new Error(`Failed to fetch connections: ${error.message}`);
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    platform: row.platform,
-    platformAccountId: row.platform_account_id,
-    platformAccountName: row.platform_account_name,
-    language: row.language,
-    isActive: row.is_active,
-  }));
+  // A kept row on a removed or hidden platform is not somewhere to publish
+  return data
+    .filter((row) => isOfferedPlatform(row.platform))
+    .map((row) => ({
+      id: row.id,
+      platform: row.platform,
+      platformAccountId: row.platform_account_id,
+      platformAccountName: row.platform_account_name,
+      language: row.language,
+      isActive: row.is_active,
+    }));
 }
 
 /**
@@ -81,64 +87,12 @@ export async function getGlobalOAuthApps(): Promise<GlobalOAuthApp[]> {
 // =============================================================================
 
 /**
- * Get all publishing configs for a project
+ * The ids of the channels a project publishes to
  */
-export async function getProjectPublishingConfigs(
+export async function getProjectChannelSelection(
   projectId: string,
-): Promise<ProjectPublishingConfig[]> {
-  const client = getSupabaseServerClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (client as any)
-    .from('project_publishing_configs')
-    .select(
-      `
-      id,
-      project_id,
-      platform_connection_id,
-      language,
-      default_title_suffix,
-      default_description_template,
-      default_tags,
-      is_enabled,
-      platform_connections!inner (
-        platform,
-        platform_account_name
-      )
-    `,
-    )
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    throw new Error(`Failed to fetch configs: ${error.message}`);
-  }
-
-  return (data ?? []).map(
-    (row: {
-      id: string;
-      project_id: string;
-      platform_connection_id: string;
-      language: string;
-      default_title_suffix: string | null;
-      default_description_template: string | null;
-      default_tags: string[] | null;
-      is_enabled: boolean;
-      platform_connections: {
-        platform: string;
-        platform_account_name: string | null;
-      };
-    }) => ({
-      id: row.id,
-      projectId: row.project_id,
-      platformConnectionId: row.platform_connection_id,
-      language: row.language,
-      defaultTitleSuffix: row.default_title_suffix,
-      defaultDescriptionTemplate: row.default_description_template,
-      defaultTags: row.default_tags,
-      isEnabled: row.is_enabled,
-      platform: row.platform_connections?.platform,
-      platformAccountName: row.platform_connections?.platform_account_name,
-    }),
-  );
+): Promise<string[]> {
+  return [
+    ...(await getProjectChannelIds(getSupabaseServerClient(), projectId)),
+  ];
 }

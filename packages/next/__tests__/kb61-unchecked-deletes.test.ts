@@ -55,8 +55,6 @@ const KNOWN: Record<string, [number, string]> = {
   // Replace-sets
   'packages/features/content-analytics/src/server/taxonomy-service.ts | publish_tags | delete':
     [2, REPLACE],
-  'packages/features/publishing/src/server/project-publishing-actions.ts | project_publishing_configs | delete':
-    [1, REPLACE],
 
   // Cascades under a checked parent
   'packages/features/episodes/src/server/actions.ts | shots | delete': [

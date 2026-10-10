@@ -12,6 +12,7 @@ import {
   storedConnections,
 } from '../utils/sandbox';
 import {
+  addProjectChannels,
   seedEpisodeWithShot,
   seedProject,
   seedTeamAccount,
@@ -98,10 +99,8 @@ async function consentToX(
 /** Publish All → confirm, and the X row once it has an outcome. */
 async function publishToX(page: Page, publishUrl: string) {
   await page.goto(publishUrl);
-  // Rendered once connections load: a click before then finds no channels.
-  await expect(
-    page.getByRole('button', { name: 'Manage Channels' }),
-  ).toBeVisible();
+  // Rendered once the project's channels load: a click before then finds none.
+  await expect(byTest(page, 'channel-badge').first()).toBeVisible();
   await byTest(page, 'publish-all').click();
   await byTest(page, 'confirm-publish').click();
 
@@ -148,6 +147,7 @@ test.describe('Publishing to X without media.write, then with it (FILM-1729)', (
     await consentToX(page, team.slug, false, '1-consent-without');
     const [narrow] = await storedConnections(team.accountId, 'twitter');
     expect(narrow!.scopes).not.toContain('media.write');
+    await addProjectChannels(project.id, [narrow!.id]);
 
     // --- Refused before anything is written or sent, and it says why.
     const before = await lastLedgerId();

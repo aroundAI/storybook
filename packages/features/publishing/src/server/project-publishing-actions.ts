@@ -8,150 +8,91 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
-import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-// =============================================================================
-// Types
-// =============================================================================
-
-export interface ProjectPublishingConfig {
-  id: string;
-  projectId: string;
-  platformConnectionId: string;
-  language: string;
-  defaultTitleSuffix: string | null;
-  defaultDescriptionTemplate: string | null;
-  defaultTags: string[] | null;
-  isEnabled: boolean;
-  // Joined from platform_connections
-  platform?: string;
-  platformAccountName?: string;
-}
 
 // =============================================================================
 // Actions
 // =============================================================================
 
-const UpdateProjectPublishingConfigSchema = z.object({
+const SetProjectChannelsSchema = z.object({
   projectId: z.string().uuid(),
-  configs: z.array(
-    z.object({
-      id: z.string().uuid().optional(),
-      platformConnectionId: z.string().uuid(),
-      language: z.enum(['en', 'hi', 'es', 'pt']),
-      isEnabled: z.boolean(),
-      defaultTitleSuffix: z.string().max(100).optional().nullable(),
-      defaultDescriptionTemplate: z.string().optional().nullable(),
-      defaultTags: z.array(z.string()).optional().nullable(),
-    }),
-  ),
+  connectionIds: z.array(z.string().uuid()),
 });
 
+const REFUSED = "You can't change this project's channels.";
+
 /**
- * Update publishing configs for a project
+ * Sets the channels a project publishes to: exactly `connectionIds`.
  */
-export const updateProjectPublishingConfigsAction = enhanceAction(
-  async (
-    input: z.infer<typeof UpdateProjectPublishingConfigSchema>,
-  ): Promise<{ success: boolean; error?: string }> => {
+export const setProjectChannelsAction = enhanceAction(
+  async ({
+    projectId,
+    connectionIds,
+  }): Promise<{ success: boolean; error?: string }> => {
     const logger = await getLogger();
-    const ctx = {
-      name: 'publishing.updateProjectConfigs',
-      projectId: input.projectId,
-    };
-
-    logger.info(ctx, 'Updating project publishing configs');
-
+    const ctx = { name: 'publishing.setProjectChannels', projectId };
     const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      throw new Error('Authentication required');
-    }
+    const chosen = new Set(connectionIds);
 
     try {
-      // Get existing configs
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existing } = await (client as any)
+      const { data: existing, error: readError } = await client
         .from('project_publishing_configs')
-        .select('id')
-        .eq('project_id', input.projectId);
+        .select('id, platform_connection_id')
+        .eq('project_id', projectId);
 
-      const existingIds = new Set<string>(
-        (existing ?? []).map((e: { id: string }) => e.id),
-      );
-      const inputIds = new Set(
-        input.configs.filter((c) => c.id).map((c) => c.id),
-      );
+      if (readError) throw readError;
 
-      // Delete removed configs
-      const toDelete = [...existingIds].filter(
-        (id) => !inputIds.has(id),
-      ) as string[];
+      const toDelete = existing
+        .filter((row) => !chosen.has(row.platform_connection_id))
+        .map((row) => row.id);
+
       if (toDelete.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (client as any)
+        const { data: deleted, error } = await client
           .from('project_publishing_configs')
           .delete()
-          .in('id', toDelete);
+          .in('id', toDelete)
+          .select('id');
+
+        if (error) throw error;
+        // RLS answers a refused write with no rows and no error (KB-105).
+        if (deleted.length !== toDelete.length) throw new Error(REFUSED);
       }
 
-      // Upsert configs
-      for (const config of input.configs) {
-        if (config.id && existingIds.has(config.id)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: updated, error: updateError } = await (client as any)
-            .from('project_publishing_configs')
-            .update({
-              platform_connection_id: config.platformConnectionId,
-              language: config.language,
-              is_enabled: config.isEnabled,
-              default_title_suffix: config.defaultTitleSuffix ?? null,
-              default_description_template:
-                config.defaultDescriptionTemplate ?? null,
-              default_tags: config.defaultTags ?? null,
-            })
-            .eq('id', config.id)
-            .select('id');
+      if (chosen.size > 0) {
+        const { data: saved, error } = await client
+          .from('project_publishing_configs')
+          .upsert(
+            [...chosen].map((platform_connection_id) => ({
+              project_id: projectId,
+              platform_connection_id,
+              is_enabled: true,
+            })),
+            { onConflict: 'project_id,platform_connection_id' },
+          )
+          .select('id');
 
-          if (updateError) throw updateError;
-          // RLS answers a refused update with no rows and no error (KB-105).
-          if (!updated?.length) {
-            throw new Error(
-              "You can't change this project's publishing settings.",
-            );
-          }
-        } else {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any).from('project_publishing_configs').insert({
-            project_id: input.projectId,
-            platform_connection_id: config.platformConnectionId,
-            language: config.language,
-            is_enabled: config.isEnabled,
-            default_title_suffix: config.defaultTitleSuffix ?? null,
-            default_description_template:
-              config.defaultDescriptionTemplate ?? null,
-            default_tags: config.defaultTags ?? null,
-          });
-        }
+        if (error) throw error;
+        if (saved.length !== chosen.size) throw new Error(REFUSED);
       }
 
-      logger.info(
-        { ...ctx, configCount: input.configs.length },
-        'Configs updated',
-      );
+      logger.info({ ...ctx, count: chosen.size }, 'Project channels set');
 
       revalidatePath('/home/[account]/studio', 'layout');
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ ...ctx, error: message }, 'Failed to update configs');
+      const message =
+        error instanceof Error
+          ? error.message
+          : ((error as { message?: string }).message ?? 'Unknown error');
+      logger.error(
+        { ...ctx, error: message },
+        'Failed to set project channels',
+      );
       return { success: false, error: message };
     }
   },
   {
-    schema: UpdateProjectPublishingConfigSchema,
+    schema: SetProjectChannelsSchema,
   },
 );

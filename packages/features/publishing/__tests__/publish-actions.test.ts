@@ -6,6 +6,11 @@ import type { Platform, PublishResult } from '../src/lib/types';
 vi.mock('server-only', () => ({}));
 
 // Mock next/cache
+// Every channel is the project's here; that check is
+// publish-queue-authorization.test.ts's subject
+vi.mock('../src/server/project-channels', () => ({
+  assertConnectionOfProject: async () => undefined,
+}));
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));

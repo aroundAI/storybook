@@ -32,6 +32,7 @@ interface PublishSettingsSidebarProps {
   connectionsCount: number;
   accountSlug?: string;
   onRefreshConnections: () => void;
+  onChooseChannels: () => void;
   /** The publish's AI declaration (FILM-1731) */
   aiGenerated: boolean;
   onAiGeneratedChange: (aiGenerated: boolean) => void;
@@ -46,6 +47,7 @@ export function PublishSettingsSidebar({
   connectionsCount,
   accountSlug,
   onRefreshConnections,
+  onChooseChannels,
   aiGenerated,
   onAiGeneratedChange,
   children,
@@ -109,7 +111,9 @@ export function PublishSettingsSidebar({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Connected Channels</CardTitle>
+            <CardTitle className="text-lg">
+              This project&apos;s channels
+            </CardTitle>
             <Button
               variant="ghost"
               size="sm"
@@ -129,24 +133,30 @@ export function PublishSettingsSidebar({
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
           ) : connectionsCount === 0 ? (
-            <div className="py-6 text-center">
+            <div
+              className="py-6 text-center"
+              data-test="project-channels-empty"
+            >
               <p className="mb-3 text-sm text-gray-500">
-                No channels connected
+                This project has no channels yet. Its episodes publish only to
+                the channels you choose for it.
               </p>
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() =>
-                  (window.location.href = `/home/${accountSlug}/settings/platforms`)
-                }
+                onClick={onChooseChannels}
+                data-test="choose-project-channels"
               >
-                Connect Channels
+                Choose channels
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
               {Object.entries(channelsByLanguage).map(([lang, channels]) => (
-                <div key={lang}>
+                <div
+                  key={lang}
+                  data-test="project-channels-language"
+                  data-lang={lang}
+                >
                   <div className="mb-2 flex items-center gap-2">
                     <span>
                       {LANG_INFO[lang as SupportedLanguage]?.flag ?? '🌐'}
@@ -170,12 +180,17 @@ export function PublishSettingsSidebar({
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() =>
-                  (window.location.href = `/home/${accountSlug}/settings/platforms`)
-                }
+                onClick={onChooseChannels}
+                data-test="choose-project-channels"
               >
-                Manage Channels
+                Choose channels
               </Button>
+              <a
+                href={`/home/${accountSlug}/settings/platforms`}
+                className="block text-center text-xs text-muted-foreground underline"
+              >
+                Connect or manage the team&apos;s channels
+              </a>
             </div>
           )}
         </CardContent>
