@@ -47,6 +47,7 @@
     "./research": "./src/lib/research/index.ts",
     "./lib/job-types": "./src/lib/job-types.ts",
     "./lib/episode-video": "./src/lib/episode-video.ts",
+    "./lib/shorts-targets": "./src/lib/shorts-targets.ts",
     "./lib/owned-episode-video": "./src/lib/owned-episode-video.ts",
     "./lib/owned-thumbnail": "./src/lib/owned-thumbnail.ts",
     "./lib/youtube-declaration": "./src/lib/youtube-declaration.ts",

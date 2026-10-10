@@ -161,6 +161,7 @@ describe('resolveEpisodeVideo reproduces each old copy', () => {
           for (const shortsGroupId of GROUP_IDS) {
             const got = resolveEpisodeVideo(episode, {
               language: lang,
+              platform: 'youtube',
               short,
               shortsGroupId,
               ...SCHEDULED_LAMBDA_PRECEDENCE,
@@ -181,6 +182,7 @@ describe('resolveEpisodeVideo reproduces each old copy', () => {
           for (const shortsGroupId of GROUP_IDS) {
             const got = resolveEpisodeVideo(episode, {
               language: lang,
+              platform: 'youtube',
               short,
               shortsGroupId,
               ...SCHEDULED_JOB_PRECEDENCE,
@@ -197,6 +199,7 @@ describe('resolveEpisodeVideo reproduces each old copy', () => {
         for (const short of [false, true]) {
           const got = resolveEpisodeVideo(episode, {
             language: lang,
+            platform: 'youtube',
             short,
             ...PUBLISH_NOW_PRECEDENCE,
           });
@@ -215,7 +218,12 @@ describe('what the resolver does not treat as a video', () => {
     expect(
       resolveEpisodeVideo(
         { final_video_url: 'final.mp4', localized_videos: { en: '' } },
-        { language: 'en', short: false, ...SCHEDULED_JOB_PRECEDENCE },
+        {
+          language: 'en',
+          platform: 'youtube',
+          short: false,
+          ...SCHEDULED_JOB_PRECEDENCE,
+        },
       ),
     ).toEqual({ url: 'final.mp4', from: 'final' });
   });
@@ -227,8 +235,59 @@ describe('what the resolver does not treat as a video', () => {
           final_video_url: 'final.mp4',
           localized_videos: { en: { youtube: { url: 'https://youtu.be/x' } } },
         },
-        { language: 'en', short: false, ...PUBLISH_NOW_PRECEDENCE },
+        {
+          language: 'en',
+          platform: 'youtube',
+          short: false,
+          ...PUBLISH_NOW_PRECEDENCE,
+        },
       ),
     ).toEqual({ url: 'final.mp4', from: 'final' });
+  });
+});
+
+describe('a Shorts group goes only to the platforms it names', () => {
+  const episode = {
+    final_video_url: 'final.mp4',
+    shorts_groups: [
+      { id: 'yt-cut', platforms: ['youtube'], videos: { en: 'yt-en.mp4' } },
+      {
+        id: 'ig-cut',
+        platforms: ['instagram', 'facebook'],
+        videos: { en: 'ig-en.mp4' },
+      },
+      { id: 'any-cut', videos: { hi: 'any-hi.mp4' } },
+    ],
+  };
+
+  const short = (platform: string, shortsGroupId?: string, language = 'en') =>
+    resolveEpisodeVideo(episode, {
+      language,
+      platform,
+      short: true,
+      shortsGroupId,
+      ...PUBLISH_NOW_PRECEDENCE,
+    })?.url ?? null;
+
+  it('sends each named group to its own platforms', () => {
+    expect(short('youtube', 'yt-cut')).toBe('yt-en.mp4');
+    expect(short('instagram', 'ig-cut')).toBe('ig-en.mp4');
+    expect(short('facebook', 'ig-cut')).toBe('ig-en.mp4');
+  });
+
+  it('sends nothing, not the full video, where the named group does not go', () => {
+    expect(short('instagram', 'yt-cut')).toBeNull();
+    expect(short('youtube', 'ig-cut')).toBeNull();
+  });
+
+  it('a short naming no group takes the first group for its platform', () => {
+    expect(short('youtube')).toBe('yt-en.mp4');
+    expect(short('instagram')).toBe('ig-en.mp4');
+  });
+
+  it('a group naming no platform goes to every one', () => {
+    for (const platform of ['youtube', 'instagram', 'facebook', 'tiktok']) {
+      expect(short(platform, 'any-cut', 'hi')).toBe('any-hi.mp4');
+    }
   });
 });

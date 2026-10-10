@@ -109,6 +109,7 @@ function resolveVideoUrl(publish: ScheduledPublish): string | null {
   // One resolver for every publish path (KB-123), with this path's precedence
   const resolved = resolveEpisodeVideo(episode, {
     language: lang,
+    platform: publish.platform,
     short: isShort,
     shortsGroupId,
     ...SCHEDULED_LAMBDA_PRECEDENCE,

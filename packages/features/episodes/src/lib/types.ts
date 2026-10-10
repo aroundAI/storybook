@@ -354,7 +354,16 @@ export interface ShortsGroup {
   tags: string[];
   /** Video URLs by language: { en: "url", hi: "url" } */
   videos: Record<string, string>;
+  /** The platforms this cut goes to; none named means every Shorts platform */
+  platforms?: ShortsPlatform[];
 }
+
+export type ShortsPlatform =
+  | 'youtube'
+  | 'instagram'
+  | 'facebook'
+  | 'tiktok'
+  | 'twitter';
 
 /** FILM-2201: how an episode started (episodes.entry_mode) */
 export type EntryMode = 'idea' | 'script' | 'video';

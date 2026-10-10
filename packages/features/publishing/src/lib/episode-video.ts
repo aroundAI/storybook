@@ -14,6 +14,7 @@
  *
  * Environment-free and without `server-only`: the Lambda imports it.
  */
+import { groupTakesPlatform } from './shorts-targets';
 
 export interface EpisodeVideoSource {
   final_video_url?: string | null;
@@ -23,6 +24,8 @@ export interface EpisodeVideoSource {
 
 export interface EpisodeVideoRequest {
   language: string;
+  /** The channel's platform: a Shorts group goes only to the ones it names */
+  platform: string;
   /** A Shorts publish (content type `short`) */
   short: boolean;
   /** The Shorts group the publish names, when the caller uses it */
@@ -50,10 +53,20 @@ function videoAt(record: unknown, key: string): string | null {
   return typeof value === 'string' && value !== '' ? value : null;
 }
 
-/** The first group (the named one, when a name is given) holding `language` */
+function platformsOf(group: Record<string, unknown>) {
+  return Array.isArray(group.platforms)
+    ? group.platforms.filter((p): p is string => typeof p === 'string')
+    : null;
+}
+
+/**
+ * The first group (the named one, when a name is given) holding `language`
+ * and going to `platform`
+ */
 function shortsVideo(
   groups: unknown,
   language: string,
+  platform: string,
   shortsGroupId: string | null | undefined,
 ): string | null {
   if (!Array.isArray(groups)) return null;
@@ -61,6 +74,9 @@ function shortsVideo(
   for (const group of groups) {
     if (!isRecord(group)) continue;
     if (shortsGroupId && group.id !== shortsGroupId) continue;
+    if (!groupTakesPlatform({ platforms: platformsOf(group) }, platform)) {
+      continue;
+    }
 
     const url = videoAt(group.videos, language);
     if (url) return url;
@@ -73,12 +89,23 @@ export function resolveEpisodeVideo(
   episode: EpisodeVideoSource,
   request: EpisodeVideoRequest,
 ): ResolvedEpisodeVideo | null {
-  const { language } = request;
+  const { language, platform } = request;
+
+  // A short whose group is not for this platform sends nothing: falling back
+  // to the full video would put the wrong cut there all the same.
+  if (request.short && namedGroupExcludes(episode.shorts_groups, request)) {
+    return null;
+  }
 
   const short = () =>
     request.requireShortsGroup && !request.shortsGroupId
       ? null
-      : shortsVideo(episode.shorts_groups, language, request.shortsGroupId);
+      : shortsVideo(
+          episode.shorts_groups,
+          language,
+          platform,
+          request.shortsGroupId,
+        );
 
   const localized = videoAt(episode.localized_videos, language);
   const final = episode.final_video_url || null;
@@ -102,6 +129,20 @@ export function resolveEpisodeVideo(
   }
 
   return null;
+}
+
+function namedGroupExcludes(groups: unknown, request: EpisodeVideoRequest) {
+  if (!request.shortsGroupId || !Array.isArray(groups)) return false;
+
+  const group = groups.find(
+    (candidate) =>
+      isRecord(candidate) && candidate.id === request.shortsGroupId,
+  );
+
+  return (
+    isRecord(group) &&
+    !groupTakesPlatform({ platforms: platformsOf(group) }, request.platform)
+  );
 }
 
 /** The scheduled-publish Lambda: a short needs its group, and nothing falls back */

@@ -54,6 +54,10 @@ const ShortsGroupSchema = z.object({
   description: z.string(),
   tags: z.array(z.string()),
   videos: z.record(z.string(), z.string()),
+  // The platforms this cut goes to; none means every Shorts platform
+  platforms: z
+    .array(z.enum(['youtube', 'instagram', 'facebook', 'tiktok', 'twitter']))
+    .optional(),
 });
 
 const UpdateShortsGroupsSchema = z.object({

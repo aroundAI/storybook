@@ -1,0 +1,65 @@
+{
+  "feature": "FILM-708 (each Shorts group goes only to the platforms chosen for it)",
+  "mutations": [
+    {
+      "name": "S1 the resolver sends a group to a platform it does not name",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/episode-video.ts",
+      "find": "    if (!groupTakesPlatform({ platforms: platformsOf(group) }, platform)) {\n",
+      "replace": "    if (false) {\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video.test.ts",
+      "pattern": "a short naming no group takes the first group for its platform"
+    },
+    {
+      "name": "S2 a named group excluded from a platform falls back to the full video",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/episode-video.ts",
+      "find": "    !groupTakesPlatform({ platforms: platformsOf(group) }, request.platform)\n",
+      "replace": "    false\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video.test.ts",
+      "pattern": "sends nothing, not the full video"
+    },
+    {
+      "name": "S3 the Publish screen sends every group to every Shorts channel",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/shorts-targets.ts",
+      "find": "      (!group || groupTakesPlatform(group, channel.platform)),\n",
+      "replace": "      true,\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/shorts-targets.test.ts",
+      "pattern": "which channel gets which Shorts group"
+    },
+    {
+      "name": "S4 a group with no platform ticked goes nowhere",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/shorts-targets.ts",
+      "find": "  return platforms.length === 0 || platforms.includes(platform);\n",
+      "replace": "  return platforms.includes(platform);\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/shorts-targets.test.ts",
+      "pattern": "a group naming no platform goes to every Shorts channel shown"
+    },
+    {
+      "name": "S5 Publish Now uploads a group to a platform it does not name",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "      if (group && !groupTakesPlatform(group, platform.platform)) {\n",
+      "replace": "      if (false) {\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-now-shorts-group.test.ts",
+      "pattern": "refuses an Instagram cut for a YouTube channel"
+    },
+    {
+      "name": "S6 saving a group drops its platforms",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/mutations/publish-actions.ts",
+      "find": "  platforms: z\n    .array(z.enum(['youtube', 'instagram', 'facebook', 'tiktok', 'twitter']))\n    .optional(),\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/episode-video-save.test.ts",
+      "pattern": "keeps the platforms a group goes to"
+    }
+  ]
+}

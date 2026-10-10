@@ -297,6 +297,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       // One resolver for every publish path (KB-123), with this path's precedence
       const resolved = resolveEpisodeVideo(episode, {
         language: lang,
+        platform: publish.platform,
         short: isShort,
         shortsGroupId,
         ...SCHEDULED_JOB_PRECEDENCE,

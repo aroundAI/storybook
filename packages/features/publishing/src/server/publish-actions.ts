@@ -42,12 +42,13 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
-import { isOfferedPlatform } from '../lib/platforms';
+import { PLATFORM_NAMES, isOfferedPlatform } from '../lib/platforms';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
+import { groupTakesPlatform } from '../lib/shorts-targets';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
 import {
   TokenRefusal,
@@ -228,6 +229,7 @@ async function assertXWillAccept(
     const short = platform.contentType === 'short';
     const resolved = resolveEpisodeVideo(episode, {
       language: language ?? 'en',
+      platform: platform.platform,
       short,
       shortsGroupId: short ? platform.shortsGroupId : null,
       ...PUBLISH_NOW_PRECEDENCE,
@@ -313,6 +315,9 @@ const publishToAllHandler = enhanceAction(
       (episode.localized_videos as Record<string, string> | null) ?? {};
     const shortsGroups =
       (episode.shorts_groups as Array<{
+        id: string;
+        name?: string;
+        platforms?: string[];
         videos: Record<string, string>;
       }> | null) ?? [];
     const hasAnyShortsVideos = shortsGroups.some(
@@ -345,6 +350,19 @@ const publishToAllHandler = enhanceAction(
 
     // An episode publishes only to its project's channels
     await assertConnectionOfProject(client, connectionIds, episode.project_id);
+
+    // A Shorts group goes only to the platforms it names
+    for (const platform of platforms) {
+      if (platform.contentType !== 'short' || !platform.shortsGroupId) continue;
+
+      const group = shortsGroups.find((g) => g.id === platform.shortsGroupId);
+      if (group && !groupTakesPlatform(group, platform.platform)) {
+        const name = PLATFORM_NAMES[platform.platform];
+        throw new ActionRefusal(
+          `The Shorts group "${group.name || 'Shorts'}" isn't set to go to ${name}. Tick ${name} on the group first.`,
+        );
+      }
+    }
 
     // KB-104: a thumbnail is downloaded and sent to the channel, so only one
     // of this episode's own uploads may be named. Checked before anything is
@@ -482,6 +500,7 @@ const publishToAllHandler = enhanceAction(
           // group it names, as the scheduled paths do (KB-133).
           const resolved = resolveEpisodeVideo(episode, {
             language: lang,
+            platform: platform.platform,
             short: isShortsPreferred,
             shortsGroupId: isShortsPreferred ? platform.shortsGroupId : null,
             ...PUBLISH_NOW_PRECEDENCE,
