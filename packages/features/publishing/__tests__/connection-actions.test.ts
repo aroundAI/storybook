@@ -39,6 +39,13 @@ vi.mock('@kit/shared/logger', () => ({
   getLogger: () => Promise.resolve(logger),
 }));
 
+// A project's channels (KB-195); a test names them.
+const projectChannels = vi.hoisted(() => ({ ids: new Set<string>() }));
+
+vi.mock('../src/server/project-channels', () => ({
+  getProjectChannelIds: async () => projectChannels.ids,
+}));
+
 // Mock token-refresh
 vi.mock('../src/lib/token-refresh', () => ({
   ensureValidToken: vi.fn(() =>
@@ -235,6 +242,40 @@ describe('Connection Actions', () => {
       });
 
       expect(result.map((connection) => connection.id)).toEqual(['conn-yt']);
+    });
+
+    // KB-195: the Publish screen lists the project's channels, not the team's.
+    it("lists only the project's channels when given a project", async () => {
+      const row = (id: string) => ({
+        id,
+        platform: 'youtube',
+        platform_account_id: `${id}-account`,
+        platform_account_name: id,
+        is_active: true,
+        token_expires_at: new Date(Date.now() + 3600000).toISOString(),
+        scopes: null,
+        metadata: null,
+      });
+
+      mockSupabaseClient.order.mockResolvedValueOnce({
+        data: [row('conn-en'), row('conn-hi'), row('conn-other')],
+        error: null,
+      });
+      projectChannels.ids = new Set(['conn-en', 'conn-hi']);
+
+      const { getConnectedPlatformsAction } = await import(
+        '../src/server/connection-actions'
+      );
+
+      const result = await getConnectedPlatformsAction({
+        accountId: 'test-account-id',
+        projectId: '00000000-0000-4000-8000-000000000001',
+      });
+
+      expect(result.map((connection) => connection.id)).toEqual([
+        'conn-en',
+        'conn-hi',
+      ]);
     });
 
     describe('follower badge source (FILM-1617)', () => {

@@ -1,0 +1,35 @@
+{
+  "feature": "KB-195 (each project publishes only to its own channels)",
+  "mutations": [
+    {
+      "name": "P1 Publish Now sends to a channel outside the project",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    await assertConnectionOfProject(client, connectionIds, episode.project_id);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "a channel that isn't one of the project's publishToAllAction refuses it"
+    },
+    {
+      "name": "P2 a retry sends to a channel outside the project",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    await assertConnectionOfProject(\n      client,\n      [publish.platform_connection_id],\n      episode.project_id,\n    );\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "a channel that isn't one of the project's retryPublishAction refuses it"
+    },
+    {
+      "name": "P3 the Publish screen lists every team channel again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "        (!projectChannels || projectChannels.has(connection.id)),\n",
+      "replace": "        true,\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "lists only the project's channels when given a project"
+    }
+  ]
+}
