@@ -68,19 +68,22 @@ component:
 acceptance_criteria:
   - text: "Shows all connected platforms with toggle"
     met: false
-    reason: "retired — replaced by language routing: each video goes to every one of its project's channels in its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:479`, `packages/features/publishing/src/server/connection-actions.ts:609`); the project's channels are chosen from the screen (KB-195, #662)"
+    reason: "retired — replaced by language routing: each video goes to every one of its project's channels in its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:483`, `packages/features/publishing/src/server/connection-actions.ts:609`); the project's channels are chosen from the screen (KB-195, #662)"
   - text: "Unconnected platforms show \"Connect\" action"
     met: false
     reason: "retired — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:189`)"
   - text: "Metadata can be customized per platform"
     met: false
-    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:58`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:954`)"
+    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:60`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1030`)"
+  - text: "Each Shorts group goes only to the platforms chosen for it"
+    met: true
+    evidence: "#663 — a group names the platforms its cut is for (`packages/features/publishing/src/lib/shorts-targets.ts:26`); none named means every Shorts platform (owner, 2026-10-10). The Publish screen ticks them per group and lists the channels that receive it (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx:221`); Publish Now and Schedule route through the same rule (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:971`); `publishToAllAction` refuses a group on a platform it does not name (`packages/features/publishing/src/server/publish-actions.ts:359`), and every publish path's resolver skips it (`packages/features/publishing/src/lib/episode-video.ts:77`). Tests: `packages/features/publishing/__tests__/shorts-targets.test.ts`, `episode-video.test.ts`, `publish-now-shorts-group.test.ts`; `apps/e2e/tests/publishing/shorts-platforms.spec.ts`"
   - text: "Thumbnail preview works"
     met: true
     evidence: null
   - text: "Scheduling works for supported platforms"
     met: false
-    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:840`, `sst.config.ts:1387`); no test drives a due publish"
+    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:914`, `sst.config.ts:1387`); no test drives a due publish"
   - text: "Publish triggers all selected platforms"
     met: true
     evidence: null
@@ -95,7 +98,7 @@ acceptance_criteria:
     evidence: null
   - text: "Can retry failed publishes"
     met: false
-    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:929`) is called only by `PublishHub`, which no page renders since baa752eb"
+    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:958`) is called only by `PublishHub`, which no page renders since baa752eb"
 test_plan:
   unit:
     - text: "Test platform config initialization"
@@ -106,14 +109,14 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:72"
     - text: "Test scheduling logic"
       met: true
-      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:181); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:441 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
+      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:181); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:446 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
   integration:
     - text: "Test multi-platform publish flow"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:465 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:470 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
     - text: "Test status polling"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:229 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:234 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
   e2e:
     - text: "Full publish flow with mocked providers"
       met: false

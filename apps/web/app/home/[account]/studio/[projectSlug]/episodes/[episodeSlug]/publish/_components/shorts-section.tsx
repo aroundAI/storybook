@@ -2,21 +2,32 @@
 
 import { Plus, Smartphone, Trash2, Upload, X } from 'lucide-react';
 
-import type { ShortsGroup } from '@kit/episodes/types';
+import type { ShortsGroup, ShortsPlatform } from '@kit/episodes/types';
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
-import { LANG_INFO } from '@kit/publishing/lib/constants';
+import {
+  LANG_INFO,
+  SHORTS_PLATFORMS,
+  takesVideo,
+} from '@kit/publishing/lib/constants';
+import { shortsTargets } from '@kit/publishing/lib/shorts-targets';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Input } from '@kit/ui/input';
+import { cn } from '@kit/ui/utils';
+
+import { PlatformIcon } from './platform-ui';
+import { PLATFORM_CONFIG, type PlatformConnection } from './publish-types';
 
 interface ShortsSectionProps {
   shortsGroups: ShortsGroup[];
+  /** The project's channels: who receives each group */
+  channels: PlatformConnection[];
   onAddGroup: () => void;
   onUpdateGroupMetadata: (
     groupId: string,
     updates: Partial<
-      Pick<ShortsGroup, 'title' | 'description' | 'tags' | 'name'>
+      Pick<ShortsGroup, 'title' | 'description' | 'tags' | 'name' | 'platforms'>
     >,
   ) => void;
   onDeleteGroup: (groupId: string) => void;
@@ -26,6 +37,7 @@ interface ShortsSectionProps {
 
 export function ShortsSection({
   shortsGroups,
+  channels,
   onAddGroup,
   onUpdateGroupMetadata,
   onDeleteGroup,
@@ -73,6 +85,8 @@ export function ShortsSection({
           shortsGroups.map((group, groupIndex) => (
             <div
               key={group.id}
+              data-test="shorts-group"
+              data-group-id={group.id}
               className="overflow-hidden rounded-lg border border-border"
             >
               {/* Group Header */}
@@ -103,6 +117,14 @@ export function ShortsSection({
                   </Button>
                 </div>
               </div>
+
+              <GroupPlatforms
+                group={group}
+                channels={channels}
+                onChange={(platforms) =>
+                  onUpdateGroupMetadata(group.id, { platforms })
+                }
+              />
 
               {/* Group Metadata */}
               <div className="space-y-2 bg-gray-50/50 p-3 dark:bg-gray-800/30">
@@ -188,5 +210,111 @@ export function ShortsSection({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+const OFFERED_SHORTS_PLATFORMS = SHORTS_PLATFORMS.filter((platform) =>
+  takesVideo('short', platform),
+);
+
+/** Which platforms a group's cut is for, and the channels that receive it */
+function GroupPlatforms({
+  group,
+  channels,
+  onChange,
+}: {
+  group: ShortsGroup;
+  channels: PlatformConnection[];
+  onChange: (platforms: ShortsPlatform[]) => void;
+}) {
+  const chosen = group.platforms ?? [];
+  const targets = shortsTargets([group], channels);
+  const languages = Object.keys(group.videos).filter(
+    (lang) => group.videos[lang],
+  );
+  const unreached = chosen.filter(
+    (platform) => !targets.some(({ channel }) => channel.platform === platform),
+  );
+
+  const toggle = (platform: ShortsPlatform) =>
+    onChange(
+      chosen.includes(platform)
+        ? chosen.filter((p) => p !== platform)
+        : [...chosen, platform],
+    );
+
+  return (
+    <div className="space-y-2 border-b border-border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-gray-500">Goes to</span>
+        {OFFERED_SHORTS_PLATFORMS.map((platform) => {
+          const on = chosen.includes(platform);
+
+          return (
+            <button
+              key={platform}
+              type="button"
+              aria-pressed={on}
+              data-test="shorts-group-platform"
+              data-platform={platform}
+              data-state={on ? 'on' : 'off'}
+              onClick={() => toggle(platform)}
+              className={cn(
+                'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+                on
+                  ? 'border-pink-500 bg-pink-500 text-white'
+                  : 'border-border text-muted-foreground hover:border-pink-300',
+              )}
+            >
+              {PLATFORM_CONFIG[platform]?.name ?? platform}
+            </button>
+          );
+        })}
+        {chosen.length === 0 && (
+          <span className="text-xs text-muted-foreground">
+            All Shorts platforms
+          </span>
+        )}
+      </div>
+
+      {languages.length > 0 && (
+        <div
+          data-test="shorts-group-targets"
+          className="flex flex-wrap items-center gap-1.5 text-xs"
+        >
+          <span className="text-gray-500">Receives this group:</span>
+          {targets.length === 0 ? (
+            <span className="text-amber-600">No channel of this project</span>
+          ) : (
+            targets.map(({ channel, language }) => (
+              <span
+                key={`${channel.id}-${language}`}
+                data-test="shorts-group-target"
+                data-channel-id={channel.id}
+                className="flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5"
+              >
+                <PlatformIcon platform={channel.platform} size="sm" />
+                {channel.platformAccountName}
+                <span className="text-muted-foreground uppercase">
+                  {language}
+                </span>
+              </span>
+            ))
+          )}
+        </div>
+      )}
+
+      {languages.length > 0 &&
+        unreached.map((platform) => (
+          <p key={platform} className="text-xs text-amber-600">
+            No {PLATFORM_CONFIG[platform]?.name ?? platform} channel in this
+            project takes{' '}
+            {languages
+              .map((lang) => LANG_INFO[lang as SupportedLanguage]?.name ?? lang)
+              .join(' or ')}
+            .
+          </p>
+        ))}
+    </div>
   );
 }

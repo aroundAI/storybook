@@ -37,6 +37,10 @@ import {
 } from '@kit/publishing/lib/constants';
 import { takesVideo } from '@kit/publishing/lib/constants';
 import {
+  shortsChannelsFor,
+  shortsTargets,
+} from '@kit/publishing/lib/shorts-targets';
+import {
   getConnectedPlatformsAction,
   getEpisodePublishesAction,
   publishToAllAction,
@@ -384,7 +388,7 @@ export function PublishScreen({
   const updateGroupMetadata = (
     groupId: string,
     updates: Partial<
-      Pick<ShortsGroup, 'title' | 'description' | 'tags' | 'name'>
+      Pick<ShortsGroup, 'title' | 'description' | 'tags' | 'name' | 'platforms'>
     >,
   ) => {
     const updatedGroups = shortsGroups.map((g) =>
@@ -962,10 +966,12 @@ export function PublishScreen({
           });
         }
       } else {
-        // Shorts channels (using constant)
+        // Shorts channels: the platforms the group's cut is for
         const group = shortsGroups.find((g) => g.id === item.groupId);
-        const shortsChannels = channelsForLang.filter((c) =>
-          takesVideo('short', c.platform),
+        const shortsChannels = shortsChannelsFor(
+          group,
+          item.language,
+          channelsForLang,
         );
         for (const channel of shortsChannels) {
           platformConfigs.push({
@@ -1205,50 +1211,41 @@ export function PublishScreen({
       }
     }
 
-    // Process Shorts Groups -> YouTube Shorts, Instagram Reels, Facebook Reels, TikTok
-    for (const group of shortsGroups) {
-      const groupLangs = Object.keys(group.videos).filter(
-        (lang) => group.videos[lang],
-      ) as SupportedLanguage[];
+    // Process Shorts Groups -> YouTube Shorts, Instagram Reels, Facebook Reels,
+    // TikTok: each group to the platforms its cut is for
+    for (const { group, language, channel } of shortsTargets(
+      shortsGroups,
+      conns,
+    )) {
+      const lang = language as SupportedLanguage;
+      const groupMeta = translationMap.get(`group-${group.id}-${lang}`) || {
+        title: group.title || baseTitle,
+        description: group.description || baseDescription,
+      };
 
-      for (const lang of groupLangs) {
-        const channelsForLang = conns.filter(
-          (c) =>
-            (c.language || 'en') === lang && takesVideo('short', c.platform),
-        );
-
-        const groupId = `group-${group.id}-${lang}`;
-        const groupMeta = translationMap.get(groupId) || {
-          title: group.title || baseTitle,
-          description: group.description || baseDescription,
-        };
-
-        for (const channel of channelsForLang) {
-          platformConfigs.push({
-            platform: channel.platform,
-            connectionId: channel.id,
-            contentType: 'short',
-            shortsGroupId: group.id, // Identify which group's video to use
-            title: groupMeta.title,
-            description: groupMeta.description,
-            tags:
-              group.tags.length > 0
-                ? group.tags
-                : metadata.tags
-                  ? metadata.tags
-                      .split(',')
-                      .map((t) => t.trim())
-                      .filter(Boolean)
-                  : [],
-            thumbnailUrl: getThumbnailForLanguage(lang),
-            language: lang,
-            platformSpecific: audienceGate.platformSpecificFor(
-              channel,
-              channel.platform === 'facebook' ? { isReel: true } : {},
-            ),
-          });
-        }
-      }
+      platformConfigs.push({
+        platform: channel.platform,
+        connectionId: channel.id,
+        contentType: 'short',
+        shortsGroupId: group.id, // Identify which group's video to use
+        title: groupMeta.title,
+        description: groupMeta.description,
+        tags:
+          group.tags.length > 0
+            ? group.tags
+            : metadata.tags
+              ? metadata.tags
+                  .split(',')
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              : [],
+        thumbnailUrl: getThumbnailForLanguage(lang),
+        language: lang,
+        platformSpecific: audienceGate.platformSpecificFor(
+          channel,
+          channel.platform === 'facebook' ? { isReel: true } : {},
+        ),
+      });
     }
 
     if (platformConfigs.length === 0) {
@@ -1546,6 +1543,7 @@ export function PublishScreen({
             {/* Shorts Section - Grouped */}
             <ShortsSection
               shortsGroups={shortsGroups}
+              channels={(connections ?? []) as PlatformConnection[]}
               onAddGroup={addShortsGroup}
               onUpdateGroupMetadata={updateGroupMetadata}
               onDeleteGroup={deleteGroup}

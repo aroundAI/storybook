@@ -179,4 +179,23 @@ describe('updateShortsGroupsAction', () => {
     expect(result.ok).toBe(false);
     expect(state.updates).toEqual([]);
   });
+  it('keeps the platforms a group goes to', async () => {
+    state.stored = { shorts_groups: [group({ en: own })] };
+
+    const result = await updateShortsGroupsAction({
+      episodeId: E,
+      shortsGroups: [
+        { ...group({ en: own }), platforms: ['instagram', 'facebook'] },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(state.updates).toEqual([
+      {
+        shorts_groups: [
+          { ...group({ en: own }), platforms: ['instagram', 'facebook'] },
+        ],
+      },
+    ]);
+  });
 });

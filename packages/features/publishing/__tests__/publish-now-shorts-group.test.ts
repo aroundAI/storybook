@@ -50,6 +50,7 @@ const EPISODE = '00000000-0000-4000-8000-0000000000e1';
 
 const GROUP_A = `${BASE}/episodes/${EPISODE}/videos/en-short-a.mp4`;
 const GROUP_B = `${BASE}/episodes/${EPISODE}/videos/en-short-b.mp4`;
+const GROUP_IG = `${BASE}/episodes/${EPISODE}/videos/en-short-ig.mp4`;
 const inserted: Array<Record<string, unknown>> = [];
 
 function table(name: string) {
@@ -89,6 +90,12 @@ function table(name: string) {
             shorts_groups: [
               { id: 'group-a', videos: { en: GROUP_A } },
               { id: 'group-b', videos: { en: GROUP_B } },
+              {
+                id: 'group-ig',
+                name: 'IG cut',
+                platforms: ['instagram'],
+                videos: { en: GROUP_IG },
+              },
             ],
             public_slug: 'slug',
             title: 'Episode',
@@ -176,5 +183,23 @@ describe('Publish Now sends the Shorts group it names (KB-133)', () => {
     expect(uploadVideo).toHaveBeenCalledWith(
       expect.objectContaining({ videoPath: video }),
     );
+  });
+});
+
+describe('a Shorts group goes only to the platforms it names', () => {
+  it('refuses an Instagram cut for a YouTube channel, before any row is written', async () => {
+    const { publishToAllAction } = await import(
+      '../src/server/publish-actions'
+    );
+
+    const result = await publishToAllAction(publishShort('group-ig'));
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        'The Shorts group "IG cut" isn\'t set to go to YouTube. Tick YouTube on the group first.',
+    });
+    expect(inserted).toHaveLength(0);
+    expect(uploadVideo).not.toHaveBeenCalled();
   });
 });
