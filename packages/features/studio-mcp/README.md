@@ -11,7 +11,7 @@ request from the tool registry here.
 | --- | --- | --- |
 | `@kit/studio-mcp` | `McpToolError` and the nine codes, `McpScopeSchema`, `McpPrincipal`, `defineTool`, `McpTokenVerifier`, the request context | no |
 | `@kit/studio-mcp/request-context` | `getMcpRequestContext()` alone, for packages the Lambda worker bundles | no |
-| `@kit/studio-mcp/scopes` | `MCP_SCOPES`, `McpScopeSchema`, `McpScopesSchema`, `hasScope`: the only entry a `'use client'` file may import values from (the root pulls in `node:async_hooks`) | no |
+| `@kit/studio-mcp/scopes` | `MCP_SCOPES`, `McpScopeSchema`, `McpScopesSchema`, `hasScope`, `OPT_IN_SCOPES`, `preselectedScopes`: the only entry a `'use client'` file may import values from (the root pulls in `node:async_hooks`) | no |
 | `@kit/studio-mcp/server` | `createMcpRouteHandlers`, `withMcpAuth`, verifiers, signer, rate limits, audit, personal access tokens, `defaultTools` | yes |
 
 ## Adding a tool
@@ -57,6 +57,9 @@ route serves by default.
 | `set_stage_skipped` | write | marks a stage the author will not do, or clears the mark (FILM-2204) |
 | `request_episode_video_upload`, `finalize_episode_video` | write | a finished video with no StorybookStudio session, stored where the publish screen keeps one (`saveEpisodeVideo`); the episode moves to ready (FILM-2204) |
 | `link_published_video` | write | a video already on a platform, as the publish screen's link does; refused when another episode has it (FILM-2204) |
+| `list_episode_publishes` | read | an episode's Shorts groups (the platforms each goes to, its languages, what its shorts post with) and its publishes with status, scheduled time and URL (FILM-2207) |
+| `upsert_shorts_group`, `delete_shorts_group` | write | one group per platform cut, through the Publish screen's `saveShortsGroups` on the version read; a group a scheduled publish uses is not deleted. `finalize_episode_video(shortsGroupId)` puts an upload in a group (FILM-2207) |
+| `schedule_publish`, `cancel_scheduled_publish` | publish | an episode's video or a Shorts group to channels of its project at a future time, checked by the Publish screen's own `preparePublish` and written all-or-nothing; cancelled while still `scheduled`, by project owners and admins. Publishing now stays on the Publish screen (FILM-2207) |
 | `upsert_asset` | write | a character or a location, by `assetId` or by type and name |
 | `start_voice_render` | render | ElevenLabs voice for one line or the whole episode, through the web's own render start (FILM-1909) |
 | `start_audio_render` | render | music, SFX or ambience for one audio cue (`audio-file-generation`), through the web's own render start |

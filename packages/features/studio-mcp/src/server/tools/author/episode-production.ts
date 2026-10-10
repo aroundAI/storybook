@@ -24,6 +24,7 @@ import {
 import { McpToolError } from '../../../errors';
 import type { McpPrincipal } from '../../../principal';
 import { type McpToolDefinition, defineTool } from '../../../registry';
+import { editGroups } from '../publish/shorts';
 import { requireEpisodeInAccount } from '../read/scope';
 import { signPut } from '../studio/renders';
 import { refused } from '../validation';
@@ -178,7 +179,7 @@ export function createEpisodeVideoTools(
     name: 'finalize_episode_video',
     title: 'Finalize an episode video',
     description:
-      "Confirms a video uploaded after request_episode_video_upload: checks the file is stored at the key, then makes it the episode's video in that language, where the web publish screen finds it. The episode moves to ready unless it is already published. Calling it again with the same key changes nothing.",
+      "Confirms a video uploaded after request_episode_video_upload: checks the file is stored at the key, then makes it the episode's video in that language, where the web publish screen finds it, and the episode moves to ready unless it is already published. With shortsGroupId, it becomes that Shorts group's video in that language instead (upsert_shorts_group makes the group). Calling it again with the same key changes nothing.",
     inputSchema: {
       episodeId: z.string().uuid(),
       language,
@@ -186,6 +187,13 @@ export function createEpisodeVideoTools(
         .string()
         .min(1)
         .describe('The key request_episode_video_upload returned.'),
+      shortsGroupId: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          'A Shorts group (upsert_shorts_group, list_episode_publishes): the video is that cut’s short in this language, not the episode video.',
+        ),
     },
     scope: 'studio:write',
     annotations: { ...WRITE, idempotentHint: true },
@@ -228,6 +236,42 @@ export function createEpisodeVideoTools(
       }
 
       const videoUrl = storage.getPublicUrl(PROJECT_ASSETS_BUCKET, input.key);
+
+      if (input.shortsGroupId) {
+        const groupId = input.shortsGroupId;
+        const edited = await editGroups(client, input.episodeId, (groups) => {
+          const group = groups.find((g) => g.id === groupId);
+
+          if (!group) {
+            return {
+              ok: false,
+              refusal: `No Shorts group ${groupId} on this episode. Make it with upsert_shorts_group first.`,
+            };
+          }
+
+          return {
+            ok: true,
+            groups: groups.map((g) =>
+              g.id === groupId
+                ? { ...g, videos: { ...g.videos, [input.language]: videoUrl } }
+                : g,
+            ),
+            result: group.name,
+          };
+        });
+
+        return {
+          text: `The Shorts group "${edited.result}" has its ${input.language} video (${stored.bytes} bytes).`,
+          structuredContent: {
+            episodeId: input.episodeId,
+            shortsGroupId: groupId,
+            language: input.language,
+            videoUrl,
+            bytes: stored.bytes,
+          },
+        };
+      }
+
       const saved = await saveEpisodeVideo(client, {
         episodeId: input.episodeId,
         language: input.language,
@@ -239,7 +283,7 @@ export function createEpisodeVideoTools(
       }
 
       return {
-        text: `The episode's ${input.language} video is attached (${stored.bytes} bytes); it is ${saved.status}. Publishing to a platform happens on the web.`,
+        text: `The episode's ${input.language} video is attached (${stored.bytes} bytes); it is ${saved.status}.`,
         structuredContent: {
           episodeId: input.episodeId,
           language: input.language,

@@ -13,12 +13,18 @@ const REPO = join(__dirname, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(REPO, path), 'utf8');
 
 const GATES: Array<[string, RegExp, number]> = [
-  // publish-now and retry, in process, and the X pre-flight (FILM-1729),
-  // which reads the header of the checked video only
+  // publish-now and retry, in process
   [
     'packages/features/publishing/src/server/publish-actions.ts',
     /await ownedEpisodeVideo\(/g,
-    3,
+    2,
+  ],
+  // the X pre-flight (FILM-1729), which reads the header of the checked
+  // video only
+  [
+    'packages/features/publishing/src/server/publish-preflight.ts',
+    /await ownedEpisodeVideo\(/g,
+    1,
   ],
   // the in-app scheduled job, in process
   [

@@ -4,8 +4,8 @@
     {
       "name": "P1 Publish Now sends to a channel outside the project",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "    await assertConnectionOfProject(client, connectionIds, episode.project_id);\n",
+      "file": "packages/features/publishing/src/server/publish-preflight.ts",
+      "find": "  await assertConnectionOfProject(client, connectionIds, episode.project_id);\n",
       "replace": "",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-queue-authorization.test.ts",
