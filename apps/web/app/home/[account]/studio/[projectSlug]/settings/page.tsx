@@ -12,10 +12,10 @@ import {
   getProjectPermissions,
 } from '@kit/projects/queries';
 import type { ProjectMemberWithUser } from '@kit/projects/types';
-import { ProjectPublishingConfigs } from '@kit/publishing/components';
+import { ProjectChannelPicker } from '@kit/publishing/components';
 import {
   getAccountPlatformConnections,
-  getProjectPublishingConfigs,
+  getProjectChannelSelection,
 } from '@kit/publishing/server/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Badge } from '@kit/ui/badge';
@@ -125,9 +125,9 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   }
 
   // Fetch publishing configs and account public profile
-  const [publishingConfigs, platformConnections, accountData] =
+  const [projectChannelIds, platformConnections, accountData] =
     await Promise.all([
-      getProjectPublishingConfigs(project.id),
+      getProjectChannelSelection(project.id),
       getAccountPlatformConnections(project.account_id ?? ''),
       client
         .from('accounts')
@@ -478,19 +478,18 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    Publishing Destinations
+                    This project&apos;s channels
                   </CardTitle>
                   <CardDescription>
-                    Configure default platforms for all episodes in this
-                    project. Episodes will inherit these settings by default.
+                    Episodes in this project publish only to these channels.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ProjectPublishingConfigs
+                  <ProjectChannelPicker
                     projectId={project.id}
-                    configs={publishingConfigs}
-                    availableConnections={platformConnections}
-                    addConnectionUrl={`/home/${account}/settings/platforms`}
+                    channels={platformConnections}
+                    selectedIds={projectChannelIds}
+                    channelSettingsUrl={`/home/${account}/settings/platforms`}
                   />
                 </CardContent>
               </Card>

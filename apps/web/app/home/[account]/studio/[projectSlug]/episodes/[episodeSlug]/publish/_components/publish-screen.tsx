@@ -64,6 +64,7 @@ import { DeleteAllDialog } from './delete-all-dialog';
 import { EpisodeSummaryGenerator } from './episode-summary-generator';
 import { FullVideosSection } from './full-videos-section';
 import { MasterAssetManager } from './master-asset-manager';
+import { ProjectChannelsSheet } from './project-channels-sheet';
 import { PublishProgressDialog } from './publish-progress-dialog';
 import { PublishSettingsSidebar } from './publish-settings-sidebar';
 import type {
@@ -83,6 +84,9 @@ import { ShortsSection } from './shorts-section';
 import { UnpublishDialog } from './unpublish-dialog';
 import { UploadVideoDialog } from './upload-video-dialog';
 import { useYouTubeAudienceGate } from './use-youtube-audience-gate';
+
+const NO_PROJECT_CHANNELS =
+  'This project has no channels yet. Choose its channels first.';
 
 interface PublishScreenProps {
   episode: EpisodeWithShots;
@@ -460,16 +464,20 @@ export function PublishScreen({
     });
   };
 
-  // Fetch connected platforms
+  // The project's channels: the only ones its episodes publish to
+  const [choosingChannels, setChoosingChannels] = useState(false);
   const {
     data: connections,
     isLoading: loadingConnections,
     refetch: refetchConnections,
   } = useQuery({
-    queryKey: ['platform-connections', accountId],
+    queryKey: ['platform-connections', accountId, episode.projectId],
     queryFn: () =>
       accountId
-        ? getConnectedPlatformsAction({ accountId })
+        ? getConnectedPlatformsAction({
+            accountId,
+            projectId: episode.projectId,
+          })
         : Promise.resolve([]),
     enabled: !!accountId,
   });
@@ -903,7 +911,7 @@ export function PublishScreen({
     const conns = (connections ?? []) as PlatformConnection[];
 
     if (conns.length === 0) {
-      toast.error('No connected channels. Connect platforms first.');
+      toast.error(NO_PROJECT_CHANNELS);
       return;
     }
 
@@ -1017,7 +1025,7 @@ export function PublishScreen({
     const conns = (connections ?? []) as PlatformConnection[];
 
     if (conns.length === 0) {
-      toast.error('No connected channels. Connect platforms first.');
+      toast.error(NO_PROJECT_CHANNELS);
       return;
     }
 
@@ -1572,6 +1580,7 @@ export function PublishScreen({
               connectionsCount={connections?.length ?? 0}
               accountSlug={accountSlug}
               onRefreshConnections={() => refetchConnections()}
+              onChooseChannels={() => setChoosingChannels(true)}
               aiGenerated={aiGenerated}
               onAiGeneratedChange={setAiGenerated}
             >
@@ -1608,6 +1617,18 @@ export function PublishScreen({
       </div>
 
       {/* Upload Dialog */}
+      {accountId && (
+        <ProjectChannelsSheet
+          open={choosingChannels}
+          onOpenChange={setChoosingChannels}
+          accountId={accountId}
+          accountSlug={accountSlug}
+          projectId={episode.projectId}
+          selectedIds={(connections ?? []).map((conn) => conn.id)}
+          onSaved={() => void refetchConnections()}
+        />
+      )}
+
       <UploadVideoDialog
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}

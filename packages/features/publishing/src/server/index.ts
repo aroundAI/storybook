@@ -24,10 +24,7 @@ export type {
   PlatformConnection,
 } from './episode-publishing-actions';
 
-export {
-  updateProjectPublishingConfigsAction,
-  type ProjectPublishingConfig,
-} from './project-publishing-actions';
+export { setProjectChannelsAction } from './project-publishing-actions';
 
 export {
   saveAccountOAuthAppAction,

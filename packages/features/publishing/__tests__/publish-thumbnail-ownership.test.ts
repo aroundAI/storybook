@@ -10,6 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * only when it is one of this episode's own uploads.
  */
 
+// Every channel is the project's here; that check is
+// publish-queue-authorization.test.ts's subject
+vi.mock('../src/server/project-channels', () => ({
+  assertConnectionOfProject: async () => undefined,
+}));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 vi.mock('@kit/next/actions', () => ({

@@ -10,6 +10,7 @@ import {
 } from '../utils/sandbox';
 import {
   type SeededTeam,
+  addProjectChannels,
   episodeVideoUrl,
   readRows,
   seedEpisodeWithShot,
@@ -59,6 +60,7 @@ async function readyToPublish(page: Page, prefix: string): Promise<Fixture> {
   });
 
   const project = await seedProject(team);
+  await addProjectChannels(project.id, [connection!.id]);
   const { episodeId, slug } = await seedEpisodeWithShot(project.id);
 
   // The episode's own video, in its videos folder (KB-123): the YouTube

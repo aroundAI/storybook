@@ -146,7 +146,7 @@ export const VideoCard = ({
           </div>
         ) : (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            No channels connected for {LANG_INFO[lang].name}
+            No project channel takes {LANG_INFO[lang].name}
           </p>
         )}
       </div>

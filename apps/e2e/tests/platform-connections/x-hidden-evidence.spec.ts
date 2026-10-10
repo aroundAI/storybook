@@ -2,6 +2,7 @@ import { type Page, expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
 import {
+  addProjectChannels,
   episodeVideoUrl,
   seedEpisodeWithShot,
   seedProject,
@@ -41,12 +42,14 @@ async function capture(page: Page, name: string) {
 async function teamWithKeptX(prefix: string) {
   const team = await seedTeamAccount({ emailPrefix: prefix });
 
-  await seedYouTubeConnection(team.accountId, 'Acme TV');
-  await seedYouTubeConnection(team.accountId, 'acme_on_x', {
-    platform: 'twitter',
-  });
+  const connectionIds = [
+    await seedYouTubeConnection(team.accountId, 'Acme TV'),
+    await seedYouTubeConnection(team.accountId, 'acme_on_x', {
+      platform: 'twitter',
+    }),
+  ];
 
-  return team;
+  return { ...team, connectionIds };
 }
 
 test.describe('X is hidden — evidence', () => {
@@ -85,6 +88,8 @@ test.describe('X is hidden — evidence', () => {
   }) => {
     const team = await teamWithKeptX('x-hidden-publish');
     const project = await seedProject(team);
+    // Both are the project's, so only the hidden platform can hide one
+    await addProjectChannels(project.id, team.connectionIds);
     const { episodeId, slug } = await seedEpisodeWithShot(project.id);
 
     await updateRows('episodes', `id=eq.${episodeId}`, {

@@ -774,6 +774,40 @@ async function insertRows<T>(
 }
 
 /**
+ * Makes channels the project's: an episode publishes only to its project's
+ * channels, so a publish-screen spec that seeds one adds it here too.
+ */
+export async function addProjectChannels(
+  projectId: string,
+  connectionIds: string[],
+): Promise<void> {
+  await insertRows(
+    'project_publishing_configs',
+    connectionIds.map((platform_connection_id) => ({
+      project_id: projectId,
+      platform_connection_id,
+    })),
+    { key: SERVICE_ROLE_KEY },
+  );
+}
+
+/** Makes every channel the team has connected so far the project's. */
+export async function addTeamChannelsToProject(
+  projectId: string,
+  accountId: string,
+): Promise<void> {
+  const channels = await readRows<{ id: string }>(
+    'platform_connections',
+    `account_id=eq.${accountId}&select=id`,
+  );
+
+  await addProjectChannels(
+    projectId,
+    channels.map((channel) => channel.id),
+  );
+}
+
+/**
  * One day's revenue for a published video.
  *
  * `currency` is a column, not a setting: a channel can be paid in more than

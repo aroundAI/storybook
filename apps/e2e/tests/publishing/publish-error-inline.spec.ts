@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 
 import {
+  addProjectChannels,
   episodeVideoUrl,
   insertRow,
   seedEpisodeWithShot,
@@ -86,15 +87,16 @@ test.describe('A refused platform says why, inline (FILM-1729)', () => {
       youtube_made_for_kids: false,
       youtube_category_id: '22',
     });
+    await addProjectChannels(project.id, [connectionId]);
 
     await signInAs(page, team);
     await page.goto(
       `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/publish`,
     );
 
-    // Rendered once connections load: a click before then finds no channels.
+    // Rendered once the project's channels load: a click before then finds none.
     await expect(
-      page.getByRole('button', { name: 'Manage Channels' }),
+      page.locator('[data-test="channel-badge"]').first(),
     ).toBeVisible();
 
     const publish = async () => {

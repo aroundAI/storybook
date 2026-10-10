@@ -6,6 +6,7 @@ import {
   SUBSCRIBER_SCENARIOS,
 } from '../../../../packages/clickhouse/src/testing/subscriber-scenarios';
 import {
+  addProjectChannels,
   seedEpisodeWithShot,
   seedProject,
   seedPublishedEpisode,
@@ -253,7 +254,8 @@ test.describe('FILM-1617 — evidence', () => {
       '[data-test="subscriber-series-total-note"] li',
     );
 
-    // 8. The publish screen's follower counts.
+    // 8. The publish screen's follower counts, on the project's channels.
+    await addProjectChannels(project.id, [...idByScenario.values()]);
     const episode = await seedEpisodeWithShot(project.id, {
       number: SUBSCRIBER_SCENARIOS.length + 1,
     });

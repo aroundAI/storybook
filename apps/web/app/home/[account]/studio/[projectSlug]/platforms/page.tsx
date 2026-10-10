@@ -5,11 +5,11 @@ import { ArrowLeft, Share2 } from 'lucide-react';
 
 import {
   PlatformConnections,
-  ProjectPublishingConfigs,
+  ProjectChannelPicker,
 } from '@kit/publishing/components';
 import {
   getAccountPlatformConnections,
-  getProjectPublishingConfigs,
+  getProjectChannelSelection,
 } from '@kit/publishing/server/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import {
@@ -85,8 +85,8 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
 
   // Fetch publishing configs and connections
   // Note: OAuth app credentials are now managed globally by sys admin
-  const [publishingConfigs, platformConnections] = await Promise.all([
-    getProjectPublishingConfigs(project.id),
+  const [projectChannelIds, platformConnections] = await Promise.all([
+    getProjectChannelSelection(project.id),
     getAccountPlatformConnections(project.account_id ?? ''),
   ]);
 
@@ -139,17 +139,17 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
             <TabsContent value="destinations" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Publishing Destinations</CardTitle>
+                  <CardTitle>This project&apos;s channels</CardTitle>
                   <CardDescription>
-                    Select which connected platforms to use for this project.
-                    Each platform can publish a specific language version.
+                    Episodes in this project publish only to these channels.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ProjectPublishingConfigs
+                  <ProjectChannelPicker
                     projectId={project.id}
-                    configs={publishingConfigs}
-                    availableConnections={platformConnections}
+                    channels={platformConnections}
+                    selectedIds={projectChannelIds}
+                    channelSettingsUrl={`/home/${account}/settings/platforms`}
                   />
                 </CardContent>
               </Card>

@@ -9,6 +9,7 @@ import {
   storedConnections,
 } from '../utils/sandbox';
 import {
+  addTeamChannelsToProject,
   episodeVideoUrl,
   readRows,
   seedEpisodeWithShot,
@@ -47,6 +48,7 @@ async function readyToPublish(page: Page) {
   });
 
   const project = await seedProject(team);
+  await addTeamChannelsToProject(project.id, team.accountId);
   const { episodeId, slug } = await seedEpisodeWithShot(project.id);
 
   const auth = serviceRoleAuth();

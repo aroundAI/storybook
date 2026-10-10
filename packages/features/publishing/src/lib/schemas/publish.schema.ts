@@ -84,6 +84,8 @@ export const PublishToAllSchema = z.object({
  */
 export const GetConnectedPlatformsSchema = z.object({
   accountId: z.string().uuid(),
+  // Only this project's channels: the ones its episodes publish to
+  projectId: z.string().uuid().optional(),
 });
 
 /**

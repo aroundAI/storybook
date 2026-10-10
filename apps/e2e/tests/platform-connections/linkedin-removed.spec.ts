@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 
 import { OFFERED_PLATFORMS } from '../../../../packages/features/publishing/src/lib/platforms';
 import {
+  addProjectChannels,
   episodeVideoUrl,
   seedEpisodeWithShot,
   seedProject,
@@ -89,10 +90,13 @@ test.describe('LinkedIn is removed (FILM-717)', () => {
     await updateRows('episodes', `id=eq.${episodeId}`, {
       localized_videos: { en: episodeVideoUrl(episodeId) },
     });
-    await seedYouTubeConnection(team.accountId, 'Acme TV');
-    await seedYouTubeConnection(team.accountId, 'Acme on LinkedIn', {
-      platform: 'linkedin',
-    });
+    // Both are the project's, so only the removed platform can hide one
+    await addProjectChannels(project.id, [
+      await seedYouTubeConnection(team.accountId, 'Acme TV'),
+      await seedYouTubeConnection(team.accountId, 'Acme on LinkedIn', {
+        platform: 'linkedin',
+      }),
+    ]);
 
     await signInAs(page, team);
     await page.goto(

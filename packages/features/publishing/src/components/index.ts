@@ -9,7 +9,10 @@ export { MetadataEditor } from './metadata-editor';
 export { ThumbnailSelector } from './thumbnail-selector';
 export { PlatformSpecificSettingsComponent } from './platform-specific-settings';
 export { PublishStatusRow } from './publish-status-row';
-export { ProjectPublishingConfigs } from './project-publishing-configs';
+export {
+  ProjectChannelPicker,
+  type PickableChannel,
+} from './project-channel-picker';
 export { OAuthAppConfig } from './oauth-app-config';
 export { GlobalOAuthAppConfig } from './global-oauth-app-config';
 export {

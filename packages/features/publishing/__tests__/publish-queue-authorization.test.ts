@@ -22,6 +22,8 @@ const OTHER_ACCOUNT = '30000000-0000-4000-8000-000000000002';
 const PUBLISH = '40000000-0000-4000-8000-000000000001';
 const CONNECTION = '50000000-0000-4000-8000-000000000001';
 const FOREIGN_CONNECTION = '50000000-0000-4000-8000-000000000002';
+// The account's, but not one of the project's channels
+const OTHER_PROJECT_CONNECTION = '50000000-0000-4000-8000-000000000003';
 const POST = '60000000-0000-4000-8000-000000000001';
 
 // An episode's own upload: KB-123 sends nothing else, so the channel check
@@ -129,6 +131,7 @@ function rows(table: string, filters: Filters): Record<string, unknown>[] {
               platform_content_id: 'VIDEO123',
               platform_connection_id: state.publishConnection || CONNECTION,
               episodes: {
+                project_id: PROJECT,
                 final_video_url: OWN_VIDEO,
                 thumbnail_url: null,
                 project: { account_id: ACCOUNT },
@@ -141,9 +144,14 @@ function rows(table: string, filters: Filters): Record<string, unknown>[] {
       const all = [
         { id: CONNECTION, account_id: ACCOUNT },
         { id: FOREIGN_CONNECTION, account_id: OTHER_ACCOUNT },
+        { id: OTHER_PROJECT_CONNECTION, account_id: ACCOUNT },
       ];
       return all.filter((c) => !filters.id || c.id === filters.id);
     }
+    case 'project_publishing_configs':
+      return filters.project_id === PROJECT && filters.is_enabled === true
+        ? [{ platform_connection_id: CONNECTION }]
+        : [];
     case 'social_posts':
       return [
         {
@@ -366,5 +374,66 @@ describe('a status mark RLS refuses stops before the platform (KB-105)', () => {
       ok: false,
       error: "You can't retry this publish.",
     });
+  });
+});
+
+describe("a channel that isn't one of the project's", () => {
+  it('publishToAllAction refuses it before any token is read', async () => {
+    state.caller = OWNER;
+    const { publishToAllAction } = await actions();
+
+    const result = await publishToAllAction({
+      episodeId: EPISODE,
+      platforms: [
+        {
+          platform: 'tiktok',
+          connectionId: OTHER_PROJECT_CONNECTION,
+          title: 'T',
+          description: 'D',
+        },
+      ],
+    } as Parameters<typeof publishToAllAction>[0]);
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "That channel isn't one of this project's channels. Add it under Choose channels first.",
+    });
+    expect(state.tokensRequested).toEqual([]);
+  });
+
+  it("publishToAllAction reads the token of the project's own channel", async () => {
+    state.caller = OWNER;
+    const { publishToAllAction } = await actions();
+
+    await publishToAllAction({
+      episodeId: EPISODE,
+      platforms: [
+        {
+          platform: 'tiktok',
+          connectionId: CONNECTION,
+          title: 'T',
+          description: 'D',
+        },
+      ],
+    } as Parameters<typeof publishToAllAction>[0]);
+
+    expect(state.tokensRequested).toEqual([CONNECTION]);
+  });
+
+  it('retryPublishAction refuses it before any token is read', async () => {
+    state.caller = OWNER;
+    state.publishStatus = 'failed';
+    state.publishConnection = OTHER_PROJECT_CONNECTION;
+    const { retryPublishAction } = await actions();
+
+    const result = await retryPublishAction({ publishId: PUBLISH });
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "That channel isn't one of this project's channels. Add it under Choose channels first.",
+    });
+    expect(state.tokensRequested).toEqual([]);
   });
 });
