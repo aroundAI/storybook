@@ -12,7 +12,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 /**
  * KB-195. The Publish screen listed every channel connected to the team, and
@@ -66,7 +66,8 @@ async function publishScreen(team: SeededTeam, name: string) {
 
 /** The channel names the sidebar lists under one language */
 function sidebarChannels(page: Page, language: string) {
-  return page.locator(
+  return visible(
+    page,
     `[data-test="project-channels-language"][data-lang="${language}"] [data-test="channel-badge"]`,
   );
 }
@@ -78,7 +79,8 @@ async function chooseChannels(page: Page, ids: Record<string, boolean>) {
   await expect(picker).toBeVisible();
 
   for (const [id, wanted] of Object.entries(ids)) {
-    const box = picker.locator(
+    const box = visible(
+      picker,
       `[data-test="project-channel-checkbox"][data-channel-id="${id}"]`,
     );
     if (
@@ -116,7 +118,7 @@ test.describe("An episode publishes only to its project's channels (KB-195)", ()
     await expect(byTest(page, 'project-channels-empty')).toBeVisible({
       timeout: 60_000,
     });
-    await expect(page.locator('[data-test="channel-badge"]')).toHaveCount(0);
+    await expect(byTest(page, 'channel-badge')).toHaveCount(0);
     await byTest(page, 'project-channels-empty').scrollIntoViewIfNeeded();
     await capture(page, '01-no-channels');
 
@@ -173,6 +175,6 @@ test.describe("An episode publishes only to its project's channels (KB-195)", ()
     await expect(byTest(page, 'project-channels-empty')).toBeVisible({
       timeout: 60_000,
     });
-    await expect(page.locator('[data-test="channel-badge"]')).toHaveCount(0);
+    await expect(byTest(page, 'channel-badge')).toHaveCount(0);
   });
 });

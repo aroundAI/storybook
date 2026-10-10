@@ -95,9 +95,7 @@ test.describe('A refused platform says why, inline (FILM-1729)', () => {
     );
 
     // Rendered once the project's channels load: a click before then finds none.
-    await expect(
-      page.locator('[data-test="channel-badge"]').first(),
-    ).toBeVisible();
+    await expect(byTest(page, 'channel-badge').first()).toBeVisible();
 
     const publish = async () => {
       await byTest(page, 'publish-all').click();

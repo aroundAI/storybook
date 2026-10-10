@@ -251,9 +251,7 @@ test.describe('YouTube uploads declare the audience the creator chose (KB-30)', 
     await page.goto(fixture.publishUrl);
     // Rendered once the project's channels load: hydrated, so "not set" is
     // really absent.
-    await expect(
-      page.locator('[data-test="channel-badge"]').first(),
-    ).toBeVisible();
+    await expect(byTest(page, 'channel-badge').first()).toBeVisible();
     await expect(byTest(page, 'youtube-audience-not-set')).toBeHidden();
     await byTest(page, 'publish-all').click();
     await expect(byTest(page, 'confirm-youtube-audience-row')).toHaveText(
