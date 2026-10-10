@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { seedTeamAccount, seedTeamForUser, uniqueStamp } from '../utils/seed';
@@ -43,6 +44,20 @@ async function seedUserWithTwoTeams() {
   return { user: first, first, second };
 }
 
+const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
+
+async function capture(page: Page, name: string) {
+  if (!process.env.CAPTURE_EVIDENCE) return;
+
+  mkdirSync(OUT, { recursive: true });
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((animation) => animation.playState !== 'running'),
+  );
+  await page.screenshot({ path: `${OUT}/mcp-publish-scope-${name}.png` });
+}
+
 async function registeredClient(name = 'Claude (test)') {
   const registered = await registerClient({ clientName: name });
 
@@ -60,7 +75,12 @@ test.describe('MCP OAuth: discovery', () => {
     expect(resource.body).toMatchObject({
       resource: MCP_URL,
       authorization_servers: [BASE_URL],
-      scopes_supported: ['studio:read', 'studio:write', 'studio:render'],
+      scopes_supported: [
+        'studio:read',
+        'studio:write',
+        'studio:render',
+        'studio:publish',
+      ],
     });
 
     // The path-aware form the MCP SDK tries first (RFC 9728 §3.1).
@@ -253,6 +273,61 @@ test.describe('MCP OAuth: consent', () => {
     await expect(
       byTest(settings.row('Claude (test)'), 'mcp-connection-status'),
     ).toHaveText('Revoked');
+  });
+
+  test('a client asking for no scope is offered Schedule publishes unticked; ticked, the token holds it', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'oauthpub' });
+    const clientId = await registeredClient();
+    const { verifier, challenge } = pkce();
+
+    await signInAs(page, team);
+    await page.goto(authorizeUrl({ clientId, challenge, scope: null }));
+
+    // Owner, 2026-10-10: what posts to a channel is ticked by the person
+    await expect(byTest(page, 'oauth-consent-scope-publish')).toHaveAttribute(
+      'data-state',
+      'unchecked',
+    );
+    for (const scope of ['read', 'write']) {
+      await expect(
+        byTest(page, `oauth-consent-scope-${scope}`),
+      ).toHaveAttribute('data-state', 'checked');
+    }
+    await capture(page, '01-publish-offered-unticked');
+
+    await byTest(page, 'oauth-consent-scope-publish').click();
+    await expect(byTest(page, 'oauth-consent-scope-publish')).toHaveAttribute(
+      'data-state',
+      'checked',
+    );
+    await capture(page, '02-publish-ticked');
+
+    await byTest(page, 'oauth-consent-approve').click();
+    await page.waitForURL((url) => url.pathname === CALLBACK_PATH);
+
+    const tokens = await exchangeCode({
+      code: callbackParams(new URL(page.url())).code!,
+      clientId,
+      verifier,
+    });
+    expect(tokens.body.scope).toBe('studio:read studio:write studio:publish');
+
+    const live = await callWhoami(tokens.body.access_token!);
+    expect(live.body.result?.structuredContent).toMatchObject({
+      mode: { canSchedulePublishes: true },
+    });
+
+    // The token form offers it too, unticked
+    const settings = new ConnectedAppsPageObject(page);
+    await settings.goTo(team.slug);
+    await expect(settings.scope('publish')).toHaveAttribute(
+      'data-state',
+      'unchecked',
+    );
+    await settings.scope('publish').scrollIntoViewIfNeeded();
+    await capture(page, '03-token-form');
   });
 
   test('the refresh token rotates, and reuse of the rotated one revokes the whole connection', async ({

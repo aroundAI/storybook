@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import type { McpScope } from '@kit/studio-mcp';
+import { preselectedScopes } from '@kit/studio-mcp/scopes';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -51,6 +52,11 @@ const SCOPE_LABELS: Record<McpScope, { label: string; description: string }> = {
     description:
       'Voice, music and sound renders with ElevenLabs, which cost money',
   },
+  'studio:publish': {
+    label: 'Schedule publishes',
+    description:
+      "Schedule episodes to post on your project's channels at a set time, and cancel them before they go out",
+  },
 };
 
 export interface ConsentTeam {
@@ -87,7 +93,8 @@ export function ConsentForm(props: {
     defaultValues: {
       query: props.query,
       accountId: props.teams.find((team) => team.available)?.id ?? '',
-      scopes: props.scopes,
+      // What reaches outside StoryBook is ticked by the person, not for them
+      scopes: preselectedScopes(props.scopes),
     },
   });
 

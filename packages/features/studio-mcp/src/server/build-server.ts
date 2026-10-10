@@ -122,7 +122,9 @@ async function runTool(
     if (tool.scope && !hasScope(principal.scopes, tool.scope)) {
       throw new McpToolError(
         'FORBIDDEN',
-        `This connection does not hold the ${tool.scope} scope.`,
+        tool.scope === 'studio:publish'
+          ? 'This connection does not hold the studio:publish scope. Reconnect StoryBook and tick "Schedule publishes" to allow it.'
+          : `This connection does not hold the ${tool.scope} scope.`,
         { details: { required_scope: tool.scope, scopes: principal.scopes } },
       );
     }

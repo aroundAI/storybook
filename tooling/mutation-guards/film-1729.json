@@ -4,8 +4,8 @@
     {
       "name": "XS1 Publishing to X skips the pre-flight",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "    await assertXWillAccept(platforms, episode, episodeId);\n",
+      "file": "packages/features/publishing/src/server/publish-preflight.ts",
+      "find": "  await assertXWillAccept(client, platforms, episode, episodeId);\n",
       "replace": "",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-x-upload-scope.test.ts",
@@ -34,7 +34,7 @@
     {
       "name": "XS4 An over-long X post title is not checked",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "file": "packages/features/publishing/src/server/publish-preflight.ts",
       "find": "    if (postLength > TWITTER_CONSTRAINTS.maxTweetLength) {",
       "replace": "    if (postLength > Infinity) {",
       "cwd": "packages/features/publishing",

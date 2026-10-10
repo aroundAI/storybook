@@ -1,0 +1,95 @@
+{
+  "feature": "MCP schedule_publish (a connection a person allowed schedules publishes and cancels them before they go out)",
+  "mutations": [
+    {
+      "name": "MP1 a time that has passed is scheduled",
+      "file": "packages/features/publishing/src/server/schedule-publishes.service.ts",
+      "find": "    if (new Date(target.scheduledAt).getTime() <= now.getTime()) {\n",
+      "replace": "    if (false) {\n",
+      "pattern": "refuses a time that has passed",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts"
+    },
+    {
+      "name": "MP2 scheduling skips the Publish screen's checks",
+      "file": "packages/features/publishing/src/server/schedule-publishes.service.ts",
+      "find": "  const { episode, episodeThumbnail, declared } = await preparePublish(\n    client,\n    input.episodeId,\n    platforms,\n  );\n",
+      "replace": "  const { episode, episodeThumbnail, declared } = await preparePublish(\n    client,\n    input.episodeId,\n    [],\n  );\n",
+      "pattern": "refuses a Shorts group sent to a platform",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts"
+    },
+    {
+      "name": "MP3 a channel that can no longer publish is scheduled",
+      "file": "packages/features/publishing/src/server/schedule-publishes.service.ts",
+      "find": "      throw new TokenRefusal(token.error, platform.platform);\n",
+      "replace": "      void token;\n",
+      "pattern": "can no longer be published to",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts"
+    },
+    {
+      "name": "MP4 a short is scheduled with no video for it",
+      "file": "packages/features/publishing/src/server/schedule-publishes.service.ts",
+      "find": "    if (!resolved) {\n",
+      "replace": "    if (false) {\n",
+      "pattern": "no video in",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts"
+    },
+    {
+      "name": "MP5 a publish that has started is cancelled",
+      "file": "packages/features/publishing/src/server/schedule-publishes.service.ts",
+      "find": "    .eq('status', 'scheduled')\n    .select('id');\n",
+      "replace": "    .select('id');\n",
+      "pattern": "claimed after it was read",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts"
+    },
+    {
+      "name": "MP6 a member cancels a scheduled publish",
+      "file": "packages/features/publishing/src/server/schedule-publishes.service.ts",
+      "find": "  if (!canTakeDown(role)) {\n",
+      "replace": "  if (false) {\n",
+      "pattern": "not an owner or admin",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts"
+    },
+    {
+      "name": "MP7 scheduling needs only studio:write",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/index.ts",
+      "find": "  scope: 'studio:publish',\n  annotations: PUBLISH,\n",
+      "replace": "  scope: 'studio:write',\n  annotations: PUBLISH,\n",
+      "pattern": "need studio:publish",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/publish-tools.test.ts"
+    },
+    {
+      "name": "MP8 the consent screen ticks studio:publish",
+      "file": "packages/features/studio-mcp/src/scopes.ts",
+      "find": "  return requested.filter((scope) => !OPT_IN_SCOPES.includes(scope));\n",
+      "replace": "  return [...requested];\n",
+      "pattern": "not ticked",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/publish-tools.test.ts"
+    },
+    {
+      "name": "MP9 a client asking for nothing is not offered studio:publish",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  if (parts.length === 0) return [...DEFAULT_SCOPES, ...OPT_IN_SCOPES];\n",
+      "replace": "  if (parts.length === 0) return [...DEFAULT_SCOPES];\n",
+      "pattern": "is offered when a client asks",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/publish-tools.test.ts"
+    }
+  ]
+}

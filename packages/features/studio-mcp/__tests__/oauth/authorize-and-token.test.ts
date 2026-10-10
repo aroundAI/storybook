@@ -252,7 +252,7 @@ describe('/oauth/authorize request parsing', () => {
     );
   });
 
-  it('defaults the scopes to read and write when none are requested, and accepts a trailing slash on the resource', async () => {
+  it('defaults the scopes to read and write, offering publish unticked, when none are requested, and accepts a trailing slash on the resource', async () => {
     const store = storeWithClient();
     const { params } = authorizeParams({
       scope: null,
@@ -267,7 +267,11 @@ describe('/oauth/authorize request parsing', () => {
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(parsed.request.scopes).toEqual(['studio:read', 'studio:write']);
+    expect(parsed.request.scopes).toEqual([
+      'studio:read',
+      'studio:write',
+      'studio:publish',
+    ]);
   });
 
   it('a denial redirects with access_denied, the state and the issuer', async () => {

@@ -24,7 +24,6 @@ import {
   holdsXUploadScope,
   queueUrlFromEnv,
   xUploadScopeRefusal,
-  xVideoRefusal,
 } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -35,20 +34,17 @@ import {
   resolveEpisodeVideo,
 } from '../lib/episode-video';
 import type { DeleteJobMessage } from '../lib/job-types';
-import { readMp4Facts } from '../lib/mp4-facts';
 import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
-  type ProjectOfEpisode,
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
-import { PLATFORM_NAMES, isOfferedPlatform } from '../lib/platforms';
+import { isOfferedPlatform } from '../lib/platforms';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
-import { groupTakesPlatform } from '../lib/shorts-targets';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
 import {
   TokenRefusal,
@@ -56,12 +52,10 @@ import {
   readableTokenError,
   tokenErrorCodeOf,
 } from '../lib/token-errors';
-import { tweetLength } from '../lib/tweet-length';
 import type { Platform, PublishResult } from '../lib/types';
 import { recordUploadedFileDuration } from '../lib/uploaded-file-duration';
 import {
   type YouTubeChannelDeclaration,
-  type YouTubeDeclaration,
   YouTubeDeclarationMissing,
   resolveYouTubeDeclaration,
 } from '../lib/youtube-declaration';
@@ -69,10 +63,14 @@ import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
-import { TWITTER_CONSTRAINTS } from '../providers/twitter/types';
 import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
 import { assertConnectionOfProject } from './project-channels';
+import {
+  preparePublish,
+  projectOfEpisodeVia,
+  refusalFor,
+} from './publish-preflight';
 import { uploadToYouTube } from './youtube-upload';
 
 // Initialize SQS client
@@ -113,175 +111,6 @@ function getTunnelUrl(url: string): string {
   return url;
 }
 
-type PublishPlatformInput = z.infer<
-  typeof PublishToAllSchema
->['platforms'][number];
-
-/** The project of an episode, read as the caller: RLS decides what is seen (KB-123) */
-function projectOfEpisodeVia(
-  client: SupabaseClient<Database>,
-): ProjectOfEpisode {
-  return async (episodeId) => {
-    const { data } = await client
-      .from('episodes')
-      .select('project_id')
-      .eq('id', episodeId)
-      .maybeSingle();
-
-    return data?.project_id ?? null;
-  };
-}
-
-function refusalFor(channelNames: string[]) {
-  const names = channelNames.map((name) => `“${name}”`).join(', ');
-
-  return `Choose whether ${names} is made for kids, and its category, before publishing to YouTube. You can set this in Settings → Platforms.`;
-}
-
-/**
- * KB-30. The audience and category each YouTube upload will declare, by index
- * into `platforms` — from the request, else the channel's own answer. Refuses
- * the whole request, naming every undeclared channel, before anything is
- * written: there is no value this falls back to.
- */
-async function declareYouTubeUploads(platforms: PublishPlatformInput[]) {
-  const declared = new Map<number, YouTubeDeclaration>();
-  const connectionIds = [
-    ...new Set(
-      platforms
-        .filter((platform) => platform.platform === 'youtube')
-        .map((platform) => platform.connectionId),
-    ),
-  ];
-
-  if (connectionIds.length === 0) return declared;
-
-  const { data: channels, error } = await getSupabaseServerClient()
-    .from('platform_connections')
-    .select(
-      'id, platform_account_name, youtube_made_for_kids, youtube_category_id',
-    )
-    .in('id', connectionIds);
-
-  if (error) {
-    throw new Error('Could not read the YouTube channels being published to');
-  }
-
-  const undeclared = new Set<string>();
-
-  platforms.forEach((platform, index) => {
-    if (platform.platform !== 'youtube') return;
-
-    const channel =
-      channels?.find((row) => row.id === platform.connectionId) ?? null;
-
-    try {
-      declared.set(
-        index,
-        resolveYouTubeDeclaration(platform.platformSpecific, channel),
-      );
-    } catch (resolveError) {
-      if (!(resolveError instanceof YouTubeDeclarationMissing)) {
-        throw resolveError;
-      }
-      undeclared.add(channel?.platform_account_name ?? 'this YouTube channel');
-    }
-  });
-
-  if (undeclared.size > 0) {
-    throw new ActionRefusal(refusalFor([...undeclared]));
-  }
-
-  return declared;
-}
-
-/**
- * FILM-1729. Refuses the whole request, before anything is written, when X
- * would refuse it: an X account that cannot upload video, or a video outside
- * X's limits (owner, 2026-10-01: refused on the screen, not found in the
- * worker). Each X video is the one the upload below would send, read from
- * its own MP4 header.
- */
-async function assertXWillAccept(
-  platforms: PublishPlatformInput[],
-  episode: Parameters<typeof resolveEpisodeVideo>[0] & { project_id: string },
-  episodeId: string,
-) {
-  const toX = platforms.filter((platform) => platform.platform === 'twitter');
-
-  if (toX.length === 0) return;
-
-  const connections = await assertXUploadScope(toX);
-
-  for (const platform of toX) {
-    // The title is the post's text, measured as X measures it (FILM-714)
-    const postLength = tweetLength(platform.title);
-
-    if (postLength > TWITTER_CONSTRAINTS.maxTweetLength) {
-      throw new ActionRefusal(
-        `X can't take this post: its title is ${postLength} characters, and an X post takes at most ${TWITTER_CONSTRAINTS.maxTweetLength}. Shorten the title for X.`,
-      );
-    }
-
-    const language =
-      platform.language ??
-      connections.find((row) => row.id === platform.connectionId)?.language;
-    const short = platform.contentType === 'short';
-    const resolved = resolveEpisodeVideo(episode, {
-      language: language ?? 'en',
-      platform: platform.platform,
-      short,
-      shortsGroupId: short ? platform.shortsGroupId : null,
-      ...PUBLISH_NOW_PRECEDENCE,
-    });
-    const videoUrl =
-      resolved &&
-      (await ownedEpisodeVideo(
-        resolved.url,
-        { episodeId, projectId: episode.project_id },
-        projectOfEpisodeVia(getSupabaseServerClient()),
-      ));
-
-    // The upload refuses these itself, with its own words.
-    if (!videoUrl) continue;
-
-    const refusal = xVideoRefusal(await readMp4Facts(videoUrl));
-
-    if (refusal) throw new ActionRefusal(refusal);
-  }
-}
-
-/** Refuses every X account that cannot upload video; returns the accounts. */
-async function assertXUploadScope(platforms: PublishPlatformInput[]) {
-  const connectionIds = [
-    ...new Set(
-      platforms
-        .filter((platform) => platform.platform === 'twitter')
-        .map((platform) => platform.connectionId),
-    ),
-  ];
-
-  const { data: connections, error } = await getSupabaseServerClient()
-    .from('platform_connections')
-    .select('id, platform_account_name, scopes, language')
-    .in('id', connectionIds);
-
-  if (error) {
-    throw new Error('Could not read the X accounts being published to');
-  }
-
-  const lacking = connectionIds
-    .map((id) => connections?.find((row) => row.id === id))
-    .filter((row) => !row || !holdsXUploadScope(row.scopes))
-    .map((row) => row?.platform_account_name ?? 'this X account');
-
-  if (lacking.length > 0) {
-    throw new ActionRefusal(xUploadScopeRefusal(lacking));
-  }
-
-  return connections ?? [];
-}
-
 /**
  * Publish video to all selected platforms
  */
@@ -298,100 +127,12 @@ const publishToAllHandler = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    // Get episode video - fetch localized videos and shorts groups for multi-language support
-    const episode = requireRow(
-      await client
-        .from('episodes')
-        .select(
-          'final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number, project:projects!inner(account_id)',
-        )
-        .eq('id', episodeId)
-        .single(),
-      'Episode not found',
-    );
-
-    // Support both legacy final_video_url and new localized_videos
-    const localizedVideos =
-      (episode.localized_videos as Record<string, string> | null) ?? {};
-    const shortsGroups =
-      (episode.shorts_groups as Array<{
-        id: string;
-        name?: string;
-        platforms?: string[];
-        videos: Record<string, string>;
-      }> | null) ?? [];
-    const hasAnyShortsVideos = shortsGroups.some(
-      (g) => Object.keys(g.videos || {}).length > 0,
-    );
-    const hasAnyVideos =
-      !!episode.final_video_url ||
-      Object.keys(localizedVideos).length > 0 ||
-      hasAnyShortsVideos;
-
-    if (!hasAnyVideos) {
-      logger.error(ctx, 'Episode video not ready');
-      throw new ActionRefusal(
-        'No videos available for publishing. Upload videos first.',
-      );
-    }
-
-    // KB-109: every channel is one of the episode's account, asked before
-    // any token is decrypted or refreshed
-    const connectionIds = new Set(
-      platforms.map((platform) => platform.connectionId),
-    );
-    for (const connectionId of connectionIds) {
-      await assertConnectionOfAccount(
-        client,
-        connectionId,
-        episode.project.account_id,
-      );
-    }
-
-    // An episode publishes only to its project's channels
-    await assertConnectionOfProject(client, connectionIds, episode.project_id);
-
-    // A Shorts group goes only to the platforms it names
-    for (const platform of platforms) {
-      if (platform.contentType !== 'short' || !platform.shortsGroupId) continue;
-
-      const group = shortsGroups.find((g) => g.id === platform.shortsGroupId);
-      if (group && !groupTakesPlatform(group, platform.platform)) {
-        const name = PLATFORM_NAMES[platform.platform];
-        throw new ActionRefusal(
-          `The Shorts group "${group.name || 'Shorts'}" isn't set to go to ${name}. Tick ${name} on the group first.`,
-        );
-      }
-    }
-
-    // KB-104: a thumbnail is downloaded and sent to the channel, so only one
-    // of this episode's own uploads may be named. Checked before anything is
-    // written, so a refused publish leaves no row behind.
-    if (
-      platforms.some(
-        (platform) =>
-          platform.thumbnailUrl &&
-          !ownedEpisodeThumbnail(platform.thumbnailUrl, episodeId),
-      )
-    ) {
-      throw new ActionRefusal(
-        "That thumbnail isn't one of this episode's uploads. Choose one of the episode's thumbnails.",
-      );
-    }
-
-    // The episode's own thumbnail, when it is one of its uploads
-    const episodeThumbnail = ownedEpisodeThumbnail(
-      episode.thumbnail_url,
+    // Every refusal, before anything is written
+    const { episode, episodeThumbnail, declared } = await preparePublish(
+      client,
       episodeId,
+      platforms,
     );
-
-    // KB-30: every YouTube upload declares an audience and a category the
-    // creator chose. Resolve them all before anything is written, so a
-    // publish nobody declared leaves no row behind.
-    const declared = await declareYouTubeUploads(platforms);
-
-    // FILM-1729: nothing goes to X that X would refuse
-    await assertXWillAccept(platforms, episode, episodeId);
 
     // Publish to all platforms in parallel
     const results = await Promise.allSettled(

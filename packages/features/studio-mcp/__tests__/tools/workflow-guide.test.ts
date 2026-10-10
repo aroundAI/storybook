@@ -69,7 +69,7 @@ describe('get_workflow_guide', () => {
 });
 
 describe('the default tool list', () => {
-  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools and the Studio tools, each name once', () => {
+  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools, the Studio tools and the three publish tools, each name once', () => {
     const names = defaultTools.map((tool) => tool.name);
 
     expect(new Set(names).size).toBe(names.length);
@@ -132,6 +132,10 @@ describe('the default tool list', () => {
         'get_edit_package',
         'regenerate_shots',
         'localize_episode',
+        // Scheduling publishes (owner, 2026-10-10)
+        'list_episode_publishes',
+        'schedule_publish',
+        'cancel_scheduled_publish',
       ].sort(),
     );
   });
