@@ -1,5 +1,5 @@
 spec_id: "FILM-2207"
-title: "MCP Scheduled Publishing: an external AI schedules what the Publish screen would"
+title: "MCP Shorts and Scheduled Publishing: an external AI builds each platform's cut and schedules what the Publish screen would"
 phase: 22
 phase_name: "Flexible Production"
 category: feature
@@ -18,7 +18,11 @@ summary: >
   publish is a publishes row until the scheduled job claims it, so nothing
   reaches a platform from the tool call itself. Every target is checked by
   the Publish screen's own checks before any row is written, and a refused
-  target schedules nothing.
+  target schedules nothing. It also builds the Shorts a publish sends:
+  one group per platform cut (upsert_shorts_group, delete_shorts_group),
+  a short uploaded into a group in a language (finalize_episode_video's
+  shortsGroupId), through the Publish screen's own saveShortsGroups. The
+  workflow guide's Publishing section says how.
 acceptance_criteria:
   - text: "studio:publish is its own scope: the consent screen and the token form offer it, and never tick it for the person"
     met: true
@@ -35,9 +39,18 @@ acceptance_criteria:
   - text: "list_episode_publishes lists an episode's Shorts groups (platforms, languages) and its publishes with status and scheduled time"
     met: true
     evidence: "Met (#664): tools/publish/index.ts (studio:read); E2E 'schedules the video and a Shorts cut…'"
+  - text: "upsert_shorts_group creates a group or changes the fields given (name, title, description, tags, platforms); delete_shorts_group is refused while a scheduled publish uses the group; both edit on the version read and answer TARGET_CHANGED otherwise"
+    met: true
+    evidence: "Met (#664): packages/features/studio-mcp/src/server/tools/publish/shorts.ts over packages/features/episodes/src/server/shorts-groups.service.ts (saveShortsGroups, editShortsGroups), which updateShortsGroupsAction now calls too. Tests: __tests__/tools/shorts-group-tools.test.ts"
+  - text: "finalize_episode_video with shortsGroupId makes the upload that group's short in that language and leaves the episode video alone"
+    met: true
+    evidence: "Met (#664): tools/author/episode-production.ts. Test: 'makes it the group’s short in that language…'; E2E 'builds a YouTube cut and an Instagram cut over MCP, uploads a short into each and schedules each to its own platform'"
+  - text: "The workflow guide says how to publish: the episode video per language, one Shorts group per platform cut, scheduling and cancelling"
+    met: true
+    evidence: "Met (#664): tools/workflow-guide.ts '## Publishing'; workflow-guide.test.ts pins the tool names and that every tool the guide names exists"
   - text: "Mutation guards for each rule"
     met: true
-    evidence: "Met (#664): tooling/mutation-guards/mcp-schedule-publish.json MP1–MP9, each red under its mutation"
+    evidence: "Met (#664): tooling/mutation-guards/mcp-schedule-publish.json MP1–MP9 and MS1–MS4, each red under its mutation"
 open_questions: []
 notes: "Reverses, for scheduling only, Phase 19's 'publishing stays a web action' (owner, 2026-10-10). The scheduled job and Lambda publish these rows as they publish the Publish screen's; metadata.createdVia = 'mcp' marks them."
 feature:

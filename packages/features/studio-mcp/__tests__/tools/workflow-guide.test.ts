@@ -49,6 +49,13 @@ describe('get_workflow_guide', () => {
       'request_episode_video_upload',
       'finalize_episode_video',
       'link_published_video',
+      // Shorts groups and scheduling (FILM-2207)
+      'upsert_shorts_group',
+      'delete_shorts_group',
+      'list_episode_publishes',
+      'schedule_publish',
+      'cancel_scheduled_publish',
+      'studio:publish',
       'MISSING_INPUTS',
     ]) {
       expect(WORKFLOW_GUIDE_TEXT).toContain(tool);
@@ -57,6 +64,17 @@ describe('get_workflow_guide', () => {
     expect(WORKFLOW_GUIDE_TEXT).not.toMatch(/unlock/);
     expect(WORKFLOW_GUIDE_TEXT).toMatch(/draft/);
     expect(WORKFLOW_GUIDE_TEXT).toMatch(/published/);
+  });
+
+  it('names only tools that exist, in backticks', () => {
+    const named = [
+      ...WORKFLOW_GUIDE_TEXT.matchAll(/`([a-z]+(?:_[a-z]+)+)(?:\(|`)/g),
+    ]
+      .map((match) => match[1]!)
+      .filter((name) => !['startFrom', 'followUpOf'].includes(name));
+    const tools = new Set(defaultTools.map((tool) => tool.name));
+
+    expect(named.filter((name) => !tools.has(name))).toEqual([]);
   });
 
   it('is offered as an MCP prompt with the same text', async () => {
@@ -69,7 +87,7 @@ describe('get_workflow_guide', () => {
 });
 
 describe('the default tool list', () => {
-  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools, the Studio tools and the three publish tools, each name once', () => {
+  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools, the Studio tools and the five publish tools, each name once', () => {
     const names = defaultTools.map((tool) => tool.name);
 
     expect(new Set(names).size).toBe(names.length);
@@ -134,6 +152,8 @@ describe('the default tool list', () => {
         'localize_episode',
         // Scheduling publishes (owner, 2026-10-10)
         'list_episode_publishes',
+        'upsert_shorts_group',
+        'delete_shorts_group',
         'schedule_publish',
         'cancel_scheduled_publish',
       ].sort(),

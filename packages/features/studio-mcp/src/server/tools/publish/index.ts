@@ -12,6 +12,7 @@ import { McpToolError } from '../../../errors';
 import { type McpToolDefinition, defineTool } from '../../../registry';
 import { type EpisodeRef, requireEpisodeInAccount } from '../read/scope';
 import { refused } from '../validation';
+import { shortsGroupTools } from './shorts';
 
 /**
  * Scheduling publishes over MCP (owner, 2026-10-10): an episode's video,
@@ -182,7 +183,7 @@ export const listEpisodePublishesTool = defineTool({
   name: 'list_episode_publishes',
   title: 'List an episode’s publishes',
   description:
-    "An episode's Shorts groups (id, name, the platforms each goes to, where none means every Shorts platform, and its languages) and its publishes: each with its platform, channel, content type, language, status (scheduled, queued, publishing, published, failed, …), scheduled time and platform URL. The ids are what schedule_publish and cancel_scheduled_publish take.",
+    "An episode's Shorts groups (id, name, the title, description and tags its shorts post with, the platforms each goes to, where none means every Shorts platform, and its languages) and its publishes: each with its platform, channel, content type, language, status (scheduled, queued, publishing, published, failed, …), scheduled time and platform URL. The ids are what schedule_publish and cancel_scheduled_publish take.",
   inputSchema: { episodeId: z.string().uuid() },
   scope: 'studio:read',
   annotations: {
@@ -221,6 +222,9 @@ export const listEpisodePublishesTool = defineTool({
     ) as Array<{
       id: string;
       name?: string;
+      title?: string;
+      description?: string;
+      tags?: string[];
       platforms?: string[];
       videos?: Record<string, string>;
     }>;
@@ -228,6 +232,9 @@ export const listEpisodePublishesTool = defineTool({
     const shortsGroups = groups.map((group) => ({
       id: group.id,
       name: group.name ?? '',
+      title: group.title ?? '',
+      description: group.description ?? '',
+      tags: group.tags ?? [],
       platforms: group.platforms ?? [],
       languages: Object.entries(group.videos ?? {})
         .filter(([, url]) => url)
@@ -267,6 +274,7 @@ export const listEpisodePublishesTool = defineTool({
 
 export const publishTools = [
   listEpisodePublishesTool,
+  ...shortsGroupTools,
   schedulePublishTool,
   cancelScheduledPublishTool,
 ] as unknown as McpToolDefinition[];

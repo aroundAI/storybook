@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 import { encryptLikeTheApp } from '../utils/crypto';
-import { callMcpTool, mintPersonalAccessToken } from '../utils/mcp';
+import {
+  type McpToolCall,
+  callMcpTool,
+  mintPersonalAccessToken,
+} from '../utils/mcp';
+import { headerOnlyMp4 } from '../utils/mp4';
 import {
   type SeededTeam,
   addProjectChannels,
@@ -48,7 +53,10 @@ async function channel(team: SeededTeam, name: string, platform: string) {
   return id;
 }
 
-async function fixture(scopes: Parameters<typeof mintPersonalAccessToken>[1]) {
+async function fixture(
+  scopes: Parameters<typeof mintPersonalAccessToken>[1],
+  options: { seedGroups?: boolean } = {},
+) {
   const team = await seedTeamAccount({ emailPrefix: 'mcppub' });
   const yt = await channel(team, 'Story YT EN', 'youtube');
   const ig = await channel(team, 'Story IG EN', 'instagram');
@@ -58,22 +66,60 @@ async function fixture(scopes: Parameters<typeof mintPersonalAccessToken>[1]) {
 
   await updateRows('episodes', `id=eq.${episodeId}`, {
     localized_videos: { en: episodeVideoUrl(episodeId, 'en') },
-    shorts_groups: [
-      {
-        id: 'ig-cut',
-        name: 'IG cut',
-        title: '',
-        description: '',
-        tags: [],
-        platforms: ['instagram'],
-        videos: { en: episodeVideoUrl(episodeId, 'en') },
-      },
-    ],
+    shorts_groups:
+      options.seedGroups === false
+        ? []
+        : [
+            {
+              id: 'ig-cut',
+              name: 'IG cut',
+              title: '',
+              description: '',
+              tags: [],
+              platforms: ['instagram'],
+              videos: { en: episodeVideoUrl(episodeId, 'en') },
+            },
+          ],
   });
 
   const token = await mintPersonalAccessToken(team, scopes);
 
   return { yt, ig, episodeId, call: callMcpTool.bind(null, token) };
+}
+
+/** request_episode_video_upload, PUT, finalize_episode_video: one file */
+async function uploadVideo(
+  call: (name: string, args: Record<string, unknown>) => Promise<McpToolCall>,
+  episodeId: string,
+  extra: Record<string, unknown>,
+) {
+  const file = Buffer.from(
+    headerOnlyMp4({ seconds: 4, width: 1080, height: 1920 }),
+  );
+  const requested = await call('request_episode_video_upload', {
+    episodeId,
+    language: 'en',
+    contentType: 'video/mp4',
+    bytes: file.byteLength,
+  });
+  const upload = requested.structuredContent as {
+    key: string;
+    uploadUrl: string;
+    headers: Record<string, string>;
+  };
+  const put = await fetch(upload.uploadUrl, {
+    method: 'PUT',
+    headers: upload.headers,
+    body: file,
+  });
+  expect(put.ok).toBe(true);
+
+  return call('finalize_episode_video', {
+    episodeId,
+    language: 'en',
+    key: upload.key,
+    ...extra,
+  });
 }
 
 function publishesOf(episodeId: string) {
@@ -102,6 +148,9 @@ test.describe('Scheduling publishes over MCP', () => {
       {
         id: 'ig-cut',
         name: 'IG cut',
+        title: '',
+        description: '',
+        tags: [],
         platforms: ['instagram'],
         languages: ['en'],
       },
@@ -206,6 +255,106 @@ test.describe('Scheduling publishes over MCP', () => {
     });
     expect(again.isError).toBe(true);
     expect(again.text).toContain('Publish record not found');
+  });
+
+  test('builds a YouTube cut and an Instagram cut over MCP, uploads a short into each and schedules each to its own platform', async () => {
+    const { yt, ig, episodeId, call } = await fixture(
+      { scopes: ['studio:read', 'studio:write', 'studio:publish'] },
+      { seedGroups: false },
+    );
+
+    const ytCut = await call('upsert_shorts_group', {
+      episodeId,
+      name: 'YT cut',
+      platforms: ['youtube'],
+    });
+    const igCut = await call('upsert_shorts_group', {
+      episodeId,
+      name: 'IG/FB cut',
+      platforms: ['instagram', 'facebook'],
+    });
+    expect(ytCut.isError, ytCut.text).toBe(false);
+    const ytId = (ytCut.structuredContent.shortsGroup as { id: string }).id;
+    const igId = (igCut.structuredContent.shortsGroup as { id: string }).id;
+
+    // A short goes into its group, not over the episode video
+    for (const shortsGroupId of [ytId, igId]) {
+      const finalized = await uploadVideo(call, episodeId, { shortsGroupId });
+      expect(finalized.isError, finalized.text).toBe(false);
+    }
+
+    // The second save: rename, and the platforms stay
+    const renamed = await call('upsert_shorts_group', {
+      episodeId,
+      shortsGroupId: ytId,
+      name: 'YouTube cut',
+      title: 'Pilot #shorts',
+    });
+    expect(renamed.isError, renamed.text).toBe(false);
+
+    const listed = await call('list_episode_publishes', { episodeId });
+    expect(listed.structuredContent.shortsGroups).toEqual([
+      expect.objectContaining({
+        id: ytId,
+        name: 'YouTube cut',
+        title: 'Pilot #shorts',
+        platforms: ['youtube'],
+        languages: ['en'],
+      }),
+      expect.objectContaining({
+        id: igId,
+        platforms: ['instagram', 'facebook'],
+        languages: ['en'],
+      }),
+    ]);
+
+    const [row] = await readRows<{
+      localized_videos: Record<string, string>;
+      shorts_groups: Array<{ id: string; videos: Record<string, string> }>;
+    }>('episodes', `id=eq.${episodeId}&select=localized_videos,shorts_groups`);
+    expect(row!.localized_videos.en).toBe(episodeVideoUrl(episodeId, 'en'));
+    expect(row!.shorts_groups[0]!.videos.en).not.toBe(
+      row!.shorts_groups[1]!.videos.en,
+    );
+
+    const when = IN_A_DAY();
+    const scheduled = await call('schedule_publish', {
+      episodeId,
+      targets: [
+        {
+          connectionId: yt,
+          contentType: 'short',
+          shortsGroupId: ytId,
+          title: 'YT short',
+          scheduledAt: when,
+        },
+        {
+          connectionId: ig,
+          contentType: 'short',
+          shortsGroupId: igId,
+          title: 'IG short',
+          scheduledAt: when,
+        },
+      ],
+    });
+    expect(scheduled.isError, scheduled.text).toBe(false);
+    expect(
+      (await publishesOf(episodeId)).map((p) => [
+        p.platform,
+        p.metadata.shortsGroupId,
+      ]),
+    ).toEqual([
+      ['instagram', igId],
+      ['youtube', ytId],
+    ]);
+
+    // A group a scheduled publish uses is not deleted under it
+    const deleted = await call('delete_shorts_group', {
+      episodeId,
+      shortsGroupId: ytId,
+    });
+    expect(deleted.isError).toBe(true);
+    expect(deleted.text).toContain('cancel_scheduled_publish');
   });
 
   test('a connection without studio:publish reads the publishes but cannot schedule', async () => {

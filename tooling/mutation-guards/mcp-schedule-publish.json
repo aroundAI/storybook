@@ -1,5 +1,5 @@
 {
-  "feature": "MCP schedule_publish (a connection a person allowed schedules publishes and cancels them before they go out)",
+  "feature": "MCP Shorts groups and schedule_publish (a connection builds each platform's cut, and one a person allowed schedules publishes and cancels them)",
   "mutations": [
     {
       "name": "MP1 a time that has passed is scheduled",
@@ -90,6 +90,46 @@
       "kind": "unit",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/tools/publish-tools.test.ts"
+    },
+    {
+      "name": "MS1 a Shorts group edit overwrites one made since it was read",
+      "file": "packages/features/episodes/src/server/shorts-groups.service.ts",
+      "find": "    update = update.eq('version', input.expectedVersion);\n",
+      "replace": "",
+      "pattern": "on the version read",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/shorts-group-tools.test.ts"
+    },
+    {
+      "name": "MS2 a short finalized into a group becomes the episode video",
+      "file": "packages/features/studio-mcp/src/server/tools/author/episode-production.ts",
+      "find": "      if (input.shortsGroupId) {\n",
+      "replace": "      if (false) {\n",
+      "pattern": "group’s short in that language",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/shorts-group-tools.test.ts"
+    },
+    {
+      "name": "MS3 a group a scheduled publish uses is deleted under it",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/shorts.ts",
+      "find": "    if (count) {\n",
+      "replace": "    if (false) {\n",
+      "pattern": "refuses while a scheduled publish",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/shorts-group-tools.test.ts"
+    },
+    {
+      "name": "MS4 updating a group resets the fields it was not given",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/shorts.ts",
+      "find": "      const group = { ...existing, ...fields };\n",
+      "replace": "      const group = {\n        ...existing,\n        title: '',\n        description: '',\n        tags: [],\n        ...fields,\n      };\n",
+      "pattern": "changes only the fields",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/shorts-group-tools.test.ts"
     }
   ]
 }
