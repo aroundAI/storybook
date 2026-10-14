@@ -4,6 +4,7 @@ import { getLogger } from '@kit/shared/logger';
 import { whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { cadenceGate, longVideoStates } from '../lib/cadence/gate';
 import {
   SCHEDULED_JOB_PRECEDENCE,
   resolveEpisodeVideo,
@@ -49,6 +50,9 @@ interface ScheduledPublish {
   language: string | null;
   content_type: string | null;
   ai_generated: boolean;
+  scheduled_at: string | null;
+  slot_at: string | null;
+  after_episode_full: boolean;
   episodes: {
     project_id: string;
     final_video_url: string | null;
@@ -164,6 +168,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       language,
       content_type,
       ai_generated,
+      scheduled_at,
+      slot_at,
+      after_episode_full,
       episodes(final_video_url, thumbnail_url, localized_videos, shorts_groups, project_id)
     `,
         )
@@ -216,6 +223,8 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
     failed: 0,
   };
 
+  const longVideos = await longVideoStates(client, duePublishes);
+
   // Process each publish
   for (const publish of duePublishes as unknown as ScheduledPublish[]) {
     const publishCtx = {
@@ -224,12 +233,29 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       platform: publish.platform,
     };
 
+    // FILM-719: the cadence rules the scheduled Lambda applies
+    const gate = await cadenceGate(client, publish, longVideos, now);
+
+    if (gate !== 'go') {
+      logger.info({ ...publishCtx, gate }, 'Scheduled publish not sent now');
+      if (gate === 'failed') results.failed++;
+      continue;
+    }
+
     try {
-      // Update status to publishing
-      await client
+      // Claim it: only a row still 'scheduled' moves on, so two runs
+      // cannot both send it (FILM-719)
+      const { data: claimed, error: claimError } = await client
         .from('publishes')
         .update({ status: 'publishing' })
-        .eq('id', publish.id);
+        .eq('id', publish.id)
+        .eq('status', 'scheduled')
+        .select('id');
+
+      if (claimError || !claimed?.length) {
+        logger.info(publishCtx, 'Scheduled publish claimed by another run');
+        continue;
+      }
 
       // Get valid access token using refresh logic
       const tokenResult = await ensureValidToken(

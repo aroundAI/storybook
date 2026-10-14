@@ -1597,6 +1597,90 @@ export type Database = {
           },
         ]
       }
+      channel_posting_cadences: {
+        Row: {
+          account_id: string
+          content_type: string
+          created_at: string
+          days_of_week: number[]
+          enabled: boolean
+          id: string
+          jitter_minutes: number
+          min_days_between: number
+          platform_connection_id: string
+          slot_times: string[]
+          start_after_hours: number
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          content_type: string
+          created_at?: string
+          days_of_week?: number[]
+          enabled?: boolean
+          id?: string
+          jitter_minutes?: number
+          min_days_between?: number
+          platform_connection_id: string
+          slot_times: string[]
+          start_after_hours?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          content_type?: string
+          created_at?: string
+          days_of_week?: number[]
+          enabled?: boolean
+          id?: string
+          jitter_minutes?: number
+          min_days_between?: number
+          platform_connection_id?: string
+          slot_times?: string[]
+          start_after_hours?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_posting_cadences_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_posting_cadences_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_posting_cadences_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_posting_cadences_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_posting_cadences_connection_account_fkey"
+            columns: ["platform_connection_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id", "account_id"]
+          },
+        ]
+      }
       character_details: {
         Row: {
           asset_id: string
@@ -5147,6 +5231,7 @@ export type Database = {
       }
       publishes: {
         Row: {
+          after_episode_full: boolean
           ai_generated: boolean
           analytics_note: string | null
           analytics_note_updated_at: string | null
@@ -5166,12 +5251,14 @@ export type Database = {
           platform_url: string | null
           published_at: string | null
           scheduled_at: string | null
+          slot_at: string | null
           status: string
           tags: string[] | null
           thumbnail_url: string | null
           title: string | null
         }
         Insert: {
+          after_episode_full?: boolean
           ai_generated?: boolean
           analytics_note?: string | null
           analytics_note_updated_at?: string | null
@@ -5191,12 +5278,14 @@ export type Database = {
           platform_url?: string | null
           published_at?: string | null
           scheduled_at?: string | null
+          slot_at?: string | null
           status?: string
           tags?: string[] | null
           thumbnail_url?: string | null
           title?: string | null
         }
         Update: {
+          after_episode_full?: boolean
           ai_generated?: boolean
           analytics_note?: string | null
           analytics_note_updated_at?: string | null
@@ -5216,6 +5305,7 @@ export type Database = {
           platform_url?: string | null
           published_at?: string | null
           scheduled_at?: string | null
+          slot_at?: string | null
           status?: string
           tags?: string[] | null
           thumbnail_url?: string | null
@@ -7979,6 +8069,8 @@ export type Database = {
           created_at: string | null
           file_size_limit: number | null
           id: string
+          lifecycle_configuration: Json | null
+          lifecycle_configuration_generation: string | null
           name: string
           owner: string | null
           owner_id: string | null
@@ -7993,6 +8085,8 @@ export type Database = {
           created_at?: string | null
           file_size_limit?: number | null
           id: string
+          lifecycle_configuration?: Json | null
+          lifecycle_configuration_generation?: string | null
           name: string
           owner?: string | null
           owner_id?: string | null
@@ -8007,6 +8101,8 @@ export type Database = {
           created_at?: string | null
           file_size_limit?: number | null
           id?: string
+          lifecycle_configuration?: Json | null
+          lifecycle_configuration_generation?: string | null
           name?: string
           owner?: string | null
           owner_id?: string | null
@@ -8430,6 +8526,7 @@ export type Database = {
           next_key_token?: string
           next_upload_token?: string
           prefix_param: string
+          raw_prefix_param?: string
         }
         Returns: {
           created_at: string
@@ -8440,28 +8537,38 @@ export type Database = {
       list_objects_with_delimiter: {
         Args: {
           _bucket_id: string
+          delete_markers?: string
           delimiter_param: string
           max_keys?: number
           next_token?: string
+          next_token_archived_at?: string
+          next_token_version?: string
+          noncurrent_versions?: string
           prefix_param: string
           sort_order?: string
           start_after?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       operation: { Args: never; Returns: string }
       search: {
         Args: {
           bucketname: string
+          delete_markers?: string
           levels?: number
           limits?: number
+          noncurrent_versions?: string
           offsets?: number
           prefix: string
           search?: string
@@ -8469,16 +8576,22 @@ export type Database = {
           sortorder?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       search_by_timestamp: {
         Args: {
+          delete_markers?: string
+          noncurrent_versions?: string
           p_bucket_id: string
           p_level: number
           p_limit: number
@@ -8487,36 +8600,50 @@ export type Database = {
           p_sort_column_after: string
           p_sort_order: string
           p_start_after: string
+          p_start_after_version?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           key: string
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       search_v2: {
         Args: {
           bucket_name: string
+          delete_markers?: string
           levels?: number
           limits?: number
+          noncurrent_versions?: string
           prefix: string
           sort_column?: string
           sort_column_after?: string
           sort_order?: string
           start_after?: string
+          start_after_archived_at?: string
+          start_after_is_continuation?: boolean
+          start_after_version?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           key: string
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
     }

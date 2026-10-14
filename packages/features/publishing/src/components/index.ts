@@ -17,10 +17,15 @@ export { OAuthAppConfig } from './oauth-app-config';
 export { GlobalOAuthAppConfig } from './global-oauth-app-config';
 export {
   ScheduleReleasePanel,
+  scheduleItemKey,
   type ScheduleConfig,
   type ScheduleItem,
   type VideoToSchedule,
 } from './schedule-release-panel';
+export {
+  ChannelCadenceDialog,
+  type ChannelCadenceState,
+} from './channel-cadence-dialog';
 
 // Re-export types
 export type {

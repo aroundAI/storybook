@@ -52,7 +52,7 @@ const KNOWN: Record<string, [number, string]> = {
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | external_api_keys | update':
     [1, LAST_USED],
   'apps/web/lambda/publish-worker/index.ts | publishes | update': [1, ADMIN],
-  'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [3, ADMIN],
+  'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [2, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | external_api_keys | update':
@@ -106,7 +106,13 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/episodes/src/server/thumbnail-actions.ts | episode_thumbnails | update':
     [2, SET_BEFORE],
   'packages/features/publishing/src/jobs/process-scheduled-publishes.ts | publishes | update':
-    [3, ADMIN],
+    [2, ADMIN],
+  // FILM-719: the scheduled job marks a Short whose long video never went
+  // out as failed
+  'packages/features/publishing/src/lib/cadence/gate.ts | publishes | update': [
+    1,
+    ADMIN,
+  ],
   'packages/features/publishing/src/lib/uploaded-file-duration.ts | publishes | update':
     [1, ADMIN],
   'packages/features/publishing/src/server/publish-actions.ts | episodes | update':

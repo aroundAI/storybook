@@ -4,8 +4,8 @@
     {
       "name": "MP1 a time that has passed is scheduled",
       "file": "packages/features/publishing/src/server/schedule-publishes.service.ts",
-      "find": "    if (new Date(target.scheduledAt).getTime() <= now.getTime()) {\n",
-      "replace": "    if (false) {\n",
+      "find": "      new Date(target.scheduledAt).getTime() <= now.getTime()\n",
+      "replace": "      false\n",
       "pattern": "refuses a time that has passed",
       "kind": "unit",
       "cwd": "packages/features/publishing",

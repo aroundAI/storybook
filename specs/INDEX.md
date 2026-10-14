@@ -445,6 +445,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-716 | [master-video-record-keeping](./phase-7-publishing/FILM-716-master-video-record-keeping.yaml) | ✅ DONE | — | — |
 | FILM-717 | [remove-linkedin](./phase-7-publishing/providers/FILM-717-remove-linkedin.yaml) | ✅ DONE | M | FILM-715, FILM-514 |
 | FILM-718 | [linkedin-reintegration](./phase-7-publishing/providers/FILM-718-linkedin-reintegration.yaml) | ⏸️ DEFERRED | — | FILM-717, FILM-715 |
+| FILM-719 | [channel-posting-cadence](./phase-7-publishing/FILM-719-channel-posting-cadence.yaml) | ✅ DONE | M | FILM-708, FILM-2207 |
 
 ### Phase 8: Analytics
 

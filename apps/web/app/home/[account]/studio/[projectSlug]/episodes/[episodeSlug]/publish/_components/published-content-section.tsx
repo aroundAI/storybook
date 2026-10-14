@@ -11,6 +11,7 @@ import {
   Eye,
   Heart,
   MessageCircle,
+  PauseCircle,
   RefreshCw,
   Trash2,
 } from 'lucide-react';
@@ -33,6 +34,8 @@ interface PublishRecord {
   createdAt: string;
   error?: string | null;
   errorCode?: string;
+  /** FILM-719: a Short the cadence held back, and the date it missed */
+  held?: { reason: string; before: string | null } | null;
   analytics?: {
     /** Null for a Facebook publish: no single view (KB-153). */
     views: number | null;
@@ -55,6 +58,10 @@ interface PublishedContentSectionProps {
     platform: string,
     channelName: string,
   ) => void;
+  /** FILM-719: put held Shorts back on their channels' calendars */
+  onRequeueHeld?: (publishIds: string[]) => void;
+  /** FILM-719: absent for a caller who may not delete publishes */
+  onDiscardHeld?: (publishIds: string[]) => void;
 }
 
 export function PublishedContentSection({
@@ -66,8 +73,12 @@ export function PublishedContentSection({
   onRefresh,
   onDeleteAll,
   onUnpublish,
+  onRequeueHeld,
+  onDiscardHeld,
 }: PublishedContentSectionProps) {
   if (sortedPublishes.length === 0) return null;
+
+  const heldIds = sortedPublishes.filter((p) => p.held).map((p) => p.id);
 
   return (
     <Card>
@@ -101,6 +112,16 @@ export function PublishedContentSection({
                 className={`h-4 w-4 ${fetchingPublishes ? 'animate-spin' : ''}`}
               />
             </Button>
+            {heldIds.length > 1 && onRequeueHeld && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-test="held-requeue-all"
+                onClick={() => onRequeueHeld(heldIds)}
+              >
+                Re-queue {heldIds.length} held
+              </Button>
+            )}
             {onDeleteAll && (
               <Button
                 variant="ghost"
@@ -154,7 +175,8 @@ export function PublishedContentSection({
                       {pub.status === 'failed' && (
                         <AlertCircle className="mr-1 h-3 w-3" />
                       )}
-                      {pub.status}
+                      {pub.held && <PauseCircle className="mr-1 h-3 w-3" />}
+                      {pub.held ? 'held' : pub.status}
                     </Badge>
                     {pub.contentType === 'short' && (
                       <Badge variant="outline" className="text-pink-600">
@@ -189,6 +211,16 @@ export function PublishedContentSection({
                       {pub.error}
                     </p>
                   )}
+                  {pub.held && (
+                    <p
+                      className="mt-1 text-xs text-amber-600"
+                      data-test="published-content-held"
+                    >
+                      {pub.held.before
+                        ? `Held: it didn't fit before the next episode's long video on ${format(new Date(pub.held.before), 'PP')}`
+                        : 'Held: no free slot on this channel'}
+                    </p>
+                  )}
                   {/* Show scheduled time for scheduled posts */}
                   {pub.status === 'scheduled' && pub.scheduledAt && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
@@ -205,6 +237,28 @@ export function PublishedContentSection({
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {pub.held && onRequeueHeld && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    data-test="held-requeue"
+                    onClick={() => onRequeueHeld([pub.id])}
+                    title="Re-queue after everything on this channel"
+                  >
+                    Re-queue
+                  </Button>
+                )}
+                {pub.held && onDiscardHeld && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500"
+                    data-test="held-discard"
+                    onClick={() => onDiscardHeld([pub.id])}
+                  >
+                    Discard
+                  </Button>
+                )}
                 {pub.platformUrl && (
                   <Button
                     variant="ghost"

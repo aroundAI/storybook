@@ -27,6 +27,15 @@ export type {
 export { setProjectChannelsAction } from './project-publishing-actions';
 
 export {
+  previewCadenceReleaseAction,
+  scheduleCadenceReleaseAction,
+  requeueHeldShortsAction,
+  discardHeldShortsAction,
+  getChannelCadencesAction,
+  saveChannelCadenceAction,
+} from './schedule-release-actions';
+
+export {
   saveAccountOAuthAppAction,
   deleteAccountOAuthAppAction,
   type AccountOAuthApp,

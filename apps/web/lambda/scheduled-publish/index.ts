@@ -13,6 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import ws from 'ws';
 
+import { cadenceGate, longVideoStates } from '@kit/publishing/lib/cadence/gate';
 import {
   SCHEDULED_LAMBDA_PRECEDENCE,
   resolveEpisodeVideo,
@@ -57,6 +58,10 @@ interface ScheduledPublishResult {
   success: boolean;
   queued: number;
   skipped: number;
+  /** FILM-719: Shorts still waiting for their episode's long video */
+  waiting?: number;
+  /** FILM-719: posts moved a day on because their channel had its day's */
+  deferred?: number;
   error?: string;
 }
 
@@ -73,6 +78,9 @@ interface ScheduledPublish {
   content_type: string | null;
   language: string | null; // Direct language field
   ai_generated: boolean;
+  scheduled_at: string | null;
+  slot_at: string | null;
+  after_episode_full: boolean;
   episodes: {
     project_id: string;
     final_video_url: string | null;
@@ -124,6 +132,21 @@ function resolveVideoUrl(publish: ScheduledPublish): string | null {
   return resolved.url;
 }
 
+async function markFailed(publish: ScheduledPublish, error: string) {
+  await supabase
+    .from('publishes')
+    .update({
+      status: 'failed',
+      metadata: {
+        ...(publish.metadata ?? {}),
+        error,
+        failedAt: new Date().toISOString(),
+      } as Json,
+    })
+    .eq('id', publish.id)
+    .eq('status', 'scheduled');
+}
+
 /**
  * Lambda handler for scheduled publish cron job
  */
@@ -149,6 +172,9 @@ export async function handler(): Promise<ScheduledPublishResult> {
       content_type,
       language,
       ai_generated,
+      scheduled_at,
+      slot_at,
+      after_episode_full,
       episodes(
         project_id,
         final_video_url,
@@ -181,8 +207,32 @@ export async function handler(): Promise<ScheduledPublishResult> {
 
   let queued = 0;
   let skipped = 0;
+  let waiting = 0;
+  let deferred = 0;
+
+  const longVideos = await longVideoStates(supabase, duePublishes);
 
   for (const publish of duePublishes) {
+    // FILM-719: a Short goes after its episode's long video is live, and a
+    // cadence post waits for a day its channel has room
+    const gate = await cadenceGate(supabase, publish, longVideos, now);
+
+    if (gate === 'waiting') {
+      waiting++;
+      continue;
+    }
+
+    if (gate === 'deferred') {
+      deferred++;
+      continue;
+    }
+
+    if (gate === 'failed') {
+      console.error(`[Cron] ${publish.id}'s long video never went out`);
+      skipped++;
+      continue;
+    }
+
     // Resolve video URL based on language
     const videoUrl = resolveVideoUrl(publish);
 
@@ -215,17 +265,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
       console.error(
         `[Cron] Refused a video that is not a file of publish ${publish.id}'s project`,
       );
-      await supabase
-        .from('publishes')
-        .update({
-          status: 'failed',
-          metadata: {
-            ...(publish.metadata ?? {}),
-            error: EPISODE_VIDEO_PUBLISH_REFUSAL,
-            failedAt: new Date().toISOString(),
-          } as Json,
-        })
-        .eq('id', publish.id);
+      await markFailed(publish, EPISODE_VIDEO_PUBLISH_REFUSAL);
       skipped++;
       continue;
     }
@@ -238,17 +278,26 @@ export async function handler(): Promise<ScheduledPublishResult> {
       continue;
     }
 
-    // Update status to 'queued' to prevent re-processing
-    const { error: updateError } = await supabase
+    // Claim it: only a row still 'scheduled' moves to 'queued', so two
+    // overlapping runs cannot both send it (FILM-719)
+    const { data: claimed, error: updateError } = await supabase
       .from('publishes')
       .update({ status: 'queued' })
-      .eq('id', publish.id);
+      .eq('id', publish.id)
+      .eq('status', 'scheduled')
+      .select('id');
 
     if (updateError) {
       console.error(
         `[Cron] Failed to update status for ${publish.id}:`,
         updateError,
       );
+      skipped++;
+      continue;
+    }
+
+    if (!claimed?.length) {
+      console.log(`[Cron] ${publish.id} was claimed by another run`);
       skipped++;
       continue;
     }
@@ -299,13 +348,16 @@ export async function handler(): Promise<ScheduledPublishResult> {
       await supabase
         .from('publishes')
         .update({ status: 'scheduled' })
-        .eq('id', publish.id);
+        .eq('id', publish.id)
+        .eq('status', 'queued');
 
       skipped++;
     }
   }
 
-  console.log(`[Cron] Complete: ${queued} queued, ${skipped} skipped`);
+  console.log(
+    `[Cron] Complete: ${queued} queued, ${skipped} skipped, ${waiting} waiting, ${deferred} deferred`,
+  );
 
-  return { success: true, queued, skipped };
+  return { success: true, queued, skipped, waiting, deferred };
 }

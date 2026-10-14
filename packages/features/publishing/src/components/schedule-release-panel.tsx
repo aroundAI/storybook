@@ -18,6 +18,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 
+import type { ActionResult } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { Calendar } from '@kit/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
@@ -31,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@kit/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
@@ -38,11 +40,13 @@ import {
   TooltipTrigger,
 } from '@kit/ui/tooltip';
 
+import type { ReleasePreview } from '../lib/cadence/release-types';
 // =============================================================================
 // Language Display - imported from shared constants
 // =============================================================================
 
 import { getLangDisplay } from '../lib/constants';
+import { ReleaseCalendar } from './release-calendar';
 
 // Types
 
@@ -63,9 +67,23 @@ export interface ScheduleItem extends VideoToSchedule {
 }
 
 export interface ScheduleConfig {
+  /**
+   * FILM-719. 'cadence': each channel's posting rules pick the times, from
+   * startDateTime on. 'stagger': item i goes at start + i × stagger.
+   */
+  mode: ReleaseMode;
   startDateTime: Date;
   staggerMinutes: number;
   schedule: ScheduleItem[];
+}
+
+export type ReleaseMode = 'cadence' | 'stagger';
+
+/** One schedule item's key, shared with the targets built from it */
+export function scheduleItemKey(item: VideoToSchedule) {
+  return item.type === 'full'
+    ? `full-${item.language}`
+    : `group-${item.groupId}-${item.language}`;
 }
 
 interface ScheduleReleasePanelProps {
@@ -106,7 +124,20 @@ interface ScheduleReleasePanelProps {
   isPublishing?: boolean;
   /** Is scheduling in progress */
   isScheduling?: boolean;
+  /** FILM-719: where the release would land on its channels; writes nothing */
+  onPreviewCadence?: (
+    startDateTime: Date,
+    schedule: ScheduleItem[],
+  ) => Promise<ActionResult<ReleasePreview>>;
+  /** FILM-719: opens a channel's posting rules */
+  onEditChannelCadence?: (connectionId: string) => void;
 }
+
+type CadencePreviewState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; preview: ReleasePreview; forStart: number }
+  | { status: 'error'; error: string };
 
 // =============================================================================
 
@@ -245,8 +276,16 @@ export function ScheduleReleasePanel({
   isTranslating = false,
   isPublishing = false,
   isScheduling = false,
+  onPreviewCadence,
+  onEditChannelCadence,
 }: ScheduleReleasePanelProps) {
   // State
+  const [mode, setMode] = useState<ReleaseMode>(
+    onPreviewCadence ? 'cadence' : 'stagger',
+  );
+  const [cadencePreview, setCadencePreview] = useState<CadencePreviewState>({
+    status: 'idle',
+  });
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState({ hours: 10, minutes: 0 });
   const [staggerMinutes, setStaggerMinutes] = useState(15);
@@ -387,6 +426,57 @@ export function ScheduleReleasePanel({
     return (totalVideos - 1) * staggerMinutes;
   }, [totalVideos, staggerMinutes]);
 
+  const releaseStart = useMemo(() => {
+    if (!date) return null;
+
+    const start = new Date(date);
+    start.setHours(time.hours, time.minutes, 0, 0);
+    return start;
+  }, [date, time]);
+
+  const cadenceMode = mode === 'cadence';
+  const previewStale =
+    cadencePreview.status === 'ready' &&
+    cadencePreview.forStart !== releaseStart?.getTime();
+
+  const labelOf = (itemKey: string) => {
+    const item = schedulePreview.find((i) => scheduleItemKey(i) === itemKey);
+    const language = getLangDisplay(item?.language ?? '').name;
+
+    return {
+      full: item?.type === 'full',
+      label:
+        item?.type === 'shorts'
+          ? `Short: ${item.groupName} · ${language}`
+          : `Full video · ${language}`,
+    };
+  };
+
+  const handleCheckCalendar = async () => {
+    if (!releaseStart || !onPreviewCadence) return;
+
+    setCadencePreview({ status: 'loading' });
+
+    try {
+      const result = await onPreviewCadence(releaseStart, schedulePreview);
+
+      setCadencePreview(
+        result.ok
+          ? {
+              status: 'ready',
+              preview: result.data,
+              forStart: releaseStart.getTime(),
+            }
+          : { status: 'error', error: result.error },
+      );
+    } catch {
+      setCadencePreview({
+        status: 'error',
+        error: 'Could not read the channels’ calendars. Try again.',
+      });
+    }
+  };
+
   // Step 1: User clicks "Prepare Schedule" -> trigger translations
   const handlePrepareSchedule = () => {
     if (!date) return;
@@ -432,6 +522,7 @@ export function ScheduleReleasePanel({
     });
 
     onSchedule({
+      mode,
       startDateTime,
       staggerMinutes,
       schedule: scheduleWithTranslations,
@@ -456,7 +547,7 @@ export function ScheduleReleasePanel({
   }
 
   return (
-    <Card>
+    <Card data-test="schedule-release-panel">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <CalendarIcon className="h-5 w-5" />
@@ -464,16 +555,40 @@ export function ScheduleReleasePanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Date & Time Row */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        {onPreviewCadence && (
+          <div className="space-y-2">
+            <Tabs
+              value={mode}
+              onValueChange={(value) => setMode(value as ReleaseMode)}
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="cadence" data-test="release-mode-cadence">
+                  Channel cadence
+                </TabsTrigger>
+                <TabsTrigger value="stagger" data-test="release-mode-stagger">
+                  Custom
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <p className="text-xs text-muted-foreground">
+              {cadenceMode
+                ? 'Each channel gets the long video in its next free slot and the Shorts one at a time after it, until the next episode’s long video. Nothing lands in a burst.'
+                : 'Every video goes at the start time plus the stagger interval: they all land within hours.'}
+            </p>
+          </div>
+        )}
+
+        {/* Date & Time Row: stacked, the card sits in a narrow sidebar */}
+        <div className="grid gap-4">
           {/* Date Picker */}
           <div className="space-y-2">
-            <Label>Start Date</Label>
+            <Label>{cadenceMode ? 'Not before (date)' : 'Start Date'}</Label>
             <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className="w-full justify-start text-left font-normal"
+                  data-test="release-date"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, 'PPP') : 'Select date'}
@@ -498,7 +613,7 @@ export function ScheduleReleasePanel({
 
           {/* Time Picker */}
           <div className="space-y-2">
-            <Label>Start Time</Label>
+            <Label>{cadenceMode ? 'Not before (time)' : 'Start Time'}</Label>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <TimePicker value={time} onChange={setTime} minTime={minTime} />
@@ -511,7 +626,7 @@ export function ScheduleReleasePanel({
         </div>
 
         {/* Stagger Interval */}
-        <div className="space-y-2">
+        <div className={cadenceMode ? 'hidden' : 'space-y-2'}>
           <div className="flex items-center gap-2">
             <Label>Stagger Interval</Label>
             <TooltipProvider>
@@ -548,8 +663,59 @@ export function ScheduleReleasePanel({
           </div>
         </div>
 
+        {/* FILM-719: the release on its channels' calendars */}
+        {cadenceMode && date && (
+          <div className="space-y-3 rounded-lg bg-muted/50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">
+                {totalVideos} video{totalVideos !== 1 ? 's' : ''} on each
+                channel&apos;s calendar
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-test="release-check-calendar"
+                disabled={cadencePreview.status === 'loading'}
+                onClick={handleCheckCalendar}
+              >
+                {cadencePreview.status === 'loading' && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {cadencePreview.status === 'ready'
+                  ? 'Check again'
+                  : 'Check channel calendars'}
+              </Button>
+            </div>
+
+            {cadencePreview.status === 'error' && (
+              <p
+                className="text-sm text-destructive"
+                data-test="release-calendar-error"
+              >
+                {cadencePreview.error}
+              </p>
+            )}
+
+            {cadencePreview.status === 'ready' && (
+              <>
+                {previewStale && (
+                  <p className="text-xs text-amber-600">
+                    The date changed: check again to see where it lands.
+                  </p>
+                )}
+                <ReleaseCalendar
+                  preview={cadencePreview.preview}
+                  labelOf={labelOf}
+                  onEditChannel={onEditChannelCadence}
+                />
+              </>
+            )}
+          </div>
+        )}
+
         {/* Summary */}
-        {date && (
+        {!cadenceMode && date && (
           <div className="rounded-lg bg-muted/50 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -696,6 +862,7 @@ export function ScheduleReleasePanel({
                 variant="default"
                 size="sm"
                 className="flex-1"
+                data-test="release-confirm-schedule"
                 disabled={!allTranslated || isScheduling}
                 onClick={handleConfirmSchedule}
               >
@@ -717,10 +884,11 @@ export function ScheduleReleasePanel({
 
         {/* Action Buttons - Step 1 */}
         {!showConfirmation && (
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3">
             <Button
               variant="default"
               className="flex-1"
+              data-test="release-schedule"
               disabled={!date || isScheduling || isPublishing}
               onClick={
                 languagesToTranslate.length > 0
@@ -741,7 +909,7 @@ export function ScheduleReleasePanel({
               ) : (
                 <>
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  Schedule All
+                  {cadenceMode ? 'Schedule on channel cadence' : 'Schedule All'}
                 </>
               )}
             </Button>

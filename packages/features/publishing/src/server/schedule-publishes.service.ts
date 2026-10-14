@@ -39,11 +39,25 @@ export interface ScheduleTarget {
   description: string;
   tags: string[];
   thumbnailUrl?: string | null;
-  scheduledAt: string;
+  /** Null only for a held Short (FILM-719), written as a draft */
+  scheduledAt: string | null;
   /** The video's language; the channel's own language when absent */
   language?: string;
   platformSpecific: PublishPlatformInput['platformSpecific'];
+  /** FILM-719: the channel slot it holds */
+  slotAt?: string | null;
+  /** FILM-719: a Short that waits for its episode's long video */
+  afterEpisodeFull?: boolean;
+  /** FILM-719: a Short that did not fit before the next episode */
+  held?: { reason: string; before: string | null } | null;
 }
+
+export type ScheduleVia = 'mcp' | 'cadence';
+
+/** A publish that went to the database: unique (channel, slot) taken */
+export class SlotTaken extends Error {}
+
+type PublishInsert = Database['public']['Tables']['publishes']['Insert'];
 
 export interface ScheduledPublish {
   publishId: string;
@@ -90,10 +104,37 @@ async function schedule(
     now?: Date;
   },
 ) {
+  return insertScheduledRows(
+    client,
+    await prepareScheduledRows(client, userId, { ...input, via: 'mcp' }),
+  );
+}
+
+/**
+ * Every target checked, as the Publish screen checks a publish, and the
+ * rows that schedule them: nothing is written. A refusal throws
+ * ActionRefusal.
+ */
+export async function prepareScheduledRows(
+  client: Client,
+  userId: string,
+  input: {
+    episodeId: string;
+    targets: ScheduleTarget[];
+    aiGenerated: boolean;
+    now?: Date;
+    via: ScheduleVia;
+  },
+): Promise<PublishInsert[]> {
   const now = input.now ?? new Date();
 
   for (const target of input.targets) {
-    if (new Date(target.scheduledAt).getTime() <= now.getTime()) {
+    if (target.held) continue;
+
+    if (
+      !target.scheduledAt ||
+      new Date(target.scheduledAt).getTime() <= now.getTime()
+    ) {
       throw new ActionRefusal(
         `A scheduled time must be in the future; ${target.scheduledAt} is not. Publishing now is done on the Publish screen.`,
       );
@@ -191,36 +232,59 @@ async function schedule(
     }
   }
 
+  return platforms.map((platform, index) => {
+    const target = input.targets[index]!;
+
+    return {
+      episode_id: input.episodeId,
+      platform_connection_id: platform.connectionId,
+      platform: platform.platform,
+      content_type: platform.contentType,
+      title: platform.title,
+      description: platform.description,
+      tags: platform.tags,
+      thumbnail_url: platform.thumbnailUrl ?? episodeThumbnail,
+      status: target.held ? 'draft' : 'scheduled',
+      scheduled_at: target.held ? null : platform.scheduledAt,
+      slot_at: target.held ? null : (target.slotAt ?? null),
+      after_episode_full: target.afterEpisodeFull ?? false,
+      metadata: JSON.parse(
+        JSON.stringify({
+          ...platform.platformSpecific,
+          ...declared.get(index),
+          shortsGroupId: platform.shortsGroupId,
+          createdBy: userId,
+          createdVia: input.via,
+          ...(target.held
+            ? {
+                heldReason: target.held.reason,
+                heldBefore: target.held.before,
+              }
+            : {}),
+        }),
+      ),
+      language: platform.language!,
+      ai_generated: input.aiGenerated,
+    };
+  });
+}
+
+/** Writes prepared rows in one insert: all of them, or none */
+export async function insertScheduledRows(
+  client: Client,
+  prepared: PublishInsert[],
+): Promise<ScheduledPublish[]> {
   const { data: rows, error: insertError } = await client
     .from('publishes')
-    .insert(
-      platforms.map((platform, index) => ({
-        episode_id: input.episodeId,
-        platform_connection_id: platform.connectionId,
-        platform: platform.platform,
-        content_type: platform.contentType,
-        title: platform.title,
-        description: platform.description,
-        tags: platform.tags,
-        thumbnail_url: platform.thumbnailUrl ?? episodeThumbnail,
-        status: 'scheduled',
-        scheduled_at: platform.scheduledAt,
-        metadata: JSON.parse(
-          JSON.stringify({
-            ...platform.platformSpecific,
-            ...declared.get(index),
-            shortsGroupId: platform.shortsGroupId,
-            createdBy: userId,
-            createdVia: 'mcp',
-          }),
-        ),
-        language: platform.language!,
-        ai_generated: input.aiGenerated,
-      })),
-    )
+    .insert(prepared)
     .select(
       'id, platform_connection_id, platform, content_type, language, scheduled_at, metadata',
     );
+
+  // FILM-719: another release took one of these slots first
+  if (insertError?.code === '23505') {
+    throw new SlotTaken(insertError.message);
+  }
 
   if (insertError || !rows) {
     throw new Error(

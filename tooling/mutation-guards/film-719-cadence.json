@@ -1,0 +1,96 @@
+{
+  "feature": "FILM-719 channel posting cadence (Shorts follow their episode, one slot per post, the scheduled job claims once)",
+  "mutations": [
+    {
+      "name": "C1 a Short is placed after the next episode's long video",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "      if (!slot || (windowEnd && slot.getTime() >= windowEnd.getTime())) {\n",
+      "replace": "      if (!slot) {\n",
+      "pattern": "holds this episode’s Shorts that do not fit",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/plan-release.test.ts"
+    },
+    {
+      "name": "C2 an earlier episode's Shorts stay after the new long video",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "          post.at.getTime() >= anchor.getTime()\n",
+      "replace": "          false\n",
+      "pattern": "holds an earlier episode’s Shorts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/plan-release.test.ts"
+    },
+    {
+      "name": "C3 a day takes more posts than the channel's slots",
+      "file": "packages/features/publishing/src/lib/cadence/cadence.ts",
+      "find": "    if ((perDay.get(day) ?? 0) >= cap) continue;\n",
+      "replace": "",
+      "pattern": "counts a hand-scheduled post against its day",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/plan-release.test.ts"
+    },
+    {
+      "name": "C4 long videos go back to back",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "      lastFull && new Date(lastFull.getTime() + cadence.minDaysBetween * DAY_MS),\n",
+      "replace": "      lastFull,\n",
+      "pattern": "go at least the channel’s days apart",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/plan-release.test.ts"
+    },
+    {
+      "name": "G1 a Short goes before its long video is live",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    if (state === 'waiting') return 'waiting';\n",
+      "replace": "",
+      "pattern": "waits while the long video is on its way",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/cadence-gate.test.ts"
+    },
+    {
+      "name": "G2 a channel that has had its day posts again",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "  if (postsInLastDay(recent, now) < dailyCapOf(cadence)) return false;\n",
+      "replace": "  return false;\n",
+      "pattern": "moves a day on",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/cadence-gate.test.ts"
+    },
+    {
+      "name": "L1 two overlapping runs both claim a post",
+      "file": "apps/web/lambda/scheduled-publish/index.ts",
+      "find": "      .update({ status: 'queued' })\n      .eq('id', publish.id)\n      .eq('status', 'scheduled')\n",
+      "replace": "      .update({ status: 'queued' })\n      .eq('id', publish.id)\n",
+      "pattern": "sends a post once when two runs overlap",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "lambda/scheduled-publish/__tests__/index.test.ts"
+    },
+    {
+      "name": "DB1 two posts hold one slot",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-posting-cadence.test.sql",
+      "sql": "drop index public.publishes_channel_slot_key;"
+    },
+    {
+      "name": "DB2 a cadence names another team's channel",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-posting-cadence.test.sql",
+      "sql": "alter table public.channel_posting_cadences drop constraint channel_posting_cadences_connection_account_fkey;"
+    },
+    {
+      "name": "E2E C5 a second episode leaves the first one's later Shorts scheduled",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/server/schedule-release.service.ts",
+      "find": "    const heldRows = await holdDisplaced(client, plan.bumped);\n",
+      "replace": "    const heldRows = await holdDisplaced(client, []);\n",
+      "spec": "tests/publishing/cadence-release.spec.ts",
+      "grep": "held back by the next episode"
+    }
+  ]
+}
