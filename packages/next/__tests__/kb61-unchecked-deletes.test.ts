@@ -33,6 +33,9 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
   'packages/features/team-accounts/src/server/services/leave-team-account.service.ts | accounts_memberships | delete':
     [1, ADMIN],
+  // FILM-1733: the comment sync's 30-day and refresh deletions, counted
+  'packages/features/content-analytics/src/server/comment-sync.ts | audience_comments | delete':
+    [2, ADMIN],
 
   // One-time OAuth state, consumed by the callback
   'apps/web/app/api/platforms/callback/meta/route.ts | oauth_states | delete': [

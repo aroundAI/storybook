@@ -18,8 +18,8 @@ const DELETED = 'deleted:youtube';
  * (https://developers.google.com/youtube/v3/docs): channels.list (connect,
  * the subscriber snapshot), videos.list (video info, durations),
  * videos.insert (a multipart upload — googleapis never sends a resumable
- * one here), videos.delete (unpublish), thumbnails.set and
- * playlistItems.insert.
+ * one here), videos.delete (unpublish), thumbnails.set,
+ * playlistItems.insert and commentThreads.list (FILM-1733).
  */
 
 const DAY_MS = 86_400_000;
@@ -256,6 +256,108 @@ const videosList: SocialRoute = (ctx) => {
       ids.map((id) => videoResource(ctx, social.object('youtube', id), parts)),
     ),
   );
+  return true;
+};
+
+const COMMENT_LINES = [
+  'Need part 2 right now',
+  'The middle drags, way too slow',
+  'Who voices the detective?',
+  'That ending got me',
+  'Looks AI-made but the story works',
+  'More episodes please',
+];
+
+/**
+ * GET /youtube/v3/commentThreads?videoId=… (FILM-1733): a deterministic set
+ * of threads per video, newest first, 1–3 of them with a reply, paged by
+ * `maxResults` and `pageToken` as YouTube pages them. An unknown or deleted
+ * video is 404 videoNotFound.
+ * https://developers.google.com/youtube/v3/docs/commentThreads/list
+ */
+const commentThreadsList: SocialRoute = (ctx) => {
+  const { url, method, req, res, social, about } = ctx;
+  if (method !== 'GET' || url.pathname !== '/youtube/v3/commentThreads')
+    return false;
+
+  if (!authorize(req, res, social, READ_SCOPES)) return true;
+
+  const videoId = url.searchParams.get('videoId') ?? '';
+  about(videoId);
+
+  if (
+    !social.hasObject('youtube', videoId) ||
+    social.list(DELETED).includes(videoId)
+  ) {
+    sendJson(
+      res,
+      404,
+      googleError(
+        404,
+        'The video identified by the videoId parameter could not be found.',
+        'videoNotFound',
+        'NOT_FOUND',
+      ),
+    );
+    return true;
+  }
+
+  const object = social.object('youtube', videoId);
+  const rng = social.rngFor(`comment-threads:${videoId}`);
+  const count = rng.int(4, 9);
+  const parts = listParam(url, 'part');
+  const threads = Array.from({ length: count }, (_, n) => {
+    const at = new Date(object.publishedMs + (count - n) * 3_600_000);
+    const id = `Ug${videoId}c${n}`;
+    const comment = (commentId: string, text: string, when: Date) => ({
+      kind: 'youtube#comment',
+      id: commentId,
+      snippet: {
+        videoId,
+        textDisplay: text,
+        textOriginal: text,
+        likeCount: rng.int(0, 40),
+        publishedAt: when.toISOString(),
+        updatedAt: when.toISOString(),
+      },
+    });
+    const replies =
+      n < 2
+        ? [comment(`${id}.r1`, 'Agreed!', new Date(at.getTime() + 600_000))]
+        : [];
+
+    return {
+      kind: 'youtube#commentThread',
+      id,
+      snippet: {
+        videoId,
+        topLevelComment: comment(
+          id,
+          COMMENT_LINES[n % COMMENT_LINES.length]!,
+          at,
+        ),
+        totalReplyCount: replies.length,
+        canReply: true,
+        isPublic: true,
+      },
+      ...(parts.includes('replies') && replies.length
+        ? { replies: { comments: replies } }
+        : {}),
+    };
+  });
+
+  const size = Math.min(
+    100,
+    Math.max(1, Number(url.searchParams.get('maxResults') ?? 20)),
+  );
+  const start = Number(url.searchParams.get('pageToken') ?? 0) || 0;
+  const page = threads.slice(start, start + size);
+  const next = start + size < threads.length ? String(start + size) : null;
+
+  sendJson(res, 200, {
+    ...listEnvelope(social, 'youtube#commentThreadListResponse', page),
+    ...(next ? { nextPageToken: next } : {}),
+  });
   return true;
 };
 
@@ -529,6 +631,7 @@ const videosDelete: SocialRoute = (ctx) => {
 export const youtubeDataRoutes = [
   channelsList,
   videosList,
+  commentThreadsList,
   videosInsert,
   videosDelete,
   thumbnailsSet,

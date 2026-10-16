@@ -94,6 +94,8 @@ describe('resolveAnalyticsAccess', () => {
       'youtube.analytics': 'authorised',
       'youtube.revenue': 'scope_missing',
       'youtube.video-info': 'authorised',
+      // FILM-1733: youtube.readonly, which every connection already holds
+      'youtube.comments': 'authorised',
     });
     expect(access?.summary).toBe('not_authorised');
     expect(access?.canReconnect).toBe(true);

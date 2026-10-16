@@ -73,7 +73,8 @@ async function DataDeletionPage() {
                 date, views, watch time, likes, comments, shares, saves,
                 subscriber counts, impressions, audience breakdowns (age group,
                 gender, country, device, follower status), traffic sources and
-                retention curves.
+                retention curves; and the comments we read from its videos, with
+                their labels.
               </p>
               <p>
                 Deleting data held by {productName} does not change anything on
@@ -115,8 +116,9 @@ async function DataDeletionPage() {
                 them to it again. The statistics already collected from the
                 platform are kept until you ask us to delete them (section 1),
                 with one exception: YouTube&apos;s API policies require us to
-                delete the YouTube statistics we hold within 7 calendar days of
-                a disconnect, so for YouTube that is what happens.
+                delete the YouTube statistics and comments we hold within 7
+                calendar days of a disconnect, so for YouTube that is what
+                happens.
               </p>
             </div>
           </Section>

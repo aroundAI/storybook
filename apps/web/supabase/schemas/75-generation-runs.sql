@@ -26,14 +26,16 @@ create table public.generation_runs (
   target_id uuid not null,
   -- the FILM-1901 stage registry, plus the server-only keys part B added:
   -- analytics_insights, language_insights and fact_check are model calls with
-  -- no content stage, audio_render the worker's ElevenLabs render job
+  -- no content stage, audio_render the worker's ElevenLabs render job;
+  -- comment_labels the audience comment labelling (FILM-1733)
   stage text not null
     check (stage in (
       'season_outline', 'season_analysis', 'ideation', 'story',
       'story_refinement', 'screenplay', 'screenplay_refinement', 'shots',
       'audio_cues', 'dialogue_translation', 'asset_description',
       'fact_extraction', 'episode_summary', 'publish_metadata',
-      'analytics_insights', 'language_insights', 'fact_check', 'audio_render'
+      'analytics_insights', 'language_insights', 'fact_check', 'audio_render',
+      'comment_labels'
     )),
   mode text not null check (mode in ('server', 'external')),
   status text not null default 'briefed'

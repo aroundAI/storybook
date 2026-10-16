@@ -47,6 +47,7 @@ export const STAGE_OF_JOB: Record<LlmJobType, StageKey> = {
   'audio-file-generation': 'audio_render',
   'fact-extraction': 'fact_extraction',
   'asset-creation': 'asset_description',
+  'comment-labels': 'comment_labels',
 };
 
 export interface JobRunParams<T extends LlmJobType> {

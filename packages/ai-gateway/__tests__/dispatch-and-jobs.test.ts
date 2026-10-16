@@ -131,6 +131,7 @@ describe('jobRunTarget', () => {
         'audio-cue-generation',
         'audio-file-generation',
         'batch-translate-metadata',
+        'comment-labels',
         'fact-extraction',
         'language-insights',
         'screenplay-conversion',

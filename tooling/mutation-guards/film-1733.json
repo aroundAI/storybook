@@ -1,0 +1,97 @@
+{
+  "feature": "FILM-1733 audience comments (read and kept within YouTube's 30 days, labelled by the server or the team's AI over MCP, shown with their states)",
+  "mutations": [
+    {
+      "name": "AC1 YouTube comments outlive 30 days",
+      "file": "packages/features/content-analytics/src/server/comment-sync.ts",
+      "find": "    .eq('platform', 'youtube')\n    .lt('fetched_at', cutoff);\n",
+      "replace": "    .eq('platform', 'none-at-all');\n",
+      "pattern": "deletes every YouTube comment not returned for 30 days",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/comment-sync.test.ts"
+    },
+    {
+      "name": "AC2 a partial read deletes comments it did not reach",
+      "file": "packages/features/content-analytics/src/server/comment-sync.ts",
+      "find": "      if (refresh && fetched.complete) {\n",
+      "replace": "      if (refresh) {\n",
+      "pattern": "an incomplete read removes nothing",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/comment-sync.test.ts"
+    },
+    {
+      "name": "AC3 a channel without the permission is called anyway",
+      "file": "packages/features/content-analytics/src/server/comment-sync.ts",
+      "find": "      connection.scopes !== null &&\n      !holdsRequirement(REQUIREMENT[publish.platform], connection.scopes)\n",
+      "replace": "      false\n",
+      "pattern": "does not call Instagram for a channel without the comment permission",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/comment-sync.test.ts"
+    },
+    {
+      "name": "AC4 shares from too few comments",
+      "file": "packages/features/content-analytics/src/lib/audience-comments/reaction.ts",
+      "find": "  if (counts.labelled < MIN_LABELLED_FOR_SHARES) {\n",
+      "replace": "  if (counts.labelled < 1) {\n",
+      "pattern": "gives no shares below 20 labelled comments",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/audience-comment-reaction.test.ts"
+    },
+    {
+      "name": "AC5 a video never read reads as no comments",
+      "file": "packages/features/content-analytics/src/lib/audience-comments/reaction.ts",
+      "find": "    if (input.sync === null || input.sync === 'never') {\n",
+      "replace": "    if (false) {\n",
+      "pattern": "apart from",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/audience-comment-reaction.test.ts"
+    },
+    {
+      "name": "AC6 the server writes a label for an id it did not send",
+      "file": "apps/web/lambda/llm-worker/handlers/comment-labels.ts",
+      "find": "      return label.success && inBatch.has(label.data.commentId)\n",
+      "replace": "      return label.success\n",
+      "pattern": "writes only labels from the closed lists",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/comment-labels-handler.test.ts"
+    },
+    {
+      "name": "AC7 a desktop AI labels another team's comment",
+      "file": "packages/features/content-analytics/src/server/audience-comments-service.ts",
+      "find": "      ownedIds.has(label.commentId) &&\n",
+      "replace": "",
+      "pattern": "refuses another team",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/audience-comment-tools.test.ts"
+    },
+    {
+      "name": "AC8 a forged cursor reaches the filter",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/audience-comments.ts",
+      "find": "  commentedAt: z.string().datetime({ offset: true }),\n  id: z.string().uuid(),\n",
+      "replace": "  commentedAt: z.string(),\n  id: z.string(),\n",
+      "pattern": "refuses a cursor it did not give",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/audience-comment-tools.test.ts"
+    },
+    {
+      "name": "DB1 a person writes a comment",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/audience-comments.test.sql",
+      "sql": "grant insert, update, delete on public.audience_comments to authenticated; create policy audience_comments_write on public.audience_comments for all to authenticated using (true) with check (true);"
+    },
+    {
+      "name": "DB2 a label names another team's comment",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/audience-comments.test.sql",
+      "sql": "alter table public.comment_labels drop constraint comment_labels_comment_account_fkey; alter table public.comment_labels add constraint comment_labels_comment_fkey foreign key (comment_id) references public.audience_comments (id) on delete cascade;"
+    }
+  ]
+}

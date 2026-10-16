@@ -22,15 +22,18 @@ export type ConnectRequest = 'youtube' | 'tiktok' | 'meta';
  * What the switch names. Each OAuth app, plus `facebook`: Facebook Page
  * insights (FILM-1720) ride the Meta dialog but need their own App Review,
  * so they are turned on separately from Instagram's. Shipped dark: off until
- * the owner names it (owner, 2026-10-01).
+ * the owner names it (owner, 2026-10-01). `meta_comments` likewise: the
+ * Instagram and Facebook comment-reading permissions (FILM-1733) need an App
+ * Review of their own.
  */
-export type ScopeSwitchPlatform = ConnectRequest | 'facebook';
+export type ScopeSwitchPlatform = ConnectRequest | 'facebook' | 'meta_comments';
 
 export const SCOPE_SWITCH_PLATFORMS: readonly ScopeSwitchPlatform[] = [
   'youtube',
   'tiktok',
   'meta',
   'facebook',
+  'meta_comments',
 ];
 
 /** The connect request each switch's scopes travel in. */
@@ -39,6 +42,7 @@ const REQUEST_OF: Record<ScopeSwitchPlatform, ConnectRequest> = {
   tiktok: 'tiktok',
   meta: 'meta',
   facebook: 'meta',
+  meta_comments: 'meta',
 };
 
 /**
@@ -54,6 +58,7 @@ export const ANALYTICS_ADDED_SCOPES: Record<
   tiktok: ['video.list', 'user.info.stats'],
   meta: ['instagram_manage_insights'],
   facebook: ['read_insights', 'pages_manage_engagement'],
+  meta_comments: ['instagram_manage_comments', 'pages_read_user_content'],
 };
 
 export type AnalyticsScopeSwitch = ReadonlySet<ScopeSwitchPlatform>;
@@ -125,7 +130,10 @@ export function scopeSwitchFor(
   }
 }
 
-/** Whether a connect request for this platform leaves `scope` out. */
+/**
+ * Whether a connect request for this platform leaves `scope` out: any switch
+ * riding the same request that is off and names it (Meta's carries three).
+ */
 export function isScopeWithheld(
   analyticsPlatform: string,
   scope: string,
@@ -135,7 +143,6 @@ export function isScopeWithheld(
 
   return (
     platform !== null &&
-    !enabled.has(platform) &&
-    ANALYTICS_ADDED_SCOPES[platform].includes(scope)
+    connectScopes(REQUEST_OF[platform], [scope], enabled).length === 0
   );
 }

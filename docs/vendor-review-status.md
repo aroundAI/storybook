@@ -20,6 +20,13 @@ submission date or case ID, so none is recorded here. Neither is approved, so
 submitted. Submitting needs a person with access to each vendor's developer console;
 it cannot be done from the repository.
 
+**Update, 2026-10-16 (owner, FILM-1733):** comment text. Meta's comment permissions
+need their own App Review (the row below; runbook, "Meta — App Review for comment
+text"). YouTube needs no new scope, but its Developer Policies limit figures derived
+from API Data (III.E.4.h): every YouTube comment figure carries a "not from YouTube"
+disclosure, and the owner files the III.L audit request (runbook, "Google — YouTube
+API Services: figures derived from comments"). Not filed yet.
+
 **How to do each of these by hand is in
 [vendor-review-runbook.md](./vendor-review-runbook.md)**: the pre-deploy check for
 PR #289, then a submission checklist per vendor with drafted justifications and
@@ -43,6 +50,7 @@ because nothing has been started.
 |---|---|---|---|---|---|---|
 | Meta | **App Review** (Advanced Access) | `instagram_manage_insights`; `read_insights` and `pages_manage_engagement` for FILM-1720 (requested only while `ANALYTICS_SCOPES_ENABLED` names `facebook`) | submitted, per owner; not yet approved | 2026-10-02 (recorded; submission date not given) | owner | `required` |
 | Meta | **Business Verification** | required alongside App Review — both, not either | submitted, per owner; not yet approved | 2026-10-02 (recorded; submission date not given) | owner | `required` |
+| Meta | **App Review** for comment text (FILM-1733) | `instagram_manage_comments`, `pages_read_user_content` (requested only while `ANALYTICS_SCOPES_ENABLED` names `meta_comments`) | not submitted | 2026-10-16 | owner | `required` |
 | Meta | Data Use Checkup | keeps the above; annual | not due until access is granted | — | unassigned | — |
 | TikTok | App review (mandatory for production on every scope) | `video.list`, `user.info.stats` | not submitted | 2026-09-22 | unassigned | `required` |
 | Google | OAuth consent screen lists `yt-analytics-monetary.readonly`; re-verification if Google asks for it | `yt-analytics-monetary.readonly` | **not checked** — see below | 2026-09-22 | unassigned | `approved` |

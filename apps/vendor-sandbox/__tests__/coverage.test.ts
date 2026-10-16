@@ -48,7 +48,8 @@ describe('every prompt has a generator', () => {
     // FILM-1803 §2: 16 Zod, 4 JSON Schema and 9 with neither, plus the two
     // evaluation prompts KB-116 added (Zod), less the publishing prompt
     // (JSON Schema) FILM-717 removed.
-    expect(counts).toEqual({ zod: 18, 'json-schema': 3, template: 9 });
+    // FILM-1733 added comment-labels (Zod).
+    expect(counts).toEqual({ zod: 19, 'json-schema': 3, template: 9 });
   });
 });
 

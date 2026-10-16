@@ -399,6 +399,11 @@ export default defineConfig({
         __dirname,
         '../../packages/features/content-analytics/src/lib/raw-export-generator.ts',
       ),
+      // FILM-1733: the comment labels the worker's handler validates with
+      '@kit/content-analytics/lib/audience-comments/labels': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/lib/audience-comments/labels.ts',
+      ),
       '@kit/content-analytics/lib/video-log-cells': path.resolve(
         __dirname,
         '../../packages/features/content-analytics/src/lib/video-log-cells.ts',

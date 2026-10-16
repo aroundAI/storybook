@@ -173,7 +173,7 @@ set local role service_role;
 
 select is(
   public.purge_connection_vendor_rows('33333333-0000-4000-8000-00000000000a'),
-  '{"revenue_records_api": 1, "youtube_report_jobs": 1, "publishes_reset": 1}'::jsonb,
+  '{"revenue_records_api": 1, "youtube_report_jobs": 1, "publishes_reset": 1, "audience_comments": 0, "audience_comment_syncs": 0}'::jsonb,
   'The purge reports what it removed'
 );
 

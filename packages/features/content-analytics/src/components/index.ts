@@ -206,3 +206,6 @@ export {
 
 // Analytics sync status (KB-150)
 export { EpisodeSyncStatus } from './sync-status/sync-status';
+
+// FILM-1733: what the audience says about each video
+export { AudienceCommentsSection } from './audience-comments/audience-comments-section';

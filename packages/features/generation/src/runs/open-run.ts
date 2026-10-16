@@ -131,6 +131,10 @@ export async function openRun(
     targetVersion: target.targetVersion,
     prompt: target.prompt,
     connectionId: ctx.connectionId,
+    // Read only for the service role, whose runs have no session user: a
+    // scheduled job's run is its ctx's user (FILM-1733). A person's run is
+    // always theirs, whatever is passed.
+    createdBy: ctx.userId,
   });
 
   return new RunHandle(row, ctx);

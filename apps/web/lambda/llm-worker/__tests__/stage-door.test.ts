@@ -211,12 +211,14 @@ const SERVER_ONLY_KEYS = [
   'language_insights',
   'fact_check',
   'audio_render',
+  'comment_labels',
 ];
 /** The worker jobs that run under a server-only key, not a stage. */
 const SERVER_ONLY_JOBS = [
   'analytics-insights',
   'language-insights',
   'audio-file-generation',
+  'comment-labels',
 ];
 
 beforeEach(() => {

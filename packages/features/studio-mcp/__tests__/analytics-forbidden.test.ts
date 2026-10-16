@@ -143,6 +143,12 @@ const ASKS: Array<[string, Record<string, unknown>]> = [
   ['get_report_download', { reportId: REPORT_B }],
   ['get_saved_insights', { projectId: PROJECT_B }],
   ['get_performance_by_origin', { projectId: PROJECT_B }],
+  ['get_comment_reaction', { projectId: PROJECT_B }],
+  ['get_comment_reaction', { episodeId: EPISODE_B }],
+  ['get_comment_reaction', { publishIds: [PUBLISH_B] }],
+  ['get_audience_comments', { projectId: PROJECT_B }],
+  ['get_audience_comments', { episodeId: EPISODE_B, unlabelled: true }],
+  ['get_audience_comments', { publishIds: [PUBLISH_B] }],
   [
     'update_publish_note',
     { publishId: PUBLISH_B, note: 'x', expectedUpdatedAt: null },

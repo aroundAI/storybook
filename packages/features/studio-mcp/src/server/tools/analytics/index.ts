@@ -4,6 +4,11 @@ import type { McpToolDefinition } from '../../../registry';
 import { getAccountOverview } from './account-overview';
 import { getAiUsage } from './ai-usage';
 import {
+  getAudienceComments,
+  getCommentReaction,
+  labelAudienceComments,
+} from './audience-comments';
+import {
   getChannelExperiment,
   listChannelExperiments,
 } from './channel-experiments';
@@ -63,6 +68,8 @@ export const analyticsReadTools = [
   getSavedInsights,
   getAiUsage,
   getPerformanceByOrigin,
+  getCommentReaction,
+  getAudienceComments,
 ].map((tool) => tool as unknown as McpToolDefinition);
 
 export const analyticsWriteTools = [
@@ -72,6 +79,7 @@ export const analyticsWriteTools = [
   startExperiment,
   concludeExperiment,
   abandonExperiment,
+  labelAudienceComments,
 ].map((tool) => tool as unknown as McpToolDefinition);
 
 export const analyticsTools: McpToolDefinition[] = [

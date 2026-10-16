@@ -603,6 +603,166 @@ export type Database = {
           },
         ]
       }
+      audience_comment_syncs: {
+        Row: {
+          account_id: string
+          consecutive_failures: number
+          last_error: string | null
+          last_refreshed_at: string | null
+          last_status: string
+          last_synced_at: string | null
+          publish_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          consecutive_failures?: number
+          last_error?: string | null
+          last_refreshed_at?: string | null
+          last_status?: string
+          last_synced_at?: string | null
+          publish_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          consecutive_failures?: number
+          last_error?: string | null
+          last_refreshed_at?: string | null
+          last_status?: string
+          last_synced_at?: string | null
+          publish_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audience_comment_syncs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comment_syncs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comment_syncs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comment_syncs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comment_syncs_publish_id_fkey"
+            columns: ["publish_id"]
+            isOneToOne: true
+            referencedRelation: "publishes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audience_comments: {
+        Row: {
+          account_id: string
+          commented_at: string
+          created_at: string
+          fetched_at: string
+          id: string
+          like_count: number
+          parent_platform_comment_id: string | null
+          platform: string
+          platform_comment_id: string
+          platform_connection_id: string
+          publish_id: string
+          reply_count: number | null
+          text: string
+        }
+        Insert: {
+          account_id: string
+          commented_at: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          like_count?: number
+          parent_platform_comment_id?: string | null
+          platform: string
+          platform_comment_id: string
+          platform_connection_id: string
+          publish_id: string
+          reply_count?: number | null
+          text: string
+        }
+        Update: {
+          account_id?: string
+          commented_at?: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          like_count?: number
+          parent_platform_comment_id?: string | null
+          platform?: string
+          platform_comment_id?: string
+          platform_connection_id?: string
+          publish_id?: string
+          reply_count?: number | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audience_comments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_comments_connection_account_fkey"
+            columns: ["platform_connection_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id", "account_id"]
+          },
+          {
+            foreignKeyName: "audience_comments_publish_id_fkey"
+            columns: ["publish_id"]
+            isOneToOne: false
+            referencedRelation: "publishes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audio_assets: {
         Row: {
           asset_id: string | null
@@ -1564,6 +1724,85 @@ export type Database = {
             columns: ["previous_state_id"]
             isOneToOne: false
             referencedRelation: "character_states"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_labels: {
+        Row: {
+          account_id: string
+          comment_id: string
+          labelled_at: string
+          mcp_connection_id: string | null
+          model: string
+          prompt_version: string
+          sentiment: string
+          source: string
+          topics: string[]
+        }
+        Insert: {
+          account_id: string
+          comment_id: string
+          labelled_at?: string
+          mcp_connection_id?: string | null
+          model: string
+          prompt_version: string
+          sentiment: string
+          source: string
+          topics?: string[]
+        }
+        Update: {
+          account_id?: string
+          comment_id?: string
+          labelled_at?: string
+          mcp_connection_id?: string | null
+          model?: string
+          prompt_version?: string
+          sentiment?: string
+          source?: string
+          topics?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_labels_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_labels_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_labels_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_labels_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_labels_comment_account_fkey"
+            columns: ["comment_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "audience_comments"
+            referencedColumns: ["id", "account_id"]
+          },
+          {
+            foreignKeyName: "comment_labels_mcp_connection_id_fkey"
+            columns: ["mcp_connection_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_connections"
             referencedColumns: ["id"]
           },
         ]
@@ -7356,6 +7595,13 @@ export type Database = {
         Args: { account_id: string; project_id: string }
         Returns: boolean
       }
+      projects_with_unlabelled_comments: {
+        Args: never
+        Returns: {
+          account_id: string
+          project_id: string
+        }[]
+      }
       publish_format_family: {
         Args: {
           p_content_type: string
@@ -7506,6 +7752,34 @@ export type Database = {
         Returns: Json
       }
       trim_mcp_tool_calls: { Args: { p_batch?: number }; Returns: number }
+      unlabelled_audience_comments: {
+        Args: {
+          p_account_id: string
+          p_limit?: number
+          p_publish_ids?: string[]
+        }
+        Returns: {
+          account_id: string
+          commented_at: string
+          created_at: string
+          fetched_at: string
+          id: string
+          like_count: number
+          parent_platform_comment_id: string | null
+          platform: string
+          platform_comment_id: string
+          platform_connection_id: string
+          publish_id: string
+          reply_count: number | null
+          text: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "audience_comments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       update_character_with_details: {
         Args: {
           p_asset_id: string
