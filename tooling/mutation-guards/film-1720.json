@@ -35,8 +35,8 @@
       "name": "FB4 Facebook insights ride the Instagram switch",
       "kind": "unit",
       "file": "packages/features/publishing/src/oauth/analytics-scope-switch.ts",
-      "find": "  facebook: 'meta',\n};",
-      "replace": "  facebook: 'youtube',\n};",
+      "find": "  facebook: 'meta',\n  meta_comments: 'meta',\n};",
+      "replace": "  facebook: 'youtube',\n  meta_comments: 'meta',\n};",
       "cwd": "packages/features/publishing",
       "test": "__tests__/analytics-scope-switch.test.ts",
       "pattern": "keeps Facebook insights out of the Meta request"

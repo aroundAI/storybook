@@ -331,6 +331,22 @@ async function PrivacyPolicyPage() {
                     page are sent to one of the AI providers listed in section 3
                     to write the summary.
                   </p>
+                  <p data-test="privacy-comments">
+                    <strong>Comments.</strong> The text of the comments people
+                    leave on your videos, read from YouTube (and from Instagram
+                    and Facebook once Meta approves it), with when each was
+                    posted and how many likes it has: not the commenter&apos;s
+                    name, picture or account. Each comment is labelled with a
+                    tone and the topics it is about, by one of the AI providers
+                    in section 3, or by your own AI if you connect one through
+                    the MCP connector, so that you and your team can see how
+                    each video was received. A YouTube comment is read again at
+                    least once a week, is deleted when YouTube no longer returns
+                    it, and is deleted after 30 calendar days in any case if we
+                    cannot read it again; with a disconnect in this app it goes
+                    within 7 calendar days, as the statistics below do. Comments
+                    from other platforms are kept as their statistics are.
+                  </p>
                   <p data-test="privacy-retention">
                     <strong>How long.</strong> While the platform stays
                     connected we refresh these figures on a schedule, and each

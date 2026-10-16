@@ -243,6 +243,20 @@ export function chainedLlmJobTarget(parent: {
   });
 }
 
+/**
+ * For a job the platform schedules over a project's own synced data, with
+ * no caller to authorise it: the hourly comment sync's labelling run
+ * (FILM-1733). The run's user is the team's primary owner, and the worker
+ * checks that user may write the project, as for every job
+ * (`assertQueuedJobAccess`). Nothing a person sends may use this.
+ */
+export function scheduledProjectJobTarget(target: {
+  accountId: string;
+  projectId: string;
+}): LlmJobTarget {
+  return brand({ accountId: target.accountId, projectId: target.projectId });
+}
+
 /** Why a worker will not run a job it was handed. */
 export class QueuedJobRefused extends Error {
   override readonly name: string = 'QueuedJobRefused';

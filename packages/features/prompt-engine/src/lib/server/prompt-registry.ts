@@ -10,6 +10,7 @@
 // =============================================================================
 // Analytics Prompts
 // =============================================================================
+import commentLabels from '../../prompts/analytics/comment-labels.json';
 import insightsGeneration from '../../prompts/analytics/insights-generation.json';
 import languageInsights from '../../prompts/analytics/language-insights.json';
 // =============================================================================
@@ -86,6 +87,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   // Analytics
   'insights-generation': insightsGeneration as unknown as PromptTemplate,
   'language-insights': languageInsights as unknown as PromptTemplate,
+  'comment-labels': commentLabels as unknown as PromptTemplate,
 
   // Audio Generation
   'dialogue-translation': dialogueTranslation as unknown as PromptTemplate,

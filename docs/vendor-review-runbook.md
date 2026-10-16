@@ -693,3 +693,71 @@ the warning screen is bad enough that you would not send a customer through it �
 `review: 'pending'` for `youtube.revenue` and change the Google row of the tracker in
 the same commit. That withdraws the reconnect prompt until verification passes; flip it
 back afterwards.
+
+## Meta — App Review for comment text (FILM-1733)
+
+Reading the comments on a Reel needs `instagram_manage_comments`, and on a Page
+video `pages_read_user_content`
+([capability reference](./platform-capability-reference.md#comment-text)). Both are
+in `META_OAUTH_CONFIG` but **withheld from the connect request** until
+`ANALYTICS_SCOPES_ENABLED` names `meta_comments`, so connecting Instagram and Facebook
+keeps working while the review is pending. Until a connection grants them, the hourly
+comment sync records its videos as `not_authorised` and calls nothing.
+
+### Before you submit
+
+1. On a staging deployment (never production), add `meta_comments` to
+   `ANALYTICS_SCOPES_ENABLED`, and connect an Instagram professional account and a
+   Facebook Page whose owner has a role on the app.
+2. Publish one Reel and one Page video with a few comments on each, and wait for the
+   hourly sync (or call `/api/cron/comment-sync` with the cron secret).
+
+### Draft — usage descriptions
+
+- `instagram_manage_comments`: *"StoryBook reads the comments on Reels the account
+  published through StoryBook, so the creator and their team can see how each video
+  was received: its comments' tone and the topics they raise, over the video's first
+  days and weeks. We store the comment text, its time and like count, and never the
+  commenter's username. We do not reply to, hide or delete comments."*
+- `pages_read_user_content`: the same, for videos on the Facebook Page.
+
+### Draft — screencast shot list
+
+1. Settings → Platforms: connect Instagram and Facebook; the dialog lists the comment
+   permissions.
+2. Studio → a project → an episode → **Analytics**, section **What the audience says**:
+   the tone bar, the topics, the per-video table and its by-age breakdown.
+3. The comment list below it, filtered to *Negative*: comment text with its label, and
+   no commenter shown anywhere.
+4. Disconnect the platform, to show access can be withdrawn.
+
+### After approval
+
+Set `review: 'approved'` for `instagram.comments` and `facebook.comments` in
+`analytics-scopes.ts` and change the Meta comment row of
+[vendor-review-status.md](./vendor-review-status.md) in the same commit. The owner adds
+`meta_comments` to production's `ANALYTICS_SCOPES_ENABLED`; existing connections are
+then asked to reconnect.
+
+## Google — YouTube API Services: figures derived from comments (FILM-1733)
+
+The Developer Policies forbid using API Data "to create new or derived data or
+metrics" (III.E.4.h), except that a figure not from YouTube may be shown with a clear
+disclosure; III.L lets an audited developer apply, through the quota extension
+request, to create additional metrics. The owner decided (2026-10-16) to do both:
+
+- **Already in the product:** every tone and topic figure from YouTube comments is
+  shown with *"Calculated by StoryBook from the comments, not from YouTube."*, to the
+  channel's own team only (RLS on `audience_comments` and `comment_labels`).
+- **To file:** the YouTube API Services audit and quota extension form
+  (Google Cloud console → the project → YouTube Data API v3 → Quotas, "apply for
+  higher quota", which opens the audit form). Describe the use as: *"StoryBook reads
+  the comments on the channel owner's own videos (commentThreads.list, about 1 unit
+  per 100 comments) and labels each with a tone and topics, shown only to that
+  channel's team and labelled as calculated by StoryBook, not from YouTube. Comment
+  text is refreshed at least weekly and deleted after 30 days without a refresh, and
+  within 7 days of a disconnect."*
+
+Record the filing date in [vendor-review-status.md](./vendor-review-status.md). If
+Google refuses, the YouTube figures have to come off the page and the MCP tools: say
+so in a known bug, and do not leave them up on the disclosure alone.

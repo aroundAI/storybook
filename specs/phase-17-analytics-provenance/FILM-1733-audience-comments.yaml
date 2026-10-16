@@ -1,0 +1,121 @@
+spec_id: "FILM-1733"
+title: "Audience Comments"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: PARTIAL
+effort: L
+dependencies:
+  - spec_id: "FILM-1711"
+    note: "ANALYTICS_SCOPE_REQUIREMENTS and the scope switch: the three comment requirements and the meta_comments switch live there"
+  - spec_id: "FILM-1903"
+    note: "the generation core's runs: the server's labelling is a server-only stage key, comment_labels, opened per project"
+  - spec_id: "FILM-1906"
+    note: "the MCP analytics tools' checks and error contract, which the three comment tools follow"
+  - spec_id: "FILM-1724"
+    note: "channel experiments: a difference in reaction between videos is descriptive here, and causal only through an experiment"
+  - spec_id: "KB-20"
+    note: "YouTube's 7- and 30-day deletion rules, which comment text falls under; the vendor-data purge removes a channel's comments"
+summary: >
+  The owner asked (2026-10-16) for the comments on their videos to be read
+  and kept, so that how the audience reacts can be followed over time and
+  compared between videos. Only comment counts were synced. Comment text on
+  the team's own published videos is now read hourly into audience_comments,
+  without commenter names or ids; each comment is labelled with a tone and
+  the topics it is about, from closed lists, by the server's model or by the
+  team's own AI through the MCP connector; and the episode and project
+  analytics pages show each video's reaction, by the video's age, with the
+  comments behind it. YouTube is live; Instagram and Facebook wait on Meta's
+  App Review for their comment permissions; TikTok has no API for it.
+acceptance_criteria:
+  - text: "Comment text on the team's YouTube videos is read hourly and stored without commenter name or id"
+    met: true
+    evidence: "Met (#667): runCommentSync (packages/features/content-analytics/src/server/comment-sync.ts), run by StorybookCommentSyncCron (sst.config.ts) through /api/cron/comment-sync; YouTubeCommentsReader (providers/youtube/youtube-comments.ts) reads commentThreads.list; audience_comments has no author column (migration 20261016093821). comment-sync.test.ts 'stores a video’s comments…'"
+  - text: "A young video is read often and an old one rarely, and every comment is read again at least weekly"
+    met: true
+    evidence: "Met (#667): planCommentSync (lib/audience-comments/sync-schedule.ts): hourly for two days, six-hourly for a week, daily for a month, then weekly; a refresh every 7 days. audience-comment-reaction.test.ts 'when a video’s comments are read again'"
+  - text: "No stored YouTube comment outlives 30 days without a refresh, and a channel's comments go with its vendor-data purge"
+    met: true
+    evidence: "Met (#667): deleteExpiredYouTubeComments runs first in every sync, whatever else fails (comment-sync.test.ts, guard AC1); a complete refresh deletes what the platform no longer returns, an incomplete one deletes nothing (AC2); purge_connection_vendor_rows deletes audience_comments and audience_comment_syncs (audience-comments.test.sql, vendor-data-purges.test.sql)"
+  - text: "A label is a tone and topics from closed lists, never a composite score, written once per comment"
+    met: true
+    evidence: "Met (#667): CommentLabelSchema (lib/audience-comments/labels.ts) and the check constraints on comment_labels; nine topics and three tones, each with its meaning; audience-comments.test.sql rejects a topic or tone outside the lists"
+  - text: "The server labels a project's unlabelled comments only when SERVER_COMMENT_LABELS_ENABLED is set (off by default: no cloud model spend), and the team lets the server generate, through the generation core"
+    met: true
+    evidence: "Met (#667): serverCommentLabellingEnabled gates the cron route's labeller, unset is off (comment-labelling.test.ts, guard AC9); labelCommentsOnServer (server/comment-labelling.ts) opens a comment_labels run per project as the team's primary owner (scheduledProjectJobTarget) and dispatches it; the worker's handler (apps/web/lambda/llm-worker/handlers/comment-labels.ts) labels in batches of 50, at most four calls a run. A team with server generation off, no model or no spend left gets no run. comment-labels-handler.test.ts"
+  - text: "Comment text reaches a model as data: defused, and only closed-list labels for ids the model was sent are written"
+    met: true
+    evidence: "Met (#667): sanitizeStrings over the batch (KB-101) and the prompt's role (prompts/analytics/comment-labels.json); comment-labels-handler.test.ts 'sends a comment’s text defused' and 'writes only labels from the closed lists' (guard AC6)"
+  - text: "A scheduled desktop AI finds the work over MCP (get_pending_work), reads the team's unlabelled comments and the labelling rules, writes labels back as its own, and reads each video's reaction"
+    met: true
+    evidence: "Met (#667): get_pending_work, get_audience_comments (no scope: the connection's whole team), label_audience_comments (studio:write) and get_comment_reaction (packages/features/studio-mcp/src/server/tools/analytics/audience-comments.ts); a label written over MCP is source 'mcp' with the client's model and connection. E2E: apps/e2e/tests/analytics/audience-comments.spec.ts pulls 22 comments over the real endpoint, labels them, and reads 68 / 9 / 23 % back"
+  - text: "An MCP connection reads and labels only its own team's comments"
+    met: true
+    evidence: "Met (#667): the read tools are in analytics-forbidden.test.ts (FORBIDDEN for team B's project, episode and publishes); label_audience_comments returns another team's ids in `refused` and writes nothing for them (audience-comment-tools.test.ts, guard AC7; the E2E sends one); comment_labels' composite key to its comment's account (guard DB2)"
+  - text: "The page tells apart a platform that cannot be read, a video not read yet, one with no comments, too few labelled for shares, and shares"
+    met: true
+    evidence: "Met (#667): CommentReaction (lib/audience-comments/reaction.ts) has a case for each; shares need 20 labelled comments (MIN_LABELLED_FOR_SHARES, guard AC4); never-read is not no-comments (guard AC5). On the page: audience-comments.spec.ts 'a video nobody has read says so'"
+  - text: "Each video's reaction is shown by the video's age, and videos can be compared on the project's page"
+    met: true
+    evidence: "Met (#667): AudienceCommentsSection (components/audience-comments/audience-comments-section.tsx) on the episode and project analytics pages: a tone bar and topics for all, a row per video with its first day, days 2–7, days 8–30 and after; the comments below, filtered by tone, topic or unlabelled. Screenshots on #667"
+  - text: "Every figure from YouTube comments says it is calculated by StoryBook, not from YouTube (Developer Policies III.E.4.h)"
+    met: true
+    evidence: "Met (#667): NOT_FROM_YOUTUBE (server/audience-comments-service.ts) on every YouTube video's reaction, on the page and in get_comment_reaction; asserted in audience-comments.spec.ts"
+  - text: "Instagram and Facebook comments are read once Meta grants the comment permissions"
+    met: false
+    reason: "The readers are built and bound (providers/instagram/instagram-comments.ts, providers/facebook/facebook-comments.ts; requirements instagram.comments and facebook.comments), and withheld from the connect request until the meta_comments switch is on. Meta's App Review for instagram_manage_comments and pages_read_user_content is not submitted"
+  - text: "The YouTube API Services audit request for derived metrics (III.L) is filed"
+    met: false
+    reason: "An owner step (owner, 2026-10-16): the runbook says how (docs/vendor-review-runbook.md, 'Google — YouTube API Services: figures derived from comments')"
+test_plan:
+  unit:
+    - {text: "Reaction states, shares threshold, age buckets, combining videos; label schema; sync schedule", met: true, evidence: "Met (#667): packages/features/content-analytics/__tests__/audience-comment-reaction.test.ts (16)"}
+    - {text: "The sync: storing, the permission check, the 30-day deletion, refresh deletions, reads of new comments, failures, handing projects to the labeller", met: true, evidence: "Met (#667): packages/features/content-analytics/__tests__/comment-sync.test.ts (10)"}
+    - {text: "The worker's labelling: what reaches the model and what is written", met: true, evidence: "Met (#667): apps/web/lambda/llm-worker/__tests__/comment-labels-handler.test.ts (5)"}
+    - {text: "The MCP tools: rules handed over, labels written as the connection's AI, foreign ids refused, scope and cursor validated", met: true, evidence: "Met (#667): packages/features/studio-mcp/__tests__/tools/audience-comment-tools.test.ts (9), analytics-forbidden.test.ts, analytics-catalogue.test.ts"}
+    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#667): tooling/mutation-guards/film-1733.json, AC1–AC8 (unit) and DB1–DB2 (pgTAP), all red under their mutations"}
+  integration:
+    - {text: "pgTAP: who reads and writes comments, labels and sync records; closed lists; keys; the unlabelled functions; the purge", met: true, evidence: "Met (#667): apps/web/supabase/tests/database/audience-comments.test.sql (24); team-accounts-only.test.sql pins 31 guarded tables"}
+  e2e:
+    - {text: "Over the real MCP endpoint and in the browser: pull, label, read back, and the page's figures, filters and paging", met: true, evidence: "Met (#667): apps/e2e/tests/analytics/audience-comments.spec.ts (2), screenshots with CAPTURE_EVIDENCE=1"}
+remaining:
+  - criterion: "Instagram and Facebook comments are read once Meta grants the comment permissions"
+    reason: "Meta App Review for instagram_manage_comments and pages_read_user_content, then meta_comments in ANALYTICS_SCOPES_ENABLED"
+    closed_by: "owner"
+  - criterion: "The YouTube API Services audit request for derived metrics (III.L) is filed"
+    reason: "Filed from the Google Cloud console by the owner"
+    closed_by: "owner"
+open_questions:
+  - "Should the AI Insights panel read the comment labels too (lib/insights-inputs.ts)? Not done here: its prompt and cache key would change, which FILM-808 owns"
+  - "Should channel experiments measure a reaction (share of a tone or a topic) beside their metrics? A measure added there changes what an experiment's baseline snapshots"
+notes: |
+  ## Decisions (owner, 2026-10-16)
+
+  - Comment text is stored, not only labels: the comments behind a figure
+    can be read, and relabelled when the rules improve. This differs on
+    purpose from phase 21's rule (no comment text), which is about
+    competitors' channels; these are the team's own.
+  - YouTube's derived-metric rule (III.E.4.h): every figure carries "not
+    from YouTube" and is the channel's team's only; the III.L request is
+    filed in parallel.
+  - YouTube first; Instagram and Facebook after Meta's review.
+
+  ## Where the text lives and how long
+
+  audience_comments (Postgres, RLS: the team reads, only the sync writes).
+  YouTube: refreshed at least weekly; a comment not returned for 30 days
+  is deleted by every sync run, so a revoked token, a deleted video or a
+  disconnect cannot leave one behind; an in-app disconnect purges within 7
+  days (KB-20). Instagram and Facebook comments are kept as their
+  statistics are (KB-20 decisions). Replies are read on YouTube only.
+
+  ## Who labels
+
+  The owner's own AI over MCP, on a local schedule (owner, 2026-10-16: no
+  cloud model spend on comments). A Claude Desktop routine, hourly, calls
+  get_pending_work and, when comments are waiting, get_audience_comments
+  (unlabelled) and label_audience_comments until none are left. The
+  server's comment_labels run exists but runs only when
+  SERVER_COMMENT_LABELS_ENABLED is set, which production does not. Either may
+  relabel; the last write stands, and the label says who wrote it and with
+  which model.

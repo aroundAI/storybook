@@ -208,6 +208,33 @@ const REQUEST_SITES: Array<{
     ],
   },
   {
+    file: `${PROVIDERS}/youtube/youtube-comments.ts`,
+    patterns: [
+      {
+        pattern: /\bpart:\s*(\[[^\]]*\])/g,
+        surfaces: ['youtube/comment-threads'],
+      },
+    ],
+  },
+  {
+    file: `${PROVIDERS}/instagram/instagram-comments.ts`,
+    patterns: [
+      {
+        pattern: /\$\{mediaId\}\/comments\?fields=([a-z_,]+)/g,
+        surfaces: ['instagram/media-comments'],
+      },
+    ],
+  },
+  {
+    file: `${PROVIDERS}/facebook/facebook-comments.ts`,
+    patterns: [
+      {
+        pattern: /\$\{videoId\}\/comments\?fields=([a-z_,]+)/g,
+        surfaces: ['facebook/video-comments'],
+      },
+    ],
+  },
+  {
     file: `${PROVIDERS}/twitter/x-analytics.ts`,
     patterns: [
       {

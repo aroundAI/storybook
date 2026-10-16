@@ -40,6 +40,9 @@ const READ_TOOLS = [
   'get_saved_insights',
   'get_ai_usage',
   'get_performance_by_origin',
+  'get_comment_reaction',
+  'get_audience_comments',
+  'get_pending_work',
 ];
 
 const WRITE_TOOLS = [
@@ -49,6 +52,7 @@ const WRITE_TOOLS = [
   'start_experiment',
   'conclude_experiment',
   'abandon_experiment',
+  'label_audience_comments',
 ];
 
 /** Criterion 9, as names: nothing in the catalogue may match one of these. */

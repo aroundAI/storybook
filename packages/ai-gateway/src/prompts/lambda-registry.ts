@@ -5,6 +5,7 @@
  * the worker bundle nor the Next server reads the file system; keys are the
  * slugs handlers pass as `templateSlug`, with the nested aliases they use.
  */
+import commentLabels from '@kit/prompt-engine/prompts/analytics/comment-labels.json';
 import insightsGeneration from '@kit/prompt-engine/prompts/analytics/insights-generation.json';
 import languageInsights from '@kit/prompt-engine/prompts/analytics/language-insights.json';
 import dialogueTranslation from '@kit/prompt-engine/prompts/audio-generation/dialogue-translation.json';
@@ -104,6 +105,8 @@ export const PROMPT_REGISTRY: Record<string, LambdaPromptTemplate> = {
   'language-insights': languageInsights as LambdaPromptTemplate,
   'analytics/insights-generation': insightsGeneration as LambdaPromptTemplate,
   'analytics/language-insights': languageInsights as LambdaPromptTemplate,
+  'comment-labels': commentLabels as LambdaPromptTemplate,
+  'analytics/comment-labels': commentLabels as LambdaPromptTemplate,
   // Publishing
   'batch-translate-metadata': batchTranslateMetadata as LambdaPromptTemplate,
   'publishing/batch-translate-metadata':

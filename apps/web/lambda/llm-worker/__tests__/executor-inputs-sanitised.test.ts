@@ -409,6 +409,9 @@ const COVERED = [
   'asset-creation.ts',
   'audio-cue-generation.ts',
   'batch-translate-metadata.ts',
+  // FILM-1733: comment-labels-handler.test.ts sends a stranger's template
+  // marker and asserts it does not reach the prompt raw
+  'comment-labels.ts',
   'fact-extraction.ts',
   'language-insights.ts',
   'screenplay-conversion.ts',

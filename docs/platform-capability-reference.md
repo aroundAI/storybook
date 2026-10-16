@@ -820,6 +820,33 @@ _Verified: 2026-10-01_
 
 ---
 
+## Comment text
+
+FILM-1733. The comments on the team's own videos, read hourly into
+`audience_comments` without commenter names or ids, and labelled for tone
+and topic. The requirements are `youtube.comments`, `instagram.comments` and
+`facebook.comments` in `analytics-scopes.ts`.
+
+| Platform | Endpoint we call | Vendor's required scope | Requested? | Source |
+|---|---|---|---|---|
+| YouTube | `commentThreads.list` (`part=snippet,replies`, `videoId`, `order=time`), 1 quota unit per page of 100 | public comments need no more than `youtube.readonly` | yes | [commentThreads.list](https://developers.google.com/youtube/v3/docs/commentThreads/list) |
+| Instagram | `GET /{ig-media-id}/comments` | `instagram_basic`, `instagram_manage_comments`, `pages_read_engagement` (Facebook Login) | in the config, withheld until the `meta_comments` switch is on: needs its own App Review | [IG Media comments](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-media/comments) |
+| Facebook | `GET /{video-id}/comments` (`filter=toplevel`, `order=reverse_chronological`) | `pages_read_engagement`, `pages_read_user_content` | in the config, withheld until the `meta_comments` switch is on: needs its own App Review | [Object comments](https://developers.facebook.com/docs/graph-api/reference/object/comments/) |
+| TikTok | none: the Display API has no comment endpoint, and the Research API's is for academic researchers only | | | [Research API](https://developers.tiktok.com/products/research-api/) |
+
+**YouTube's storage rules apply** (Developer Policies III.E.4): a stored
+comment is refreshed or deleted within 30 days, and deleted within 7 days of
+an in-app disconnect (the vendor-data purge). A figure StoryBook calculates
+from YouTube comments carries "Calculated by StoryBook from the comments,
+not from YouTube" (III.E.4.h).
+
+Instagram does not document the order of its comments edge, so every read
+of it is a full one. Replies are read on YouTube only.
+
+_Verified: 2026-10-16_
+
+---
+
 ## AI-label fields
 
 FILM-1731. The field each publishing call takes for the creator's own AI
@@ -919,6 +946,13 @@ snippet
 contentDetails
 statistics
 duration                   # contentDetails.duration, ISO 8601 - FILM-1710
+```
+
+<!-- fields: youtube/comment-threads source: https://developers.google.com/youtube/v3/docs/commentThreads/list -->
+```text
+# commentThreads.list `part` names we request (FILM-1733)
+snippet                    # topLevelComment.snippet: textOriginal, likeCount, publishedAt; totalReplyCount
+replies                    # the replies YouTube includes with a thread
 ```
 
 <!-- fields: youtube/reporting source: https://developers.google.com/youtube/reporting/v1/reports/channel_reports -->
@@ -1476,6 +1510,25 @@ post_total_media_view_unique # "total unique media viewers for FB post"; lifetim
 # GET /{video-id}?fields=… (FILM-1720), read 2026-10-01.
 post_id                    # the Page post the video belongs to
 comments                   # edge; .summary(true) answers summary.total_count
+```
+
+<!-- fields: facebook/video-comments source: https://developers.facebook.com/docs/graph-api/reference/object/comments/ -->
+```text
+# GET /{video-id}/comments?fields=… (FILM-1733); no author field is requested
+id
+message
+created_time
+like_count
+comment_count              # replies to this comment
+```
+
+<!-- fields: instagram/media-comments source: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-media/comments -->
+```text
+# GET /{ig-media-id}/comments?fields=… (FILM-1733); no username is requested
+id
+text
+timestamp
+like_count
 ```
 
 <!-- fields: facebook/post-fields source: https://developers.facebook.com/docs/graph-api/reference/post/ -->

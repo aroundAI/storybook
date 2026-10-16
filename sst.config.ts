@@ -1446,6 +1446,37 @@ export default $config({
 
     console.log(`✓ Vendor data purge cron configured (hourly)`);
 
+    // Comment Sync Cron (FILM-1733) - reads the audience comments on the
+    // team's published videos, deletes YouTube comments not refreshed for
+    // 30 days (Developer Policies III.E.4.c), and opens the labelling runs.
+    const commentSyncCron = new sst.aws.Cron('StorybookCommentSyncCron', {
+      job: {
+        handler: 'apps/web/lambda/comment-sync/index.handler',
+        timeout: '5 minutes',
+        memory: '256 MB',
+        architecture: 'arm64',
+        link: [web],
+        environment: {
+          API_URL: web.url,
+          CRON_SECRET: process.env.CRON_SECRET || '',
+        },
+        transform: {
+          function: {
+            kmsKeyArn: kmsKey.arn,
+          },
+        },
+        permissions: [
+          {
+            actions: ['kms:Decrypt'],
+            resources: [kmsKey.arn],
+          },
+        ],
+      },
+      schedule: 'rate(1 hour)',
+    });
+
+    console.log(`✓ Comment sync cron configured (hourly)`);
+
     // Generation Run Expiry Cron (FILM-1903) - marks generation runs past
     // their 30-minute lease expired, so a forgotten external (MCP) conversation
     // never holds an episode's stage. Hourly: a lease is 30 minutes, and an

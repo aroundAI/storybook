@@ -10,7 +10,10 @@ import type { Metadata } from 'next';
 
 import { notFound } from 'next/navigation';
 
-import { AnalyticsDashboardSkeleton } from '@kit/content-analytics/components';
+import {
+  AnalyticsDashboardSkeleton,
+  AudienceCommentsSection,
+} from '@kit/content-analytics/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
@@ -77,6 +80,10 @@ export default async function ProjectAnalyticsPage({ params }: PageParams) {
             accountId={project.account_id}
           />
         </Suspense>
+
+        {/* FILM-1733: every video in the project, compared by what its
+            audience says */}
+        <AudienceCommentsSection scope={{ projectId: project.id }} />
       </PageBody>
     </>
   );

@@ -312,6 +312,13 @@ const AssetCreation = z.object({
   userId,
 });
 
+/** FILM-1733: label a project's unlabelled audience comments */
+const CommentLabels = z.object({
+  accountId,
+  projectId: id,
+  userId,
+});
+
 /** One schema per job type the LLM worker runs. */
 export const LlmJobPayloadSchemas = {
   'season-analysis': SeasonAnalysis,
@@ -330,6 +337,7 @@ export const LlmJobPayloadSchemas = {
   'audio-file-generation': AudioFileGeneration,
   'fact-extraction': FactExtraction,
   'asset-creation': AssetCreation,
+  'comment-labels': CommentLabels,
 } as const;
 
 export type LlmJobType = keyof typeof LlmJobPayloadSchemas;

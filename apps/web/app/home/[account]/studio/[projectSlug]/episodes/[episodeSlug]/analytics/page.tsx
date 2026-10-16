@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Repeat } from 'lucide-react';
 
 import {
+  AudienceCommentsSection,
   EditStyleCard,
   EpisodeSyncStatus,
   RetentionCurveChart,
@@ -218,6 +219,8 @@ export default function EpisodeAnalyticsPage() {
         ) : null}
 
         <EditStyleSection query={editStyleQuery} />
+
+        <AudienceCommentsSection scope={{ episodeId: episode.id }} />
       </PageBody>
     </>
   );

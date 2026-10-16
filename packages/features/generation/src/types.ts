@@ -42,6 +42,8 @@ export const StageKeySchema = z.enum([
   'language_insights',
   'fact_check',
   'audio_render',
+  // FILM-1733: the server's labelling of audience comments
+  'comment_labels',
 ]);
 export type StageKey = z.infer<typeof StageKeySchema>;
 

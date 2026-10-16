@@ -25,6 +25,11 @@ export const META_OAUTH_CONFIG = {
     'read_insights',
     'pages_manage_engagement',
 
+    // Comment text on Reels and Page videos (FILM-1733); withheld until
+    // the `meta_comments` switch is on, after its own App Review
+    'instagram_manage_comments',
+    'pages_read_user_content',
+
     // Business features
     'business_management',
   ],

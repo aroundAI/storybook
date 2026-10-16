@@ -163,6 +163,30 @@ set -a; . deployment/config/local.env; set +a
 DIM_SYNC_LOCAL_STACK=1 pnpm --filter @kit/content-analytics test dim-sync.local-stack
 ```
 
+## Audience comments (FILM-1733)
+
+Comment **text** on the team's own videos, in Postgres (`audience_comments`,
+`comment_labels`, `audience_comment_syncs`), not ClickHouse.
+
+- **Read hourly** by `runCommentSync` (`server/comment-sync.ts`), from
+  `/api/cron/comment-sync`. YouTube via `providers/youtube/youtube-comments.ts`;
+  Instagram and Facebook readers exist but their permissions are withheld until
+  the `meta_comments` switch is on (Meta App Review). TikTok has no comment API.
+- **YouTube's 30 days are a rule, not a schedule:** every run first deletes
+  YouTube comments not returned for 30 days. Do not move that delete behind
+  anything that can fail first.
+- **Labels** are a tone plus topics from closed lists (`lib/audience-comments/labels.ts`),
+  written by a team's AI through the MCP tools (`get_pending_work`,
+  `get_audience_comments`, `label_audience_comments`), on the owner's local
+  hourly schedule; the worker's `comment-labels` handler runs only when
+  `SERVER_COMMENT_LABELS_ENABLED` is set (off: no cloud model spend).
+  Comment text is strangers' text: it reaches a model defused, and only
+  closed-list labels for ids the labeller was given are written.
+- **Reading a reaction:** `commentReaction` (`lib/audience-comments/reaction.ts`)
+  keeps unsupported / not read / no comments / too few (< 20 labelled) / shares
+  apart. A YouTube figure carries `NOT_FROM_YOUTUBE` wherever it is shown
+  (Developer Policies III.E.4.h).
+
 ## API Rate Limits
 
 - **YouTube Analytics API**: cost is per query with no published number — read

@@ -242,6 +242,47 @@ export const ANALYTICS_SCOPE_REQUIREMENTS: readonly AnalyticsScopeRequirement[] 
       source:
         'https://developers.facebook.com/docs/graph-api/reference/insights/',
     },
+    // FILM-1733: comment text on the team's own videos. YouTube's
+    // commentThreads.list reads public comments, which youtube.readonly
+    // covers; Meta's comment edges need their own permission and App
+    // Review, held behind the `meta_comments` switch.
+    {
+      id: 'youtube.comments',
+      platform: 'youtube',
+      scopes: ['https://www.googleapis.com/auth/youtube.readonly'],
+      endpoints: [/\byoutube\.commentThreads\.list\(/],
+      gains: 'What viewers say in the comments on each video',
+      provider: 'implemented',
+      review: 'approved',
+      source:
+        'https://developers.google.com/youtube/v3/docs/commentThreads/list',
+    },
+    {
+      id: 'instagram.comments',
+      platform: 'instagram',
+      scopes: [
+        'instagram_basic',
+        'instagram_manage_comments',
+        'pages_read_engagement',
+      ],
+      endpoints: [/\$\{mediaId\}\/comments\?/],
+      gains: 'What viewers say in the comments on each Reel',
+      provider: 'implemented',
+      review: 'required',
+      source:
+        'https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-media/comments',
+    },
+    {
+      id: 'facebook.comments',
+      platform: 'facebook',
+      scopes: ['pages_read_engagement', 'pages_read_user_content'],
+      endpoints: [/\$\{videoId\}\/comments\?/],
+      gains: 'What viewers say in the comments on each Facebook video',
+      provider: 'implemented',
+      review: 'required',
+      source:
+        'https://developers.facebook.com/docs/graph-api/reference/object/comments/',
+    },
     {
       id: 'x.post-analytics',
       platform: 'twitter',

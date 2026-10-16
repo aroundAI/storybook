@@ -299,6 +299,12 @@ async function processJob(
       );
       return processFactExtraction(payload, supabase);
     }
+    case 'comment-labels': {
+      const { processCommentLabels } = await import(
+        './handlers/comment-labels'
+      );
+      return processCommentLabels(payload, supabase);
+    }
     default: {
       const unhandled: never = jobType;
       throw new Error(`Unknown job type: ${String(unhandled)}`);
