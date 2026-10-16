@@ -42,6 +42,7 @@ const READ_TOOLS = [
   'get_performance_by_origin',
   'get_comment_reaction',
   'get_audience_comments',
+  'get_pending_work',
 ];
 
 const WRITE_TOOLS = [

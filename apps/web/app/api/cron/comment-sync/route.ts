@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
-import { labelCommentsOnServer } from '@kit/content-analytics/server/comment-labelling';
+import {
+  labelCommentsOnServer,
+  serverCommentLabellingEnabled,
+} from '@kit/content-analytics/server/comment-labelling';
 import {
   COMMENT_FETCHERS,
   runCommentSync,
@@ -14,9 +17,9 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
  * Hourly audience comment sync (FILM-1733).
  *
  * Deletes YouTube comments not refreshed for 30 days, reads the comments of
- * the videos that are due, and opens the server's labelling run for each
- * project with unlabelled comments (or leaves them for the team's AI over
- * MCP).
+ * the videos that are due, and, only when SERVER_COMMENT_LABELS_ENABLED is
+ * set, opens the server's labelling run for each project with unlabelled
+ * comments. Otherwise they wait for the team's own AI over MCP.
  *
  * Security: `auth: false` plus an explicit bearer check, as the sibling cron
  * routes do — `auth: true` would redirect a session-less caller, and the
@@ -52,8 +55,12 @@ export const GET = enhanceRouteHandler(
         now: new Date(),
         fetchers: COMMENT_FETCHERS,
         ensureValidToken,
+        // Off unless SERVER_COMMENT_LABELS_ENABLED: comments then wait for
+        // the team's own AI over MCP, and no model is called here
         labelComments: async (projects) => {
-          await labelCommentsOnServer(client, projects);
+          if (serverCommentLabellingEnabled()) {
+            await labelCommentsOnServer(client, projects);
+          }
         },
       });
 

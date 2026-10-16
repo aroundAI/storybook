@@ -188,8 +188,25 @@ describe('get_audience_comments', () => {
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     await expect(
-      callTool(tools, 'get_audience_comments', {}, context),
+      callTool(tools, 'get_comment_reaction', {}, context),
     ).rejects.toBeInstanceOf(McpToolError);
+  });
+
+  it('with no scope, lists the whole team’s comments and no other team’s: what an hourly labeller asks for', async () => {
+    const { context } = setup();
+    const result = await callTool(
+      tools,
+      'get_audience_comments',
+      { unlabelled: true },
+      context,
+    );
+
+    const ids = (
+      result.structuredContent as { comments: Array<{ id: string }> }
+    ).comments.map((c) => c.id);
+
+    expect(ids).toEqual([UNLABELLED]);
+    expect(ids).not.toContain(THEIRS);
   });
 
   it('refuses a cursor it did not give', async () => {

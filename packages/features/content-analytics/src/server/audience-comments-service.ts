@@ -32,6 +32,9 @@ export type CommentScope =
   | { episodeId: string }
   | { publishIds: string[] };
 
+/** A list of comments may also be a whole team's: an hourly labeller's */
+export type CommentListScope = CommentScope | { accountId: string };
+
 export interface ScopedPublish {
   id: string;
   episode_id: string;
@@ -250,7 +253,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 export async function listAudienceComments(
   client: Client,
-  scope: CommentScope,
+  scope: CommentListScope,
   filter: CommentListFilter,
 ) {
   const labelJoin =
@@ -264,7 +267,9 @@ export async function listAudienceComments(
       `id, publish_id, platform, text, like_count, reply_count, commented_at, parent_platform_comment_id, ${labelJoin}, publishes!inner(episode_id, title, content_type, episodes!inner(project_id, title))`,
     );
 
-  if ('projectId' in scope) {
+  if ('accountId' in scope) {
+    query = query.eq('account_id', scope.accountId);
+  } else if ('projectId' in scope) {
     query = query.eq('publishes.episodes.project_id', scope.projectId);
   } else if ('episodeId' in scope) {
     query = query.eq('publishes.episode_id', scope.episodeId);
@@ -390,4 +395,25 @@ export async function writeCommentLabels(
     written: rows.length,
     refused: ids.filter((id) => !ownedIds.has(id)),
   };
+}
+
+/**
+ * How many of a team's comments wait for a label: what an hourly labeller
+ * checks first. An exact count, which PostgREST does not cap.
+ */
+export async function countUnlabelledComments(
+  client: Client,
+  accountId: string,
+) {
+  const { count, error } = await client
+    .from('audience_comments')
+    .select('id, comment_labels(comment_id)', { count: 'exact', head: true })
+    .eq('account_id', accountId)
+    .is('comment_labels', null);
+
+  if (error) {
+    throw new Error(`Could not count unlabelled comments: ${error.message}`);
+  }
+
+  return count ?? 0;
 }

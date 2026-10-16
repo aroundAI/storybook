@@ -58,9 +58,12 @@ const client = {
 };
 
 let labelCommentsOnServer: (typeof import('../src/server/comment-labelling'))['labelCommentsOnServer'];
+let serverCommentLabellingEnabled: (typeof import('../src/server/comment-labelling'))['serverCommentLabellingEnabled'];
 
 beforeAll(async () => {
-  ({ labelCommentsOnServer } = await import('../src/server/comment-labelling'));
+  ({ labelCommentsOnServer, serverCommentLabellingEnabled } = await import(
+    '../src/server/comment-labelling'
+  ));
 }, 60_000);
 
 beforeEach(() => {
@@ -115,5 +118,23 @@ describe('opening the server’s labelling runs', () => {
     ]);
 
     expect(outcomes).toMatchObject({ failed: 1, dispatched: 1, no_owner: 1 });
+  });
+});
+
+describe('whether the server labels at all', () => {
+  it('is off unless SERVER_COMMENT_LABELS_ENABLED says so: no cloud model spend by default', () => {
+    expect(serverCommentLabellingEnabled({})).toBe(false);
+    expect(
+      serverCommentLabellingEnabled({ SERVER_COMMENT_LABELS_ENABLED: '' }),
+    ).toBe(false);
+    expect(
+      serverCommentLabellingEnabled({ SERVER_COMMENT_LABELS_ENABLED: 'false' }),
+    ).toBe(false);
+    expect(
+      serverCommentLabellingEnabled({ SERVER_COMMENT_LABELS_ENABLED: 'true' }),
+    ).toBe(true);
+    expect(
+      serverCommentLabellingEnabled({ SERVER_COMMENT_LABELS_ENABLED: ' 1 ' }),
+    ).toBe(true);
   });
 });

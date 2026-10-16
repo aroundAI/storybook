@@ -103,9 +103,21 @@ test.describe('audience comments over MCP and on the episode page', () => {
       scopes: ['studio:read', 'studio:write'],
     });
 
-    // 1. Pull: every comment waits for a label, with the rules to label by
+    // 0. What a scheduled task checks first: there is work
+    const pending = await callMcpTool(token, 'get_pending_work', {});
+    expect(pending.isError, pending.text).toBe(false);
+    expect(pending.structuredContent).toEqual({
+      items: [
+        expect.objectContaining({
+          kind: 'label_audience_comments',
+          waiting: AUDIENCE.length,
+        }),
+      ],
+    });
+
+    // 1. Pull, with no scope: the whole team's, as the scheduled task asks.
+    //    Every comment waits for a label, with the rules to label by
     const pulled = await callMcpTool(token, 'get_audience_comments', {
-      episodeId: episode.episodeId,
       unlabelled: true,
       limit: 50,
     });
@@ -157,12 +169,14 @@ test.describe('audience comments over MCP and on the episode page', () => {
       await readRows('comment_labels', `comment_id=eq.${other.ids[0]}`),
     ).toEqual([]);
 
-    // Nothing is left to label
+    // Nothing is left to label, and the scheduled task finds no work
     const after = await callMcpTool(token, 'get_audience_comments', {
-      episodeId: episode.episodeId,
       unlabelled: true,
     });
     expect(after.structuredContent.comments).toEqual([]);
+    expect(
+      (await callMcpTool(token, 'get_pending_work', {})).structuredContent,
+    ).toEqual({ items: [] });
 
     // 3. Read back: 15/22 = 68%, 2/22 = 9%, 5/22 = 23%
     const reaction = await callMcpTool(token, 'get_comment_reaction', {

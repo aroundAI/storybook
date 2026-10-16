@@ -11,7 +11,8 @@ import type { UnlabelledProject } from './comment-sync';
 /**
  * FILM-1733. Opens the server's labelling run for each project with
  * unlabelled comments, as the team's primary owner, and dispatches it to
- * the LLM worker (handlers/comment-labels.ts).
+ * the LLM worker (handlers/comment-labels.ts). Only when
+ * `serverCommentLabellingEnabled()`; the cron route checks it.
  *
  * A team that has turned server generation off, or has no model or no
  * spend left today, gets no run: its comments wait for its own AI, which
@@ -21,6 +22,20 @@ import type { UnlabelledProject } from './comment-sync';
  */
 
 type Client = SupabaseClient<Database>;
+
+/**
+ * Whether the server labels comments at all. Off unless
+ * SERVER_COMMENT_LABELS_ENABLED is `true` or `1` (owner, 2026-10-16: no
+ * cloud model spend on comments; the owner's own AI labels them over MCP on
+ * a local schedule). Unset is off, so a deploy without it calls no model.
+ */
+export function serverCommentLabellingEnabled(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const value = env.SERVER_COMMENT_LABELS_ENABLED?.trim().toLowerCase();
+
+  return value === 'true' || value === '1';
+}
 
 export type LabellingOutcome =
   | 'dispatched'

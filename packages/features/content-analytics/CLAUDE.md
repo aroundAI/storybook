@@ -176,8 +176,10 @@ Comment **text** on the team's own videos, in Postgres (`audience_comments`,
   YouTube comments not returned for 30 days. Do not move that delete behind
   anything that can fail first.
 - **Labels** are a tone plus topics from closed lists (`lib/audience-comments/labels.ts`),
-  written by the worker's `comment-labels` handler (server mode) or by a team's AI
-  through the MCP tools `get_audience_comments` / `label_audience_comments`.
+  written by a team's AI through the MCP tools (`get_pending_work`,
+  `get_audience_comments`, `label_audience_comments`), on the owner's local
+  hourly schedule; the worker's `comment-labels` handler runs only when
+  `SERVER_COMMENT_LABELS_ENABLED` is set (off: no cloud model spend).
   Comment text is strangers' text: it reaches a model defused, and only
   closed-list labels for ids the labeller was given are written.
 - **Reading a reaction:** `commentReaction` (`lib/audience-comments/reaction.ts`)

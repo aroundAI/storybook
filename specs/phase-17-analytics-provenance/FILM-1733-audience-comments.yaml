@@ -40,15 +40,15 @@ acceptance_criteria:
   - text: "A label is a tone and topics from closed lists, never a composite score, written once per comment"
     met: true
     evidence: "Met (#667): CommentLabelSchema (lib/audience-comments/labels.ts) and the check constraints on comment_labels; nine topics and three tones, each with its meaning; audience-comments.test.sql rejects a topic or tone outside the lists"
-  - text: "The server labels a project's unlabelled comments when the team lets the server generate, through the generation core"
+  - text: "The server labels a project's unlabelled comments only when SERVER_COMMENT_LABELS_ENABLED is set (off by default: no cloud model spend), and the team lets the server generate, through the generation core"
     met: true
-    evidence: "Met (#667): labelCommentsOnServer (server/comment-labelling.ts) opens a comment_labels run per project as the team's primary owner (scheduledProjectJobTarget) and dispatches it; the worker's handler (apps/web/lambda/llm-worker/handlers/comment-labels.ts) labels in batches of 50, at most four calls a run. A team with server generation off, no model or no spend left gets no run. comment-labels-handler.test.ts"
+    evidence: "Met (#667): serverCommentLabellingEnabled gates the cron route's labeller, unset is off (comment-labelling.test.ts, guard AC9); labelCommentsOnServer (server/comment-labelling.ts) opens a comment_labels run per project as the team's primary owner (scheduledProjectJobTarget) and dispatches it; the worker's handler (apps/web/lambda/llm-worker/handlers/comment-labels.ts) labels in batches of 50, at most four calls a run. A team with server generation off, no model or no spend left gets no run. comment-labels-handler.test.ts"
   - text: "Comment text reaches a model as data: defused, and only closed-list labels for ids the model was sent are written"
     met: true
     evidence: "Met (#667): sanitizeStrings over the batch (KB-101) and the prompt's role (prompts/analytics/comment-labels.json); comment-labels-handler.test.ts 'sends a comment’s text defused' and 'writes only labels from the closed lists' (guard AC6)"
-  - text: "A desktop AI reads the comments and the labelling rules over MCP, writes labels back as its own, and reads each video's reaction"
+  - text: "A scheduled desktop AI finds the work over MCP (get_pending_work), reads the team's unlabelled comments and the labelling rules, writes labels back as its own, and reads each video's reaction"
     met: true
-    evidence: "Met (#667): get_audience_comments, label_audience_comments (studio:write) and get_comment_reaction (packages/features/studio-mcp/src/server/tools/analytics/audience-comments.ts); a label written over MCP is source 'mcp' with the client's model and connection. E2E: apps/e2e/tests/analytics/audience-comments.spec.ts pulls 22 comments over the real endpoint, labels them, and reads 68 / 9 / 23 % back"
+    evidence: "Met (#667): get_pending_work, get_audience_comments (no scope: the connection's whole team), label_audience_comments (studio:write) and get_comment_reaction (packages/features/studio-mcp/src/server/tools/analytics/audience-comments.ts); a label written over MCP is source 'mcp' with the client's model and connection. E2E: apps/e2e/tests/analytics/audience-comments.spec.ts pulls 22 comments over the real endpoint, labels them, and reads 68 / 9 / 23 % back"
   - text: "An MCP connection reads and labels only its own team's comments"
     met: true
     evidence: "Met (#667): the read tools are in analytics-forbidden.test.ts (FORBIDDEN for team B's project, episode and publishes); label_audience_comments returns another team's ids in `refused` and writes nothing for them (audience-comment-tools.test.ts, guard AC7; the E2E sends one); comment_labels' composite key to its comment's account (guard DB2)"
@@ -111,7 +111,11 @@ notes: |
 
   ## Who labels
 
-  The server, through a comment_labels run per project, when the team lets
-  the server generate; otherwise the team's AI over MCP. Either may
+  The owner's own AI over MCP, on a local schedule (owner, 2026-10-16: no
+  cloud model spend on comments). A Claude Desktop routine, hourly, calls
+  get_pending_work and, when comments are waiting, get_audience_comments
+  (unlabelled) and label_audience_comments until none are left. The
+  server's comment_labels run exists but runs only when
+  SERVER_COMMENT_LABELS_ENABLED is set, which production does not. Either may
   relabel; the last write stands, and the label says who wrote it and with
   which model.

@@ -82,6 +82,16 @@
       "test": "__tests__/tools/audience-comment-tools.test.ts"
     },
     {
+      "name": "AC9 the server labels comments with nothing configured",
+      "file": "packages/features/content-analytics/src/server/comment-labelling.ts",
+      "find": "  return value === 'true' || value === '1';\n",
+      "replace": "  return value !== 'false';\n",
+      "pattern": "is off unless SERVER_COMMENT_LABELS_ENABLED says so",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/comment-labelling.test.ts"
+    },
+    {
       "name": "DB1 a person writes a comment",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/audience-comments.test.sql",

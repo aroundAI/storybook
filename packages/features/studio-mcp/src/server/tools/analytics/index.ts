@@ -6,6 +6,7 @@ import { getAiUsage } from './ai-usage';
 import {
   getAudienceComments,
   getCommentReaction,
+  getPendingWork,
   labelAudienceComments,
 } from './audience-comments';
 import {
@@ -70,6 +71,7 @@ export const analyticsReadTools = [
   getPerformanceByOrigin,
   getCommentReaction,
   getAudienceComments,
+  getPendingWork,
 ].map((tool) => tool as unknown as McpToolDefinition);
 
 export const analyticsWriteTools = [
