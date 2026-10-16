@@ -217,10 +217,10 @@ function VideoTable({ videos }: { videos: VideoReaction[] }) {
                           {publish.title ?? publish.episodeTitle ?? 'Untitled'}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {platformLabel(publish.platform)} ·{' '}
-                          {publish.content_type === 'short'
-                            ? 'Short'
-                            : 'Long video'}
+                          {platformLabel(publish.platform)}
+                          {publish.formatLabel
+                            ? ` · ${publish.formatLabel}`
+                            : ''}
                         </span>
                       </div>
                     </div>

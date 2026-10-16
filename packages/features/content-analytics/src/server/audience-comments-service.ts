@@ -2,6 +2,11 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import {
+  DURATION_UNKNOWN,
+  FORMAT_FAMILY_LABEL,
+  resolveFormatFamily,
+} from '@kit/clickhouse';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 
@@ -44,6 +49,8 @@ export interface ScopedPublish {
   platform_url: string | null;
   published_at: string | null;
   episodeTitle: string | null;
+  /** The format family's label (FILM-1716's table), or null when unmapped */
+  formatLabel: string | null;
 }
 
 /** YouTube's rule for a figure we calculate from its data (Developer Policies III.E.4.h) */
@@ -57,7 +64,7 @@ export async function publishesInScope(
   const columns =
     'id, episode_id, platform, content_type, title, platform_url, published_at, status, episodes!inner(title, project_id)';
 
-  type Row = Omit<ScopedPublish, 'episodeTitle'> & {
+  type Row = Omit<ScopedPublish, 'episodeTitle' | 'formatLabel'> & {
     status: string;
     episodes: { title: string | null; project_id: string };
   };
@@ -87,10 +94,19 @@ export async function publishesInScope(
 
   return rows
     .filter((row) => row.status === 'published' || row.status === 'unlisted')
-    .map(({ episodes, status: _status, ...row }) => ({
-      ...row,
-      episodeTitle: episodes.title,
-    }));
+    .map(({ episodes, status: _status, ...row }) => {
+      const family = resolveFormatFamily({
+        platform: row.platform,
+        contentType: row.content_type,
+        assetDuration: DURATION_UNKNOWN,
+      });
+
+      return {
+        ...row,
+        episodeTitle: episodes.title,
+        formatLabel: family.ok ? FORMAT_FAMILY_LABEL[family.family] : null,
+      };
+    });
 }
 
 export interface StoredComment {
