@@ -149,7 +149,7 @@ select throws_ok(
              repeat('E', 43), 'https://claude.ai/api/mcp/auth_callback',
              'http://localhost:3000/api/mcp', now() + interval '60 seconds') $$,
   '23514', null,
-  'a code with a scope outside studio:read, studio:write, studio:render is refused'
+  'a code with a scope outside studio:read, studio:write, studio:render, studio:publish is refused'
 );
 
 -- A grant is to a team: a code for the user's personal account is refused (KB-99)

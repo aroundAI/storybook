@@ -47,6 +47,11 @@ const SCOPE_LABELS: Record<McpScope, { label: string; description: string }> = {
     label: 'Render',
     description: 'Start voice, music and sound renders, which cost money',
   },
+  'studio:publish': {
+    label: 'Schedule publishes',
+    description:
+      "Schedule episodes to post on the project's channels, and cancel them before they go out",
+  },
 };
 
 const DEFAULTS = { name: '', scopes: ['studio:read'] as McpScope[] };

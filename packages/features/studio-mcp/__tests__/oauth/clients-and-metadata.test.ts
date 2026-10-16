@@ -284,6 +284,7 @@ describe('discovery metadata', () => {
       'studio:read',
       'studio:write',
       'studio:render',
+      'studio:publish',
     ]);
     expect(own.bearer_methods_supported).toEqual(['header']);
 
@@ -310,6 +311,7 @@ describe('discovery metadata', () => {
       'studio:read',
       'studio:write',
       'studio:render',
+      'studio:publish',
     ]);
     expect(metadata.grant_types_supported).toEqual([
       'authorization_code',

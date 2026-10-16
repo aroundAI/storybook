@@ -44,9 +44,9 @@
     {
       "name": "S5 Publish Now uploads a group to a platform it does not name",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "      if (group && !groupTakesPlatform(group, platform.platform)) {\n",
-      "replace": "      if (false) {\n",
+      "file": "packages/features/publishing/src/server/publish-preflight.ts",
+      "find": "    if (group && !groupTakesPlatform(group, platform.platform)) {\n",
+      "replace": "    if (false) {\n",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-now-shorts-group.test.ts",
       "pattern": "refuses an Instagram cut for a YouTube channel"

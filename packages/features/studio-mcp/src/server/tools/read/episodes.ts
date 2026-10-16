@@ -359,7 +359,7 @@ export const getEpisodeTool = defineTool({
       publishes: publishes.count ?? 0,
       canPublish:
         stages.find((stage) => stage.key === 'publish')?.canGenerate ?? false,
-      note: 'Publishing to a platform is a web action. Attach a video with request_episode_video_upload, or link one already published with link_published_video.',
+      note: 'Attach a video with request_episode_video_upload, or link one already published with link_published_video. schedule_publish (studio:publish) schedules it to the project’s channels; publishing immediately is done on the Publish screen.',
     };
 
     const screenplaySummary = screenplay

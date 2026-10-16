@@ -24,9 +24,9 @@
     {
       "name": "KB-123 updateShortsGroups checks nothing",
       "kind": "unit",
-      "file": "packages/features/episodes/src/lib/server/mutations/publish-actions.ts",
-      "find": "      next: shortsGroups.flatMap((group) => Object.values(group.videos)),",
-      "replace": "      next: [],",
+      "file": "packages/features/episodes/src/server/shorts-groups.service.ts",
+      "find": "    next: input.shortsGroups.flatMap((group) => Object.values(group.videos)),\n",
+      "replace": "    next: [],\n",
       "cwd": "packages/features/episodes",
       "test": "__tests__/episode-video-save.test.ts",
       "pattern": "refuses a group"

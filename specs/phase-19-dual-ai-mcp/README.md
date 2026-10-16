@@ -125,7 +125,9 @@ started by explicit render tools. Video is not rendered in-app today and stays
 that way; Claude gets the VEO prompt manifest.
 
 **Publishing is out of scope for MCP** in this phase: an outward, hard-to-undo
-step stays a web action.
+step stays a web action. Since 2026-10-10 (owner) a connection a person
+grants `studio:publish` may *schedule* a publish and cancel it before it goes
+out (FILM-2207); publishing immediately is still a web action.
 
 ## Open questions (owner)
 

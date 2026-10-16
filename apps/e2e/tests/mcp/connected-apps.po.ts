@@ -30,7 +30,7 @@ export class ConnectedAppsPageObject {
     return byTest(this.page, 'pat-name-input');
   }
 
-  scope(name: 'read' | 'write' | 'render') {
+  scope(name: 'read' | 'write' | 'render' | 'publish') {
     return byTest(this.page, `pat-scope-${name}`);
   }
 

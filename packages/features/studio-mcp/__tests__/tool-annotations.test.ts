@@ -14,6 +14,9 @@ const REACHES_OUTSIDE_STORYBOOK = [
   'start_audio_render',
   // FILM-2007: translates through the model and voices on ElevenLabs
   'localize_episode',
+  // Owner, 2026-10-10: a scheduled publish posts to the team's channels
+  'schedule_publish',
+  'cancel_scheduled_publish',
 ];
 
 describe('the annotations every tool sends', () => {
@@ -39,7 +42,7 @@ describe('the annotations every tool sends', () => {
     },
   );
 
-  it('only the vendor renders reach outside StoryBook', () => {
+  it('only the vendor renders and scheduled publishes reach outside StoryBook', () => {
     expect(
       defaultTools
         .filter((tool) => tool.annotations.openWorldHint)

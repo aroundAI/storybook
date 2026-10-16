@@ -68,6 +68,7 @@ export const whoamiTool = defineTool({
           canRead: hasScope(principal.scopes, 'studio:read'),
           canWrite: hasScope(principal.scopes, 'studio:write'),
           canRender: hasScope(principal.scopes, 'studio:render'),
+          canSchedulePublishes: hasScope(principal.scopes, 'studio:publish'),
         },
       },
     };

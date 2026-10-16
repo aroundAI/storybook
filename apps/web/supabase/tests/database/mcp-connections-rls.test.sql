@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(29);
+select plan(30);
 
 -- FILM-1904. An MCP connection is one user's grant inside one team. The user
 -- reads and revokes their own connections and nothing else about them; token
@@ -235,7 +235,14 @@ select throws_ok(
      values (tests.get_supabase_uid('mcp_alice'), '19040000-0000-4000-8000-00000000000a',
              'pat', 'bad scope', array['studio:admin']) $$,
   '23514', null,
-  'a scope outside studio:read, studio:write, studio:render is refused'
+  'a scope outside studio:read, studio:write, studio:render, studio:publish is refused'
+);
+
+select lives_ok(
+  $$ insert into public.mcp_connections (user_id, account_id, kind, name, scopes)
+     values (tests.get_supabase_uid('mcp_alice'), '19040000-0000-4000-8000-00000000000a',
+             'pat', 'publish scope', array['studio:read', 'studio:publish']) $$,
+  'studio:publish may be granted (owner, 2026-10-10)'
 );
 
 select throws_ok(

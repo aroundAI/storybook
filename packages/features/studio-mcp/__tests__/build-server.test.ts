@@ -181,6 +181,7 @@ describe('buildMcpServer', () => {
         canRead: true,
         canWrite: false,
         canRender: false,
+        canSchedulePublishes: false,
       },
     });
     expect(records).toEqual([

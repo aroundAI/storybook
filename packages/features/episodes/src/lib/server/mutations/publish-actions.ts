@@ -7,12 +7,12 @@ import { z } from 'zod';
 import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import { returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
-import { episodeVideoSaveRefusal } from '@kit/storage/episode-video';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { saveEpisodeVideo } from '../../../server/episode-video.service';
+import { saveShortsGroups } from '../../../server/shorts-groups.service';
 
 const PublishVideoSchema = z.object({
   episodeId: z.string().uuid(),
@@ -72,40 +72,14 @@ const UpdateShortsGroupsSchema = z.object({
  */
 const updateShortsGroups = enhanceAction(
   async ({ episodeId, shortsGroups }) => {
-    const client = getSupabaseServerClient();
-
-    const { data: episode, error: fetchError } = await client
-      .from('episodes')
-      .select('project_id, final_video_url, localized_videos, shorts_groups')
-      .eq('id', episodeId)
-      .single();
-
-    if (fetchError) {
-      throw new Error(`Failed to fetch episode: ${fetchError.message}`);
-    }
-
-    const refusal = episodeVideoSaveRefusal({
+    const saved = await saveShortsGroups(getSupabaseServerClient(), {
       episodeId,
-      projectId: episode.project_id,
-      stored: episode,
-      next: shortsGroups.flatMap((group) => Object.values(group.videos)),
+      shortsGroups,
     });
 
-    if (refusal) {
-      throw new ActionRefusal(refusal);
+    if (!saved.ok) {
+      throw new ActionRefusal(saved.refusal);
     }
-
-    const { data: updated, error: updateError } = await client
-      .from('episodes')
-      .update({ shorts_groups: shortsGroups })
-      .eq('id', episodeId)
-      .select('id');
-
-    if (updateError) {
-      throw new Error(`Failed to update shorts groups: ${updateError.message}`);
-    }
-
-    requireAffectedRows(updated, "You can't change this episode's shorts.");
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,

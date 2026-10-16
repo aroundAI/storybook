@@ -1,7 +1,12 @@
 import { randomBytes } from 'node:crypto';
 
 import { STORYBOOKSTUDIO_CLIENT_ID } from '../../desktop-client';
-import { MCP_SCOPES, type McpScope, McpScopeSchema } from '../../scopes';
+import {
+  MCP_SCOPES,
+  type McpScope,
+  McpScopeSchema,
+  OPT_IN_SCOPES,
+} from '../../scopes';
 import { hashToken } from '../token';
 import { resolveClient } from './clients';
 import { OAuthError } from './errors';
@@ -196,11 +201,14 @@ export function isRegisteredRedirectUri(
   return port !== undefined && Number(port) <= 65535;
 }
 
-/** `null` for an unknown scope; the default set for no scope at all. */
+/**
+ * `null` for an unknown scope; for no scope at all, the default set plus the
+ * opt-in scopes, which the consent screen offers unticked.
+ */
 export function parseScopes(value: string | null): McpScope[] | null {
   const parts = (value ?? '').split(/\s+/).filter(Boolean);
 
-  if (parts.length === 0) return [...DEFAULT_SCOPES];
+  if (parts.length === 0) return [...DEFAULT_SCOPES, ...OPT_IN_SCOPES];
 
   const scopes: McpScope[] = [];
 

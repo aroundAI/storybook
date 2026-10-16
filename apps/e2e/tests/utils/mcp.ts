@@ -16,7 +16,11 @@ import { ownerToken, timedRest } from './seed';
 const MCP_URL = () =>
   `${process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'}/api/mcp`;
 
-export type McpScope = 'studio:read' | 'studio:write' | 'studio:render';
+export type McpScope =
+  | 'studio:read'
+  | 'studio:write'
+  | 'studio:render'
+  | 'studio:publish';
 
 /** `sbk_pat_` + 32 random bytes, base64url: the shape `isOwnTokenShape` accepts. */
 export async function mintPersonalAccessToken(
