@@ -6,10 +6,7 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import type { Database, Json } from '@kit/supabase/database';
 
-import {
-  type ChannelCadenceRow,
-  resolveCadence,
-} from '../lib/cadence/cadence';
+import { type ChannelCadenceRow, resolveCadence } from '../lib/cadence/cadence';
 import {
   type OccupiedPost,
   type ReleaseItem,
