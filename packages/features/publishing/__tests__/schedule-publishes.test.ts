@@ -36,6 +36,7 @@ let publishRow: { status: string } | null;
 /** The row's status when the delete runs; the scheduled job may have moved it */
 let statusAtDelete: string;
 let role: string | null;
+let episodeThumbnail: string | null;
 
 function query(name: string) {
   let filters: Record<string, unknown> = {};
@@ -84,11 +85,17 @@ function query(name: string) {
       Promise.resolve({
         data: {
           final_video_url: null,
-          thumbnail_url: null,
+          thumbnail_url: episodeThumbnail,
           project_id: 'p1',
           project: { account_id: 'a1' },
           localized_videos: { en: VIDEO },
           shorts_groups: [
+            {
+              id: 'yt-cut',
+              name: 'YT cut',
+              platforms: ['youtube'],
+              videos: { en: VIDEO },
+            },
             {
               id: 'ig-cut',
               name: 'IG cut',
@@ -175,11 +182,42 @@ beforeEach(() => {
   publishRow = { status: 'scheduled' };
   statusAtDelete = 'scheduled';
   role = 'owner';
+  episodeThumbnail = null;
+  vi.unstubAllEnvs();
   getAccessToken.mockReset();
   getAccessToken.mockResolvedValue({ accessToken: 'token' });
 });
 
 describe('scheduling a publish over MCP', () => {
+  it('gives the long video the episode thumbnail and a Short none (KB-197)', async () => {
+    // The ownership check (KB-104) reads the storage host from the env
+    vi.stubEnv(
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'https://abcdefghijklmnop.supabase.co',
+    );
+    vi.stubEnv('STORAGE_PROVIDER', '');
+    episodeThumbnail = `https://abcdefghijklmnop.supabase.co/storage/v1/object/public/project-assets/episodes/${EPISODE}/thumbnails/en-1.png`;
+
+    const result = await schedule([
+      target(),
+      target({ contentType: 'short', shortsGroupId: 'yt-cut' }),
+      target({
+        connectionId: IG,
+        contentType: 'short',
+        shortsGroupId: 'ig-cut',
+      }),
+    ]);
+
+    expect(result.ok).toBe(true);
+    expect(
+      inserted.map((row) => [row.content_type, row.thumbnail_url]),
+    ).toEqual([
+      ['full', episodeThumbnail],
+      ['short', null],
+      ['short', null],
+    ]);
+  });
+
   it('writes one scheduled row per target, on the channel’s own platform', async () => {
     const result = await schedule([
       target(),

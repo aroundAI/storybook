@@ -40,6 +40,7 @@ import {
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
 import { isOfferedPlatform } from '../lib/platforms';
+import { publishThumbnail } from '../lib/publish-thumbnail';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
@@ -188,7 +189,11 @@ const publishToAllHandler = enhanceAction(
               title: platform.title,
               description: platform.description,
               tags: platform.tags,
-              thumbnail_url: platform.thumbnailUrl ?? episodeThumbnail,
+              thumbnail_url: publishThumbnail(
+                platform.contentType || 'full',
+                platform.thumbnailUrl,
+                episodeThumbnail,
+              ),
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
               metadata: {
@@ -277,7 +282,11 @@ const publishToAllHandler = enhanceAction(
           );
           const finalVideoUrl = needsTunnel ? getTunnelUrl(videoUrl) : videoUrl;
 
-          const thumbnailUrl = platform.thumbnailUrl ?? episodeThumbnail;
+          const thumbnailUrl = publishThumbnail(
+            actualContentType,
+            platform.thumbnailUrl,
+            episodeThumbnail,
+          );
 
           // Upload to platform (immediately or with native scheduling)
           const uploadResult = await uploadToPlatform(
@@ -640,9 +649,11 @@ const retryPublish = enhanceAction(
           title: publish.title ?? '',
           description: publish.description ?? '',
           tags: publish.tags ?? [],
-          thumbnailUrl:
-            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??
+          thumbnailUrl: publishThumbnail(
+            publish.content_type,
+            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),
             ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
+          ),
           platformSpecific,
           aiGenerated: publish.ai_generated,
         },

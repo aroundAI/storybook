@@ -51,6 +51,7 @@
     "./lib/shorts-targets": "./src/lib/shorts-targets.ts",
     "./lib/owned-episode-video": "./src/lib/owned-episode-video.ts",
     "./lib/owned-thumbnail": "./src/lib/owned-thumbnail.ts",
+    "./lib/publish-thumbnail": "./src/lib/publish-thumbnail.ts",
     "./lib/youtube-declaration": "./src/lib/youtube-declaration.ts",
     "./lib/schemas/youtube-declaration": "./src/lib/schemas/youtube-declaration.schema.ts",
     "./lib/platforms": "./src/lib/platforms.ts",

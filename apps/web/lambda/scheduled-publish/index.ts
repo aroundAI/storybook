@@ -23,6 +23,7 @@ import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
+import { publishThumbnail } from '@kit/publishing/lib/publish-thumbnail';
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database, Json } from '@kit/supabase/database';
 
@@ -323,7 +324,11 @@ export async function handler(): Promise<ScheduledPublishResult> {
       description: publish.description || '',
       tags: publish.tags || [],
       thumbnailUrl:
-        publish.thumbnail_url || publish.episodes?.thumbnail_url || undefined,
+        publishThumbnail(
+          publish.content_type,
+          publish.thumbnail_url,
+          publish.episodes?.thumbnail_url,
+        ) ?? undefined,
       metadata: publish.metadata || {},
       aiGenerated: publish.ai_generated,
     };

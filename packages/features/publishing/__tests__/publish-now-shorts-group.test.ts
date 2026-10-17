@@ -52,6 +52,7 @@ const GROUP_A = `${BASE}/episodes/${EPISODE}/videos/en-short-a.mp4`;
 const GROUP_B = `${BASE}/episodes/${EPISODE}/videos/en-short-b.mp4`;
 const GROUP_IG = `${BASE}/episodes/${EPISODE}/videos/en-short-ig.mp4`;
 const inserted: Array<Record<string, unknown>> = [];
+let episodeThumbnail: string | null = null;
 
 function table(name: string) {
   const query = {
@@ -80,7 +81,7 @@ function table(name: string) {
         return Promise.resolve({
           data: {
             final_video_url: null,
-            thumbnail_url: null,
+            thumbnail_url: episodeThumbnail,
             project_id: 'p',
             project: { account_id: ACCOUNT },
             // An episode's own upload: a publish sends nothing else (KB-123)
@@ -155,6 +156,7 @@ const savedEnv = { ...process.env };
 
 beforeEach(() => {
   inserted.length = 0;
+  episodeThumbnail = null;
   uploadVideo.mockReset();
   uploadVideo.mockResolvedValue({
     videoId: 'v1',
@@ -182,6 +184,23 @@ describe('Publish Now sends the Shorts group it names (KB-133)', () => {
     expect(result).toMatchObject({ ok: true });
     expect(uploadVideo).toHaveBeenCalledWith(
       expect.objectContaining({ videoPath: video }),
+    );
+  });
+});
+
+describe('Publish Now sends a Short no thumbnail (KB-197)', () => {
+  it('writes and uploads the short without the episode thumbnail', async () => {
+    episodeThumbnail = `${BASE}/episodes/${EPISODE}/thumbnails/en-1.png`;
+    const { publishToAllAction } = await import(
+      '../src/server/publish-actions'
+    );
+
+    const result = await publishToAllAction(publishShort('group-a'));
+
+    expect(result).toMatchObject({ ok: true });
+    expect(inserted[0]?.thumbnail_url).toBeNull();
+    expect(uploadVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ videoPath: GROUP_A, thumbnailPath: undefined }),
     );
   });
 });
