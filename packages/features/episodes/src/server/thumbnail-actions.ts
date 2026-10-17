@@ -8,19 +8,14 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
-import {
-  type StorageAdapter,
-  deleteOwnedObject,
-  getStorageAdapter,
-  ownedStorageKey,
-} from '@kit/storage';
-import {
-  PROJECT_ASSETS_BUCKET,
-  episodeThumbnailFolder,
-} from '@kit/storage/upload-paths';
+import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  removeThumbnailFile,
+  saveEpisodeThumbnail,
+} from './episode-thumbnail.service';
 import {
   INTRO_THUMBNAIL_REFUSALS,
   failureMessage,
@@ -140,35 +135,6 @@ async function canEditEpisode(episodeId: string): Promise<boolean> {
   );
 }
 
-/**
- * Best-effort delete of a thumbnail's stored file. Only a file inside this
- * episode's folder: the URL came from the client, and on R2 the delete runs
- * with the app's own credentials (KB-54).
- */
-async function removeThumbnailFile(
-  storage: StorageAdapter,
-  thumbnailUrl: string,
-  episodeId: string,
-  ctx: Record<string, unknown>,
-) {
-  const logger = await getLogger();
-  const result = await deleteOwnedObject(
-    storage,
-    'project-assets',
-    thumbnailUrl,
-    `episodes/${episodeId}/`,
-  );
-
-  if (result.deleted) {
-    logger.info({ ...ctx, key: result.key }, 'Deleted thumbnail from storage');
-  } else {
-    logger.warn(
-      { ...ctx, thumbnailUrl, reason: result.reason, error: result.error },
-      'Thumbnail left in storage',
-    );
-  }
-}
-
 // ============================================================================
 // Upload Episode Thumbnail Action
 // ============================================================================
@@ -209,85 +175,18 @@ const uploadEpisodeThumbnail = enhanceAction(
     }
 
     try {
-      // Only this episode's own uploads: the publish step sends what is
-      // saved here to the platforms (KB-90). The delete's folder rule (KB-54).
-      const storage = getStorageAdapter(client);
+      const saved = await saveEpisodeThumbnail(
+        client,
+        getStorageAdapter(client),
+        user.id,
+        data,
+      );
 
-      if (
-        !ownedStorageKey(
-          storage,
-          PROJECT_ASSETS_BUCKET,
-          data.thumbnailUrl,
-          episodeThumbnailFolder(data.episodeId),
-        )
-      ) {
-        throw new ActionRefusal(INTRO_THUMBNAIL_REFUSALS.foreignFile);
+      if (!saved.ok) {
+        throw new ActionRefusal(saved.refusal);
       }
 
-      // Check if thumbnail already exists for this episode + language
-      const { data: existingThumbnail } = await client
-        .from('episode_thumbnails')
-        .select('id, thumbnail_url')
-        .eq('episode_id', data.episodeId)
-        .eq('language', data.language)
-        .single();
-
-      // If setting this as default, unset other defaults first
-      if (data.isDefault) {
-        await client
-          .from('episode_thumbnails')
-          .update({ is_default: false })
-          .eq('episode_id', data.episodeId)
-          .eq('is_default', true);
-      }
-
-      // Upsert thumbnail record
-      const thumbnailData = {
-        episode_id: data.episodeId,
-        language: data.language,
-        language_label: data.languageLabel || null,
-        thumbnail_url: data.thumbnailUrl,
-        file_name: data.fileName || null,
-        file_size_bytes: data.fileSizeBytes || null,
-        mime_type: data.mimeType || null,
-        width: data.width || null,
-        height: data.height || null,
-        is_default: data.isDefault || false,
-        created_by: user.id,
-      };
-
-      const { data: thumbnail, error: upsertError } = await client
-        .from('episode_thumbnails')
-        .upsert(thumbnailData, {
-          onConflict: 'episode_id,language',
-        })
-        .select()
-        .single();
-
-      if (upsertError) {
-        logger.error(
-          { ...ctx, error: upsertError },
-          'Failed to upsert thumbnail',
-        );
-        throw new Error(`Failed to save thumbnail: ${upsertError.message}`);
-      }
-
-      if (!thumbnail) {
-        throw new Error('Failed to save thumbnail: no data returned');
-      }
-
-      // Only once the row points at the new file (KB-54)
-      if (
-        existingThumbnail?.thumbnail_url &&
-        existingThumbnail.thumbnail_url !== data.thumbnailUrl
-      ) {
-        await removeThumbnailFile(
-          storage,
-          existingThumbnail.thumbnail_url,
-          data.episodeId,
-          ctx,
-        );
-      }
+      const { thumbnail } = saved;
 
       logger.info(ctx, 'Episode thumbnail uploaded successfully');
 

@@ -7,7 +7,6 @@ import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { DEFAULT_CADENCE, resolveCadence } from '../lib/cadence/cadence';
 import {
   ChannelCadenceSchema,
   ChannelCadencesQuerySchema,
@@ -17,7 +16,9 @@ import {
 import {
   discardHeldShorts,
   previewCadenceRelease,
+  readChannelCadences,
   requeueHeldShorts,
+  saveChannelCadence,
   scheduleCadenceRelease,
 } from './schedule-release.service';
 
@@ -81,86 +82,15 @@ export const discardHeldShortsAction = returnRefusals(
 
 /** Each channel's cadence for both content types: its own, else the defaults */
 export const getChannelCadencesAction = enhanceAction(
-  async ({ connectionIds }) => {
-    const client = getSupabaseServerClient();
-    const { data, error } = await client
-      .from('channel_posting_cadences')
-      .select(
-        'platform_connection_id, content_type, timezone, slot_times, days_of_week, min_days_between, start_after_hours, jitter_minutes, enabled',
-      )
-      .in('platform_connection_id', connectionIds);
-
-    if (error) {
-      throw new Error(`Could not read the channels' cadence: ${error.message}`);
-    }
-
-    return connectionIds.flatMap((connectionId) =>
-      (['full', 'short'] as const).map((contentType) => {
-        const row = data.find(
-          (r) =>
-            r.platform_connection_id === connectionId &&
-            r.content_type === contentType,
-        );
-
-        return {
-          connectionId,
-          contentType,
-          own: !!row,
-          enabled: row?.enabled ?? true,
-          cadence: row
-            ? resolveCadence({ ...row, enabled: true }, contentType, 'UTC')
-            : { ...DEFAULT_CADENCE[contentType], timezone: null },
-        };
-      }),
-    );
-  },
+  async ({ connectionIds }) =>
+    readChannelCadences(getSupabaseServerClient(), connectionIds),
   { schema: ChannelCadencesQuerySchema, auth: true },
 );
 
 export const saveChannelCadenceAction = returnRefusals(
   enhanceAction(
-    async (input) => {
-      const client = getSupabaseServerClient();
-
-      const { data: channel, error: readError } = await client
-        .from('platform_connections')
-        .select('id, account_id')
-        .eq('id', input.connectionId)
-        .maybeSingle();
-
-      if (readError) {
-        throw new Error(`Could not read the channel: ${readError.message}`);
-      }
-
-      if (!channel) {
-        throw new ActionRefusal('That channel is not one of this team’s.');
-      }
-
-      const { error } = await client.from('channel_posting_cadences').upsert(
-        {
-          account_id: channel.account_id,
-          platform_connection_id: input.connectionId,
-          content_type: input.contentType,
-          timezone: input.timezone,
-          slot_times: [...input.slotTimes].sort(),
-          days_of_week: [...new Set(input.daysOfWeek)].sort(),
-          min_days_between: input.minDaysBetween,
-          start_after_hours: input.startAfterHours,
-          jitter_minutes: input.jitterMinutes,
-          enabled: input.enabled,
-        },
-        { onConflict: 'platform_connection_id,content_type' },
-      );
-
-      if (error) {
-        throw new Error(`Could not save the cadence: ${error.message}`);
-      }
-
-      return {
-        connectionId: input.connectionId,
-        contentType: input.contentType,
-      };
-    },
+    async (input) =>
+      unwrapResult(await saveChannelCadence(getSupabaseServerClient(), input)),
     { schema: ChannelCadenceSchema, auth: true },
   ),
 );
