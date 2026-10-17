@@ -110,6 +110,15 @@
       "kind": "unit",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "E2E R7 a long video released over MCP goes without its thumbnail",
+      "kind": "e2e",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    if (url) chosen.set(index, url);\n",
+      "replace": "",
+      "spec": "tests/mcp/cadence-release.spec.ts",
+      "grep": "no Short carries a thumbnail"
     }
   ]
 }
