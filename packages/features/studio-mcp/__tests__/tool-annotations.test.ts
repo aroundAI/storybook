@@ -17,6 +17,10 @@ const REACHES_OUTSIDE_STORYBOOK = [
   // Owner, 2026-10-10: a scheduled publish posts to the team's channels
   'schedule_publish',
   'cancel_scheduled_publish',
+  // FILM-2208: a release on the channels' cadence, and its held Shorts
+  'schedule_release',
+  'requeue_held_shorts',
+  'discard_held_shorts',
 ];
 
 describe('the annotations every tool sends', () => {

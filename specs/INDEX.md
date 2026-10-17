@@ -731,6 +731,7 @@ Seasons can be created empty and filled later, every stage is optional, and an e
 | FILM-2205 | [start-from-and-progress-rail](./phase-22-flexible-production/FILM-2205-start-from-and-progress-rail.yaml) | DONE | L | FILM-2202, FILM-2203 |
 | FILM-2206 | [follow-up-from-analytics](./phase-22-flexible-production/FILM-2206-follow-up-from-analytics.yaml) | DONE | S | FILM-2205, FILM-1912 |
 | FILM-2207 | [mcp-schedule-publish](./phase-22-flexible-production/FILM-2207-mcp-schedule-publish.yaml) | DONE | M | FILM-2204, FILM-708 |
+| FILM-2208 | [mcp-cadence-release](./phase-22-flexible-production/FILM-2208-mcp-cadence-release.yaml) | DONE | M | FILM-719, FILM-2207 |
 
 ### Spikes
 

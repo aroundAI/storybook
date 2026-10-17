@@ -81,8 +81,8 @@ notes: >
   to 100 API publishes per rolling 24 hours, so cadence, not quota, is the
   limit. Out of scope: best-time-to-post from analytics (there is no
   hour-level data), YouTube's native publishAt, and a cross-channel calendar
-  page. The MCP schedule_publish tool keeps explicit times; a cadence mode
-  for it is a follow-up.
+  page. The MCP schedule_publish tool keeps explicit times; the cadence
+  release over MCP is FILM-2208's schedule_release.
 feature:
   database: "20261016151054_film-719-channel-posting-cadence.sql"
   queries: []

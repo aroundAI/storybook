@@ -8,6 +8,7 @@ import {
   linkPublishedVideoTool,
   setStageSkippedTool,
 } from './episode-production';
+import { createEpisodeThumbnailTools } from './episode-thumbnail';
 import { createEpisodeTool, updateEpisodeTool } from './episodes';
 import { linkAssetsToEpisodeTool } from './link-assets';
 import { createProjectTool, updateProjectTool } from './projects';
@@ -41,6 +42,7 @@ export const authorTools: McpToolDefinition[] = [
     linkPublishedVideoTool,
   ].map((tool) => tool as unknown as McpToolDefinition),
   ...createEpisodeVideoTools(),
+  ...createEpisodeThumbnailTools(),
 ];
 
 export {

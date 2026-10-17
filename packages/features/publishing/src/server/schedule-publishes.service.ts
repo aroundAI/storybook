@@ -10,6 +10,7 @@ import {
   resolveEpisodeVideo,
 } from '../lib/episode-video';
 import { PLATFORM_NAMES, isOfferedPlatform } from '../lib/platforms';
+import { publishThumbnail } from '../lib/publish-thumbnail';
 import { canTakeDown, projectRoleOf } from '../lib/takedown';
 import { TokenRefusal } from '../lib/token-errors';
 import { getAccessToken } from './connection-tokens';
@@ -243,7 +244,11 @@ export async function prepareScheduledRows(
       title: platform.title,
       description: platform.description,
       tags: platform.tags,
-      thumbnail_url: platform.thumbnailUrl ?? episodeThumbnail,
+      thumbnail_url: publishThumbnail(
+        platform.contentType,
+        platform.thumbnailUrl,
+        episodeThumbnail,
+      ),
       status: target.held ? 'draft' : 'scheduled',
       scheduled_at: target.held ? null : platform.scheduledAt,
       slot_at: target.held ? null : (target.slotAt ?? null),

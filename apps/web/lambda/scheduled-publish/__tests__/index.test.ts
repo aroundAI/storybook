@@ -22,6 +22,7 @@ interface Row {
 
 const rows = new Map<string, Row>();
 const sent: string[] = [];
+const messages: Array<{ publishId: string; thumbnailUrl?: string }> = [];
 const gateOutcomes = new Map<string, string>();
 
 /** An in-memory `publishes`: selects see what updates left behind */
@@ -77,7 +78,9 @@ vi.mock('@supabase/supabase-js', () => ({
 vi.mock('@aws-sdk/client-sqs', () => ({
   SQSClient: class {
     send(command: { input: { MessageBody: string } }) {
-      sent.push(JSON.parse(command.input.MessageBody).publishId);
+      const message = JSON.parse(command.input.MessageBody);
+      sent.push(message.publishId);
+      messages.push(message);
       return Promise.resolve({});
     }
   },
@@ -136,6 +139,7 @@ function due(id: string): Row {
 beforeEach(() => {
   rows.clear();
   sent.length = 0;
+  messages.length = 0;
   gateOutcomes.clear();
 });
 
@@ -148,6 +152,28 @@ describe('the scheduled job', () => {
     expect(sent).toEqual(['p1']);
     expect(rows.get('p1')!.status).toBe('queued');
     expect(results.map((r) => r.queued).sort()).toEqual([0, 1]);
+  });
+
+  it('sends a Short no thumbnail and a long video the episode’s (KB-197)', async () => {
+    const thumbnail = 'https://cdn/episodes/ep1/thumbnails/en-1.png';
+    const withThumbnail = (id: string, contentType: string): Row => {
+      const row = due(id);
+      return {
+        ...row,
+        content_type: contentType,
+        // A row written before KB-197 carries the episode's thumbnail too
+        thumbnail_url: contentType === 'short' ? thumbnail : null,
+        episodes: { ...(row.episodes as object), thumbnail_url: thumbnail },
+      };
+    };
+    rows.set('long', withThumbnail('long', 'full'));
+    rows.set('short', withThumbnail('short', 'short'));
+
+    await handler();
+
+    expect(
+      Object.fromEntries(messages.map((m) => [m.publishId, m.thumbnailUrl])),
+    ).toEqual({ long: thumbnail, short: undefined });
   });
 
   it('leaves a waiting Short scheduled and sends nothing for it', async () => {

@@ -15,8 +15,8 @@
       "name": "A2 a retried publish sends its stored thumbnail unchecked",
       "kind": "unit",
       "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "          thumbnailUrl:\n            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          platformSpecific,",
-      "replace": "          thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,\n          platformSpecific,",
+      "find": "            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          ),\n          platformSpecific,",
+      "replace": "            publish.thumbnail_url,\n            episode.thumbnail_url,\n          ),\n          platformSpecific,",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-thumbnail-ownership.test.ts",
       "pattern": "publish-actions.ts uses ownedEpisodeThumbnail"
@@ -25,8 +25,8 @@
       "name": "C1 the scheduled-publish cron sends its stored thumbnail unchecked",
       "kind": "unit",
       "file": "packages/features/publishing/src/jobs/process-scheduled-publishes.ts",
-      "find": "          thumbnailUrl:\n            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          platformSpecific: publish.metadata ?? {},",
-      "replace": "          thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,\n          platformSpecific: publish.metadata ?? {},",
+      "find": "            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          ),\n          platformSpecific: publish.metadata ?? {},",
+      "replace": "            publish.thumbnail_url,\n            episode.thumbnail_url,\n          ),\n          platformSpecific: publish.metadata ?? {},",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-thumbnail-ownership.test.ts",
       "pattern": "process-scheduled-publishes.ts uses ownedEpisodeThumbnail"

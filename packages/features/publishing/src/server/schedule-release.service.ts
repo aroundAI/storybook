@@ -6,7 +6,11 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import type { Database, Json } from '@kit/supabase/database';
 
-import { type ChannelCadenceRow, resolveCadence } from '../lib/cadence/cadence';
+import {
+  type ChannelCadenceRow,
+  DEFAULT_CADENCE,
+  resolveCadence,
+} from '../lib/cadence/cadence';
 import {
   type OccupiedPost,
   type ReleaseItem,
@@ -18,6 +22,7 @@ import type {
   HeldPost,
   ReleasePreview,
 } from '../lib/cadence/release-types';
+import type { ChannelCadenceInput } from '../lib/schemas/schedule-release.schema';
 import {
   type ScheduleTarget,
   type ScheduledPublish,
@@ -694,4 +699,95 @@ export async function discardHeldShorts(
   }
 
   return { ok: true, data: { discarded: data.map((row) => row.id) } };
+}
+
+const CADENCE_COLUMNS =
+  'platform_connection_id, content_type, timezone, slot_times, days_of_week, min_days_between, start_after_hours, jitter_minutes, enabled';
+
+/**
+ * Each channel's cadence for both content types: its own, else the defaults.
+ * The Publish screen's dialog and the MCP read the same answer.
+ */
+export async function readChannelCadences(
+  client: Client,
+  connectionIds: string[],
+) {
+  const { data, error } = await client
+    .from('channel_posting_cadences')
+    .select(CADENCE_COLUMNS)
+    .in('platform_connection_id', connectionIds);
+
+  if (error) {
+    throw new Error(`Could not read the channels' cadence: ${error.message}`);
+  }
+
+  return connectionIds.flatMap((connectionId) =>
+    (['full', 'short'] as const).map((contentType) => {
+      const row = data.find(
+        (r) =>
+          r.platform_connection_id === connectionId &&
+          r.content_type === contentType,
+      );
+
+      return {
+        connectionId,
+        contentType,
+        own: !!row,
+        enabled: row?.enabled ?? true,
+        cadence: row
+          ? resolveCadence({ ...row, enabled: true }, contentType, 'UTC')
+          : { ...DEFAULT_CADENCE[contentType], timezone: null },
+      };
+    }),
+  );
+}
+
+/** Sets one channel's cadence for one content type; RLS keeps it the team's */
+export async function saveChannelCadence(
+  client: Client,
+  input: ChannelCadenceInput,
+): Promise<
+  Result<{
+    connectionId: string;
+    contentType: ChannelCadenceInput['contentType'];
+  }>
+> {
+  const { data: channel, error: readError } = await client
+    .from('platform_connections')
+    .select('id, account_id')
+    .eq('id', input.connectionId)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(`Could not read the channel: ${readError.message}`);
+  }
+
+  if (!channel) {
+    return { ok: false, refusal: 'That channel is not one of this team’s.' };
+  }
+
+  const { error } = await client.from('channel_posting_cadences').upsert(
+    {
+      account_id: channel.account_id,
+      platform_connection_id: input.connectionId,
+      content_type: input.contentType,
+      timezone: input.timezone,
+      slot_times: [...input.slotTimes].sort(),
+      days_of_week: [...new Set(input.daysOfWeek)].sort(),
+      min_days_between: input.minDaysBetween,
+      start_after_hours: input.startAfterHours,
+      jitter_minutes: input.jitterMinutes,
+      enabled: input.enabled,
+    },
+    { onConflict: 'platform_connection_id,content_type' },
+  );
+
+  if (error) {
+    throw new Error(`Could not save the cadence: ${error.message}`);
+  }
+
+  return {
+    ok: true,
+    data: { connectionId: input.connectionId, contentType: input.contentType },
+  };
 }

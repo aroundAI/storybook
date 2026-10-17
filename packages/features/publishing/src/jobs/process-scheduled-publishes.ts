@@ -14,6 +14,7 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
+import { publishThumbnail } from '../lib/publish-thumbnail';
 import { TokenRefusal, tokenErrorCodeOf } from '../lib/token-errors';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
@@ -396,9 +397,11 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           description: publish.description ?? '',
           tags: publish.tags ?? [],
           // KB-104: the row is writable by any project writer
-          thumbnailUrl:
-            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??
+          thumbnailUrl: publishThumbnail(
+            publish.content_type,
+            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),
             ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
+          ),
           platformSpecific: publish.metadata ?? {},
           aiGenerated: publish.ai_generated,
         },

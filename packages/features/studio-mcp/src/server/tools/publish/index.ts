@@ -12,6 +12,7 @@ import { McpToolError } from '../../../errors';
 import { type McpToolDefinition, defineTool } from '../../../registry';
 import { type EpisodeRef, requireEpisodeInAccount } from '../read/scope';
 import { refused } from '../validation';
+import { releaseTools } from './release';
 import { shortsGroupTools } from './shorts';
 
 /**
@@ -78,7 +79,7 @@ export const schedulePublishTool = defineTool({
   name: 'schedule_publish',
   title: 'Schedule a publish',
   description:
-    "Schedules an episode's video, or one of its Shorts groups, to post on channels of its project at a future time: one target per channel. Every target is checked first, as the Publish screen checks a publish (the channel is the project's and still connected, the video exists in that language, a Shorts group goes to that platform, YouTube's audience is declared), and a refused target schedules nothing. Nothing reaches a platform until the scheduled time; cancel_scheduled_publish undoes one before then. Publishing immediately is done on the Publish screen.",
+    "Schedules an episode's video, or one of its Shorts groups, to post on channels of its project at an exact future time: one target per channel. To post on each channel's cadence instead, with Shorts waiting for their long video, use schedule_release. Every target is checked first, as the Publish screen checks a publish (the channel is the project's and still connected, the video exists in that language, a Shorts group goes to that platform, YouTube's audience is declared), and a refused target schedules nothing. Nothing reaches a platform until the scheduled time; cancel_scheduled_publish undoes one before then. Publishing immediately is done on the Publish screen.",
   inputSchema: {
     episodeId: z.string().uuid(),
     targets: z.array(TargetSchema).min(1).max(20),
@@ -277,4 +278,5 @@ export const publishTools = [
   ...shortsGroupTools,
   schedulePublishTool,
   cancelScheduledPublishTool,
+  ...releaseTools,
 ] as unknown as McpToolDefinition[];

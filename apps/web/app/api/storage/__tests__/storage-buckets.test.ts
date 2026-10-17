@@ -142,7 +142,7 @@ describe('storage buckets (KB-55)', () => {
 
     expect(found).toContainEqual({
       bucket: 'project-assets',
-      file: 'packages/features/episodes/src/server/thumbnail-actions.ts',
+      file: 'packages/features/episodes/src/server/episode-thumbnail.service.ts',
     });
     expect(found).toContainEqual({
       bucket: 'audio',

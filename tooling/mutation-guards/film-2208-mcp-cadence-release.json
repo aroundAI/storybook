@@ -1,0 +1,124 @@
+{
+  "feature": "FILM-2208 cadence releases over MCP, and KB-197 (Shorts carry no thumbnail)",
+  "mutations": [
+    {
+      "name": "K1 a Short is sent the episode thumbnail",
+      "file": "packages/features/publishing/src/lib/publish-thumbnail.ts",
+      "find": "  if (contentType === 'short') return null;\n",
+      "replace": "",
+      "pattern": "and a Short none",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts"
+    },
+    {
+      "name": "K2 Publish Now sends a Short the episode thumbnail",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "              thumbnail_url: publishThumbnail(\n                platform.contentType || 'full',\n",
+      "replace": "              thumbnail_url: publishThumbnail(\n                'full',\n",
+      "pattern": "Publish Now sends a Short no thumbnail",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-now-shorts-group.test.ts"
+    },
+    {
+      "name": "K3 the scheduled job sends a stored Short thumbnail",
+      "file": "apps/web/lambda/scheduled-publish/index.ts",
+      "find": "        publishThumbnail(\n          publish.content_type,\n",
+      "replace": "        publishThumbnail(\n          'full',\n",
+      "pattern": "sends a Short no thumbnail",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "lambda/scheduled-publish/__tests__/index.test.ts"
+    },
+    {
+      "name": "R1 a preview schedules the release",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    if (input.preview) {\n",
+      "replace": "    if (input.preview && false) {\n",
+      "pattern": "previews through the Publish screen",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "R2 a released Short carries the episode thumbnail",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    if (target.contentType !== 'full') return;\n",
+      "replace": "",
+      "pattern": "gives the long video the episode thumbnail for its language",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "R3 another team's channel takes a cadence",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    .in('id', connectionIds)\n    .eq('account_id', accountId);\n",
+      "replace": "    .in('id', connectionIds);\n",
+      "pattern": "refuses another team’s channel",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "R4 another team's held Shorts are re-queued or discarded",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    await requireEpisodeInAccount(client, accountId, episodeId, 'id');\n",
+      "replace": "",
+      "pattern": "refuses a Short of another team",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "R5 the calendar reads one unpaged page",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "            .order('id')\n            .range(start, end) as unknown as CalendarPage,\n        'publish calendar',",
+      "replace": "            .order('id') as unknown as CalendarPage,\n        'publish calendar',",
+      "pattern": "reads past the 1000-row cap",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "R6 the calendar reads any span",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    if (days <= 0 || days > MAX_CALENDAR_DAYS) {\n",
+      "replace": "    if (days <= 0) {\n",
+      "pattern": "refuses a range longer than 62 days",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "T1 a thumbnail is finalized from outside its episode's folder",
+      "file": "packages/features/studio-mcp/src/server/tools/author/episode-thumbnail.ts",
+      "find": "        !input.key.startsWith(folder) ||\n",
+      "replace": "",
+      "pattern": "refuses a key outside this episode’s thumbnails",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "T2 finalizing the default language again drops its default",
+      "file": "packages/features/studio-mcp/src/server/tools/author/episode-thumbnail.ts",
+      "find": "(!current || current.language === input.language)",
+      "replace": "!current",
+      "pattern": "keeps it the default",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "E2E R7 a long video released over MCP goes without its thumbnail",
+      "kind": "e2e",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    if (url) chosen.set(index, url);\n",
+      "replace": "",
+      "spec": "tests/mcp/cadence-release.spec.ts",
+      "grep": "no Short carries a thumbnail"
+    }
+  ]
+}

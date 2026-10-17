@@ -81,9 +81,9 @@
     {
       "name": "KB-90 thumbnail saved from outside its episode's thumbnails folder",
       "kind": "unit",
-      "file": "packages/features/episodes/src/server/thumbnail-actions.ts",
-      "find": "          episodeThumbnailFolder(data.episodeId),",
-      "replace": "          'episodes/',",
+      "file": "packages/features/episodes/src/server/episode-thumbnail.service.ts",
+      "find": "      episodeThumbnailFolder(input.episodeId),",
+      "replace": "      'episodes/',",
       "cwd": "packages/features/episodes",
       "test": "__tests__/replacement-deletes.test.ts",
       "pattern": "refuses a thumbnail from"

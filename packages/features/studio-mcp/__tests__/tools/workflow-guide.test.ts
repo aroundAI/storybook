@@ -55,6 +55,15 @@ describe('get_workflow_guide', () => {
       'list_episode_publishes',
       'schedule_publish',
       'cancel_scheduled_publish',
+      // FILM-2208
+      'schedule_release',
+      'get_channel_cadence',
+      'set_channel_cadence',
+      'requeue_held_shorts',
+      'discard_held_shorts',
+      'request_episode_thumbnail_upload',
+      'finalize_episode_thumbnail',
+      'get_publish_calendar',
       'studio:publish',
       'MISSING_INPUTS',
     ]) {
@@ -87,7 +96,7 @@ describe('get_workflow_guide', () => {
 });
 
 describe('the default tool list', () => {
-  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools, the Studio tools and the five publish tools, each name once', () => {
+  it('holds whoami, the guide, the eight read tools, the six author tools, the analytics tools, the seven generation tools, the four render tools, the three edit tools, the Studio tools and the publish tools, each name once', () => {
     const names = defaultTools.map((tool) => tool.name);
 
     expect(new Set(names).size).toBe(names.length);
@@ -156,6 +165,15 @@ describe('the default tool list', () => {
         'delete_shorts_group',
         'schedule_publish',
         'cancel_scheduled_publish',
+        // FILM-2208: cadence releases, thumbnails and the calendar
+        'schedule_release',
+        'get_channel_cadence',
+        'set_channel_cadence',
+        'requeue_held_shorts',
+        'discard_held_shorts',
+        'get_publish_calendar',
+        'request_episode_thumbnail_upload',
+        'finalize_episode_thumbnail',
       ].sort(),
     );
   });
