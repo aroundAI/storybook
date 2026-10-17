@@ -1,0 +1,95 @@
+spec_id: "FILM-719"
+title: "Channel posting cadence: a release drips onto each channel, and an episode's Shorts follow it until the next episode"
+phase: 7
+phase_name: "Publishing"
+category: feature
+status: DONE
+effort: M
+dependencies:
+  - spec_id: "FILM-708"
+    note: "the Publish screen, its Schedule Release panel and Shorts groups' platforms"
+  - spec_id: "FILM-2207"
+    note: "preparePublish and schedulePublishes, which a cadence release writes through (stacked on #664)"
+summary: >
+  The owner has five channels, each with five long videos and four or five
+  Shorts or Reels per video (owner, 2026-10-15). The Schedule Release panel
+  put an episode's videos 15 minutes apart, so a channel got a long video
+  and all its Shorts within hours. Nothing looked at what other episodes
+  already had queued on the same channel. A burst of templated uploads is
+  what YouTube's inauthentic-content policy and near-duplicate checks look
+  for. No platform publishes a daily cap: the risk is the burst, not the
+  volume.
+
+  Each channel now has posting rules, one set for Shorts and one for long
+  videos, in channel_posting_cadences. The rules are wall-clock slots in the
+  channel's timezone (their count is the daily cap), weekdays, the days
+  between long videos, how long Shorts wait after their long video, and
+  random jitter. A channel with no rules posts on the defaults: one Short a
+  day at 18:00 starting 20 hours after the long video, long videos at 17:00
+  at least 3 days apart, and ±20 minutes of jitter.
+
+  A release on the channels' cadence puts the long video in the channel's
+  next free slot and the Shorts one slot at a time after it. Shorts follow
+  their own episode only (owner, 2026-10-15): an episode's Shorts take slots
+  only until the next episode's long video. Those that do not fit are held,
+  never dropped. A new long video holds an earlier episode's Shorts still
+  scheduled after it. The owner re-queues held Shorts, after everything on
+  the channel, or discards them. A long video and a Short may share a day
+  (owner, 2026-10-15).
+
+  Each post holds its slot (publishes.slot_at), and a unique index allows
+  one post per slot on a channel, so two releases planned at once cannot
+  double-book a channel. A Short waits for its episode's long video to be
+  live (publishes.after_episode_full) and fails, saying why, if the long
+  video never goes out. Both scheduled paths share the job's cadence gate:
+  a slotted post on a channel that has already had its day's posts is moved
+  on a day, and two overlapping runs can no longer both claim a row (KB-196).
+acceptance_criteria:
+  - text: "A channel has posting rules for Shorts and for long videos: slots in its timezone (their count is the daily cap), weekdays, days between long videos, hours Shorts wait after their long video, jitter; a channel with none posts on the defaults"
+    met: true
+    evidence: "Met (#666): migration 20261016151054_film-719-channel-posting-cadence.sql (channel_posting_cadences, a composite FK to platform_connections (id, account_id), the KB-99 guard); packages/features/publishing/src/lib/cadence/cadence.ts (DEFAULT_CADENCE, resolveCadence, nextFreeSlot). pgTAP channel-posting-cadence.test.sql (team members set and reset it, another team cannot see or change it, slot and weekday checks); plan-release.test.ts 'keeps 18:00 local across a daylight-saving change'"
+  - text: "The posting rules are set on the Publish screen, per channel, and a second save shows and keeps what the first saved"
+    met: true
+    evidence: "Met (#666): components/channel-cadence-dialog.tsx (react-hook-form over ChannelCadenceSchema), saveChannelCadenceAction. E2E apps/e2e/tests/publishing/cadence-release.spec.ts adds a second slot, saves, reopens on two slots and removes one, reading the row after each save"
+  - text: "A release on the channels' cadence is the Schedule Release panel's default; the panel shows each channel's calendar before anything is written: the posts in order, the date the channel is booked until, what is held and what is held back"
+    met: true
+    evidence: "Met (#666): schedule-release-panel.tsx ('Channel cadence' / 'Custom'), components/release-calendar.tsx, previewCadenceReleaseAction. The stagger mode stays as 'Custom'. E2E screenshots 01, 03 and 05"
+  - text: "The long video takes the channel's first free slot at least the channel's days after its last long video; Shorts take one slot each after it, never two on a day the channel takes one"
+    met: true
+    evidence: "Met (#666): lib/cadence/plan-release.ts (planRelease). Tests: plan-release.test.ts 'puts the long video in the first slot and one Short a day after it', 'never puts two Shorts on one day…', 'go at least the channel’s days apart', 'spreads five episodes on one channel…'. Guards C3, C4"
+  - text: "Shorts follow their own episode only: an episode's Shorts take slots only until the next episode's long video; those that do not fit, and an earlier episode's Shorts a new long video displaces, are held as drafts that say why, never dropped"
+    met: true
+    evidence: "Met (#666): planRelease (window and bumped), schedule-release.service.ts (holdDisplaced, held targets written as drafts with metadata.heldReason). Tests: 'holds an earlier episode’s Shorts scheduled after the next long video', 'holds this episode’s Shorts that do not fit…', 'never moves a Short already handed to the queue'. E2E: episode 2's long video holds two of episode 1's Shorts. Guards C1, C2, E2E C5"
+  - text: "Held Shorts are re-queued after everything on their channel, or discarded"
+    met: true
+    evidence: "Met (#666): requeueHeldShorts, discardHeldShorts and their actions; published-content-section.tsx (Re-queue, Discard, 'Re-queue N held'). Test: 're-queues held Shorts after everything on the channel'. E2E: the held Shorts go back on after episode 2's last Short with their held reason cleared"
+  - text: "One post per slot on a channel: a release planned at the same moment as another cannot take its slot, and is planned again"
+    met: true
+    evidence: "Met (#666): unique index publishes_channel_slot_key; insertScheduledRows raises SlotTaken on 23505 and scheduleCadenceRelease plans once more. pgTAP 'a second release cannot take a slot another post holds', 'a failed post gives its slot back'. Guard DB1"
+  - text: "A Short waits for its episode's long video to be live, and fails, saying why, if it never goes out; a slotted post on a channel that has had its day's posts is moved on a day; the scheduled Lambda and the in-process job apply the same gate"
+    met: true
+    evidence: "Met (#666): lib/cadence/gate.ts (cadenceGate, longVideoStates), lib/cadence/dispatch.ts, called by apps/web/lambda/scheduled-publish/index.ts and jobs/process-scheduled-publishes.ts. Tests: cadence-gate.test.ts. Guards G1, G2"
+  - text: "Mutation guards for each rule"
+    met: true
+    evidence: "Met (#666): tooling/mutation-guards/film-719-cadence.json C1–C4, G1–G2, L1, DB1–DB2 and E2E C5, each red under its mutation"
+open_questions: []
+notes: >
+  Research behind the defaults (2026-10-15): no platform publishes a posting
+  cap. YouTube's inauthentic-content policy (renamed July 2025) targets
+  "large volumes of videos created using the same format". Vendor data puts
+  diminishing returns above two or three Shorts a day. Instagram allows 50
+  to 100 API publishes per rolling 24 hours, so cadence, not quota, is the
+  limit. Out of scope: best-time-to-post from analytics (there is no
+  hour-level data), YouTube's native publishAt, and a cross-channel calendar
+  page. The MCP schedule_publish tool keeps explicit times; a cadence mode
+  for it is a follow-up.
+feature:
+  database: "20261016151054_film-719-channel-posting-cadence.sql"
+  queries: []
+  actions:
+    - name: "previewCadenceReleaseAction, scheduleCadenceReleaseAction, requeueHeldShortsAction, discardHeldShortsAction, getChannelCadencesAction, saveChannelCadenceAction"
+      file: "packages/features/publishing/src/server/schedule-release-actions.ts"
+  ui:
+    - component: "ScheduleReleasePanel (Channel cadence mode), ReleaseCalendar, ChannelCadenceDialog"
+      file: "packages/features/publishing/src/components/"
+  provider_integration: null

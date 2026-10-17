@@ -26,7 +26,9 @@ import type { EpisodeWithShots, ShortsGroup } from '@kit/episodes/types';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   type ScheduleConfig,
+  type ScheduleItem,
   ScheduleReleasePanel,
+  scheduleItemKey,
 } from '@kit/publishing/components';
 // Import shared constants from @kit/publishing
 import {
@@ -87,6 +89,7 @@ import { PublishRenderPicker } from './render-picker';
 import { ShortsSection } from './shorts-section';
 import { UnpublishDialog } from './unpublish-dialog';
 import { UploadVideoDialog } from './upload-video-dialog';
+import { type ReleaseConfig, useCadenceRelease } from './use-cadence-release';
 import { useYouTubeAudienceGate } from './use-youtube-audience-gate';
 
 const NO_PROJECT_CHANNELS =
@@ -616,6 +619,14 @@ export function PublishScreen({
     queryFn: () => getEpisodePublishesAction({ episodeId: episode.id }),
   });
 
+  // FILM-719: a release scheduled on its channels' posting cadence
+  const cadence = useCadenceRelease({
+    episodeId: episode.id,
+    aiGenerated,
+    channels: (connections ?? []) as PlatformConnection[],
+    onChanged: () => refetchPublishes(),
+  });
+
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const unsubscribe = subscribe('publish-status', (msg: any) => {
@@ -910,7 +921,82 @@ export function PublishScreen({
     });
   };
 
-  // Handle scheduled release - applies staggered scheduledAt times
+  // One upload per schedule item and channel that takes it, without a time
+  const buildReleaseConfigs = (schedule: ScheduleItem[]): ReleaseConfig[] => {
+    const conns = (connections ?? []) as PlatformConnection[];
+    const configs: ReleaseConfig[] = [];
+
+    const baseTitle = metadata.title || episode.title;
+    const baseDescription = metadata.description || episode.description || '';
+    const baseTags = parseTags(metadata.tags);
+
+    // Process each scheduled item
+    for (const item of schedule) {
+      const itemKey = scheduleItemKey(item);
+      const channelsForLang = conns.filter(
+        (c) => (c.language || 'en') === item.language,
+      );
+
+      // Use translated title/description from schedule item, fallback to base
+      const itemTitle = item.title || baseTitle;
+      const itemDescription = item.description || baseDescription;
+
+      if (item.type === 'full') {
+        // Full video channels (using constant)
+        const fullChannels = channelsForLang.filter((c) =>
+          takesVideo('full', c.platform),
+        );
+        for (const channel of fullChannels) {
+          configs.push({
+            itemKey,
+            platform: channel.platform,
+            connectionId: channel.id,
+            contentType: 'full',
+            title: itemTitle,
+            description: itemDescription,
+            tags: baseTags,
+            thumbnailUrl: getThumbnailForLanguage(item.language),
+            language: item.language,
+            platformSpecific: audienceGate.platformSpecificFor(channel),
+          });
+        }
+      } else {
+        // Shorts channels: the platforms the group's cut is for
+        const group = shortsGroups.find((g) => g.id === item.groupId);
+        const shortsChannels = shortsChannelsFor(
+          group,
+          item.language,
+          channelsForLang,
+        );
+        for (const channel of shortsChannels) {
+          configs.push({
+            itemKey,
+            platform: channel.platform,
+            connectionId: channel.id,
+            contentType: 'short',
+            // Pass shorts group ID so cron can resolve the correct video
+            shortsGroupId: item.groupId,
+            // itemTitle/itemDescription already contain translated values from ScheduleReleasePanel
+            // with proper fallback chain: translation -> group metadata -> base metadata
+            title: itemTitle,
+            description: itemDescription,
+            tags: group?.tags?.length ? group.tags : baseTags,
+            // Shorts don't use custom thumbnails - platforms generate from video
+            thumbnailUrl: undefined,
+            language: item.language,
+            platformSpecific: audienceGate.platformSpecificFor(
+              channel,
+              channel.platform === 'facebook' ? { isReel: true } : {},
+            ),
+          });
+        }
+      }
+    }
+
+    return configs;
+  };
+
+  // Handle scheduled release: on the channels' cadence, or staggered
   const handleScheduleRelease = async (config: ScheduleConfig) => {
     const conns = (connections ?? []) as PlatformConnection[];
 
@@ -927,84 +1013,30 @@ export function PublishScreen({
     );
     if (!declared) return;
 
-    setIsScheduling(true);
+    const releaseConfigs = buildReleaseConfigs(config.schedule);
 
-    // Build platform configs with scheduled times
-    const platformConfigs: Array<PlatformConfig & { scheduledAt: string }> = [];
-
-    const baseTitle = metadata.title || episode.title;
-    const baseDescription = metadata.description || episode.description || '';
-    const baseTags = parseTags(metadata.tags);
-
-    // Process each scheduled item
-    for (const item of config.schedule) {
-      const channelsForLang = conns.filter(
-        (c) => (c.language || 'en') === item.language,
-      );
-
-      // Use translated title/description from schedule item, fallback to base
-      const itemTitle = item.title || baseTitle;
-      const itemDescription = item.description || baseDescription;
-
-      if (item.type === 'full') {
-        // Full video channels (using constant)
-        const fullChannels = channelsForLang.filter((c) =>
-          takesVideo('full', c.platform),
-        );
-        for (const channel of fullChannels) {
-          platformConfigs.push({
-            platform: channel.platform,
-            connectionId: channel.id,
-            contentType: 'full',
-            title: itemTitle,
-            description: itemDescription,
-            tags: baseTags,
-            thumbnailUrl: getThumbnailForLanguage(item.language),
-            language: item.language,
-            scheduledAt: item.scheduledAt.toISOString(),
-            platformSpecific: audienceGate.platformSpecificFor(channel),
-          });
-        }
-      } else {
-        // Shorts channels: the platforms the group's cut is for
-        const group = shortsGroups.find((g) => g.id === item.groupId);
-        const shortsChannels = shortsChannelsFor(
-          group,
-          item.language,
-          channelsForLang,
-        );
-        for (const channel of shortsChannels) {
-          platformConfigs.push({
-            platform: channel.platform,
-            connectionId: channel.id,
-            contentType: 'short',
-            // Pass shorts group ID so cron can resolve the correct video
-            shortsGroupId: item.groupId,
-            // itemTitle/itemDescription already contain translated values from ScheduleReleasePanel
-            // with proper fallback chain: translation -> group metadata -> base metadata
-            title: itemTitle,
-            description: itemDescription,
-            tags: group?.tags?.length ? group.tags : baseTags,
-            // Shorts don't use custom thumbnails - platforms generate from video
-            thumbnailUrl: undefined,
-            language: item.language,
-            scheduledAt: item.scheduledAt.toISOString(),
-            platformSpecific: audienceGate.platformSpecificFor(
-              channel,
-              channel.platform === 'facebook' ? { isReel: true } : {},
-            ),
-          });
-        }
-      }
-    }
-
-    if (platformConfigs.length === 0) {
+    if (releaseConfigs.length === 0) {
       toast.error(
         'No matching channels for uploaded videos. Check language settings.',
       );
+      return;
+    }
+
+    setIsScheduling(true);
+
+    if (config.mode === 'cadence') {
+      await cadence.schedule(releaseConfigs, config.startDateTime);
       setIsScheduling(false);
       return;
     }
+
+    // Staggered: each item at its own time from the panel
+    const platformConfigs = releaseConfigs.map(({ itemKey, ...rest }) => ({
+      ...rest,
+      scheduledAt: config.schedule
+        .find((item) => scheduleItemKey(item) === itemKey)!
+        .scheduledAt.toISOString(),
+    }));
 
     // Call publish with all configs (they have scheduledAt set)
     try {
@@ -1565,6 +1597,8 @@ export function PublishScreen({
                 canTakeDown ? () => setDeleteAllDialogOpen(true) : undefined
               }
               onUnpublish={canTakeDown ? initiateUnpublish : undefined}
+              onRequeueHeld={cadence.requeueHeld}
+              onDiscardHeld={canTakeDown ? cadence.discardHeld : undefined}
             />
           </div>
 
@@ -1608,7 +1642,12 @@ export function PublishScreen({
                   publishStage === 'uploading' || publishStage === 'translating'
                 }
                 isScheduling={isScheduling}
+                onPreviewCadence={(start, schedule) =>
+                  cadence.preview(buildReleaseConfigs(schedule), start)
+                }
+                onEditChannelCadence={cadence.editChannel}
               />
+              {cadence.dialog}
             </PublishSettingsSidebar>
           </div>
         </div>

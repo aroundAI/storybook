@@ -871,6 +871,15 @@ async function uploadToTwitter(
   return { contentId: result.tweetId, url: result.tweetUrl ?? '' };
 }
 
+/** A draft the cadence held (FILM-719): it did not fit before `before` */
+function heldOf(status: string, metadata: unknown) {
+  const held = metadata as { heldReason?: string; heldBefore?: string } | null;
+
+  if (status !== 'draft' || !held?.heldReason) return null;
+
+  return { reason: held.heldReason, before: held.heldBefore ?? null };
+}
+
 /**
  * Get all publishes for an episode with analytics
  */
@@ -963,6 +972,8 @@ export const getEpisodePublishesAction = enhanceAction(
               watchTimeSeconds: chTotals.watch_time_seconds,
             }
           : null,
+        // FILM-719: a Short the cadence held back, and why
+        held: heldOf(p.status, p.metadata),
         ...storedFailure(p.metadata, p.platform),
       };
     });

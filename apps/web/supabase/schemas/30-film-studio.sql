@@ -618,6 +618,12 @@ create table if not exists public.publishes (
   -- 20261002070720): each upload sends it on the platform's own AI-label
   -- field. False is "not declared", which every earlier publish was.
   ai_generated boolean not null default false,
+  -- The channel slot a cadence-scheduled post holds (FILM-719, migration
+  -- 20261016151054); scheduled_at is the slot plus jitter. Null: scheduled
+  -- by hand. publishes_channel_slot_key keeps one post per slot.
+  slot_at timestamp with time zone,
+  -- A Short that goes only once its episode's long video is published
+  after_episode_full boolean not null default false,
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),
@@ -644,6 +650,51 @@ create index if not exists idx_publishes_platform_content_id on public.publishes
 create index if not exists idx_publishes_published_at on public.publishes(published_at desc)
   where status = 'published';
 create index if not exists idx_publishes_status on public.publishes(status);
+create unique index if not exists publishes_channel_slot_key
+  on public.publishes (platform_connection_id, slot_at)
+  where slot_at is not null
+    and status in ('scheduled', 'queued', 'publishing', 'published');
+create index if not exists idx_publishes_channel_scheduled
+  on public.publishes (platform_connection_id, scheduled_at)
+  where status in ('scheduled', 'queued', 'publishing');
+
+-- ==================================
+-- Section: Channel posting cadence (FILM-719)
+-- ==================================
+-- When a channel posts each content type. Mirrors migration
+-- 20261016151054_film-719-channel-posting-cadence.sql, which also holds the
+-- RLS policies, the KB-99 guard and the timestamps trigger.
+
+create table if not exists public.channel_posting_cadences (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  platform_connection_id uuid not null,
+  content_type text not null check (content_type in ('full', 'short')),
+  timezone text not null default 'UTC'
+    check (timezone ~ '^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+)*$'),
+  slot_times text[] not null
+    check (cardinality(slot_times) between 1 and 6
+       and array_to_string(slot_times, ',')
+             ~ '^([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*$'),
+  days_of_week smallint[] not null default '{0,1,2,3,4,5,6}'
+    check (cardinality(days_of_week) between 1 and 7
+       and days_of_week <@ '{0,1,2,3,4,5,6}'::smallint[]),
+  min_days_between smallint not null default 0
+    check (min_days_between between 0 and 30),
+  start_after_hours smallint not null default 0
+    check (start_after_hours between 0 and 168),
+  jitter_minutes smallint not null default 20
+    check (jitter_minutes between 0 and 120),
+  enabled boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint channel_posting_cadences_channel_type_key
+    unique (platform_connection_id, content_type),
+  constraint channel_posting_cadences_connection_account_fkey
+    foreign key (platform_connection_id, account_id)
+    references public.platform_connections (id, account_id)
+    on delete cascade
+);
 
 -- ==================================
 -- Section: Content Analytics (FILM-101l) — REMOVED
