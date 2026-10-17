@@ -62,6 +62,7 @@ const EPISODE = '66666666-6666-4666-8666-666666666666';
 const YT = '00000000-0000-4000-8000-0000000000c1';
 const IG = '00000000-0000-4000-8000-0000000000c2';
 const FOREIGN_CHANNEL = '00000000-0000-4000-8000-0000000000c9';
+const HELD_ID = '00000000-0000-4000-8000-0000000000a1';
 const THUMB_EN = 'https://cdn/episodes/e/thumbnails/en-1.png';
 const THUMB_DEFAULT = 'https://cdn/episodes/e/thumbnails/hi-1.png';
 
@@ -392,7 +393,7 @@ describe('held Shorts', () => {
   const heldOf = (episodeInTeam: boolean) =>
     client({
       episodeInTeam,
-      publishes: () => ({ data: [{ id: 'p1', episode_id: EPISODE }] }),
+      publishes: () => ({ data: [{ id: HELD_ID, episode_id: EPISODE }] }),
     });
 
   it.each([
@@ -405,7 +406,7 @@ describe('held Shorts', () => {
         run(
           tool,
           {
-            publishIds: ['00000000-0000-4000-8000-0000000000a1'],
+            publishIds: [HELD_ID],
             timezone: 'UTC',
           },
           heldOf(false),
@@ -447,10 +448,12 @@ describe('get_publish_calendar', () => {
   it('reads past the 1000-row cap', async () => {
     const rows = Array.from({ length: 1500 }, (_, i) => row(i));
     const fake = client({
-      publishes: (call) =>
-        call.filters.some((f) => f.method === 'or')
-          ? { data: rows }
-          : { data: [] },
+      publishes: (call) => {
+        if (!call.filters.some((f) => f.method === 'or')) return { data: [] };
+        // PostgREST's max_rows: an unpaged read is cut at 1000, silently
+        const paged = call.filters.some((f) => f.method === 'range');
+        return { data: paged ? rows : rows.slice(0, 1000) };
+      },
     });
 
     const result = await run(getPublishCalendarTool, RANGE, fake);
@@ -502,7 +505,7 @@ describe('the episode thumbnail', () => {
     storage: () =>
       ({
         stat: async (_bucket: string, key: string) =>
-          key === KEY ? { bytes: 1234 } : null,
+          key.includes('missing') ? null : { bytes: 1234 },
         getPublicUrl: (_bucket: string, key: string) => `https://cdn/${key}`,
         getSignedUploadUrl: async () => ({
           uploadUrl: 'https://upload',
@@ -558,6 +561,7 @@ describe('the episode thumbnail', () => {
     );
 
     expect(error.code).toBe('VALIDATION_FAILED');
+    expect(error.message).toContain('key must be');
     expect(service.saveEpisodeThumbnail).not.toHaveBeenCalled();
   });
 
@@ -568,7 +572,7 @@ describe('the episode thumbnail', () => {
         {
           episodeId: EPISODE,
           language: 'en',
-          key: `episodes/${EPISODE}/thumbnails/en-1.png`,
+          key: `episodes/${EPISODE}/thumbnails/en-missing.png`,
         },
         thumbnails(null),
       ),

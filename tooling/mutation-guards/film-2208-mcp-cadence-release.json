@@ -6,7 +6,7 @@
       "file": "packages/features/publishing/src/lib/publish-thumbnail.ts",
       "find": "  if (contentType === 'short') return null;\n",
       "replace": "",
-      "pattern": "a Short none (KB-197)",
+      "pattern": "and a Short none",
       "kind": "unit",
       "cwd": "packages/features/publishing",
       "test": "__tests__/schedule-publishes.test.ts"
@@ -72,10 +72,10 @@
       "test": "__tests__/tools/release-tools.test.ts"
     },
     {
-      "name": "R5 the calendar stops at the first page",
+      "name": "R5 the calendar reads one unpaged page",
       "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
-      "find": "            .range(start, end) as unknown as CalendarPage,\n        'publish calendar',",
-      "replace": "            .range(start, start + 499) as unknown as CalendarPage,\n        'publish calendar',",
+      "find": "            .order('id')\n            .range(start, end) as unknown as CalendarPage,\n        'publish calendar',",
+      "replace": "            .order('id') as unknown as CalendarPage,\n        'publish calendar',",
       "pattern": "reads past the 1000-row cap",
       "kind": "unit",
       "cwd": "packages/features/studio-mcp",
