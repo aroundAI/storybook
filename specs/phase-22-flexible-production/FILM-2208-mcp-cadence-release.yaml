@@ -1,0 +1,65 @@
+spec_id: "FILM-2208"
+title: "MCP cadence release: a client uploads a folder of episodes and releases them on each channel's cadence"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DONE
+effort: M
+dependencies:
+  - spec_id: "FILM-719"
+    note: "the channel posting cadence and the cadence release this exposes"
+  - spec_id: "FILM-2207"
+    note: "studio:publish, Shorts groups and the episode video over MCP"
+summary: >
+  The owner makes videos outside StoryBook and wants Claude Code to upload
+  each finished episode from a folder and schedule it without bursts: a
+  long video every three days on YouTube and Facebook, its Shorts at 11:00
+  and 21:00 after it on YouTube, Instagram and Facebook, and a morning
+  report from a Claude Desktop routine (owner, 2026-10-17). schedule_publish
+  takes exact times, so over MCP none of FILM-719's rules applied: no slot
+  was held, and a Short did not wait for its long video.
+
+  schedule_release runs the Schedule Release panel's planner over MCP,
+  preview first. The cadence is read and set with get_channel_cadence and
+  set_channel_cadence, held Shorts are re-queued or discarded, and
+  get_publish_calendar lists one project's posts in time order for the
+  report. An episode's thumbnail is uploaded with
+  request_episode_thumbnail_upload and finalize_episode_thumbnail, saved as
+  the Publish screen saves one; a long video carries it, a Short none
+  (KB-197, fixed here).
+acceptance_criteria:
+  - text: "schedule_release places a release on the channels' cadence through the Publish screen's planner: preview writes nothing; scheduling holds slots, makes Shorts wait for their long video and holds what does not fit"
+    met: true
+    evidence: "Met (#668): packages/features/studio-mcp/src/server/tools/publish/release.ts over previewCadenceRelease and scheduleCadenceRelease. Tests: __tests__/tools/release-tools.test.ts; E2E apps/e2e/tests/mcp/cadence-release.spec.ts reads every slot back from publishes (long videos 08:00 three days apart, Shorts 11:00 and 21:00, after_episode_full, a 7th Short held by the next episode). Guards R1, E2E R7"
+  - text: "A long video released over MCP carries the episode's thumbnail for its language, else the default; a Short or Reel carries none on any path (KB-197)"
+    met: true
+    evidence: "Met (#668): publish-thumbnail.ts at the six write and send sites; release.ts longVideoThumbnails. Tests: schedule-publishes.test.ts, publish-now-shorts-group.test.ts, the scheduled Lambda's test, release-tools.test.ts; E2E: long videos carry the uploaded thumbnail, no Short row has one. Guards K1–K3, R2, E2E R7"
+  - text: "get_channel_cadence and set_channel_cadence read and save a channel's cadence as the Publish screen's dialog does, for the bound team's channels only"
+    met: true
+    evidence: "Met (#668): readChannelCadences and saveChannelCadence moved into schedule-release.service.ts, called by the dialog's actions and the tools; set_channel_cadence validates with ChannelCadenceSchema. Tests: release-tools.test.ts 'refuses another team’s channel', 'refuses a posting time the dialog would refuse'; E2E sets and reads the owner's cadence. Guard R3"
+  - text: "requeue_held_shorts and discard_held_shorts act on the bound team's held Shorts only"
+    met: true
+    evidence: "Met (#668): release.ts requireHeldInAccount. Test 'refuses a Short of another team’s episode'; E2E re-queues the held Short after everything on its channel. Guard R4"
+  - text: "get_publish_calendar lists one project's posts in a range of at most 62 days, in time order, paged past the 1000-row cap, with why a post failed and the held Shorts"
+    met: true
+    evidence: "Met (#668): release.ts getPublishCalendarTool with fetchAllRows. Tests: 'reads past the 1000-row cap', 'names held Shorts and why a post failed', 'refuses a range longer than 62 days'; E2E finds the held Short. Guards R5, R6"
+  - text: "request_episode_thumbnail_upload and finalize_episode_thumbnail store an episode's thumbnail in its own folder through the Publish screen's save; the default stays where it is"
+    met: true
+    evidence: "Met (#668): tools/author/episode-thumbnail.ts over saveEpisodeThumbnail (packages/features/episodes/src/server/episode-thumbnail.service.ts), which uploadEpisodeThumbnailAction now calls. Tests: release-tools.test.ts; E2E uploads one; the thumbnails panel E2E still passes. Guards T1, T2, KB-90"
+  - text: "Every new write needs studio:publish except the thumbnail tools (studio:write); a connection without it reads the cadence and is refused the rest"
+    met: true
+    evidence: "Met (#668): __tests__/tools/publish-tools.test.ts pins the scopes; E2E 'a connection without studio:publish reads the cadence but cannot set it or release'"
+  - text: "The workflow guide says how to release on the cadence"
+    met: true
+    evidence: "Met (#668): tools/workflow-guide.ts; workflow-guide.test.ts pins the tool names"
+open_questions: []
+notes: >
+  The folder routine (a Claude Code skill in the owner's producer folder)
+  and the Claude Desktop morning report sit outside this repo and are set
+  up after deploy. Publishing immediately stays a web action.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
