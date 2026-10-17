@@ -104,7 +104,10 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/episodes/src/server/actions.ts | generation_jobs | update':
     [2, CLEANUP],
   'packages/features/episodes/src/server/thumbnail-actions.ts | episode_thumbnails | update':
-    [2, SET_BEFORE],
+    [1, SET_BEFORE],
+  // FILM-2208: the save the Publish screen and MCP share
+  'packages/features/episodes/src/server/episode-thumbnail.service.ts | episode_thumbnails | update':
+    [1, SET_BEFORE],
   'packages/features/publishing/src/jobs/process-scheduled-publishes.ts | publishes | update':
     [2, ADMIN],
   // FILM-719: the scheduled job marks a Short whose long video never went
