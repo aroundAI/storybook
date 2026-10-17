@@ -89,6 +89,9 @@ describe('author tools never carry generated-content inputs', () => {
         'request_episode_video_upload',
         'finalize_episode_video',
         'link_published_video',
+        // FILM-2208
+        'request_episode_thumbnail_upload',
+        'finalize_episode_thumbnail',
       ].sort(),
     );
 

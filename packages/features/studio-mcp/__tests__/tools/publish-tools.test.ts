@@ -21,13 +21,33 @@ describe('the publish tools', () => {
     expect(scopeOf('list_episode_publishes')).toBe('studio:read');
   });
 
+  it('a cadence release, the cadence and held Shorts need studio:publish; reading them needs only studio:read (FILM-2208)', () => {
+    for (const name of [
+      'schedule_release',
+      'set_channel_cadence',
+      'requeue_held_shorts',
+      'discard_held_shorts',
+    ]) {
+      expect(scopeOf(name), name).toBe('studio:publish');
+    }
+    expect(scopeOf('get_channel_cadence')).toBe('studio:read');
+    expect(scopeOf('get_publish_calendar')).toBe('studio:read');
+  });
+
   it('no other tool holds studio:publish', () => {
     expect(
       defaultTools
         .filter((tool) => tool.scope === 'studio:publish')
         .map((tool) => tool.name)
         .sort(),
-    ).toEqual(['cancel_scheduled_publish', 'schedule_publish']);
+    ).toEqual([
+      'cancel_scheduled_publish',
+      'discard_held_shorts',
+      'requeue_held_shorts',
+      'schedule_publish',
+      'schedule_release',
+      'set_channel_cadence',
+    ]);
   });
 });
 
