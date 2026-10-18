@@ -69,6 +69,8 @@ describe('computeSnapshotDelta', () => {
       subscribers_gained: 3,
       accounts_reached: 1200,
       reposts: 4,
+      // Neither side recorded any (migration 025): not measured.
+      profile_visits: null,
       ...ALL_SURFACE_UNMEASURED,
     });
   });
@@ -508,13 +510,23 @@ describe('buildSnapshotDeltaRow', () => {
   });
 
   // FILM-1712: Reels watch time is requested and stored (milliseconds,
-  // confirmed on a live account); follows still do not exist for Reels.
-  it('keeps Instagram saves and watch time, and writes follower gains as null', () => {
+  // confirmed on a live account). FILM-1734: follows are requested for FEED
+  // and STORY, so a measured follow count is kept; a Reel's arrives null.
+  it('keeps Instagram saves, watch time and follows', () => {
     expect(build('instagram')).toMatchObject({
       saves: 3,
       watch_time_seconds: delta.watch_time_seconds,
-      subscribers_gained: null,
+      subscribers_gained: 7,
     });
+    expect(
+      buildSnapshotDeltaRow({
+        projectId: '550e8400-e29b-41d4-a716-446655440000',
+        videoId: 'publish-reel',
+        platform: 'instagram',
+        metricDate: '2026-09-20',
+        delta: { ...delta, subscribers_gained: null },
+      }).subscribers_gained,
+    ).toBeNull();
     expect(build('instagram').watch_time_seconds).not.toBeNull();
   });
 
@@ -554,6 +566,8 @@ describe('reelsAttention', () => {
         allSurfaceViews: null,
         allSurfaceLikes: null,
         allSurfaceComments: null,
+        follows: null,
+        profileVisits: null,
       },
     }) satisfies InstagramInsightsResult;
 

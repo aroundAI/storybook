@@ -6,11 +6,13 @@ import type {
   FacebookDenominators,
   InstagramReelsAttention,
   RetentionCurvePoint,
+  SnapshotSource,
   SnapshotTotals,
   VideoAudienceRow,
   VideoMetric,
   VideoRevenueDaily,
   VideoSnapshot,
+  VideoTrafficSource,
   YouTubeVideoMetric,
 } from '@kit/clickhouse';
 import {
@@ -34,7 +36,9 @@ import type {
   YouTubeAnalyticsResult,
   YouTubeDailyMetrics,
   YouTubeDailyRevenue,
+  YouTubeDailyTrafficSource,
   YouTubeRevenueAccess,
+  YouTubeVideoStatistics,
 } from '../providers/youtube/types';
 
 /**
@@ -59,6 +63,11 @@ export interface CumulativeTotals extends AllSurfaceAggregates {
   accounts_reached: number | null;
   /** Lifetime reposts. Instagram FEED and REELS only; null when not measured. */
   reposts: number | null;
+  /**
+   * Lifetime profile visits. Instagram FEED and STORY only (migration 025).
+   * Absent reads as not measured: every writer below names it null.
+   */
+  profile_visits?: number | null;
   /** Facebook's own denominators (migration 020); absent on every other platform. */
   denominators?: FacebookDenominators;
 }
@@ -127,6 +136,12 @@ export function computeSnapshotDelta(
     ),
     accounts_reached: accountsReachedDelta(current.accounts_reached, baseline),
     reposts: measuredDelta(current.reposts, baseline.reposts),
+    // A baseline before migration 025 recorded none: null, not a lifetime
+    // dated to one day.
+    profile_visits: measuredDelta(
+      current.profile_visits ?? null,
+      baseline.profile_visits ?? null,
+    ),
     all_surface_views: measuredDelta(
       current.all_surface_views,
       baseline.all_surface_views,
@@ -189,6 +204,14 @@ export function reelsAttention(
   };
 }
 
+/** The API each cumulative platform's snapshot comes from (migration 025). */
+const SNAPSHOT_SOURCE = {
+  tiktok: 'tiktok_api',
+  instagram: 'graph_api',
+  facebook: 'graph_api',
+  twitter: 'x_api',
+} as const satisfies Record<string, SnapshotSource>;
+
 /**
  * Today's lifetime snapshot of a TikTok, Instagram, Facebook or X post: the
  * counters that become tomorrow's baseline, Facebook's denominators as their
@@ -214,10 +237,84 @@ export function buildSnapshotRow(input: {
     video_id: input.videoId,
     platform: input.platform,
     snapshot_date: input.snapshotDate,
+    source: SNAPSHOT_SOURCE[input.platform],
     ...counters,
+    profile_visits: counters.profile_visits ?? null,
+    // YouTube's alone, and YouTube's snapshots are `buildYouTubeSnapshotRows`'.
+    dislikes: null,
     ...denominators,
     ...reelsAttention(input.platform, input.analytics),
   };
+}
+
+/**
+ * YouTube's live lifetime counts as snapshots (FILM-1734): the Data API's
+ * `videos.list` statistics, one row per video and UTC day, the day's latest
+ * fetch replacing the earlier ones. Never a delta baseline — YouTube's days
+ * come from the Analytics API — so what YouTube does not count here is null:
+ * shares, saves, watch time, follower gains, reach. So is a count YouTube
+ * withheld (`fetchVideoStatistics`). A video the API did not answer for gets
+ * no row: no snapshot is "not measured", not a row of nulls.
+ */
+export function buildYouTubeSnapshotRows(input: {
+  projectId: string;
+  snapshotDate: string;
+  /** The publish id each YouTube video id is stored under. */
+  publishIdByVideoId: ReadonlyMap<string, string>;
+  statistics: ReadonlyMap<string, YouTubeVideoStatistics>;
+}): VideoSnapshot[] {
+  return [...input.publishIdByVideoId].flatMap(([videoId, publishId]) => {
+    const stats = input.statistics.get(videoId);
+    if (!stats) return [];
+
+    return [
+      {
+        project_id: input.projectId,
+        video_id: publishId,
+        platform: 'youtube' as const,
+        snapshot_date: input.snapshotDate,
+        source: 'data_api' as const,
+        views: stats.views,
+        likes: stats.likes,
+        dislikes: stats.dislikes,
+        comments: stats.comments,
+        shares: null,
+        saves: null,
+        watch_time_seconds: null,
+        subscribers_gained: null,
+        accounts_reached: null,
+        reposts: null,
+        profile_visits: null,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
+        ig_reels_avg_watch_time_ms: null,
+        ig_reels_skip_rate: null,
+      },
+    ];
+  });
+}
+
+/**
+ * The Analytics API's traffic sources by day (FILM-1734), as its own copy:
+ * `metric_source` keeps it apart from the Reporting CSV's copy of the same
+ * day, which readers prefer once it arrives (`trafficSourcesOneCopy`).
+ */
+export function buildYouTubeTrafficRows(input: {
+  projectId: string;
+  videoId: string;
+  days: readonly YouTubeDailyTrafficSource[];
+}): VideoTrafficSource[] {
+  return input.days.map((day) => ({
+    project_id: input.projectId,
+    video_id: input.videoId,
+    platform: 'youtube' as const,
+    metric_date: day.date,
+    source: day.source,
+    views: day.views,
+    watch_time_minutes: day.watchTimeMinutes,
+    metric_source: 'analytics_api' as const,
+  }));
 }
 
 /**
@@ -360,9 +457,9 @@ export function buildYouTubeRevenueRows(input: {
  *   percentage viewed or dislikes (KB-111).
  * - TikTok: saves have no creator-auth surface, watch time is Business API
  *   only, and there are no per-video follower gains (KB-114).
- * - Instagram: Reels watch time is documented but never requested
- *   (FILM-1712), and neither are follows, so follower gains are not
- *   measured either. Saves are.
+ * - Instagram: saves are measured, and so are follows and profile visits
+ *   on FEED and STORY (FILM-1734) — never on a Reel, where Meta documents
+ *   neither, so a Reel's are null.
  */
 type NeverMeasuredBySnapshot = {
   subscribers_lost: null;
@@ -379,6 +476,7 @@ export type SnapshotDeltaMetric = VideoMetric &
         saves: null;
         watch_time_seconds: null;
         subscribers_gained: null;
+        profile_visits: null;
         /** Reach is Business API only (FILM-1730), which we do not call. */
         accounts_reached: null;
         reposts: null;
@@ -393,7 +491,10 @@ export type SnapshotDeltaMetric = VideoMetric &
         saves: number | null;
         /** Reels only (FILM-1712); null for other media or when omitted. */
         watch_time_seconds: number | null;
-        subscribers_gained: null;
+        /** `follows`: FEED and STORY only (FILM-1734); null for a Reel. */
+        subscribers_gained: number | null;
+        /** FEED and STORY only (FILM-1734); null for a Reel. */
+        profile_visits: number | null;
         accounts_reached: number | null;
         /** FEED and REELS (FILM-1712); null for a Story or when omitted. */
         reposts: number | null;
@@ -415,6 +516,7 @@ export type SnapshotDeltaMetric = VideoMetric &
         saves: number | null;
         watch_time_seconds: null;
         subscribers_gained: null;
+        profile_visits: null;
         accounts_reached: null;
         reposts: number | null;
       }
@@ -427,6 +529,7 @@ export type SnapshotDeltaMetric = VideoMetric &
         watch_time_seconds: number | null;
         /** Follows Meta credits to a reel; null for a video in the player. */
         subscribers_gained: number | null;
+        profile_visits: null;
         /** `post_total_media_view_unique`: people, not plays. */
         accounts_reached: number | null;
         reposts: null;
@@ -471,6 +574,7 @@ export function buildSnapshotDeltaRow(input: {
       saves: input.delta.saves,
       watch_time_seconds: null,
       subscribers_gained: null,
+      profile_visits: null,
       accounts_reached: null,
       reposts: input.delta.reposts,
     };
@@ -489,6 +593,7 @@ export function buildSnapshotDeltaRow(input: {
       saves: null,
       watch_time_seconds: input.delta.watch_time_seconds,
       subscribers_gained: input.delta.subscribers_gained,
+      profile_visits: null,
       accounts_reached: input.delta.accounts_reached,
       reposts: null,
       all_surface_views: null,
@@ -512,6 +617,7 @@ export function buildSnapshotDeltaRow(input: {
       saves: null,
       watch_time_seconds: null,
       subscribers_gained: null,
+      profile_visits: null,
       accounts_reached: null,
       reposts: null,
       all_surface_views: null,
@@ -526,7 +632,8 @@ export function buildSnapshotDeltaRow(input: {
     platform: 'instagram',
     saves: input.delta.saves,
     watch_time_seconds: input.delta.watch_time_seconds,
-    subscribers_gained: null,
+    subscribers_gained: input.delta.subscribers_gained,
+    profile_visits: input.delta.profile_visits ?? null,
     accounts_reached: input.delta.accounts_reached,
     reposts: input.delta.reposts,
     all_surface_views: input.delta.all_surface_views,
@@ -695,6 +802,7 @@ export function facebookCumulativeTotals(
     subscribers_gained: totals.follows,
     accounts_reached: totals.uniqueViewers,
     reposts: null,
+    profile_visits: null,
     all_surface_views: null,
     all_surface_likes: null,
     all_surface_comments: null,

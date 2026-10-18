@@ -84,7 +84,10 @@ export interface YouTubeAnalyticsResult {
   dailyData: YouTubeDailyMetrics[];
   retention?: RetentionData;
   demographics?: DemographicData;
+  /** The period's traffic by source: `dailyTrafficSources` summed. */
   trafficSources?: TrafficSourceData[];
+  /** Traffic by day and source, as the Analytics API names sources (FILM-1734). */
+  dailyTrafficSources?: YouTubeDailyTrafficSource[];
   geography?: GeographyData[];
   /** Device type breakdown (mobile, desktop, tablet, TV, etc.) */
   deviceBreakdown?: DeviceBreakdownData[];
@@ -213,6 +216,50 @@ export interface TrafficSourceData {
   source: YouTubeTrafficSource;
   views: number;
   watchTimeMinutes: number;
+}
+
+/** One day's views from one traffic source (FILM-1734). */
+export interface YouTubeDailyTrafficSource {
+  date: string;
+  /** The Analytics API's `insightTrafficSourceType` name. */
+  source: string;
+  views: number;
+  watchTimeMinutes: number;
+}
+
+/**
+ * One video's live lifetime counts from the Data API (FILM-1734). Null is
+ * a count YouTube withheld — dislikes to anyone but the owner, likes when
+ * hidden, comments when off — never 0.
+ */
+export interface YouTubeVideoStatistics {
+  videoId: string;
+  views: number | null;
+  likes: number | null;
+  dislikes: number | null;
+  comments: number | null;
+}
+
+/** A channel's lifetime statistics from `channels.list` (FILM-1734). */
+export interface YouTubeChannelStatistics {
+  views: number | null;
+  /** Rounded by YouTube above 1,000; null when the creator hides it. */
+  subscribers: number | null;
+  /** Public videos. */
+  videos: number | null;
+}
+
+/** One whole-channel day from the Analytics API (FILM-1734). Null: not in the answer. */
+export interface YouTubeChannelDay {
+  date: string;
+  views: number | null;
+  estimatedMinutesWatched: number | null;
+  likes: number | null;
+  dislikes: number | null;
+  comments: number | null;
+  shares: number | null;
+  subscribersGained: number | null;
+  subscribersLost: number | null;
 }
 
 /**

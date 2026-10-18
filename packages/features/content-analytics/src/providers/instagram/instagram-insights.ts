@@ -10,6 +10,7 @@ import {
   metaUsagePercent,
 } from '../../lib/meta-usage';
 import type {
+  InstagramAccountDay,
   InstagramAccountInsights,
   InstagramAccountReach,
   InstagramAudienceData,
@@ -143,9 +144,19 @@ export class InstagramInsightsProvider {
       // `shares` is documented for FEED, REELS and STORY alike; `likes`,
       // `comments` and `saved` are not documented for STORY.
       const isReels = mediaProductType === 'REELS';
+      // `follows` and `profile_visits` are documented for FEED and STORY,
+      // never REELS (FILM-1734): asked for only where they exist, so a Reel's
+      // stay null rather than a structural 0.
       const metricsForType =
         mediaProductType === 'STORY'
-          ? ['views', 'reach', 'total_interactions', 'shares']
+          ? [
+              'views',
+              'reach',
+              'total_interactions',
+              'shares',
+              'follows',
+              'profile_visits',
+            ]
           : [
               'views',
               'reach',
@@ -154,6 +165,7 @@ export class InstagramInsightsProvider {
               'comments',
               'saved',
               'shares',
+              ...(isReels ? [] : ['follows', 'profile_visits']),
               // Reels only. Watch time is in milliseconds (confirmed on a
               // live account by the owner, 2026-09-29), and the average is
               // not total ÷ views. Meta tags the skip rate estimated and in
@@ -193,6 +205,8 @@ export class InstagramInsightsProvider {
           watchTimeMs: metrics.ig_reels_video_view_total_time ?? null,
           avgWatchTimeMs: metrics.ig_reels_avg_watch_time ?? null,
           reelsSkipRate: metrics.reels_skip_rate ?? null,
+          follows: metrics.follows ?? null,
+          profileVisits: metrics.profile_visits ?? null,
           reposts: mediaInfo.reposts_count ?? null,
           allSurfaceViews: mediaInfo.total_views_count ?? null,
           allSurfaceLikes: mediaInfo.total_like_count ?? null,
@@ -446,6 +460,60 @@ export class InstagramInsightsProvider {
         followers: byType('FOLLOWER'),
         nonFollowers: byType('NON_FOLLOWER'),
       };
+    } catch (error) {
+      if (isPermissionError(error)) {
+        throw new InstagramInsightsScopeError();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * The account's views and unique reach over one UTC day (FILM-1734):
+   * `views,reach` as `total_value` between that day's midnight and the
+   * next. A figure Meta leaves out is null, never 0 — unlike
+   * `getAccountInsights`, whose rolling window is not a calendar day.
+   */
+  async getAccountDay(day: string): Promise<InstagramAccountDay> {
+    const since = Date.parse(`${day}T00:00:00Z`) / 1000;
+
+    try {
+      const response = await metaFetch(
+        `/${this.instagramAccountId}/insights?` +
+          new URLSearchParams({
+            metric: 'views,reach',
+            metric_type: 'total_value',
+            period: 'day',
+            since: since.toString(),
+            until: (since + 86_400).toString(),
+          }),
+        { token: this.accessToken },
+      );
+
+      this.noteUsage(response);
+
+      const data = (await response.json()) as {
+        data?: Array<{ name: string; total_value?: { value?: number } }>;
+      } & GraphAPIError;
+
+      if (isMetaThrottle(data.error?.code)) {
+        throw new MetaRateLimitError(
+          data.error.code,
+          data.error.message ?? 'Meta rate limit reached',
+        );
+      }
+      if (data.error) {
+        throw new Error(data.error.message ?? 'Failed to fetch account day');
+      }
+      if (!response.ok) {
+        throw new Error(`Failed to fetch account day: HTTP ${response.status}`);
+      }
+
+      const value = (name: string) =>
+        data.data?.find((item) => item.name === name)?.total_value?.value ??
+        null;
+
+      return { date: day, views: value('views'), reach: value('reach') };
     } catch (error) {
       if (isPermissionError(error)) {
         throw new InstagramInsightsScopeError();

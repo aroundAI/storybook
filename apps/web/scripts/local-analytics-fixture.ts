@@ -132,6 +132,7 @@ export function buildLocalAnalyticsFixture(input: {
         source,
         views,
         watch_time_minutes: Math.round(views * 2.4),
+        metric_source: 'reporting_api',
       });
     }
 

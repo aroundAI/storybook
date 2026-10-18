@@ -115,6 +115,10 @@ export interface SyncJobResult {
   editSessionFacts?:
     | { enabled: boolean; delivered: number; written: number; skipped: number }
     | { error: string };
+  /** YouTube Data API snapshots written this run (FILM-1734). */
+  liveCountSnapshots?: number;
+  /** Whole-channel days this run (FILM-1734). */
+  channelDays?: { channels: number; rowsWritten: number; failed: number };
 }
 
 /**

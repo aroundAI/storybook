@@ -9,6 +9,7 @@ import {
   insertVideoMetrics,
   insertVideoRevenueDaily,
   insertVideoSnapshots,
+  insertVideoTrafficSources,
   queryLatestSnapshots,
 } from '@kit/clickhouse/server';
 import type { SnapshotTotals } from '@kit/clickhouse/server';
@@ -39,6 +40,7 @@ import { createYouTubeAnalyticsProvider } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import { syncAssetDurations } from './asset-duration-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
+import { syncChannelDays } from './channel-totals';
 import { syncEditSessionFacts } from './edit-sessions-fact-sync';
 import {
   buildAudienceRows,
@@ -50,6 +52,8 @@ import {
   buildXQuartilePoints,
   buildYouTubeDailyRows,
   buildYouTubeRevenueRows,
+  buildYouTubeSnapshotRows,
+  buildYouTubeTrafficRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
   facebookCumulativeTotals,
@@ -157,6 +161,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 
     if (publishesToSync.length === 0) {
       logger.info(ctx, 'No publishes to sync');
+      result.channelDays = await syncChannelDays();
       result.durationMs = Date.now() - startTime;
       return result;
     }
@@ -184,6 +189,14 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 
     // Prefetch delta baselines for cumulative-counter platforms in one query
     const snapshotBaselines = await fetchSnapshotBaselines(publishesToSync);
+
+    // YouTube's live counts for this run's YouTube publishes, 50 a call
+    // (FILM-1734): on the same timetable as their Analytics-API days.
+    result.liveCountSnapshots = await captureYouTubeLiveCounts(
+      client,
+      byPlatform.youtube,
+      ctx,
+    );
 
     // 3. Process each platform with rate limiting
     const syncPromises: Promise<SyncResult>[] = [];
@@ -249,6 +262,10 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 
     // 6. Evaluate revenue alert rules for the accounts touched this run
     await evaluateRevenueAlertsForBatch(client, publishesToSync);
+
+    // 7. Whole-channel days (FILM-1734): every channel, whether or not one of
+    // its videos was due this run. Never throws.
+    result.channelDays = await syncChannelDays();
 
     result.durationMs = Date.now() - startTime;
     logger.info({ ...ctx, ...result }, 'Sync job completed');
@@ -877,6 +894,15 @@ async function ingestYouTubeDaily(
   });
 
   await insertVideoMetrics(rows);
+  // The Analytics API's copy of the days' traffic sources (FILM-1734); the
+  // Reporting CSV's copy, when it arrives, is the one readers take.
+  await insertVideoTrafficSources(
+    buildYouTubeTrafficRows({
+      projectId,
+      videoId: publish.id,
+      days: analytics.dailyTrafficSources ?? [],
+    }),
+  );
   await insertVideoRevenueDaily(
     buildYouTubeRevenueRows({
       projectId,
@@ -946,6 +972,11 @@ async function ingestCumulativeSnapshot(
           accounts_reached:
             platform === 'instagram'
               ? (analytics as InstagramInsightsResult).totals.reach
+              : null,
+          // Instagram FEED and STORY (FILM-1734); nobody else reports it.
+          profile_visits:
+            platform === 'instagram'
+              ? (analytics as InstagramInsightsResult).totals.profileVisits
               : null,
           // Instagram FEED and REELS, and X; TikTok reports none we can read.
           reposts:
@@ -1128,9 +1159,9 @@ export function normalizeAnalytics(
           data.totals.watchTimeMs === null
             ? null
             : Math.round(data.totals.watchTimeMs / 1000),
-        // Meta offers no `follows` for Reels (FILM-1712). Null, not 0, in
-        // the snapshot as in the day's row (migration 017, KB-114).
-        subscribers_gained: null,
+        // `follows`, which Meta reports for FEED and STORY and never for a
+        // Reel (FILM-1734): a Reel's is null, not 0 (migration 017, KB-114).
+        subscribers_gained: data.totals.follows,
         revenue_cents: 0,
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
@@ -1447,21 +1478,96 @@ export async function syncSinglePublishById(
     };
   }
 
-  return syncSinglePublish(
-    {
-      id: publish.id,
-      episode_id: publish.episode_id,
-      platform,
-      platform_connection_id: publish.platform_connection_id,
-      platform_content_id: publish.platform_content_id,
-      published_at: publish.published_at!,
-      duration_seconds: publish.duration_seconds ?? null,
-      metadata: publish.metadata as PublishMetadata | null,
-      connection: grant,
-    },
+  const forSync: PublishForSync = {
+    id: publish.id,
+    episode_id: publish.episode_id,
     platform,
-    ctx,
-  );
+    platform_connection_id: publish.platform_connection_id,
+    platform_content_id: publish.platform_content_id,
+    published_at: publish.published_at!,
+    duration_seconds: publish.duration_seconds ?? null,
+    metadata: publish.metadata as PublishMetadata | null,
+    connection: grant,
+  };
+
+  if (platform === 'youtube') {
+    await captureYouTubeLiveCounts(client, [forSync], ctx);
+  }
+
+  return syncSinglePublish(forSync, platform, ctx);
+}
+
+/**
+ * YouTube's live lifetime counts for these publishes (FILM-1734): one
+ * `videos.list part=statistics` call per channel per 50 videos, stored as
+ * `data_api` snapshots. Returns the snapshots written.
+ *
+ * Never throws: a live count is a supplement to the Analytics API's days,
+ * and losing one is not a reason to lose the run. A channel whose token or
+ * call fails is logged and asked again on its videos' next visit.
+ */
+export async function captureYouTubeLiveCounts(
+  client: Client,
+  publishes: PublishForSync[],
+  ctx: { name: string },
+): Promise<number> {
+  const logger = await getLogger();
+  const byConnection = new Map<string, PublishForSync[]>();
+
+  for (const publish of publishes) {
+    const group = byConnection.get(publish.platform_connection_id) ?? [];
+    group.push(publish);
+    byConnection.set(publish.platform_connection_id, group);
+  }
+
+  let written = 0;
+
+  for (const [connectionId, group] of byConnection) {
+    try {
+      const ensureValidToken = await getEnsureValidToken();
+      const token = await ensureValidToken(connectionId);
+
+      if (!token.valid || !token.accessToken) continue;
+
+      const statistics = await createYouTubeAnalyticsProvider(
+        token.accessToken,
+      ).fetchVideoStatistics(group.map((p) => p.platform_content_id));
+
+      const byProject = new Map<string, Map<string, string>>();
+
+      for (const publish of group) {
+        const projectId = await resolveProjectId(client, publish.episode_id);
+        if (!projectId) continue;
+
+        const ids = byProject.get(projectId) ?? new Map<string, string>();
+        ids.set(publish.platform_content_id, publish.id);
+        byProject.set(projectId, ids);
+      }
+
+      for (const [projectId, publishIdByVideoId] of byProject) {
+        const rows = buildYouTubeSnapshotRows({
+          projectId,
+          snapshotDate: formatDateStr(new Date()),
+          publishIdByVideoId,
+          statistics,
+        });
+
+        await insertVideoSnapshots(rows);
+        written += rows.length;
+      }
+    } catch (error) {
+      logger.warn(
+        {
+          ...ctx,
+          connectionId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'YouTube live counts failed; the Analytics API days are unaffected',
+      );
+    }
+  }
+
+  return written;
 }
 
 /**

@@ -471,6 +471,8 @@ async function ingestReportCsv(
         source: row.source,
         views: row.views,
         watch_time_minutes: row.watchTimeMinutes,
+        // Its own copy, beside the Analytics API's (migration 025).
+        metric_source: 'reporting_api',
       });
     }
 

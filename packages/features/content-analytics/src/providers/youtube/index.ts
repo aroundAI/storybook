@@ -13,12 +13,16 @@ export type {
   YouTubeAgeGroup,
   YouTubeAnalyticsInput,
   YouTubeAnalyticsResult,
+  YouTubeChannelDay,
+  YouTubeChannelStatistics,
   YouTubeDailyMetrics,
+  YouTubeDailyTrafficSource,
   YouTubeGender,
   YouTubeMetric,
   YouTubeTotals,
   YouTubeTrafficSource,
   YouTubeVideoInfo,
+  YouTubeVideoStatistics,
 } from './types';
 
 // Provider class, factory, and errors

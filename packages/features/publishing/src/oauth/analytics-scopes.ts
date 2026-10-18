@@ -119,8 +119,11 @@ export const ANALYTICS_SCOPE_REQUIREMENTS: readonly AnalyticsScopeRequirement[] 
       id: 'youtube.video-info',
       platform: 'youtube',
       scopes: ['https://www.googleapis.com/auth/youtube.readonly'],
-      endpoints: [/\byoutube\.videos\.list\(/],
-      gains: 'Video titles, thumbnails and durations',
+      // `channels.list part=statistics` (FILM-1734) needs no more than
+      // `videos.list` does: both are the owner's own resources.
+      endpoints: [/\byoutube\.videos\.list\(/, /\byoutube\.channels\.list\(/],
+      gains:
+        'Video titles, thumbnails, durations and live counts, and channel totals',
       provider: 'implemented',
       review: 'approved',
       source:

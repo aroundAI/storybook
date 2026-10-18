@@ -214,6 +214,8 @@ export { getGenomeFindingsAction } from './genome-actions';
 export type { GenomeFindingsResult, GenomeRefusal } from './genome-service';
 
 export { captureSubscriberSnapshots } from './subscriber-snapshot';
+export { captureChannelLifetimeTotals } from './channel-totals';
+export type { ChannelTotalsResult } from './channel-totals';
 export { captureChannelReachWindows } from './channel-reach-windows';
 export type { ChannelReachCaptureResult } from './channel-reach-windows';
 export type { SubscriberCaptureResult } from './subscriber-snapshot';
