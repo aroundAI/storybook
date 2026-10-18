@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { ActionRefusal } from '@kit/next/action-result';
+import { fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 
 export const OUTSIDE_PROJECT_CHANNEL_REFUSAL =
@@ -11,23 +12,26 @@ export const OUTSIDE_PROJECT_CHANNEL_REFUSAL =
 /**
  * The channels a project publishes to: its enabled `project_publishing_configs`
  * rows. A project with none publishes nowhere; it is never "every channel on
- * the team" (owner, 2026-10-10).
+ * the team" (owner, 2026-10-10). MCP `list_channels` lists the same set
+ * (KB-199), so what it shows is what scheduling accepts.
  */
 export async function getProjectChannelIds(
   client: SupabaseClient<Database>,
   projectId: string,
 ): Promise<Set<string>> {
-  const { data, error } = await client
-    .from('project_publishing_configs')
-    .select('platform_connection_id')
-    .eq('project_id', projectId)
-    .eq('is_enabled', true);
+  const rows = await fetchAllRows<{ platform_connection_id: string }>(
+    (from, to) =>
+      client
+        .from('project_publishing_configs')
+        .select('platform_connection_id')
+        .eq('project_id', projectId)
+        .eq('is_enabled', true)
+        .order('id')
+        .range(from, to),
+    "the project's channels",
+  );
 
-  if (error) {
-    throw new Error(`Could not read the project's channels: ${error.message}`);
-  }
-
-  return new Set(data.map((row) => row.platform_connection_id));
+  return new Set(rows.map((row) => row.platform_connection_id));
 }
 
 /**

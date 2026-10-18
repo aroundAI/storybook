@@ -8,6 +8,7 @@ import {
   type AnalyticsAccess,
   resolveAnalyticsAccess,
 } from '@kit/publishing/oauth/analytics-scopes';
+import { getProjectChannelIds } from '@kit/publishing/server/project-channels';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -70,12 +71,61 @@ function toChannelRef(row: ConnectionRow): ChannelRef {
  * per-language channels where multi-language audio is unavailable — so this
  * is derived from the project's published content rather than from the
  * account's full connection list, which would include channels this project
- * has never touched.
+ * has never touched. It is the analytics meaning: a channel with nothing
+ * published has no figures to filter by. What scheduling accepts is
+ * `listProjectLinkedChannels`.
  */
 export async function listProjectChannels(
   projectId: string,
   client: Client = getSupabaseServerClient(),
 ): Promise<ChannelRef[]> {
+  const connectionIds = await publishedConnectionIds(projectId, client);
+
+  return supported(await readConnections(connectionIds, client));
+}
+
+/** A project's channel, and whether it is still linked to the project. */
+export interface ProjectChannelRef extends ChannelRef {
+  /**
+   * An enabled `project_publishing_configs` row: one of the channels
+   * scheduling accepts for the project. `false` is a channel the project
+   * published from that is no longer linked; its history stays.
+   */
+  linked: boolean;
+}
+
+/**
+ * The project's linked channels (KB-199) — the set `getProjectChannelIds`
+ * defines and scheduling checks — and the channels it published from that
+ * are no longer linked, each flagged. A project that has published nothing
+ * still has its linked channels.
+ */
+export async function listProjectLinkedChannels(
+  projectId: string,
+  client: Client = getSupabaseServerClient(),
+): Promise<ProjectChannelRef[]> {
+  const [linkedIds, publishedIds] = await Promise.all([
+    getProjectChannelIds(client, projectId),
+    publishedConnectionIds(projectId, client),
+  ]);
+
+  const connections = await readConnections(
+    [...linkedIds, ...publishedIds],
+    client,
+  );
+
+  return supported(connections)
+    .map((channel) => ({
+      ...channel,
+      linked: linkedIds.has(channel.connectionId),
+    }))
+    .sort((a, b) => Number(b.linked) - Number(a.linked));
+}
+
+async function publishedConnectionIds(
+  projectId: string,
+  client: Client,
+): Promise<string[]> {
   // Two steps rather than one embedded join. The join returns one row per
   // publish, so a project with more publishes than PostgREST's `max_rows`
   // could lose a channel whose only publishes fall past the cut — and the
@@ -102,17 +152,20 @@ export async function listProjectChannels(
     'project channels',
   );
 
-  const connectionIds = Array.from(
+  return Array.from(
     new Set(
       publishRows
         .map((row) => row.platform_connection_id)
         .filter((id): id is string => Boolean(id)),
     ),
   );
+}
 
-  if (connectionIds.length === 0) return [];
-
-  const connections = await fetchAllByIds<ConnectionRow>(
+function readConnections(
+  connectionIds: string[],
+  client: Client,
+): Promise<ConnectionRow[]> {
+  return fetchAllByIds<ConnectionRow>(
     connectionIds,
     (chunk, from, to) =>
       client
@@ -125,8 +178,6 @@ export async function listProjectChannels(
         .range(from, to),
     'platform_connections',
   );
-
-  return supported(connections);
 }
 
 /**

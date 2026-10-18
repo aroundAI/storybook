@@ -36,6 +36,7 @@ import type {
   BreakingInput,
   ChannelCadenceInput,
 } from '../lib/schemas/schedule-release.schema';
+import { assertConnectionOfProject } from './project-channels';
 import {
   type ScheduleTarget,
   type ScheduledPublish,
@@ -394,6 +395,36 @@ function refused<T>(error: unknown): Result<T> {
   throw error;
 }
 
+/**
+ * A preview refuses a channel outside the episode's project, as scheduling
+ * does at preflight, so a preview never shows posts that cannot be made
+ * (KB-199: `list_channels(projectId)` lists exactly the channels accepted).
+ */
+async function refuseOutsideProject(
+  client: Client,
+  episodeId: string,
+  items: ReleaseItem[],
+) {
+  const { data: episode, error } = await client
+    .from('episodes')
+    .select('project_id')
+    .eq('id', episodeId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not read the episode: ${error.message}`);
+  }
+  if (!episode) {
+    throw new ActionRefusal('That episode was not found.');
+  }
+
+  await assertConnectionOfProject(
+    client,
+    items.map((item) => item.connectionId),
+    episode.project_id,
+  );
+}
+
 /** Where the release would go: nothing is written */
 export async function previewCadenceRelease(
   client: Client,
@@ -401,6 +432,7 @@ export async function previewCadenceRelease(
   options: { now?: Date; random?: () => number } = {},
 ): Promise<Result<ReleasePreview>> {
   try {
+    await refuseOutsideProject(client, input.episodeId, itemsOf(input.targets));
     const context = await planFor(client, {
       episodeId: input.episodeId,
       items: itemsOf(input.targets),
@@ -687,6 +719,8 @@ export async function previewBreakingRelease(
   options: { now?: Date } = {},
 ): Promise<Result<BreakingPreview>> {
   try {
+    await refuseOutsideProject(client, input.episodeId, itemsOf(input.targets));
+
     const now = options.now ?? new Date();
     const context = await planBreakingFor(client, {
       episodeId: input.episodeId,
