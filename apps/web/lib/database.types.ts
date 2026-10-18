@@ -1604,6 +1604,7 @@ export type Database = {
           created_at: string
           days_of_week: number[]
           enabled: boolean
+          every_n_days: number
           id: string
           jitter_minutes: number
           min_days_between: number
@@ -1619,6 +1620,7 @@ export type Database = {
           created_at?: string
           days_of_week?: number[]
           enabled?: boolean
+          every_n_days?: number
           id?: string
           jitter_minutes?: number
           min_days_between?: number
@@ -1634,6 +1636,7 @@ export type Database = {
           created_at?: string
           days_of_week?: number[]
           enabled?: boolean
+          every_n_days?: number
           id?: string
           jitter_minutes?: number
           min_days_between?: number

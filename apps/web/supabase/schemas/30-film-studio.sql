@@ -681,7 +681,10 @@ create table if not exists public.channel_posting_cadences (
        and days_of_week <@ '{0,1,2,3,4,5,6}'::smallint[]),
   min_days_between smallint not null default 0
     check (min_days_between between 0 and 30),
-  start_after_hours smallint not null default 0
+  -- FILM-2209: Shorts post on every Nth local day; long videos keep 1
+  every_n_days smallint not null default 1
+    check (every_n_days between 1 and 30),
+  start_after_hours smallint not null default 2
     check (start_after_hours between 0 and 168),
   jitter_minutes smallint not null default 20
     check (jitter_minutes between 0 and 120),
@@ -690,6 +693,8 @@ create table if not exists public.channel_posting_cadences (
   updated_at timestamptz not null default now(),
   constraint channel_posting_cadences_channel_type_key
     unique (platform_connection_id, content_type),
+  constraint channel_posting_cadences_every_n_days_shorts_check
+    check (content_type = 'short' or every_n_days = 1),
   constraint channel_posting_cadences_connection_account_fkey
     foreign key (platform_connection_id, account_id)
     references public.platform_connections (id, account_id)
