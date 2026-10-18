@@ -256,34 +256,35 @@ test.describe('The Schedule page', () => {
     // Times in the viewer's zone, which the header names as the release panel does
     await expect(byTest(page, 'schedule-when')).toHaveText('When (GMT+5:30)');
     await expect(
-      row(posts.scheduled.id).locator('[data-test="schedule-row-time"]'),
+      byTest(row(posts.scheduled.id), 'schedule-row-time'),
     ).toHaveText(await shown(page, times.scheduled));
     await expect(
-      row(posts.published.id).locator('[data-test="schedule-row-time"]'),
+      byTest(row(posts.published.id), 'schedule-row-time'),
     ).toHaveText(await shown(page, times.published));
 
     // Each status reads as itself, with its link, reason or badge
     const published = row(posts.published.id);
+    await expect(byTest(published, 'schedule-row-status')).toHaveText(
+      'Published',
+    );
+    await expect(byTest(published, 'schedule-row-link')).toHaveAttribute(
+      'href',
+      'https://www.youtube.com/watch?v=sched1',
+    );
     await expect(
-      published.locator('[data-test="schedule-row-status"]'),
-    ).toHaveText('Published');
-    await expect(
-      published.locator('[data-test="schedule-row-link"]'),
-    ).toHaveAttribute('href', 'https://www.youtube.com/watch?v=sched1');
-    await expect(
-      row(posts.failed.id).locator('[data-test="schedule-row-reason"]'),
+      byTest(row(posts.failed.id), 'schedule-row-reason'),
     ).toHaveText('Instagram refused the video: longer than 90 s');
+    await expect(byTest(row(posts.held.id), 'schedule-row-status')).toHaveText(
+      'Held',
+    );
+    await expect(byTest(row(posts.held.id), 'schedule-row-reason')).toHaveText(
+      'The next episode went out first',
+    );
     await expect(
-      row(posts.held.id).locator('[data-test="schedule-row-status"]'),
-    ).toHaveText('Held');
-    await expect(
-      row(posts.held.id).locator('[data-test="schedule-row-reason"]'),
-    ).toHaveText('The next episode went out first');
-    await expect(
-      row(posts.breaking.id).locator('[data-test="schedule-row-breaking"]'),
+      byTest(row(posts.breaking.id), 'schedule-row-breaking'),
     ).toBeVisible();
     await expect(
-      row(posts.scheduled.id).locator('[data-test="schedule-row-episode"]'),
+      byTest(row(posts.scheduled.id), 'schedule-row-episode'),
     ).toHaveAttribute(
       'href',
       `/home/${team.slug}/studio/${project.slug}/episodes/${ep1.slug}/publish`,
@@ -324,9 +325,7 @@ test.describe('The Schedule page', () => {
     // --- Cancel the scheduled Short
     await choose(page, 'schedule-filter-status', 'All statuses');
     await expect(rows(page)).toHaveCount(5);
-    await row(posts.scheduled.id)
-      .locator('[data-test="schedule-row-cancel"]')
-      .click();
+    await byTest(row(posts.scheduled.id), 'schedule-row-cancel').click();
     await expect(byTest(page, 'schedule-confirm')).toBeVisible();
     await capture(page, '03-cancel-confirm');
     const confirm = byTest(page, 'schedule-confirm-action');
@@ -340,9 +339,7 @@ test.describe('The Schedule page', () => {
     ).toEqual([]);
 
     // --- Discard the held Short
-    await row(posts.held.id)
-      .locator('[data-test="schedule-row-discard"]')
-      .click();
+    await byTest(row(posts.held.id), 'schedule-row-discard').click();
     const discard = byTest(page, 'schedule-confirm-action');
     await expect(discard).toBeEnabled();
     await discard.click();
@@ -406,7 +403,7 @@ test.describe('The Schedule page', () => {
       page,
       `[data-test="connection-row"][data-connection-id="${ig}"]`,
     );
-    const open = igRow.locator('[data-test="connection-posting-rules"]');
+    const open = byTest(igRow, 'connection-posting-rules');
     await expect(open).toBeEnabled({ timeout: 60_000 });
     await igRow.scrollIntoViewIfNeeded();
     await capture(page, '07-settings-platforms-posting-rules-button');
@@ -421,7 +418,7 @@ test.describe('The Schedule page', () => {
         '[data-test="channel-cadence-form"][data-content-type="short"]',
       ),
     ).toBeVisible();
-    await expect(page.locator('[data-test="cadence-tab-full"]')).toHaveCount(0);
+    await expect(byTest(page, 'cadence-tab-full')).toHaveCount(0);
     await expect(byTest(page, 'cadence-shorts-only')).toBeVisible();
     await byTest(page, 'cadence-slot-time').first().fill('20:00');
     await byTest(page, 'cadence-every-n-days').fill('2');
