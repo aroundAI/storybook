@@ -49,9 +49,9 @@ export interface ChannelCadenceState {
 }
 
 /**
- * FILM-719. When one channel posts: its slots (their count is how many it
- * posts a day), the days it posts, and the spacing. Shorts and long videos
- * each have their own.
+ * FILM-719, FILM-2209. When one channel posts: its slots (their count is
+ * how many it posts a day), the days it posts, every how many days, and the
+ * spacing. Shorts and long videos each have their own.
  */
 export function ChannelCadenceDialog(props: {
   channel: { id: string; name: string };
@@ -132,6 +132,7 @@ function CadenceForm(props: {
       slotTimes: cadence.slotTimes,
       daysOfWeek: cadence.daysOfWeek,
       minDaysBetween: cadence.minDaysBetween,
+      everyNDays: cadence.everyNDays,
       startAfterHours: cadence.startAfterHours,
       jitterMinutes: cadence.jitterMinutes,
       enabled: props.state?.enabled ?? true,
@@ -212,10 +213,12 @@ function CadenceForm(props: {
                   </Button>
                 )}
               </div>
-              <FormDescription>
-                {field.value.length === 1
-                  ? `At most one ${short ? 'Short' : 'long video'} a day.`
-                  : `At most ${field.value.length} ${short ? 'Shorts' : 'long videos'} a day.`}
+              <FormDescription data-test="cadence-per-day">
+                {short
+                  ? `${field.value.length} Short${field.value.length === 1 ? '' : 's'} a day, at these times.`
+                  : field.value.length === 1
+                    ? 'At most one long video a day.'
+                    : `At most ${field.value.length} long videos a day.`}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -255,40 +258,73 @@ function CadenceForm(props: {
         />
 
         {short ? (
-          <FormField
-            control={form.control}
-            name="startAfterHours"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Start after the long video</FormLabel>
-                <div className="flex items-center gap-2">
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={168}
-                      className="w-24"
-                      data-test="cadence-start-after-hours"
-                      {...field}
-                    />
-                  </FormControl>
-                  <span className="text-sm text-muted-foreground">hours</span>
-                </div>
-                <FormDescription>
-                  An episode&apos;s Shorts go out only after its long video, and
-                  only until the next episode&apos;s long video.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="everyNDays"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Post Shorts every</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={30}
+                        className="w-24"
+                        data-test="cadence-every-n-days"
+                        {...field}
+                      />
+                    </FormControl>
+                    <span className="text-sm text-muted-foreground">
+                      {Number(field.value) === 1 ? 'day' : 'days'}
+                    </span>
+                  </div>
+                  <FormDescription>
+                    1 is every day, 2 every other day.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="startAfterHours"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start after the long video</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={168}
+                        className="w-24"
+                        data-test="cadence-start-after-hours"
+                        {...field}
+                      />
+                    </FormControl>
+                    <span className="text-sm text-muted-foreground">hours</span>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <p className="text-sm text-muted-foreground sm:col-span-2">
+              Shorts post in order, oldest episode first. An episode&apos;s
+              Shorts start after its long video and keep posting after the next
+              one until they are all out.
+            </p>
+          </div>
         ) : (
           <FormField
             control={form.control}
             name="minDaysBetween"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Days between long videos</FormLabel>
+                <FormLabel>A long video every</FormLabel>
                 <div className="flex items-center gap-2">
                   <FormControl>
                     <Input

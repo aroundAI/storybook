@@ -1,5 +1,5 @@
 /**
- * FILM-719. A release scheduled on its channels' cadence, and the cadence a
+ * FILM-719, FILM-2209. A release scheduled on its channels' cadence, and the cadence a
  * channel posts on. Shared by the actions and the forms that call them.
  */
 import { z } from 'zod';
@@ -46,6 +46,7 @@ export const ChannelCadenceSchema = z
       .array(z.number().int().min(0).max(6))
       .min(1, 'Choose at least one day.'),
     minDaysBetween: z.coerce.number().int().min(0).max(30),
+    everyNDays: z.coerce.number().int().min(1).max(30),
     startAfterHours: z.coerce.number().int().min(0).max(168),
     jitterMinutes: z.coerce.number().int().min(0).max(120),
     enabled: z.boolean(),
@@ -53,6 +54,11 @@ export const ChannelCadenceSchema = z
   .refine((value) => new Set(value.slotTimes).size === value.slotTimes.length, {
     message: 'Each posting time is listed once.',
     path: ['slotTimes'],
+  })
+  .refine((value) => value.contentType === 'short' || value.everyNDays === 1, {
+    message:
+      'Every N days is for Shorts; long videos use the days between them.',
+    path: ['everyNDays'],
   });
 
 export const ChannelCadencesQuerySchema = z.object({

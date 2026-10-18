@@ -243,7 +243,7 @@ export function PublishedContentSection({
                     size="sm"
                     data-test="held-requeue"
                     onClick={() => onRequeueHeld([pub.id])}
-                    title="Re-queue after everything on this channel"
+                    title="Add to the end of this channel's Shorts queue"
                   >
                     Re-queue
                   </Button>

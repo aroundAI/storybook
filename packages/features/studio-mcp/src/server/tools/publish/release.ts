@@ -2,6 +2,10 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import {
+  QUEUE_WARNING_DAYS,
+  type ShortsQueueSummary,
+} from '@kit/publishing/lib/cadence/release-types';
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
 import { ChannelCadenceSchema } from '@kit/publishing/lib/schemas/schedule-release';
 import {
@@ -27,9 +31,9 @@ import { refused } from '../validation';
  * FILM-2208: a release on each channel's posting cadence (FILM-719) over
  * MCP, so a client that uploads a folder of episodes can schedule them the
  * way the Schedule Release panel does: the long video in the channel's next
- * free slot, its Shorts a slot at a time until the next episode's long
- * video, each Short waiting for its long video to go out. Every tool calls
- * the function the Publish screen calls.
+ * free slot, its Shorts at the end of the channel's Shorts queue, oldest
+ * first (FILM-2209), each Short waiting for its long video to go out. Every
+ * tool calls the function the Publish screen calls.
  */
 
 type Client = McpPrincipal['supabase'];
@@ -67,7 +71,7 @@ const ReleaseTargetSchema = z.object({
     .min(1)
     .optional()
     .describe(
-      'For a short: the Shorts group. It must be set to go to this channel’s platform. Shorts are placed in the order listed.',
+      'For a short: the Shorts group. It must be set to go to this channel’s platform. Shorts join the channel’s Shorts queue in the order listed.',
     ),
   title: z.string().min(1).max(5000),
   description: z.string().max(70000).default(''),
@@ -146,6 +150,18 @@ async function longVideoThumbnails(
   return chosen;
 }
 
+/** Each channel's Shorts queue after the release, and a warning when it runs ahead */
+function queueLines(queues: readonly ShortsQueueSummary[]) {
+  if (!queues.length) return '';
+
+  return `\nShorts queues:\n${queues
+    .map(
+      (q) =>
+        `- ${q.name} (${q.platform}): ${q.queued} queued, the last ${q.lastShortAt}, ${q.daysAhead ?? 0} days past the last long video${q.runsAhead ? ` — more than ${QUEUE_WARNING_DAYS} days: more Shorts per episode than Short slots between long videos` : ''}`,
+    )
+    .join('\n')}`;
+}
+
 /** The release's own key for target `index`, echoed back in the plan */
 const keyOf = (index: number) => `target-${index}`;
 const indexOf = (key: string) => Number(key.replace('target-', ''));
@@ -154,7 +170,7 @@ export const scheduleReleaseTool = defineTool({
   name: 'schedule_release',
   title: 'Schedule a release on the channels’ cadence',
   description:
-    "Schedules an episode's long video and its Shorts on each channel's posting cadence (get_channel_cadence), as the Publish screen's Schedule Release panel does: the long video takes the channel's next free long-video slot, at least the channel's days after its last one; the Shorts take one Short slot at a time after it, in the order listed, only until the next episode's long video, and each waits for its long video to be live. Shorts that do not fit are held as drafts (requeue_held_shorts, discard_held_shorts); this release's long video holds an earlier episode's Shorts still scheduled after it. A long video carries the episode's thumbnail for its language (request_episode_thumbnail_upload); Shorts carry none. Call it with preview: true first: it returns where every post would go and writes nothing. Release an episode's predecessors first: each long video goes after the channel's last one.",
+    "Schedules an episode's long video and its Shorts on each channel's posting cadence (get_channel_cadence), as the Publish screen's Schedule Release panel does: the long video takes the channel's next free long-video slot, the channel's days after its last one. Each channel has one Shorts queue, oldest first: this release's Shorts go after every Short already queued there, in the order listed, no earlier than the channel's hours after their long video on that channel, never more a day than its Short times and only on its every-N-days. An episode's Shorts keep posting after the next episode's long video; nothing already scheduled moves, and nothing is held. Each Short waits for its long video to be live. shortsQueue says, per channel, how many Shorts wait, when the last goes and how many days that is past the last long video: runsAhead (over 7 days) means the episodes have more Shorts than Short slots between long videos, so the queue keeps growing. A long video carries the episode's thumbnail for its language (request_episode_thumbnail_upload); Shorts carry none. Call it with preview: true first: it returns where every post would go and writes nothing. Release episodes in order: each goes after the channel's last one.",
   inputSchema: {
     episodeId: z.string().uuid(),
     targets: z
@@ -226,21 +242,17 @@ export const scheduleReleaseTool = defineTool({
       const result = await previewCadenceRelease(client, release);
       if (!result.ok) throw refused(result.refusal, 'targets');
 
-      const { placed, held, displaced, channels } = result.data;
-      const lines = [
-        ...placed.map((p) => `- ${p.scheduledAt}: ${describe(p.key)}`),
-        ...held.map((h) => `- held (${h.reason}): ${describe(h.key)}`),
-      ];
+      const { placed, channels, shortsQueue } = result.data;
+      const lines = placed.map((p) => `- ${p.scheduledAt}: ${describe(p.key)}`);
 
       return {
-        text: `Preview, nothing written: ${placed.length} placed, ${held.length} held, ${displaced.length} of an earlier episode's Shorts held back.\n${lines.join('\n')}`,
+        text: `Preview, nothing written: ${placed.length} placed.\n${lines.join('\n')}${queueLines(shortsQueue)}`,
         structuredContent: {
           episodeId: input.episodeId,
           preview: true,
           placed: placed.map((p) => ({ ...p, target: indexOf(p.key) })),
-          held: held.map((h) => ({ ...h, target: indexOf(h.key) })),
-          displaced,
           channels,
+          shortsQueue,
         },
       };
     }
@@ -252,21 +264,20 @@ export const scheduleReleaseTool = defineTool({
     );
     if (!result.ok) throw refused(result.refusal, 'targets');
 
-    const { scheduled, held, displaced } = result.data;
+    const { scheduled, shortsQueue } = result.data;
 
     return {
-      text: `Scheduled ${scheduled.length} post${scheduled.length === 1 ? '' : 's'}, held ${held.length}, held back ${displaced.length} of an earlier episode's Shorts.\n${scheduled
+      text: `Scheduled ${scheduled.length} post${scheduled.length === 1 ? '' : 's'}.\n${scheduled
         .map(
           (row) =>
-            `- ${row.scheduledAt ?? 'held'}: ${row.platform} ${row.contentType} (${row.language}), publish ${row.publishId}`,
+            `- ${row.scheduledAt}: ${row.platform} ${row.contentType} (${row.language}), publish ${row.publishId}`,
         )
-        .join('\n')}`,
+        .join('\n')}${queueLines(shortsQueue)}`,
       structuredContent: {
         episodeId: input.episodeId,
         preview: false,
         scheduled,
-        held: held.map((h) => ({ ...h, target: indexOf(h.key) })),
-        displaced,
+        shortsQueue,
       },
     };
   },
@@ -309,7 +320,7 @@ export const getChannelCadenceTool = defineTool({
   name: 'get_channel_cadence',
   title: 'Read channels’ posting cadence',
   description:
-    "Each channel's posting cadence for long videos (full) and Shorts (short): the times of day it posts in its timezone (their count is its daily cap), the weekdays, the days between long videos, the hours Shorts wait after their long video, and the random minutes added to each time. own: false means the channel posts on the defaults.",
+    "Each channel's posting cadence for long videos (full) and Shorts (short): the times of day it posts in its timezone (their count is how many it posts a day), the weekdays, a long video every minDaysBetween days, Shorts on every everyNDays-th day, the hours Shorts wait after their long video, and the random minutes added to each time. own: false means the channel posts on the defaults.",
   inputSchema: {
     connectionIds: z.array(z.string().uuid()).min(1).max(100),
   },
@@ -359,7 +370,7 @@ export const setChannelCadenceTool = defineTool({
       .min(1)
       .max(6)
       .describe(
-        'Times of day as HH:MM in the timezone, e.g. ["11:00", "21:00"]; their count is the most it posts of this type in a day.',
+        'Times of day as HH:MM in the timezone, e.g. ["11:00", "17:00"]; their count is how many it posts of this type in a day (2 Shorts a day for two times).',
       ),
     daysOfWeek: z
       .array(z.number().int().min(0).max(6))
@@ -372,14 +383,27 @@ export const setChannelCadenceTool = defineTool({
       .min(0)
       .max(30)
       .default(0)
-      .describe('Long videos: the least days between two on the channel.'),
+      .describe(
+        'Long videos: a long video every this many days (local calendar days).',
+      ),
+    everyNDays: z
+      .number()
+      .int()
+      .min(1)
+      .max(30)
+      .default(1)
+      .describe(
+        'Shorts: post on every Nth day (1 every day, 2 every other day), counted from the channel’s Shorts queue; long videos keep 1.',
+      ),
     startAfterHours: z
       .number()
       .int()
       .min(0)
       .max(168)
-      .default(0)
-      .describe('Shorts: hours after their long video before the first goes.'),
+      .default(2)
+      .describe(
+        'Shorts: hours after their long video on the channel before the first goes.',
+      ),
     jitterMinutes: z
       .number()
       .int()
@@ -411,7 +435,7 @@ export const setChannelCadenceTool = defineTool({
     if (!result.ok) throw refused(result.refusal, 'connectionId');
 
     return {
-      text: `The channel's ${input.contentType === 'full' ? 'long-video' : 'Shorts'} cadence is ${parsed.data.slotTimes.join(', ')} (${parsed.data.timezone}).`,
+      text: `The channel's ${input.contentType === 'full' ? 'long-video' : 'Shorts'} cadence is ${parsed.data.slotTimes.join(', ')} (${parsed.data.timezone})${input.contentType === 'full' ? `, every ${parsed.data.minDaysBetween} days` : `, every ${parsed.data.everyNDays === 1 ? 'day' : `${parsed.data.everyNDays} days`}`}.`,
       structuredContent: { ...result.data, cadence: parsed.data },
     };
   },
@@ -455,7 +479,7 @@ export const requeueHeldShortsTool = defineTool({
   name: 'requeue_held_shorts',
   title: 'Re-queue held Shorts',
   description:
-    'Puts held Shorts back on their channels, each in the next free Short slot after everything already scheduled there, still waiting for their long video. One that still finds no slot stays held.',
+    'Puts Shorts an earlier release held (before FILM-2209 a new long video held its predecessor’s Shorts) at the end of their channels’ Shorts queues, still waiting for their long video. A release no longer holds Shorts, so this is only for those older drafts.',
   inputSchema: { publishIds: HeldIds, timezone: TimeZone },
   scope: 'studio:publish',
   annotations: PUBLISH,
@@ -467,7 +491,7 @@ export const requeueHeldShortsTool = defineTool({
     if (!result.ok) throw refused(result.refusal, 'publishIds');
 
     return {
-      text: `Re-queued ${result.data.requeued.length}; ${result.data.stillHeld.length} still held.`,
+      text: `Re-queued ${result.data.requeued.length}.`,
       structuredContent: result.data,
     };
   },
@@ -532,7 +556,7 @@ export const getPublishCalendarTool = defineTool({
   name: 'get_publish_calendar',
   title: 'Read a project’s publishing calendar',
   description:
-    'Every post of one project between from and to (at most 62 days), across its episodes and channels, in time order: what went out (with its link), what is scheduled, what failed and why, and the held Shorts (status held, with the reason) that no slot was found for. For a daily report, ask for yesterday to a few days ahead.',
+    'Every post of one project between from and to (at most 62 days), across its episodes and channels, in time order: what went out (with its link), what is scheduled, what failed and why, and any Shorts an earlier release held (status held, with the reason; requeue_held_shorts or discard_held_shorts). For a daily report, ask for yesterday to a few days ahead.',
   inputSchema: {
     projectId: z.string().uuid(),
     from: z.string().datetime({ offset: true }),

@@ -1,23 +1,33 @@
 /**
- * FILM-719. Where each upload of one episode's release goes on its channels'
- * calendars.
+ * FILM-719, FILM-2209. Where each upload of one episode's release goes on
+ * its channels' calendars.
  *
- * - A full video takes its channel's first free full-video slot at least
- *   `minDaysBetween` after the channel's last full video.
- * - Shorts follow their own episode only (owner, 2026-10-15): on a channel,
- *   episode N's Shorts take slots from `startAfterHours` after its full video
- *   until the next episode's full video. One that does not fit is held, not
- *   dropped; and this release's full video holds an earlier episode's Shorts
- *   still scheduled after it, so two episodes' Shorts never share a channel.
- * - `append` re-queues held Shorts after everything already on the channel,
- *   with no window: the owner asked for them.
+ * - A full video takes its channel's first free full-video slot from
+ *   `minDaysBetween` local days after the channel's last full video, and
+ *   never before it, so a later batch goes after an earlier one.
+ * - Each channel has one Shorts queue, oldest first (owner, 2026-10-18): a
+ *   release's Shorts go after every Short already on the channel, in the
+ *   order listed, and no earlier than `startAfterHours` after their
+ *   episode's long video on that channel (on a channel with none, its
+ *   earliest anywhere). Nothing ends an episode's Shorts: they keep posting
+ *   after the next long video, never more a day than the channel's slots,
+ *   and only on every `everyNDays`th day.
+ * - No two posts on a channel hold one time, whatever their type.
+ * - Jitter keeps a post on its slot's local day and after the post before
+ *   it on the channel.
+ * - An upload with no free slot within HORIZON_DAYS is returned unplaced;
+ *   the caller refuses the release rather than holding it.
  *
  * Pure: the caller reads the channels' posts and passes `now` and `random`.
  */
 import {
   type CadenceContentType,
   type ChannelCadence,
+  addDays,
+  localDate,
   nextFreeSlot,
+  onSlotDay,
+  startOfLocalDay,
 } from './cadence';
 
 /** A post already on a channel's calendar */
@@ -29,6 +39,16 @@ export interface OccupiedPost {
   status: 'scheduled' | 'queued' | 'publishing' | 'published';
   /** Its slot, else when it goes (or went) out */
   at: Date;
+  /** When it goes (or went) out: the slot plus its jitter */
+  goesAt: Date;
+}
+
+/** When an episode's long videos go (or went) out */
+export interface EpisodeAnchor {
+  /** Its earliest long video on any channel */
+  earliest: Date;
+  /** Its earliest long video on each channel that has one */
+  byChannel: ReadonlyMap<string, Date>;
 }
 
 /** One upload of the release, in the order the owner listed them */
@@ -40,7 +60,7 @@ export interface ReleaseItem {
 
 export interface PlanReleaseInput {
   episodeId: string;
-  /** The full video goes no earlier than this */
+  /** Nothing in the release goes earlier than this */
   notBefore: Date;
   items: readonly ReleaseItem[];
   cadenceOf: (
@@ -49,14 +69,10 @@ export interface PlanReleaseInput {
   ) => ChannelCadence;
   /** Every post on the release's channels, by every episode */
   occupied: readonly OccupiedPost[];
-  /**
-   * When each episode's full video goes (or went) out: its earliest one.
-   * Includes this episode's, when it already has one.
-   */
-  anchors: ReadonlyMap<string, Date>;
+  /** Each episode's long videos, this one's included when it has any */
+  anchors: ReadonlyMap<string, EpisodeAnchor>;
   now: Date;
   random: () => number;
-  mode?: 'window' | 'append';
 }
 
 export interface PlacedItem {
@@ -69,21 +85,11 @@ export interface PlacedItem {
   afterEpisodeFull: boolean;
 }
 
-export type HeldReason = 'next-episode' | 'no-slot';
-
-export interface HeldItem {
+/** An upload no slot was found for within HORIZON_DAYS */
+export interface UnplacedItem {
   key: string;
   connectionId: string;
-  reason: HeldReason;
-  /** The next episode's full video the Short would have gone after */
-  before: Date | null;
-}
-
-export interface BumpedPost {
-  publishId: string;
-  connectionId: string;
-  episodeId: string;
-  before: Date;
+  contentType: CadenceContentType;
 }
 
 export interface ChannelSummary {
@@ -91,12 +97,28 @@ export interface ChannelSummary {
   queueEndsAt: Date | null;
 }
 
+/**
+ * A channel's Shorts queue after the release. When it keeps running further
+ * ahead of the long videos, the episodes have more Shorts than the slots
+ * between their long videos.
+ */
+export interface ShortsQueue {
+  connectionId: string;
+  /** Shorts on the channel not yet out */
+  queued: number;
+  lastShortAt: Date | null;
+  /** The channel's last long video; on one with none, its Shorts' episodes' */
+  longVideosEndAt: Date | null;
+  /** Days the last Short goes after that long video, to one decimal */
+  daysAhead: number | null;
+}
+
 export interface ReleasePlan {
   anchor: Date | null;
   placed: PlacedItem[];
-  held: HeldItem[];
-  bumped: BumpedPost[];
+  unplaced: UnplacedItem[];
   channels: ChannelSummary[];
+  shortsQueues: ShortsQueue[];
 }
 
 /** Nothing is scheduled closer than this to now */
@@ -106,74 +128,103 @@ const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 const MINUTE_MS = 60_000;
 
+const NOT_OUT = new Set(['scheduled', 'queued', 'publishing']);
+
 function later(...dates: Array<Date | null | undefined>) {
   const times = dates.filter((d): d is Date => !!d).map((d) => d.getTime());
 
   return new Date(Math.max(...times));
 }
 
+function latest(dates: readonly Date[]) {
+  return dates.length
+    ? new Date(Math.max(...dates.map((d) => d.getTime())))
+    : null;
+}
+
+function earliestOf(dates: readonly Date[]) {
+  return dates.length
+    ? new Date(Math.min(...dates.map((d) => d.getTime())))
+    : null;
+}
+
+/**
+ * The slot plus up to ± the channel's jitter, kept on the slot's local day,
+ * not before `floor`, and at least a minute after `previous`, the post
+ * before it on the channel, so jitter never reorders the queue.
+ */
 function jittered(
   slot: Date,
   cadence: ChannelCadence,
   floor: Date,
+  previous: Date | null,
   random: () => number,
 ) {
   const offset = Math.round((random() * 2 - 1) * cadence.jitterMinutes);
 
-  return later(new Date(slot.getTime() + offset * MINUTE_MS), floor);
+  return later(
+    onSlotDay(
+      new Date(slot.getTime() + offset * MINUTE_MS),
+      slot,
+      cadence.timezone,
+    ),
+    floor,
+    previous && new Date(previous.getTime() + MINUTE_MS),
+  );
 }
 
 export function planRelease(input: PlanReleaseInput): ReleasePlan {
-  const { episodeId, items, cadenceOf, now, random } = input;
-  const mode = input.mode ?? 'window';
+  const { episodeId, items, cadenceOf, now, random, occupied } = input;
   const earliest = new Date(now.getTime() + MIN_LEAD_MS);
+  const base = later(earliest, input.notBefore);
 
   const placed: PlacedItem[] = [];
-  const held: HeldItem[] = [];
-  const bumped: BumpedPost[] = [];
+  const unplaced: UnplacedItem[] = [];
 
-  // Posts this plan treats as taken; bumped ones leave it below
-  let occupied = [...input.occupied];
-
-  const takenOn = (connectionId: string, contentType: CadenceContentType) => [
+  const postsOn = (connectionId: string, contentType?: CadenceContentType) => [
     ...occupied
       .filter(
         (post) =>
           post.connectionId === connectionId &&
-          post.contentType === contentType,
+          (!contentType || post.contentType === contentType),
       )
-      .map((post) => post.at),
+      .map((post) => ({ at: post.at, goesAt: post.goesAt })),
     ...placed
       .filter(
         (item) =>
           item.connectionId === connectionId &&
-          item.contentType === contentType,
+          (!contentType || item.contentType === contentType),
       )
-      .map((item) => item.slotAt),
+      .map((item) => ({ at: item.slotAt, goesAt: item.scheduledAt })),
   ];
+  const slotsOf = (posts: ReadonlyArray<{ at: Date }>) =>
+    posts.map((post) => post.at);
+  const lastGoing = (posts: ReadonlyArray<{ goesAt: Date }>) =>
+    latest(posts.map((post) => post.goesAt));
 
-  // 1. Full videos
+  // 1. Full videos: after the channel's last one, on its local-day spacing
   for (const item of items.filter((i) => i.contentType === 'full')) {
     const cadence = cadenceOf(item.connectionId, 'full');
-    const taken = takenOn(item.connectionId, 'full');
-    const lastFull = taken.length
-      ? new Date(Math.max(...taken.map((at) => at.getTime())))
-      : null;
+    const fulls = postsOn(item.connectionId, 'full');
+    const lastFull = latest(slotsOf(fulls));
     const from = later(
-      input.notBefore,
-      earliest,
+      base,
       lastFull &&
-        new Date(lastFull.getTime() + cadence.minDaysBetween * DAY_MS),
+        startOfLocalDay(
+          addDays(
+            localDate(lastFull, cadence.timezone),
+            cadence.minDaysBetween,
+          ),
+          cadence.timezone,
+        ),
+      lastFull && new Date(lastFull.getTime() + 1),
     );
-    const slot = nextFreeSlot(cadence, from, taken);
+    const slot = nextFreeSlot(cadence, from, slotsOf(fulls), {
+      blocked: slotsOf(postsOn(item.connectionId)),
+    });
 
     if (!slot) {
-      held.push({
-        key: item.key,
-        connectionId: item.connectionId,
-        reason: 'no-slot',
-        before: null,
-      });
+      unplaced.push({ ...item });
       continue;
     }
 
@@ -182,148 +233,140 @@ export function planRelease(input: PlanReleaseInput): ReleasePlan {
       connectionId: item.connectionId,
       contentType: 'full',
       slotAt: slot,
-      scheduledAt: jittered(slot, cadence, earliest, random),
+      scheduledAt: jittered(slot, cadence, earliest, lastGoing(fulls), random),
       afterEpisodeFull: false,
     });
   }
 
-  // 2. The episode's anchor: its earliest full video, this release's or one
-  //    it already has. A Shorts-only release of an episode with none starts
-  //    at `notBefore` and waits for nothing.
-  const placedFulls = placed.map((item) => item.slotAt.getTime());
-  const existingAnchor = input.anchors.get(episodeId) ?? null;
-  const anchorTimes = [
+  // 2. The episode's long videos: this release's and any it already has. A
+  //    Shorts-only release of an episode with none waits for nothing.
+  const existing = input.anchors.get(episodeId);
+  const placedFulls = placed.map((item) => item.slotAt);
+  const anchor = earliestOf([
     ...placedFulls,
-    ...(existingAnchor ? [existingAnchor.getTime()] : []),
-  ];
-  const anchor = anchorTimes.length ? new Date(Math.min(...anchorTimes)) : null;
-  const afterEpisodeFull = anchor !== null;
+    ...(existing ? [existing.earliest] : []),
+  ]);
+  const anchorOn = (connectionId: string) =>
+    earliestOf(
+      placed
+        .filter(
+          (item) =>
+            item.connectionId === connectionId && item.contentType === 'full',
+        )
+        .map((item) => item.slotAt),
+    ) ??
+    existing?.byChannel.get(connectionId) ??
+    anchor;
 
+  // 3. Shorts: each channel's queue, oldest first
   const shortItems = items.filter((i) => i.contentType === 'short');
   const shortChannels = [...new Set(shortItems.map((i) => i.connectionId))];
 
-  // 3. This episode's full video ends earlier episodes' windows: their
-  //    Shorts still scheduled at or after it are held
-  if (mode === 'window' && anchor) {
-    for (const connectionId of shortChannels) {
-      for (const post of occupied) {
-        if (
-          post.connectionId !== connectionId ||
-          post.contentType !== 'short' ||
-          post.status !== 'scheduled' ||
-          post.episodeId === episodeId
-        ) {
-          continue;
-        }
-
-        const theirs = input.anchors.get(post.episodeId);
-
-        if (
-          theirs &&
-          theirs.getTime() < anchor.getTime() &&
-          post.at.getTime() >= anchor.getTime()
-        ) {
-          bumped.push({
-            publishId: post.publishId,
-            connectionId,
-            episodeId: post.episodeId,
-            before: anchor,
-          });
-        }
-      }
-    }
-
-    const bumpedIds = new Set(bumped.map((post) => post.publishId));
-    occupied = occupied.filter((post) => !bumpedIds.has(post.publishId));
-  }
-
-  // 4. Shorts, channel by channel, in the order listed
   for (const connectionId of shortChannels) {
     const cadence = cadenceOf(connectionId, 'short');
+    const own = anchorOn(connectionId);
     const floor = later(
-      earliest,
-      input.notBefore,
-      anchor && new Date(anchor.getTime() + cadence.startAfterHours * HOUR_MS),
+      base,
+      own && new Date(own.getTime() + cadence.startAfterHours * HOUR_MS),
     );
-
-    let windowEnd: Date | null = null;
-    let cursor = floor;
-
-    if (mode === 'window') {
-      // The next episode's full video after this one's, among the episodes
-      // with posts on this channel
-      const episodesHere = new Set(
-        occupied
-          .filter((post) => post.connectionId === connectionId)
-          .map((post) => post.episodeId),
-      );
-      const reference = anchor ?? floor;
-      const nextAnchors = [...episodesHere]
-        .filter((id) => id !== episodeId)
-        .map((id) => input.anchors.get(id))
-        .filter((at): at is Date => !!at && at.getTime() > reference.getTime())
-        .map((at) => at.getTime());
-
-      windowEnd = nextAnchors.length
-        ? new Date(Math.min(...nextAnchors))
-        : null;
-    } else {
-      const shortsHere = takenOn(connectionId, 'short');
-      if (shortsHere.length) {
-        cursor = later(
-          cursor,
-          new Date(Math.max(...shortsHere.map((at) => at.getTime())) + 1),
-        );
-      }
-    }
+    const queuedBefore = latest(slotsOf(postsOn(connectionId, 'short')));
+    let origin = queuedBefore
+      ? localDate(queuedBefore, cadence.timezone)
+      : undefined;
 
     for (const item of shortItems.filter(
       (i) => i.connectionId === connectionId,
     )) {
+      const shorts = postsOn(connectionId, 'short');
+      const lastShort = latest(slotsOf(shorts));
       const slot = nextFreeSlot(
         cadence,
-        cursor,
-        takenOn(connectionId, 'short'),
+        later(floor, lastShort && new Date(lastShort.getTime() + 1)),
+        slotsOf(shorts),
+        { blocked: slotsOf(postsOn(connectionId)), origin },
       );
 
-      if (!slot || (windowEnd && slot.getTime() >= windowEnd.getTime())) {
-        held.push({
-          key: item.key,
-          connectionId,
-          reason: slot ? 'next-episode' : 'no-slot',
-          before: windowEnd,
-        });
+      if (!slot) {
+        unplaced.push({ ...item });
         continue;
       }
 
+      origin ??= localDate(slot, cadence.timezone);
       placed.push({
         key: item.key,
         connectionId,
         contentType: 'short',
         slotAt: slot,
-        scheduledAt: jittered(slot, cadence, floor, random),
-        afterEpisodeFull,
+        scheduledAt: jittered(slot, cadence, floor, lastGoing(shorts), random),
+        afterEpisodeFull: own !== null,
       });
-      cursor = slot;
     }
   }
 
   const connectionIds = [...new Set(items.map((i) => i.connectionId))];
-  const channels = connectionIds.map((connectionId) => {
-    const times = [
-      ...occupied
-        .filter((post) => post.connectionId === connectionId)
-        .map((post) => post.at.getTime()),
-      ...placed
-        .filter((item) => item.connectionId === connectionId)
-        .map((item) => item.scheduledAt.getTime()),
+
+  const channels = connectionIds.map((connectionId) => ({
+    connectionId,
+    queueEndsAt: lastGoing(postsOn(connectionId)),
+  }));
+
+  const shortsQueues = connectionIds.map((connectionId): ShortsQueue => {
+    const queued = [
+      ...occupied.filter(
+        (post) =>
+          post.connectionId === connectionId &&
+          post.contentType === 'short' &&
+          NOT_OUT.has(post.status),
+      ),
+      ...placed.filter(
+        (item) =>
+          item.connectionId === connectionId && item.contentType === 'short',
+      ),
     ];
+    const lastShortAt = latest(
+      queued.map((post) => ('at' in post ? post.at : post.slotAt)),
+    );
+    const queuedEpisodes = new Set([
+      ...occupied
+        .filter(
+          (post) =>
+            post.connectionId === connectionId && post.contentType === 'short',
+        )
+        .map((post) => post.episodeId),
+      ...(placed.some(
+        (item) =>
+          item.connectionId === connectionId && item.contentType === 'short',
+      )
+        ? [episodeId]
+        : []),
+    ]);
+    const longVideosEndAt =
+      latest(slotsOf(postsOn(connectionId, 'full'))) ??
+      latest(
+        [...queuedEpisodes].flatMap((id) => {
+          const at =
+            id === episodeId ? anchor : input.anchors.get(id)?.earliest;
+          return at ? [at] : [];
+        }),
+      );
 
     return {
       connectionId,
-      queueEndsAt: times.length ? new Date(Math.max(...times)) : null,
+      queued: queued.length,
+      lastShortAt,
+      longVideosEndAt,
+      daysAhead:
+        lastShortAt && longVideosEndAt
+          ? Math.max(
+              0,
+              Math.round(
+                ((lastShortAt.getTime() - longVideosEndAt.getTime()) / DAY_MS) *
+                  10,
+              ) / 10,
+            )
+          : null,
     };
   });
 
-  return { anchor, placed, held, bumped, channels };
+  return { anchor, placed, unplaced, channels, shortsQueues };
 }

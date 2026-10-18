@@ -9,18 +9,19 @@ import type { Database, Json } from '@kit/supabase/database';
 import {
   type ChannelCadenceRow,
   DEFAULT_CADENCE,
+  HORIZON_DAYS,
   resolveCadence,
 } from '../lib/cadence/cadence';
 import {
+  type EpisodeAnchor,
   type OccupiedPost,
   type ReleaseItem,
   type ReleasePlan,
   planRelease,
 } from '../lib/cadence/plan-release';
-import type {
-  DisplacedPost,
-  HeldPost,
-  ReleasePreview,
+import {
+  QUEUE_WARNING_DAYS,
+  type ReleasePreview,
 } from '../lib/cadence/release-types';
 import type { ChannelCadenceInput } from '../lib/schemas/schedule-release.schema';
 import {
@@ -32,16 +33,16 @@ import {
 } from './schedule-publishes.service';
 
 /**
- * FILM-719. A release scheduled on its channels' cadence: the long video in
- * the channel's next free slot after its last one, its Shorts a slot at a
- * time after it, and only until the next episode's long video.
+ * FILM-719, FILM-2209. A release scheduled on its channels' cadence: the
+ * long video in the channel's next free slot after its last one, and its
+ * Shorts at the end of each channel's Shorts queue, oldest first, never
+ * more a day than the channel's slots.
  *
  * Reads every post on the release's channels (paged: the 1000-row cap is
- * silent), plans with planRelease, holds an earlier episode's Shorts the new
- * long video displaces, and writes the release through the same
- * preparePublish the Publish screen runs. A slot another release took in the
- * meantime fails the insert on `publishes_channel_slot_key`; the release is
- * planned again once.
+ * silent), plans with planRelease, and writes the release through the same
+ * preparePublish the Publish screen runs. Nothing already scheduled moves.
+ * A slot another release took in the meantime fails the insert on
+ * `publishes_channel_slot_key`; the release is planned again once.
  */
 
 type Client = SupabaseClient<Database>;
@@ -50,7 +51,7 @@ type Result<T> = { ok: true; data: T } | { ok: false; refusal: string };
 
 /** One upload of the release, without a time: the cadence picks it */
 export interface CadenceTarget
-  extends Omit<ScheduleTarget, 'scheduledAt' | 'slotAt' | 'held'> {
+  extends Omit<ScheduleTarget, 'scheduledAt' | 'slotAt'> {
   /** The caller's name for it, echoed in the plan */
   key: string;
 }
@@ -90,6 +91,13 @@ function contentTypeOf(row: { content_type: string | null }) {
 
 function postTime(row: CalendarRow) {
   const at = row.slot_at ?? row.scheduled_at ?? row.published_at;
+
+  return at ? new Date(at) : null;
+}
+
+/** When a post goes, or went, out: its jittered time, not its slot */
+function goesAt(row: CalendarRow) {
+  const at = row.published_at ?? row.scheduled_at ?? row.slot_at;
 
   return at ? new Date(at) : null;
 }
@@ -145,12 +153,16 @@ async function readCalendar(
         contentType: contentTypeOf(row),
         status: row.status as OccupiedPost['status'],
         at,
+        goesAt: goesAt(row) ?? at,
       },
     ];
   });
 }
 
-/** When each episode's long video goes (or went) out: its earliest one */
+/**
+ * When each episode's long videos go (or went) out: the earliest anywhere,
+ * and the earliest on each channel, which that channel's Shorts wait for
+ */
 async function readAnchors(client: Client, episodeIds: string[]) {
   const rows = await fetchAllByIds<CalendarRow>(
     episodeIds,
@@ -166,16 +178,31 @@ async function readAnchors(client: Client, episodeIds: string[]) {
     'episode long videos',
   );
 
-  const anchors = new Map<string, Date>();
+  const anchors = new Map<
+    string,
+    { earliest: Date; byChannel: Map<string, Date> }
+  >();
 
   for (const row of rows) {
     const at = postTime(row);
-    const current = anchors.get(row.episode_id);
+    if (!at) continue;
 
-    if (at && (!current || at < current)) anchors.set(row.episode_id, at);
+    const anchor = anchors.get(row.episode_id) ?? {
+      earliest: at,
+      byChannel: new Map<string, Date>(),
+    };
+    if (at < anchor.earliest) anchor.earliest = at;
+
+    const channel = row.platform_connection_id;
+    const onChannel = channel ? anchor.byChannel.get(channel) : undefined;
+    if (channel && (!onChannel || at < onChannel)) {
+      anchor.byChannel.set(channel, at);
+    }
+
+    anchors.set(row.episode_id, anchor);
   }
 
-  return anchors;
+  return anchors as Map<string, EpisodeAnchor>;
 }
 
 async function readChannels(client: Client, connectionIds: string[]) {
@@ -201,7 +228,7 @@ async function readCadences(client: Client, connectionIds: string[]) {
   const { data, error } = await client
     .from('channel_posting_cadences')
     .select(
-      'platform_connection_id, content_type, timezone, slot_times, days_of_week, min_days_between, start_after_hours, jitter_minutes, enabled',
+      'platform_connection_id, content_type, timezone, slot_times, days_of_week, min_days_between, every_n_days, start_after_hours, jitter_minutes, enabled',
     )
     .in('platform_connection_id', connectionIds);
 
@@ -215,7 +242,6 @@ async function readCadences(client: Client, connectionIds: string[]) {
 interface PlanContext {
   plan: ReleasePlan;
   channels: Awaited<ReturnType<typeof readChannels>>;
-  occupied: OccupiedPost[];
 }
 
 async function planFor(
@@ -227,7 +253,6 @@ async function planFor(
     timezone: string;
     now: Date;
     random: () => number;
-    mode: 'window' | 'append';
   },
 ): Promise<PlanContext> {
   const connectionIds = [...new Set(input.items.map((i) => i.connectionId))];
@@ -261,31 +286,36 @@ async function planFor(
     anchors,
     now: input.now,
     random: input.random,
-    mode: input.mode,
   });
 
-  return { plan, channels, occupied };
+  if (plan.unplaced.length) {
+    const names = [
+      ...new Set(
+        plan.unplaced.map(
+          (item) =>
+            channels.find((c) => c.id === item.connectionId)
+              ?.platform_account_name ?? 'a channel',
+        ),
+      ),
+    ];
+
+    throw new ActionRefusal(
+      `No free slot in the next ${HORIZON_DAYS} days for ${plan.unplaced.length} upload${plan.unplaced.length === 1 ? '' : 's'} on ${names.join(', ')}. Add posting times or days to its posting rules.`,
+    );
+  }
+
+  return { plan, channels };
 }
 
-async function episodeTitles(client: Client, episodeIds: string[]) {
-  if (episodeIds.length === 0) return new Map<string, string>();
+function previewOf({ plan, channels }: PlanContext): ReleasePreview {
+  const named = (connectionId: string) => {
+    const channel = channels.find((c) => c.id === connectionId);
 
-  const { data } = await client
-    .from('episodes')
-    .select('id, title')
-    .in('id', [...new Set(episodeIds)]);
-
-  return new Map((data ?? []).map((row) => [row.id, row.title]));
-}
-
-async function previewOf(
-  client: Client,
-  { plan, channels, occupied }: PlanContext,
-): Promise<ReleasePreview> {
-  const titles = await episodeTitles(
-    client,
-    plan.bumped.map((post) => post.episodeId),
-  );
+    return {
+      name: channel?.platform_account_name ?? 'Channel',
+      platform: channel?.platform ?? '',
+    };
+  };
 
   return {
     placed: plan.placed.map((item) => ({
@@ -294,32 +324,22 @@ async function previewOf(
       contentType: item.contentType,
       scheduledAt: item.scheduledAt.toISOString(),
     })),
-    held: plan.held.map((item) => ({
-      key: item.key,
-      connectionId: item.connectionId,
-      reason: item.reason,
-      before: item.before?.toISOString() ?? null,
+    channels: plan.channels.map((summary) => ({
+      connectionId: summary.connectionId,
+      ...named(summary.connectionId),
+      queueEndsAt: summary.queueEndsAt?.toISOString() ?? null,
     })),
-    displaced: plan.bumped.map((post) => ({
-      publishId: post.publishId,
-      connectionId: post.connectionId,
-      episodeId: post.episodeId,
-      episodeTitle: titles.get(post.episodeId) ?? null,
-      scheduledAt:
-        occupied
-          .find((o) => o.publishId === post.publishId)
-          ?.at.toISOString() ?? '',
-    })),
-    channels: plan.channels.map((summary) => {
-      const channel = channels.find((c) => c.id === summary.connectionId);
-
-      return {
-        connectionId: summary.connectionId,
-        name: channel?.platform_account_name ?? 'Channel',
-        platform: channel?.platform ?? '',
-        queueEndsAt: summary.queueEndsAt?.toISOString() ?? null,
-      };
-    }),
+    shortsQueue: plan.shortsQueues
+      .filter((queue) => queue.queued > 0)
+      .map((queue) => ({
+        connectionId: queue.connectionId,
+        ...named(queue.connectionId),
+        queued: queue.queued,
+        lastShortAt: queue.lastShortAt?.toISOString() ?? null,
+        longVideosEndAt: queue.longVideosEndAt?.toISOString() ?? null,
+        daysAhead: queue.daysAhead,
+        runsAhead: (queue.daysAhead ?? 0) > QUEUE_WARNING_DAYS,
+      })),
   };
 }
 
@@ -348,7 +368,7 @@ function refused<T>(error: unknown): Result<T> {
   throw error;
 }
 
-/** Where the release would go, and what it would hold: nothing is written */
+/** Where the release would go: nothing is written */
 export async function previewCadenceRelease(
   client: Client,
   input: ReleaseInput,
@@ -363,102 +383,17 @@ export async function previewCadenceRelease(
       now: options.now ?? new Date(),
       // The preview shows slots; the jitter is drawn when it is scheduled
       random: () => 0.5,
-      mode: 'window',
     });
 
-    return { ok: true, data: await previewOf(client, context) };
+    return { ok: true, data: previewOf(context) };
   } catch (error) {
     return refused(error);
   }
 }
 
-interface HoldRow {
-  id: string;
-  metadata: Json;
-  slot_at: string | null;
-  scheduled_at: string | null;
-}
-
-/**
- * An earlier episode's Shorts the new long video displaces become drafts
- * that remember why, giving their slots back. Only rows still `scheduled`
- * are touched: one the job has claimed goes out as planned.
- */
-async function holdDisplaced(
-  client: Client,
-  bumped: ReleasePlan['bumped'],
-): Promise<HoldRow[]> {
-  if (bumped.length === 0) return [];
-
-  const { data, error } = await client
-    .from('publishes')
-    .select('id, metadata, slot_at, scheduled_at')
-    .in(
-      'id',
-      bumped.map((post) => post.publishId),
-    )
-    .eq('status', 'scheduled');
-
-  if (error) {
-    throw new Error(`Could not read the Shorts to hold: ${error.message}`);
-  }
-
-  const held: HoldRow[] = [];
-
-  for (const row of data) {
-    const post = bumped.find((b) => b.publishId === row.id)!;
-    const { data: updated, error: updateError } = await client
-      .from('publishes')
-      .update({
-        status: 'draft',
-        slot_at: null,
-        scheduled_at: null,
-        metadata: {
-          ...((row.metadata as Record<string, Json> | null) ?? {}),
-          heldReason: 'next-episode',
-          heldBefore: post.before.toISOString(),
-        },
-      })
-      .eq('id', row.id)
-      .eq('status', 'scheduled')
-      .select('id');
-
-    if (updateError) {
-      throw new Error(`Could not hold a Short: ${updateError.message}`);
-    }
-
-    if (updated?.length) held.push(row);
-  }
-
-  return held;
-}
-
-/** Puts held Shorts back as they were, when the release did not go in */
-async function restoreHeld(client: Client, rows: HoldRow[]) {
-  for (const row of rows) {
-    const { data: restored } = await client
-      .from('publishes')
-      .update({
-        status: 'scheduled',
-        slot_at: row.slot_at,
-        scheduled_at: row.scheduled_at,
-        metadata: row.metadata,
-      })
-      .eq('id', row.id)
-      .eq('status', 'draft')
-      .select('id');
-
-    // Left held, which the owner sees and can re-queue; never posted twice
-    if (!restored?.length) {
-      console.error(`[Cadence] Could not restore held Short ${row.id}`);
-    }
-  }
-}
-
 export interface ScheduledRelease {
   scheduled: ScheduledPublish[];
-  held: HeldPost[];
-  displaced: DisplacedPost[];
+  shortsQueue: ReleasePreview['shortsQueue'];
 }
 
 export async function scheduleCadenceRelease(
@@ -495,37 +430,23 @@ async function scheduleRelease(
       timezone: input.timezone,
       now,
       random,
-      mode: 'window',
     });
     const { plan } = context;
 
-    if (plan.placed.length === 0) {
-      throw new ActionRefusal(
-        'Nothing in this release fits on its channels’ calendars. Check each channel’s posting days and slots.',
-      );
-    }
-
     const targets: ScheduleTarget[] = input.targets.map(
       ({ key, ...target }) => {
-        const placed = plan.placed.find((item) => item.key === key);
-        const held = plan.held.find((item) => item.key === key);
+        const placed = plan.placed.find((item) => item.key === key)!;
 
         return {
           ...target,
-          scheduledAt: placed?.scheduledAt.toISOString() ?? null,
-          slotAt: placed?.slotAt.toISOString() ?? null,
-          afterEpisodeFull: placed?.afterEpisodeFull ?? false,
-          held: held
-            ? {
-                reason: held.reason,
-                before: held.before?.toISOString() ?? null,
-              }
-            : null,
+          scheduledAt: placed.scheduledAt.toISOString(),
+          slotAt: placed.slotAt.toISOString(),
+          afterEpisodeFull: placed.afterEpisodeFull,
         };
       },
     );
 
-    // Every target is checked before anything is held or written
+    // Every target is checked before anything is written
     const rows = await prepareScheduledRows(client, userId, {
       episodeId: input.episodeId,
       targets,
@@ -534,22 +455,11 @@ async function scheduleRelease(
       via: 'cadence',
     });
 
-    const preview = await previewOf(client, context);
-    const heldRows = await holdDisplaced(client, plan.bumped);
-
     try {
       const scheduled = await insertScheduledRows(client, rows);
 
-      return {
-        scheduled,
-        held: preview.held,
-        displaced: preview.displaced.filter((post) =>
-          heldRows.some((row) => row.id === post.publishId),
-        ),
-      };
+      return { scheduled, shortsQueue: previewOf(context).shortsQueue };
     } catch (error) {
-      await restoreHeld(client, heldRows);
-
       if (error instanceof SlotTaken && attempt < 2) continue;
 
       if (error instanceof SlotTaken) {
@@ -563,12 +473,15 @@ async function scheduleRelease(
   }
 }
 
-/** Held Shorts of one episode, back on their channels after everything else */
+/**
+ * Shorts an earlier release held (FILM-719, before FILM-2209), appended to
+ * their channels' Shorts queues like a new release's
+ */
 export async function requeueHeldShorts(
   client: Client,
   input: { publishIds: string[]; timezone: string },
   options: { now?: Date; random?: () => number } = {},
-): Promise<Result<{ requeued: string[]; stillHeld: string[] }>> {
+): Promise<Result<{ requeued: string[] }>> {
   try {
     const { data: rows, error } = await client
       .from('publishes')
@@ -613,7 +526,6 @@ export async function requeueHeldShorts(
         timezone: input.timezone,
         now,
         random,
-        mode: 'append',
       });
 
       try {
@@ -660,13 +572,7 @@ export async function requeueHeldShorts(
         throw error;
       }
 
-      return {
-        ok: true,
-        data: {
-          requeued,
-          stillHeld: plan.held.map((item) => item.key),
-        },
-      };
+      return { ok: true, data: { requeued } };
     }
   } catch (error) {
     return refused(error);
@@ -702,7 +608,7 @@ export async function discardHeldShorts(
 }
 
 const CADENCE_COLUMNS =
-  'platform_connection_id, content_type, timezone, slot_times, days_of_week, min_days_between, start_after_hours, jitter_minutes, enabled';
+  'platform_connection_id, content_type, timezone, slot_times, days_of_week, min_days_between, every_n_days, start_after_hours, jitter_minutes, enabled';
 
 /**
  * Each channel's cadence for both content types: its own, else the defaults.
@@ -775,6 +681,7 @@ export async function saveChannelCadence(
       slot_times: [...input.slotTimes].sort(),
       days_of_week: [...new Set(input.daysOfWeek)].sort(),
       min_days_between: input.minDaysBetween,
+      every_n_days: input.everyNDays,
       start_after_hours: input.startAfterHours,
       jitter_minutes: input.jitterMinutes,
       enabled: input.enabled,

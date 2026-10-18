@@ -1,20 +1,20 @@
 'use client';
 
 import { format } from 'date-fns';
-import { Film, PauseCircle, Settings2, Smartphone } from 'lucide-react';
+import { Film, ListOrdered, Settings2, Smartphone } from 'lucide-react';
 
-import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 
 import {
+  QUEUE_WARNING_DAYS,
   type ReleasePreview,
   itemKeyOfTarget,
 } from '../lib/cadence/release-types';
 
 /**
- * FILM-719. A cadence release as it will land: each channel's posts in
- * order, the Shorts it holds because they do not fit before the next
- * episode, and an earlier episode's Shorts its long video holds back.
+ * FILM-719, FILM-2209. A cadence release as it will land: each channel's
+ * posts in order, and its Shorts queue: how many wait, until when, and how
+ * far that runs past the channel's long videos.
  */
 export function ReleaseCalendar(props: {
   preview: ReleasePreview;
@@ -30,11 +30,8 @@ export function ReleaseCalendar(props: {
         const placed = preview.placed
           .filter((post) => post.connectionId === channel.connectionId)
           .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-        const held = preview.held.filter(
-          (post) => post.connectionId === channel.connectionId,
-        );
-        const displaced = preview.displaced.filter(
-          (post) => post.connectionId === channel.connectionId,
+        const queue = preview.shortsQueue.find(
+          (q) => q.connectionId === channel.connectionId,
         );
 
         return (
@@ -102,50 +99,35 @@ export function ReleaseCalendar(props: {
               })}
             </ol>
 
-            {held.length > 0 && (
+            {queue?.lastShortAt && (
               <div
-                className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                data-test="release-calendar-held"
+                className={
+                  queue.runsAhead
+                    ? 'mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                    : 'mt-2 rounded-md bg-muted p-2 text-xs text-muted-foreground'
+                }
+                data-test="release-calendar-shorts-queue"
+                data-queued={queue.queued}
+                data-days-ahead={queue.daysAhead ?? ''}
               >
-                <p className="flex items-center gap-1 font-medium">
-                  <PauseCircle className="h-3.5 w-3.5" />
-                  {held.length} held
+                <p className="flex items-center gap-1">
+                  <ListOrdered className="h-3.5 w-3.5" />
+                  {queue.queued} Short{queue.queued === 1 ? '' : 's'} queued,
+                  the last on {format(new Date(queue.lastShortAt), 'EEE d MMM')}
+                  {queue.daysAhead !== null &&
+                    `, ${queue.daysAhead} day${queue.daysAhead === 1 ? '' : 's'} after the last long video`}
                 </p>
-                <ul className="mt-1 space-y-0.5">
-                  {held.map((post) => (
-                    <li key={post.key} data-test="release-calendar-held-post">
-                      {props.labelOf(itemKeyOfTarget(post.key)).label}
-                      {' — '}
-                      {post.reason === 'next-episode' && post.before
-                        ? `doesn't fit before the next episode's long video on ${format(new Date(post.before), 'EEE d MMM')}`
-                        : 'no free slot on this channel'}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-1">
-                  Held Shorts are kept: re-queue or discard them under Published
-                  Content.
-                </p>
-              </div>
-            )}
-
-            {displaced.length > 0 && (
-              <div
-                className="mt-2 rounded-md bg-muted p-2 text-xs"
-                data-test="release-calendar-displaced"
-              >
-                <Badge variant="outline" className="mb-1">
-                  {displaced.length} earlier Short
-                  {displaced.length === 1 ? '' : 's'} held back
-                </Badge>
-                <ul className="space-y-0.5 text-muted-foreground">
-                  {displaced.map((post) => (
-                    <li key={post.publishId}>
-                      {post.episodeTitle ?? 'Another episode'} — was{' '}
-                      {format(new Date(post.scheduledAt), 'EEE d MMM')}
-                    </li>
-                  ))}
-                </ul>
+                {queue.runsAhead && (
+                  <p
+                    className="mt-1"
+                    data-test="release-calendar-queue-warning"
+                  >
+                    The Shorts queue runs more than {QUEUE_WARNING_DAYS} days
+                    past the last long video, and grows with each episode: there
+                    are more Shorts per episode than Short slots between long
+                    videos. Add Short times, or post long videos less often.
+                  </p>
+                )}
               </div>
             )}
           </div>

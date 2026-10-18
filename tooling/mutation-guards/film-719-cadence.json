@@ -1,22 +1,22 @@
 {
-  "feature": "FILM-719 channel posting cadence (Shorts follow their episode, one slot per post, the scheduled job claims once)",
+  "feature": "FILM-719 channel posting cadence (one slot per post, the scheduled job claims once; Shorts queue rules as FILM-2209 changed them)",
   "mutations": [
     {
-      "name": "C1 a Short is placed after the next episode's long video",
+      "name": "C1 an episode's Shorts stop at the next episode's long video (FILM-2209: they spill past it)",
       "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
-      "find": "      if (!slot || (windowEnd && slot.getTime() >= windowEnd.getTime())) {\n",
-      "replace": "      if (!slot) {\n",
-      "pattern": "holds this episode’s Shorts that do not fit",
+      "find": "      if (!slot) {\n        unplaced.push({ ...item });\n",
+      "replace": "      if (\n        !slot ||\n        occupied.some(\n          (p) =>\n            p.connectionId === connectionId &&\n            p.contentType === 'full' &&\n            p.episodeId !== episodeId &&\n            !!own &&\n            p.at > own &&\n            slot >= p.at,\n        )\n      ) {\n        unplaced.push({ ...item });\n",
+      "pattern": "places an episode’s Shorts after the next episode’s long video",
       "kind": "unit",
       "cwd": "packages/features/publishing",
       "test": "__tests__/plan-release.test.ts"
     },
     {
-      "name": "C2 an earlier episode's Shorts stay after the new long video",
+      "name": "C2 a release puts its Shorts ahead of Shorts already queued on the channel (FILM-2209: oldest first)",
       "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
-      "find": "          post.at.getTime() >= anchor.getTime()\n",
-      "replace": "          false\n",
-      "pattern": "holds an earlier episode’s Shorts",
+      "find": "        later(floor, lastShort && new Date(lastShort.getTime() + 1)),\n",
+      "replace": "        floor,\n",
+      "pattern": "never puts a Short ahead of one already queued",
       "kind": "unit",
       "cwd": "packages/features/publishing",
       "test": "__tests__/plan-release.test.ts"
@@ -34,8 +34,8 @@
     {
       "name": "C4 long videos go back to back",
       "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
-      "find": "      lastFull &&\n        new Date(lastFull.getTime() + cadence.minDaysBetween * DAY_MS),\n",
-      "replace": "      lastFull,\n",
+      "find": "      lastFull &&\n        startOfLocalDay(\n          addDays(\n            localDate(lastFull, cadence.timezone),\n            cadence.minDaysBetween,\n          ),\n          cadence.timezone,\n        ),\n",
+      "replace": "",
       "pattern": "go at least the channel’s days apart",
       "kind": "unit",
       "cwd": "packages/features/publishing",
@@ -46,17 +46,17 @@
       "file": "packages/features/publishing/src/lib/cadence/gate.ts",
       "find": "    if (state === 'waiting') return 'waiting';\n",
       "replace": "",
-      "pattern": "waits while the long video is on its way",
+      "pattern": "waits for the long video on its own channel",
       "kind": "unit",
       "cwd": "packages/features/publishing",
       "test": "__tests__/cadence-gate.test.ts"
     },
     {
-      "name": "G2 a channel that has had its day posts again",
+      "name": "G2 a channel that has had its local day posts again",
       "file": "packages/features/publishing/src/lib/cadence/gate.ts",
-      "find": "  if (postsInLastDay(recent, now) < dailyCapOf(cadence)) return false;\n",
-      "replace": "  return false;\n",
-      "pattern": "moves a day on",
+      "find": "  if (postsToday(recent, now, cadence.timezone) < dailyCap(cadence)) {\n",
+      "replace": "  if (true) {\n",
+      "pattern": "moves it and the Shorts queued after it",
       "kind": "unit",
       "cwd": "packages/features/publishing",
       "test": "__tests__/cadence-gate.test.ts"
@@ -84,13 +84,13 @@
       "sql": "alter table public.channel_posting_cadences drop constraint channel_posting_cadences_connection_account_fkey;"
     },
     {
-      "name": "E2E C5 a second episode leaves the first one's later Shorts scheduled",
+      "name": "E2E C5 a re-queued held Short goes ahead of the Shorts already queued (FILM-2209)",
       "kind": "e2e",
-      "file": "packages/features/publishing/src/server/schedule-release.service.ts",
-      "find": "    const heldRows = await holdDisplaced(client, plan.bumped);\n",
-      "replace": "    const heldRows = await holdDisplaced(client, []);\n",
-      "spec": "tests/publishing/cadence-release.spec.ts",
-      "grep": "held back by the next episode"
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "        later(floor, lastShort && new Date(lastShort.getTime() + 1)),\n",
+      "replace": "        floor,\n",
+      "grep": "re-queued to the end of the queue",
+      "spec": "tests/publishing/cadence-release.spec.ts"
     }
   ]
 }
