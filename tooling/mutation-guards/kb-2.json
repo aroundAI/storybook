@@ -45,8 +45,8 @@
       "name": "M5 A failed ClickHouse migration continues the deploy again",
       "kind": "unit",
       "file": "scripts/deploy.sh",
-      "find": "                fail_deploy \"ClickHouse migration ${MIGRATION_NAME} failed\" \\\n                    \"With CLICKHOUSE_ENABLED=true the app reads tables these migrations create\"",
-      "replace": "                echo \"continuing without ClickHouse\"",
+      "find": "        fail_deploy \"ClickHouse migrations failed (exit code: ${MIGRATION_EXIT})\" \\\n            \"With CLICKHOUSE_ENABLED=true the app reads tables these migrations create\"",
+      "replace": "        echo \"continuing without ClickHouse\"",
       "cwd": "packages/shared",
       "test": "__tests__/deploy-fail-closed.test.ts",
       "pattern": "ClickHouse migration fails"
