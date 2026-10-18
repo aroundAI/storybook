@@ -29,38 +29,38 @@ summary: >
 acceptance_criteria:
   - text: "The hourly sync reads YouTube's live counts (videos.list part=statistics, at most 50 ids a call) on the per-video timetable and stores them as data_api snapshots; a dislike count YouTube leaves out is null, never 0"
     met: true
-    evidence: "Met (#TBD): YouTubeAnalyticsProvider.fetchVideoStatistics (providers/youtube/youtube-analytics.ts), captureYouTubeLiveCounts and its call in runAnalyticsSyncJob and syncSinglePublishById (server/analytics-sync-cron.ts), buildYouTubeSnapshotRows (server/ingest.ts); video_snapshots.dislikes and .source, likes and comments nullable (ClickHouse migration 025). complete-collection.test.ts, youtube-live-counts.test.ts; guards C1, C2, C10"
+    evidence: "Met (#669): YouTubeAnalyticsProvider.fetchVideoStatistics (providers/youtube/youtube-analytics.ts), captureYouTubeLiveCounts and its call in runAnalyticsSyncJob and syncSinglePublishById (server/analytics-sync-cron.ts), buildYouTubeSnapshotRows (server/ingest.ts); video_snapshots.dislikes and .source, likes and comments nullable (ClickHouse migration 025). complete-collection.test.ts, youtube-live-counts.test.ts; guards C1, C2, C10"
   - text: "YouTube channel totals: lifetime views, subscribers and videos nightly, and the whole-channel day (no video filter) each sync, in channel_metrics_daily"
     met: true
-    evidence: "Met (#TBD): getChannelStatistics and getChannelDailyMetrics (youtube-analytics.ts), captureChannelLifetimeTotals (called from api/cron/subscriber-snapshot) and syncChannelDays (called by runAnalyticsSyncJob) in server/channel-totals.ts; channel_metrics_daily (migration 025), written only by insertChannelMetricsDaily (data-provenance WRITER_CALL_SITES), purged with the channel (purge.ts). Guards C3, C4, T3"
+    evidence: "Met (#669): getChannelStatistics and getChannelDailyMetrics (youtube-analytics.ts), captureChannelLifetimeTotals (called from api/cron/subscriber-snapshot) and syncChannelDays (called by runAnalyticsSyncJob) in server/channel-totals.ts; channel_metrics_daily (migration 025), written only by insertChannelMetricsDaily (data-provenance WRITER_CALL_SITES), purged with the channel (purge.ts). Guards C3, C4, T3"
   - text: "The Analytics API's traffic sources are kept by day beside the Reporting CSV's, and no reader counts a day twice"
     met: true
-    evidence: "Met (#TBD): fetchDailyTrafficSources (day,insightTrafficSourceType) and buildYouTubeTrafficRows (metric_source analytics_api); video_traffic_sources.metric_source in the sort key (migration 025, rows before it renamed reporting_api); every reader goes through trafficSourcesOneCopy (packages/clickhouse/src/traffic-sources.ts), the CSV's copy where it has the day. verify-queries 'hand: traffic sources take one copy a day' (50, not 100); traffic-one-copy.test.ts; guards C5, C8, T1, T2"
+    evidence: "Met (#669): fetchDailyTrafficSources (day,insightTrafficSourceType) and buildYouTubeTrafficRows (metric_source analytics_api); video_traffic_sources.metric_source in the sort key (migration 025, rows before it renamed reporting_api); every reader goes through trafficSourcesOneCopy (packages/clickhouse/src/traffic-sources.ts), the CSV's copy where it has the day. verify-queries 'hand: traffic sources take one copy a day' (50, not 100); traffic-one-copy.test.ts; guards C5, C8, T1, T2"
   - text: "Instagram: per-post follows and profile visits for FEED and STORY (never asked of a Reel), and the account's views and unique reach for each day"
     met: true
-    evidence: "Met (#TBD): metricsForType and getAccountDay (providers/instagram/instagram-insights.ts); follows land in subscribers_gained as Facebook's do, profile visits in video_metrics/video_snapshots.profile_visits; the account day goes to channel_metrics_daily (views) and a 1-day channel_windows row (reach, a unique count). complete-collection.test.ts, ingest.test.ts; guards C6, C7, C9"
+    evidence: "Met (#669): metricsForType and getAccountDay (providers/instagram/instagram-insights.ts); follows land in subscribers_gained as Facebook's do, profile visits in video_metrics/video_snapshots.profile_visits; the account day goes to channel_metrics_daily (views) and a 1-day channel_windows row (reach, a unique count). complete-collection.test.ts, ingest.test.ts; guards C6, C7, C9"
   - text: "Each publish's sync status says the day its figures run through (lastDataDate)"
     met: true
-    evidence: "Met (#TBD): lastDataDate (server/sync-status.ts), on SyncStatusResponse, so getSyncStatusService and MCP get_video_log's freshness carry it; per channel in getDataFreshness. Guards C11, D8"
+    evidence: "Met (#669): lastDataDate (server/sync-status.ts), on SyncStatusResponse, so getSyncStatusService and MCP get_video_log's freshness carry it; per channel in getDataFreshness. Guards C11, D8"
   - text: "Readers in @kit/content-analytics/server/daily-figures: a video's figures by day and for its lifetime, a channel's days, freshness and audience, each id checked on the caller's client before ClickHouse is read"
     met: true
-    evidence: "Met (#TBD): getVideoDailyFigures, getVideoLifetimeFigures, getChannelDailyFigures, getDataFreshness, getVideoAudienceBreakdown (server/daily-figures.ts); checkPublishes and checkConnections refuse the whole read for an id RLS does not return or whose account has_account_access refuses. daily-figures.test.ts (13); guards D1, D2"
+    evidence: "Met (#669): getVideoDailyFigures, getVideoLifetimeFigures, getChannelDailyFigures, getDataFreshness, getVideoAudienceBreakdown (server/daily-figures.ts); checkPublishes and checkConnections refuse the whole read for an id RLS does not return or whose account has_account_access refuses. daily-figures.test.ts (13); guards D1, D2"
   - text: "A figure nobody measured is null with a reason, never 0, and each row's figures come from the one source it names"
     met: true
-    evidence: "Met (#TBD): Figure = number | null and one Source per row (lib/daily-figures.ts); with ClickHouse off every figure is null and figuresUnmeasuredReason() returns UNMEASURED_CLICKHOUSE_OFF; audienceMeasures nulls the measure a platform does not report. Guards D3, D4, D5, D6, D7"
+    evidence: "Met (#669): Figure = number | null and one Source per row (lib/daily-figures.ts); with ClickHouse off every figure is null and figuresUnmeasuredReason() returns UNMEASURED_CLICKHOUSE_OFF; audienceMeasures nulls the measure a platform does not report. Guards D3, D4, D5, D6, D7"
   - text: "The analytics page and MCP show the figures that were stored and never read: dislikes, engaged views, subscribers lost"
     met: true
-    evidence: "Met (#TBD): ContentListItem.dislikes, engagedViews and subscribersLost (server/aggregation-queries.ts getContentList), which get_project_analytics' content view returns; the Content tab's table shows dislikes, 'Not measured' where none were (components/content-table.tsx). content-table.test.tsx; apps/e2e/tests/analytics/dislikes-evidence.spec.ts (7 / 1 / Not measured, read from the DOM); guard D9"
+    evidence: "Met (#669): ContentListItem.dislikes, engagedViews and subscribersLost (server/aggregation-queries.ts getContentList), which get_project_analytics' content view returns; the Content tab's table shows dislikes, 'Not measured' where none were (components/content-table.tsx). content-table.test.tsx; apps/e2e/tests/analytics/dislikes-evidence.spec.ts (7 / 1 / Not measured, read from the DOM); guard D9"
 test_plan:
   unit:
-    - {text: "Providers, builders, sync wiring and data date", met: true, evidence: "Met (#TBD): packages/features/content-analytics/__tests__/complete-collection.test.ts (13), youtube-live-counts.test.ts (2), ingest.test.ts"}
-    - {text: "The readers: access, nulls, sources", met: true, evidence: "Met (#TBD): packages/features/content-analytics/__tests__/daily-figures.test.ts (13)"}
-    - {text: "Traffic one copy, purge, writer bindings", met: true, evidence: "Met (#TBD): packages/clickhouse/__tests__/traffic-one-copy.test.ts (3), purge.test.ts, data-provenance.test.ts, traffic-groups.test.ts"}
-    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#TBD): tooling/mutation-guards/film-1734-analytics-collection.json, C1–C11, D1–D9, T1–T3; KB-114's follows guard moved to the provider, where a Reel's unrequested follows stay null"}
+    - {text: "Providers, builders, sync wiring and data date", met: true, evidence: "Met (#669): packages/features/content-analytics/__tests__/complete-collection.test.ts (13), youtube-live-counts.test.ts (2), ingest.test.ts"}
+    - {text: "The readers: access, nulls, sources", met: true, evidence: "Met (#669): packages/features/content-analytics/__tests__/daily-figures.test.ts (13)"}
+    - {text: "Traffic one copy, purge, writer bindings", met: true, evidence: "Met (#669): packages/clickhouse/__tests__/traffic-one-copy.test.ts (3), purge.test.ts, data-provenance.test.ts, traffic-groups.test.ts"}
+    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#669): tooling/mutation-guards/film-1734-analytics-collection.json, C1–C11, D1–D9, T1–T3; KB-114's follows guard moved to the provider, where a Reel's unrequested follows stay null"}
   integration:
-    - {text: "Every new ClickHouse query and the migration, against a real 24.8 server", met: true, evidence: "Met (#TBD): packages/clickhouse/scripts/verify-queries.ts figuresSteps, hand-computed rows; migration 025 re-run idempotent on a server holding pre-025 traffic rows"}
+    - {text: "Every new ClickHouse query and the migration, against a real 24.8 server", met: true, evidence: "Met (#669): packages/clickhouse/scripts/verify-queries.ts figuresSteps, hand-computed rows; migration 025 re-run idempotent on a server holding pre-025 traffic rows"}
   e2e:
-    - {text: "The content table's dislikes, read off the page", met: true, evidence: "Met (#TBD): apps/e2e/tests/analytics/dislikes-evidence.spec.ts with CAPTURE_EVIDENCE=1 CLICKHOUSE_EVIDENCE=1"}
+    - {text: "The content table's dislikes, read off the page", met: true, evidence: "Met (#669): apps/e2e/tests/analytics/dislikes-evidence.spec.ts with CAPTURE_EVIDENCE=1 CLICKHOUSE_EVIDENCE=1"}
 open_questions:
   - "Whether to read every YouTube video's live counts each hour rather than on its timetable: 1 quota unit per 50 videos makes it cheap, but the timetable is what the plan asked for"
 notes: |
