@@ -152,6 +152,15 @@
       "replace": "{null}",
       "spec": "tests/mcp/daily-report.spec.ts",
       "grep": "the first save is kept"
+    },
+    {
+      "name": "E2E DR14 a report's Markdown table renders as text",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/analytics/_components/daily-reports.tsx",
+      "find": "remarkPlugins={[remarkGfm]}",
+      "replace": "remarkPlugins={[]}",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "the first save is kept"
     }
   ]
 }

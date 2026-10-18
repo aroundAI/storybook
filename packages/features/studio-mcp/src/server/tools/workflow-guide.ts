@@ -87,7 +87,7 @@ export const WORKFLOW_GUIDE_TEXT = [
   '',
   '1. `get_project_report(projectId, date)`. If a report is saved, show its bodyMd exactly as saved and go on to the next project.',
   '2. Otherwise label the day’s unlabelled comments: `get_audience_comments(projectId, unlabelled: true, since, until)` with the day’s local midnights, then `label_audience_comments`, by the rules it returns.',
-  '3. `get_daily_digest(projectId, date, timezone)`: the day’s facts, sorted and fixed, with a digestHash. Write the report from it in Markdown (headings, lists, bold; no tables). A null figure is not measured: say so with its reason, never as 0. Show YouTube comment figures with their disclosure. Compare, never explain: a cause is tested with a channel experiment.',
+  '3. `get_daily_digest(projectId, date, timezone)`: the day’s facts, sorted and fixed, with a digestHash. Write the report from it in Markdown (GitHub-flavoured: headings, lists, bold and tables; raw HTML is shown as text). A null figure is not measured: say so with its reason, never as 0. Show YouTube comment figures with their disclosure. Compare, never explain: a cause is tested with a channel experiment.',
   '4. `save_project_report` with the text, the digestHash, the timezone and your model. If it answers `exists`, another job saved first: show that report instead of yours.',
   '',
   '`list_project_reports` lists the saved days; the project’s Analytics page shows them under Daily reports.',

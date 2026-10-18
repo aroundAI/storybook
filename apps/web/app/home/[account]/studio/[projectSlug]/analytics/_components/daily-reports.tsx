@@ -1,6 +1,7 @@
 import 'server-only';
 
 import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import {
   type DailyReportItem,
@@ -12,8 +13,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 /**
  * FILM-1735. The Daily reports tab: the project's morning reports from the
  * last 60 days, read on the server through RLS and rendered as Markdown.
- * A report is its AI's text, which quotes the audience's comments, so raw
- * HTML in it is never rendered (react-markdown's default).
+ * GitHub-flavoured Markdown (remark-gfm), because a report is mostly
+ * tables. A report is its AI's text, which quotes the audience's comments,
+ * so raw HTML in it is never rendered (react-markdown's default; no
+ * rehype-raw).
  */
 
 const SHOWN_DAYS = 60;
@@ -43,7 +46,9 @@ export async function DailyReports({ projectId }: { projectId: string }) {
       .map(([platform, date]) => ({ platform, date })),
     body: (
       <div className="space-y-3 text-sm leading-6">
-        <ReactMarkdown components={MARKDOWN}>{report.bodyMd}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN}>
+          {report.bodyMd}
+        </ReactMarkdown>
       </div>
     ),
   }));
@@ -99,4 +104,18 @@ const MARKDOWN: Components = {
     <pre className="overflow-x-auto rounded bg-muted p-3 text-xs" {...props} />
   ),
   hr: () => <hr className="my-4" />,
+  table: ({ node: _node, ...props }) => (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm" {...props} />
+    </div>
+  ),
+  th: ({ node: _node, ...props }) => (
+    <th
+      className="border-b px-3 py-2 text-left font-medium whitespace-nowrap"
+      {...props}
+    />
+  ),
+  td: ({ node: _node, ...props }) => (
+    <td className="border-b px-3 py-2 align-top" {...props} />
+  ),
 };

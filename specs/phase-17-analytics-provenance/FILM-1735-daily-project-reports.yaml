@@ -61,9 +61,9 @@ acceptance_criteria:
   - text: "Saved reports are stored once per project and day, readable by the team, written by a member as themself for the team's own project, rewritten or deleted by nobody on the team, and on a team account only"
     met: true
     evidence: "Met (#TBD): migration 20261018060406_film-1735-project-daily-reports.sql; apps/web/supabase/tests/database/project-daily-reports.test.sql (14; guards DB1–DB4); team-accounts-only.test.sql pins 33 guarded tables"
-  - text: "The project's Analytics page has a Daily reports tab listing the saved days and rendering the chosen report as Markdown, with its zone, model and data-through dates, and an empty state saying how a report is made"
+  - text: "The project's Analytics page has a Daily reports tab listing the saved days and rendering the chosen report as GitHub-flavoured Markdown (tables included, raw HTML never rendered), with its zone, model and data-through dates, and an empty state saying how a report is made"
     met: true
-    evidence: "Met (#TBD): DailyReports (apps/web/app/home/[account]/studio/[projectSlug]/analytics/_components/daily-reports.tsx, server-rendered, no raw HTML) and DailyReportsView (content-analytics components/daily-reports). E2E daily-report.spec.ts (guard E2E DR13); screenshots on the PR"
+    evidence: "Met (#TBD): DailyReports (apps/web/app/home/[account]/studio/[projectSlug]/analytics/_components/daily-reports.tsx, server-rendered with react-markdown and remark-gfm 4.0.1, no rehype-raw); daily-report.spec.ts asserts a report's table renders as <table> and an <img onerror> in it renders as text and DailyReportsView (content-analytics components/daily-reports). E2E daily-report.spec.ts (guard E2E DR13); screenshots on the PR"
   - text: "The workflow guide gives the morning-report recipe: get_project_report, label the day's comments, get_daily_digest, write, save_project_report, show the saved text"
     met: true
     evidence: "Met (#TBD): 'A morning report' in packages/features/studio-mcp/src/server/tools/workflow-guide.ts; workflow-guide.test.ts"
@@ -71,14 +71,13 @@ test_plan:
   unit:
     - {text: "The digest: the day's edges, determinism, listing, nulls and means, comments, retention; another team's project refused before any read", met: true, evidence: "Met (#TBD): packages/features/content-analytics/__tests__/daily-digest.test.ts (18)"}
     - {text: "Saving: the first kept, a lost race answered with the winner", met: true, evidence: "Met (#TBD): packages/features/studio-mcp/__tests__/tools/project-report-tools.test.ts (6), packages/features/content-analytics/__tests__/project-reports-service.test.ts (1)"}
-    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#TBD): tooling/mutation-guards/film-1735-daily-reports.json, DR1–DR11 (unit), DB1–DB4 (pgTAP), E2E DR12–DR13, all red under their mutations"}
+    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#TBD): tooling/mutation-guards/film-1735-daily-reports.json, DR1–DR11 (unit), DB1–DB4 (pgTAP), E2E DR12–DR14, all red under their mutations"}
   integration:
     - {text: "pgTAP: who reads and saves reports, one per day, no rewrite or delete, KB-99", met: true, evidence: "Met (#TBD): apps/web/supabase/tests/database/project-daily-reports.test.sql (14); the whole suite on a throwaway Postgres"}
   e2e:
     - {text: "Over the real MCP endpoint and in the browser: the digest twice, save, a second save, another team refused, the Daily reports tab and its empty state; hand-computed ClickHouse figures read off the digest and the saved report", met: true, evidence: "Met (#TBD): apps/e2e/tests/mcp/daily-report.spec.ts (3; the ClickHouse one with CLICKHOUSE_EVIDENCE=1), screenshots with CAPTURE_EVIDENCE=1"}
 remaining: []
 open_questions:
-  - "Report bodies render without GitHub-flavoured Markdown (no tables): the repo has react-markdown but not remark-gfm, so the recipe asks for headings, lists and bold. Adding remark-gfm would allow tables"
   - "Should the owner be able to delete a day's report from the page? Not built: no one on the team may delete one, so two jobs can never leave two versions of a day; a removal is a service-role repair"
 notes: |
   ## Why the first save wins

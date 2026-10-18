@@ -55,7 +55,13 @@ const REPORT = [
   '',
   '## Channels',
   '',
+  '| Channel | Views | vs 7-day mean |',
+  '| --- | ---: | ---: |',
+  '| Main | not measured | — |',
+  '',
   'Views are **not measured** for this day yet (YouTube data runs two days behind).',
+  '',
+  '<img src=x onerror="window.__injected = true"> <b>raw html</b>',
 ].join('\n');
 
 async function seedDay(prefix: string) {
@@ -394,6 +400,24 @@ test.describe('A morning report over MCP, saved and shown', () => {
       'Channels',
     ]);
     await expect(body.locator('li strong')).toHaveText('1 question');
+    // A Markdown table renders as a table; raw HTML is text, never markup
+    await expect(body.locator('table th')).toHaveText([
+      'Channel',
+      'Views',
+      'vs 7-day mean',
+    ]);
+    await expect(body.locator('table tbody td')).toHaveText([
+      'Main',
+      'not measured',
+      '—',
+    ]);
+    await expect(body.locator('img, b')).toHaveCount(0);
+    await expect(body).toContainText('<b>raw html</b>');
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __injected?: boolean }).__injected,
+      ),
+    ).toBeUndefined();
     await expect(body).not.toContainText('A different text');
 
     if (EVIDENCE) {
@@ -555,6 +579,10 @@ test.describe('A morning report over MCP, saved and shown', () => {
       '',
       `- Channel views: **${analytics.day.views}** (${analytics.vsPrior.views!.pctVsPrior7}% vs the 7-day mean of ${analytics.vsPrior.views!.prior7Mean})`,
       `- The Vault: **${videoDay.dislikes} dislikes**, ${videoDay.views} views`,
+      '',
+      '| Video | Views | Likes | Dislikes | Watch time (s) |',
+      '| --- | ---: | ---: | ---: | ---: |',
+      `| The Vault | ${videoDay.views} | ${videoDay.likes} | ${videoDay.dislikes} | ${videoDay.watchTimeSeconds} |`,
     ].join('\n');
     const saved = await callMcpTool(token, 'save_project_report', {
       projectId: day.project.id,
@@ -578,6 +606,9 @@ test.describe('A morning report over MCP, saved and shown', () => {
       'Channel views: 300 (100% vs the 7-day mean of 150)',
       'The Vault: 2 dislikes, 120 views',
     ]);
+    await expect(
+      byTest(page, 'daily-report-body').locator('table tbody td'),
+    ).toHaveText(['The Vault', '120', '10', '2', '3600']);
 
     if (EVIDENCE) {
       await byTest(page, 'daily-reports').screenshot({
