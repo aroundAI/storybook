@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -223,7 +222,10 @@ function inputs(): DigestInputs {
       },
     ],
     scheduledThrough: [{ connectionId: CHANNEL, lastScheduledAt: null }],
-    revenue: { rows: [], access: ['youtube: Revenue needs the monetary scope'] },
+    revenue: {
+      rows: [],
+      access: ['youtube: Revenue needs the monetary scope'],
+    },
   };
 }
 
@@ -297,6 +299,14 @@ describe('the same facts give the same digest', () => {
     );
   });
 
+  it('hashes the same facts the same whatever order their fields were written in', () => {
+    expect(
+      canonicalJson({ b: 1, a: { d: [2, { y: 1, x: 0 }], c: null } }),
+    ).toBe(canonicalJson({ a: { c: null, d: [2, { x: 0, y: 1 }] }, b: 1 }));
+    // A list's order is a fact: it is kept
+    expect(canonicalJson([1, 2])).not.toBe(canonicalJson([2, 1]));
+  });
+
   it('and a changed fact changes the hash', () => {
     const changed = inputs();
     changed.videoDay[0] = { ...changed.videoDay[0]!, views: 121 };
@@ -348,7 +358,8 @@ describe('an unmeasured figure', () => {
   });
 
   it('is null with the store’s reason when the analytics store was not read, never 0', () => {
-    const off = 'Not measured: the analytics store (ClickHouse) is switched off here, so no figure was read.';
+    const off =
+      'Not measured: the analytics store (ClickHouse) is switched off here, so no figure was read.';
     const digest = assembleDigest({
       ...inputs(),
       storeOff: off,
@@ -434,7 +445,11 @@ describe('comments and retention', () => {
       unlabelled: 1,
       unlabelledIds: ['c1'],
       unansweredQuestions: [
-        { id: 'c2', text: 'When is part 2?', commentedAt: '2026-10-17T03:00:00.000Z' },
+        {
+          id: 'c2',
+          text: 'When is part 2?',
+          commentedAt: '2026-10-17T03:00:00.000Z',
+        },
       ],
     });
     expect(comments.disclosure).toMatch(/not from YouTube/);

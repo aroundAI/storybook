@@ -57,7 +57,10 @@ export function retentionAtSeconds(
 }
 
 /** Retention at a position 0..1 through a non-empty curve. */
-export function retentionAtRatio(points: RetentionPoint[], target: number): number {
+export function retentionAtRatio(
+  points: RetentionPoint[],
+  target: number,
+): number {
   const sorted = [...points].sort((a, b) => a.elapsedRatio - b.elapsedRatio);
 
   const first = sorted[0]!;

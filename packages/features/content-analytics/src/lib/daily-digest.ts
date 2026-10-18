@@ -384,7 +384,10 @@ function channelSection(inputs: DigestInputs) {
                   pctVsPrior7: percentChange(figures[key] ?? null, prior7.mean),
                   prior28Mean: prior28.mean,
                   prior28Days: prior28.days,
-                  pctVsPrior28: percentChange(figures[key] ?? null, prior28.mean),
+                  pctVsPrior28: percentChange(
+                    figures[key] ?? null,
+                    prior28.mean,
+                  ),
                 },
               ];
             }),
@@ -394,10 +397,15 @@ function channelSection(inputs: DigestInputs) {
             source,
             day: figures,
             vsPrior: comparisons,
-            notMeasured: notMeasured(figures, CHANNEL_FIGURES, channel.platform, {
-              storeOff: inputs.storeOff,
-              daily: true,
-            }),
+            notMeasured: notMeasured(
+              figures,
+              CHANNEL_FIGURES,
+              channel.platform,
+              {
+                storeOff: inputs.storeOff,
+                daily: true,
+              },
+            ),
           };
         }),
       };
@@ -463,8 +471,7 @@ function videoSection(inputs: DigestInputs) {
       listedBecause: active ? 'active_that_day' : 'under_30_days_old',
       day: bySource(
         inputs.videoDay.filter(
-          (row) =>
-            row.publishId === publish.id && row.date === inputs.day.date,
+          (row) => row.publishId === publish.id && row.date === inputs.day.date,
         ),
       ).map((row) => {
         const figures = pick(row, VIDEO_FIGURES);
@@ -532,10 +539,7 @@ function retentionSection(inputs: DigestInputs) {
   const youtube = inputs.publishes.filter((p) => p.platform === 'youtube');
 
   return listedVideos(inputs)
-    .filter(
-      ({ publish, ageDays }) =>
-        ageDays !== null && ageDays < RETENTION_VIDEO_DAYS,
-    )
+    .filter(({ ageDays }) => ageDays !== null && ageDays < RETENTION_VIDEO_DAYS)
     .map(({ publish }) => {
       const points = inputs.retentionCurves.get(publish.id) ?? [];
       const others = youtube
@@ -586,7 +590,8 @@ function steepestDrop(points: RetentionPoint[]) {
   let worst: { from: number; to: number; drop: number } | null = null;
 
   for (let i = 1; i < sorted.length; i++) {
-    const drop = sorted[i - 1]!.audienceWatchRatio - sorted[i]!.audienceWatchRatio;
+    const drop =
+      sorted[i - 1]!.audienceWatchRatio - sorted[i]!.audienceWatchRatio;
 
     if (drop > 0 && (!worst || drop > worst.drop)) {
       worst = {
@@ -668,7 +673,8 @@ function audienceSection(inputs: DigestInputs) {
           dimension,
           [...totals]
             .sort(
-              ([a, x], [b, y]) => (y.views ?? -1) - (x.views ?? -1) || byText(a, b),
+              ([a, x], [b, y]) =>
+                (y.views ?? -1) - (x.views ?? -1) || byText(a, b),
             )
             .slice(0, MAX_AUDIENCE_KEYS)
             .map(([key, total]) => ({
@@ -753,7 +759,9 @@ function publishingSection(inputs: DigestInputs) {
     Date.parse(end) + UPCOMING_DAYS * DAY_MS,
   ).toISOString();
   const within = (at: string | null, from: string, to: string) =>
-    at !== null && Date.parse(at) >= Date.parse(from) && Date.parse(at) < Date.parse(to);
+    at !== null &&
+    Date.parse(at) >= Date.parse(from) &&
+    Date.parse(at) < Date.parse(to);
   const inOrder = (a: DigestPost, b: DigestPost) =>
     byText(a.at ?? '9', b.at ?? '9') || byText(a.publishId, b.publishId);
   const post = (p: DigestPost) => ({
@@ -787,7 +795,9 @@ function publishingSection(inputs: DigestInputs) {
         connectionId: channel.connectionId,
         lastLongVideoAt: channel.lastScheduledAt,
         ...(channel.lastScheduledAt === null
-          ? { note: 'No long video is scheduled on this channel after this day.' }
+          ? {
+              note: 'No long video is scheduled on this channel after this day.',
+            }
           : {}),
       })),
   };

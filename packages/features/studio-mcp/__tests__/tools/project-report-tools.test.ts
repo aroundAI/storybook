@@ -28,7 +28,10 @@ const savedRow = {
   timezone: 'Asia/Kolkata',
   digest_hash: 'a'.repeat(64),
   body_md: '# The first job’s report',
-  summary: { headline: 'Two videos out', dataThrough: { youtube: '2026-10-15' } },
+  summary: {
+    headline: 'Two videos out',
+    dataThrough: { youtube: '2026-10-15' },
+  },
   model: 'claude-opus-5-5',
   mcp_connection_id: null,
   created_by: '00000000-0000-4000-8000-00000000u001',
@@ -173,8 +176,7 @@ describe('get_project_report and list_project_reports', () => {
     );
 
     expect(
-      (found.structuredContent as { report: { bodyMd: string } }).report
-        .bodyMd,
+      (found.structuredContent as { report: { bodyMd: string } }).report.bodyMd,
     ).toBe('# The first job’s report');
     expect(none.structuredContent).toEqual({ report: null });
   });

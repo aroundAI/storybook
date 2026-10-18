@@ -137,7 +137,9 @@ async function dayComments(
         replyCount: comment.reply_count,
         isReply: comment.parent_platform_comment_id !== null,
         commentedAt: comment.commented_at,
-        label: label ? { sentiment: label.sentiment, topics: label.topics } : null,
+        label: label
+          ? { sentiment: label.sentiment, topics: label.topics }
+          : null,
       });
     }
 

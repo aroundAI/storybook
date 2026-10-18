@@ -64,11 +64,11 @@ export function DailyReportsView({ reports }: { reports: DailyReportItem[] }) {
             aria-current={report.id === selected.id ? 'date' : undefined}
             data-test={`daily-report-day-${report.date}`}
             className={cn(
-              'hover:bg-muted flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm',
+              'flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-muted',
               report.id === selected.id && 'bg-muted font-medium',
             )}
           >
-            <CalendarDays className="text-muted-foreground h-4 w-4 shrink-0" />
+            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
             {formatDay(report.date)}
           </button>
         ))}
@@ -81,7 +81,7 @@ export function DailyReportsView({ reports }: { reports: DailyReportItem[] }) {
             {formatDay(selected.date)}
           </CardTitle>
           {selected.headline && (
-            <p className="text-muted-foreground text-sm">{selected.headline}</p>
+            <p className="text-sm text-muted-foreground">{selected.headline}</p>
           )}
           <div className="flex flex-wrap gap-2 text-xs">
             <Badge variant="outline" data-test="daily-report-timezone">

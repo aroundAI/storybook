@@ -57,16 +57,30 @@ function isoDay(date: Date) {
 
 /** The repo has no typography plugin: each element is styled here */
 const MARKDOWN: Components = {
-  h1: ({ node: _node, ...props }) => <h2 className="mt-6 text-xl font-semibold" {...props} />,
-  h2: ({ node: _node, ...props }) => <h3 className="mt-6 text-lg font-semibold" {...props} />,
-  h3: ({ node: _node, ...props }) => <h4 className="mt-4 font-semibold" {...props} />,
-  h4: ({ node: _node, ...props }) => <h5 className="mt-4 font-medium" {...props} />,
-  p: ({ node: _node, ...props }) => <p className="text-foreground/90" {...props} />,
-  ul: ({ node: _node, ...props }) => <ul className="list-disc space-y-1 pl-6" {...props} />,
-  ol: ({ node: _node, ...props }) => <ol className="list-decimal space-y-1 pl-6" {...props} />,
+  h1: ({ node: _node, ...props }) => (
+    <h2 className="mt-6 text-xl font-semibold" {...props} />
+  ),
+  h2: ({ node: _node, ...props }) => (
+    <h3 className="mt-6 text-lg font-semibold" {...props} />
+  ),
+  h3: ({ node: _node, ...props }) => (
+    <h4 className="mt-4 font-semibold" {...props} />
+  ),
+  h4: ({ node: _node, ...props }) => (
+    <h5 className="mt-4 font-medium" {...props} />
+  ),
+  p: ({ node: _node, ...props }) => (
+    <p className="text-foreground/90" {...props} />
+  ),
+  ul: ({ node: _node, ...props }) => (
+    <ul className="list-disc space-y-1 pl-6" {...props} />
+  ),
+  ol: ({ node: _node, ...props }) => (
+    <ol className="list-decimal space-y-1 pl-6" {...props} />
+  ),
   blockquote: ({ node: _node, ...props }) => (
     <blockquote
-      className="text-muted-foreground border-l-2 pl-4 italic"
+      className="border-l-2 pl-4 text-muted-foreground italic"
       {...props}
     />
   ),
@@ -79,10 +93,10 @@ const MARKDOWN: Components = {
     />
   ),
   code: ({ node: _node, ...props }) => (
-    <code className="bg-muted rounded px-1 py-0.5 text-xs" {...props} />
+    <code className="rounded bg-muted px-1 py-0.5 text-xs" {...props} />
   ),
   pre: ({ node: _node, ...props }) => (
-    <pre className="bg-muted overflow-x-auto rounded p-3 text-xs" {...props} />
+    <pre className="overflow-x-auto rounded bg-muted p-3 text-xs" {...props} />
   ),
   hr: () => <hr className="my-4" />,
 };
