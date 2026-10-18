@@ -77,6 +77,16 @@ notes: >
   with none (Instagram) the latest long video of the episodes queued there.
   A channel with no posting rules is held by the scheduled job to one post
   a day at the post's own time of day, which is how the release placed it.
+  Verified 2026-10-18 against the local stack (dev server :3200): the MCP
+  spec's 3 tests pass, including nine episodes x (1 long + 8 YouTube
+  Shorts + 8 Reels) = 153 posts read back from publishes; the
+  Publish-screen spec passes, with screenshots of the dialog (every 2
+  days, 2 Shorts a day), after its save, and the release calendar's Shorts
+  queue. Unit guards Q1-Q13, Q15 and FILM-719's re-anchored C1, C2, C4,
+  G1, G2 RED; E2E guards Q14, C5 and FILM-2208's R7 RED. pgTAP: the whole
+  suite (124 files) passes on a throwaway database; without the migration
+  channel-posting-cadence.test.sql fails at every_n_days.
+
   The FILM-719 hold columns stay readable: requeue_held_shorts and
   discard_held_shorts remain for drafts an older release held.
 feature:
