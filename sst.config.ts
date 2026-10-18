@@ -396,8 +396,10 @@ export default $config({
       fifo: false,
       transform: {
         queue: (args) => {
-          // Visibility timeout must be >= the worker's timeout (15 minutes)
-          args.visibilityTimeoutSeconds = 900; // 15 minutes
+          // At least 6x the worker's 15-minute timeout (AWS guidance for
+          // SQS -> Lambda), so a slow upload is never handed to a second
+          // worker mid-upload and published twice
+          args.visibilityTimeoutSeconds = 5400; // 90 minutes
 
           // Configure Dead Letter Queue
           // After 3 failed attempts, move message to DLQ for investigation
@@ -406,7 +408,7 @@ export default $config({
       },
     });
 
-    console.log(`✓ Publish queue configured with 15-minute visibility timeout`);
+    console.log(`✓ Publish queue configured with 90-minute visibility timeout`);
 
     // Dead Letter Queue for failed voice generation jobs
     const voiceDLQ = new sst.aws.Queue('StorybookVoiceDLQ', {
