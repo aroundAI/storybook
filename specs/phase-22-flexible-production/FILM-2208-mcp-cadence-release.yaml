@@ -54,6 +54,12 @@ acceptance_criteria:
     evidence: "Met (#668): tools/workflow-guide.ts; workflow-guide.test.ts pins the tool names"
 open_questions: []
 notes: >
+  FILM-2209 (owner, 2026-10-18) changed what schedule_release does with
+  Shorts: they join the channel's one Shorts queue, oldest first, and
+  nothing is held; the result carries shortsQueue instead of held and
+  displaced, and set_channel_cadence takes everyNDays. requeue_held_shorts
+  and discard_held_shorts remain for drafts an older release held.
+
   The folder routine (a Claude Code skill in the owner's producer folder)
   and the Claude Desktop morning report sit outside this repo and are set
   up after deploy. Publishing immediately stays a web action.

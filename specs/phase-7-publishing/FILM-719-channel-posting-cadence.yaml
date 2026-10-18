@@ -74,6 +74,15 @@ acceptance_criteria:
     evidence: "Met (#666): tooling/mutation-guards/film-719-cadence.json C1–C4, G1–G2, L1, DB1–DB2 and E2E C5, each red under its mutation"
 open_questions: []
 notes: >
+  Replaced by FILM-2209 (owner, 2026-10-18): "Shorts follow their own
+  episode only" is gone. Each channel has one Shorts queue, oldest first;
+  an episode's Shorts keep posting after the next episode's long video,
+  never past the daily cap, and nothing is held or bumped. The criteria
+  above on holding describe what #666 shipped; FILM-2209 re-anchored guards
+  C1, C2, C4, G1, G2 and E2E C5 to the new rules. The Shorts default wait
+  is now 2 hours, and a late post moves the queue behind it on in order
+  rather than a flat day.
+
   Research behind the defaults (2026-10-15): no platform publishes a posting
   cap. YouTube's inauthentic-content policy (renamed July 2025) targets
   "large volumes of videos created using the same format". Vendor data puts
