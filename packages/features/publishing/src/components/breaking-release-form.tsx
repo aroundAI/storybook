@@ -118,9 +118,11 @@ export function BreakingReleaseForm(props: {
     }
   });
 
-  const onSchedule = form.handleSubmit((formValues) =>
-    props.onSchedule(settingsOf(formValues)),
-  );
+  // A schedule spends its preview: another needs a fresh one
+  const onSchedule = form.handleSubmit((formValues) => {
+    props.onSchedule(settingsOf(formValues));
+    setPreview({ status: 'idle' });
+  });
 
   return (
     <Form {...form}>

@@ -453,6 +453,10 @@ export function ScheduleReleasePanel({
 
   const cadenceMode = mode === 'cadence';
   const breakingMode = mode === 'breaking';
+  // Three tabs share a narrow sidebar: their labels wrap
+  const tabClass = onPreviewBreaking
+    ? 'h-full whitespace-normal text-xs leading-tight'
+    : undefined;
   const previewStale =
     cadencePreview.status === 'ready' &&
     cadencePreview.forStart !== releaseStart?.getTime();
@@ -593,17 +597,26 @@ export function ScheduleReleasePanel({
               onValueChange={(value) => setMode(value as ReleaseMode)}
             >
               <TabsList
-                className={`grid w-full ${onPreviewBreaking ? 'grid-cols-3' : 'grid-cols-2'}`}
+                className={`grid w-full ${onPreviewBreaking ? 'h-auto grid-cols-3' : 'grid-cols-2'}`}
               >
-                <TabsTrigger value="cadence" data-test="release-mode-cadence">
+                <TabsTrigger
+                  value="cadence"
+                  className={tabClass}
+                  data-test="release-mode-cadence"
+                >
                   Channel cadence
                 </TabsTrigger>
-                <TabsTrigger value="stagger" data-test="release-mode-stagger">
+                <TabsTrigger
+                  value="stagger"
+                  className={tabClass}
+                  data-test="release-mode-stagger"
+                >
                   Custom
                 </TabsTrigger>
                 {onPreviewBreaking && (
                   <TabsTrigger
                     value="breaking"
+                    className={tabClass}
                     data-test="release-mode-breaking"
                   >
                     Breaking news

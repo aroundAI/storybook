@@ -172,6 +172,15 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/reschedule-publishes.test.sql",
       "sql": "create or replace function public.reschedule_publishes(\n  p_moves jsonb,\n  p_inserts jsonb default '[]'::jsonb\n)\nreturns setof public.publishes\nlanguage plpgsql\nsecurity invoker\nset search_path = ''\nas $$\ndeclare\n  v_ids uuid[];\n  v_moved integer;\nbegin\n  select coalesce(array_agg((m ->> 'id')::uuid), '{}')\n    into v_ids\n    from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m;\n\n  if cardinality(v_ids) <> (select count(distinct x) from unnest(v_ids) x) then\n    raise exception 'Each post moves once.' using errcode = '22023';\n  end if;\n\n  if exists (\n    select 1 from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m\n     where m ->> 'slot_at' is null or m ->> 'scheduled_at' is null\n  ) then\n    raise exception 'A moved post needs a slot and a time.' using errcode = '22023';\n  end if;\n\n  update public.publishes\n     set slot_at = null\n   where id = any (v_ids);\n\n  get diagnostics v_moved = row_count;\n\n  if v_moved <> cardinality(v_ids) then\n    raise exception 'Only scheduled posts move: % of % are.', v_moved, cardinality(v_ids)\n      using errcode = '55000';\n  end if;\n\n  update public.publishes p\n     set slot_at = (m ->> 'slot_at')::timestamptz,\n         scheduled_at = (m ->> 'scheduled_at')::timestamptz\n    from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m\n   where p.id = (m ->> 'id')::uuid;\n\n  return query\n  with inserted as (\n    insert into public.publishes (\n      episode_id, platform_connection_id, platform, content_type, title,\n      description, tags, thumbnail_url, status, scheduled_at, slot_at,\n      after_episode_full, metadata, language, ai_generated, release_priority\n    )\n    select r.episode_id, r.platform_connection_id, r.platform, r.content_type,\n           r.title, r.description, r.tags, r.thumbnail_url, 'scheduled',\n           r.scheduled_at, r.slot_at, coalesce(r.after_episode_full, false),\n           coalesce(r.metadata, '{}'::jsonb), r.language,\n           coalesce(r.ai_generated, false),\n           coalesce(r.release_priority, 'normal')\n      from jsonb_populate_recordset(\n             null::public.publishes, coalesce(p_inserts, '[]'::jsonb)\n           ) r\n    returning *\n  )\n  select * from inserted;\nend;\n$$;"
+    },
+    {
+      "name": "E2E U1 a scheduled breaking release can be scheduled again from the same preview",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/components/breaking-release-form.tsx",
+      "find": "    setPreview({ status: 'idle' });\n  });\n",
+      "replace": "  });\n",
+      "spec": "tests/publishing/breaking-release.spec.ts",
+      "grep": "goes now through the Breaking news tab"
     }
   ]
 }
