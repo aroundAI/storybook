@@ -70,6 +70,8 @@
  *     DROP COLUMN IF EXISTS profile_visits, DROP COLUMN IF EXISTS source;
  *   and, only once no NULL is left, MODIFY likes and comments back to UInt32.
  */
+import type { ClickHouseClient } from '@clickhouse/client';
+
 import { PLATFORM_ENUM_TYPE } from '../lib/platform-enum';
 import type { ClickHouseMigration } from './migration-types';
 
@@ -85,23 +87,6 @@ export const STATEMENTS = [
   `ALTER TABLE video_traffic_sources
     ADD COLUMN IF NOT EXISTS metric_source LowCardinality(String),
     MODIFY ORDER BY (project_id, platform, video_id, metric_date, source, metric_source)`,
-  // The rows written before this carry '' and came from the CSV. A CSV
-  // restatement now writes 'reporting_api', which would sit beside the ''
-  // copy on a different key and count the day twice, so the old rows are
-  // copied under their real name — `inserted_at` kept, so a later write
-  // still replaces them — and the '' copies deleted. Safe to re-run. The
-  // table is partitioned by month, so the copy spans every month it holds:
-  // the 100-partition ceiling on one insert is lifted for it alone.
-  `INSERT INTO video_traffic_sources
-    (project_id, video_id, platform, metric_date, source, views,
-     watch_time_minutes, inserted_at, metric_source)
-    SELECT project_id, video_id, platform, metric_date, source, views,
-      watch_time_minutes, inserted_at, 'reporting_api'
-    FROM video_traffic_sources FINAL
-    WHERE metric_source = ''
-    SETTINGS max_partitions_per_insert_block = 0`,
-  `ALTER TABLE video_traffic_sources DELETE WHERE metric_source = ''
-    SETTINGS mutations_sync = 2`,
   `CREATE TABLE IF NOT EXISTS channel_metrics_daily (
     connection_id UUID,
     platform ${PLATFORM_ENUM_TYPE},
@@ -125,10 +110,61 @@ export const STATEMENTS = [
   ORDER BY (connection_id, platform, metric_date, source)`,
 ];
 
+export const DELETE_LEGACY_TRAFFIC = `ALTER TABLE video_traffic_sources
+    DELETE WHERE metric_source = ''
+    SETTINGS mutations_sync = 2`;
+
+/** One month (YYYYMM) of the pre-025 traffic rows, copied under 'reporting_api'. */
+export function copyLegacyTrafficMonth(month: number): string {
+  if (!Number.isInteger(month) || month < 190001 || month > 299912) {
+    throw new Error(`Not a YYYYMM month: ${month}`);
+  }
+  return `INSERT INTO video_traffic_sources
+    (project_id, video_id, platform, metric_date, source, views,
+     watch_time_minutes, inserted_at, metric_source)
+    SELECT project_id, video_id, platform, metric_date, source, views,
+      watch_time_minutes, inserted_at, 'reporting_api'
+    FROM video_traffic_sources FINAL
+    WHERE metric_source = '' AND toYYYYMM(metric_date) = ${month}`;
+}
+
+async function legacyTrafficMonths(
+  client: ClickHouseClient,
+): Promise<number[]> {
+  const result = await client.query({
+    query: `SELECT DISTINCT toYYYYMM(metric_date) AS month
+      FROM video_traffic_sources
+      WHERE metric_source = ''
+      ORDER BY month`,
+    format: 'JSONEachRow',
+  });
+  const rows = await result.json<{ month: number | string }>();
+  return rows.map((row) => Number(row.month));
+}
+
 export const migration: ClickHouseMigration = {
   name: '025_complete_collection',
   async up(client) {
-    for (const query of STATEMENTS) {
+    const [columns, rest] = [STATEMENTS.slice(0, 3), STATEMENTS.slice(3)];
+
+    for (const query of columns) {
+      await client.command({ query });
+    }
+
+    // The rows written before this carry '' and came from the CSV. A CSV
+    // restatement now writes 'reporting_api', which would sit beside the ''
+    // copy on a different key and count the day twice, so the old rows are
+    // copied under their real name — `inserted_at` kept, so a later write
+    // still replaces them — and the '' copies deleted. Safe to re-run.
+    // One insert per month: the table is partitioned by month, and an
+    // insert spanning more than max_partitions_per_insert_block (100) is
+    // refused; a managed server may forbid raising it (KB-201).
+    for (const month of await legacyTrafficMonths(client)) {
+      await client.command({ query: copyLegacyTrafficMonth(month) });
+    }
+    await client.command({ query: DELETE_LEGACY_TRAFFIC });
+
+    for (const query of rest) {
       await client.command({ query });
     }
   },
