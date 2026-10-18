@@ -1580,6 +1580,14 @@ export default $config({
             SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
             // SQS queue URL
             PUBLISH_QUEUE_URL: publishQueue.url,
+            // Storage: what the app's public URLs look like, so the video
+            // check (ownedEpisodeVideo, KB-123) reads R2 URLs as the
+            // project's files. Without these it assumed Supabase storage and
+            // refused every R2 video at its scheduled time (KB-202).
+            STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'r2',
+            ...(process.env.R2_PUBLIC_URL && {
+              R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+            }),
           },
           transform: {
             function: {
