@@ -8,6 +8,7 @@ import {
   resolveCadence,
 } from '../src/lib/cadence/cadence';
 import {
+  type EpisodeAnchor,
   type OccupiedPost,
   type PlanReleaseInput,
   type ReleaseItem,
@@ -15,9 +16,9 @@ import {
 } from '../src/lib/cadence/plan-release';
 
 /**
- * FILM-719. A channel posts on a rhythm: a long video every few days, its
- * Shorts one a day after it, and an episode's Shorts only until the next
- * episode's long video (owner, 2026-10-15).
+ * FILM-719, FILM-2209. A channel posts on a rhythm: a long video every few
+ * days, and its Shorts from one queue, oldest episode first, never more a
+ * day than its Short times (owner, 2026-10-18).
  */
 const TZ = 'Asia/Kolkata';
 const NOW = new Date('2026-11-02T03:30:00Z'); // 09:00 IST, Monday
@@ -66,6 +67,56 @@ const istTime = (at: Date) =>
     minute: '2-digit',
   });
 
+const post = (
+  publishId: string,
+  episodeId: string,
+  contentType: 'full' | 'short',
+  when: Date,
+  connectionId = 'yt',
+): OccupiedPost => ({
+  publishId,
+  connectionId,
+  episodeId,
+  contentType,
+  status: 'scheduled',
+  at: when,
+  goesAt: when,
+});
+
+/** Each episode's long videos, as the service reads them */
+function anchorsOf(posts: readonly OccupiedPost[]) {
+  const anchors = new Map<string, EpisodeAnchor>();
+  for (const p of posts.filter((p) => p.contentType === 'full')) {
+    const current = anchors.get(p.episodeId);
+    const byChannel = new Map(current?.byChannel ?? []);
+    if (
+      !byChannel.has(p.connectionId) ||
+      p.at < byChannel.get(p.connectionId)!
+    ) {
+      byChannel.set(p.connectionId, p.at);
+    }
+    anchors.set(p.episodeId, {
+      earliest: current && current.earliest < p.at ? current.earliest : p.at,
+      byChannel,
+    });
+  }
+  return anchors;
+}
+
+const asOccupied = (
+  episodeId: string,
+  placed: ReturnType<typeof planRelease>['placed'],
+): OccupiedPost[] =>
+  placed.map((p) => ({
+    publishId: `${episodeId}:${p.key}`,
+    connectionId: p.connectionId,
+    episodeId,
+    contentType: p.contentType,
+    status: 'scheduled',
+    at: p.slotAt,
+    goesAt: p.scheduledAt,
+  }));
+
 describe('a release on a channel with nothing scheduled', () => {
   it('puts the long video in the first slot and one Short a day after it', () => {
     const result = plan({ items: [fullItem(), ...shorts(4)] });
@@ -77,14 +128,14 @@ describe('a release on a channel with nothing scheduled', () => {
     const days = result.placed
       .filter((p) => p.contentType === 'short')
       .map((p) => `${ist(p.slotAt)} ${istTime(p.slotAt)}`);
-    // 20 hours after 17:00 is 13:00 the next day, so the first is that 18:00
+    // 2 hours after 17:00 is 19:00, past that day's 18:00
     expect(days).toEqual([
       '2026-11-03 18:00',
       '2026-11-04 18:00',
       '2026-11-05 18:00',
       '2026-11-06 18:00',
     ]);
-    expect(result.held).toEqual([]);
+    expect(result.unplaced).toEqual([]);
   });
 
   it('never puts two Shorts on one day when the channel takes one', () => {
@@ -110,10 +161,11 @@ describe('a release on a channel with nothing scheduled', () => {
         .filter((p) => p.contentType === 'short')
         .map((p) => `${ist(p.slotAt)} ${istTime(p.slotAt)}`),
     ).toEqual([
+      // 2 hours after the 17:00 long video
+      '2026-11-02 19:00',
+      '2026-11-03 10:00',
       '2026-11-03 19:00',
       '2026-11-04 10:00',
-      '2026-11-04 19:00',
-      '2026-11-05 10:00',
     ]);
   });
 
@@ -183,225 +235,413 @@ describe('a release on a channel with nothing scheduled', () => {
 
 describe('long videos on one channel', () => {
   it('go at least the channel’s days apart', () => {
-    const occupied: OccupiedPost[] = [
-      {
-        publishId: 'p-ep1',
-        connectionId: 'yt',
-        episodeId: 'ep1',
-        contentType: 'full',
-        status: 'scheduled',
-        at: new Date('2026-11-02T11:30:00Z'), // 17:00 IST Monday
-      },
+    const occupied = [
+      post('p-ep1', 'ep1', 'full', new Date('2026-11-02T11:30:00Z')), // 17:00 IST Monday
     ];
     const result = plan({
       episodeId: 'ep2',
       items: [fullItem()],
       occupied,
-      anchors: new Map([['ep1', occupied[0]!.at]]),
+      anchors: anchorsOf(occupied),
     });
 
     expect(ist(result.placed[0]!.slotAt)).toBe('2026-11-05');
   });
+
+  it('keeps 20:00 every 3 days across a daylight-saving change', () => {
+    // US clocks go forward on Sunday 8 March 2026: 72 hours after Thursday
+    // 20:00 EST is Sunday 21:00 EDT, past that day's 20:00
+    const NY = 'America/New_York';
+    const longs = (_: string, type: 'full' | 'short') =>
+      cadence(type, { timezone: NY, slotTimes: ['20:00'], minDaysBetween: 3 });
+    const now = new Date('2026-03-05T12:00:00Z');
+    let occupied: OccupiedPost[] = [];
+
+    for (const episodeId of ['ep1', 'ep2', 'ep3']) {
+      const result = plan({
+        episodeId,
+        items: [fullItem()],
+        cadenceOf: longs,
+        occupied,
+        anchors: anchorsOf(occupied),
+        now,
+        notBefore: now,
+      });
+      occupied = [...occupied, ...asOccupied(episodeId, result.placed)];
+    }
+
+    expect(
+      occupied.map((p) =>
+        p.at.toLocaleString('en-CA', { timeZone: NY, hour12: false }),
+      ),
+    ).toEqual([
+      '2026-03-05, 20:00:00',
+      '2026-03-08, 20:00:00',
+      '2026-03-11, 20:00:00',
+    ]);
+  });
 });
 
-describe('Shorts follow their own episode only', () => {
-  // Episode 1: long video Monday 17:00 IST, Shorts daily from Tuesday
-  const ep1Full = new Date('2026-11-02T11:30:00Z');
-  const ep1Short = (day: number, id: string): OccupiedPost => ({
-    publishId: id,
-    connectionId: 'yt',
-    episodeId: 'ep1',
-    contentType: 'short',
-    status: 'scheduled',
-    at: new Date(Date.UTC(2026, 10, day, 12, 30)), // 18:00 IST
-  });
-  const occupied: OccupiedPost[] = [
-    {
-      publishId: 'ep1-full',
-      connectionId: 'yt',
-      episodeId: 'ep1',
-      contentType: 'full',
-      status: 'scheduled',
-      at: ep1Full,
-    },
-    ep1Short(3, 's1'),
-    ep1Short(4, 's2'),
-    ep1Short(5, 's3'),
-    ep1Short(6, 's4'),
-    ep1Short(7, 's5'),
-  ];
+/** The owner's plan (2026-10-18): a long video at 20:00 every 3 days, Shorts at 11:00 and 17:00 */
+const ownerPlan = (overrides: { everyNDays?: number } = {}) =>
+  ((_: string, type: 'full' | 'short') =>
+    type === 'full'
+      ? cadence('full', { slotTimes: ['20:00'], minDaysBetween: 3 })
+      : cadence('short', {
+          slotTimes: ['11:00', '17:00'],
+          startAfterHours: 2,
+          everyNDays: overrides.everyNDays ?? 1,
+        })) satisfies PlanReleaseInput['cadenceOf'];
 
-  it('holds an earlier episode’s Shorts scheduled after the next long video', () => {
+const at = (p: { slotAt: Date } | { at: Date }) =>
+  'slotAt' in p ? p.slotAt : p.at;
+const dayTime = (p: { slotAt: Date } | { at: Date }) =>
+  `${ist(at(p))} ${istTime(at(p))}`;
+
+/** Releases the episodes in order on YouTube, as the owner would */
+function releaseInOrder(
+  episodes: ReadonlyArray<{ id: string; shorts: number }>,
+  options: {
+    occupied?: OccupiedPost[];
+    now?: Date;
+    cadenceOf?: PlanReleaseInput['cadenceOf'];
+    random?: () => number;
+  } = {},
+) {
+  let occupied = [...(options.occupied ?? [])];
+  const now = options.now ?? NOW;
+
+  for (const episode of episodes) {
+    const result = plan({
+      episodeId: episode.id,
+      items: [fullItem(), ...shorts(episode.shorts)],
+      cadenceOf: options.cadenceOf ?? ownerPlan(),
+      occupied,
+      anchors: anchorsOf(occupied),
+      now,
+      notBefore: now,
+      random: options.random ?? (() => 0.5),
+    });
+    expect(result.unplaced).toEqual([]);
+    occupied = [...occupied, ...asOccupied(episode.id, result.placed)];
+  }
+
+  return occupied;
+}
+
+function shortsPerDay(posts: readonly OccupiedPost[]) {
+  const counts = new Map<string, number>();
+  for (const p of posts.filter((p) => p.contentType === 'short')) {
+    counts.set(ist(p.at), (counts.get(ist(p.at)) ?? 0) + 1);
+  }
+  return counts;
+}
+
+describe('one Shorts queue per channel, oldest first (FILM-2209)', () => {
+  it('keeps posting episode 1’s 8 Shorts on day 3, beside long video 2, and on day 4, never more than 2 a day', () => {
+    const occupied = releaseInOrder([
+      { id: 'ep1', shorts: 8 },
+      { id: 'ep2', shorts: 8 },
+    ]);
+    const of = (episodeId: string, type: 'full' | 'short') =>
+      occupied.filter(
+        (p) => p.episodeId === episodeId && p.contentType === type,
+      );
+
+    expect(of('ep1', 'full').map(dayTime)).toEqual(['2026-11-02 20:00']);
+    expect(of('ep2', 'full').map(dayTime)).toEqual(['2026-11-05 20:00']);
+
+    // Day 3 (5 Nov): long video 2 and two of episode 1's Shorts
+    expect(of('ep1', 'short').map(dayTime)).toEqual([
+      '2026-11-03 11:00',
+      '2026-11-03 17:00',
+      '2026-11-04 11:00',
+      '2026-11-04 17:00',
+      '2026-11-05 11:00',
+      '2026-11-05 17:00',
+      '2026-11-06 11:00',
+      '2026-11-06 17:00',
+    ]);
+
+    // Episode 2's Shorts follow episode 1's
+    expect(of('ep2', 'short').map(dayTime).slice(0, 2)).toEqual([
+      '2026-11-07 11:00',
+      '2026-11-07 17:00',
+    ]);
+    expect(Math.max(...shortsPerDay(occupied).values())).toBe(2);
+  });
+
+  it('appends a later batch: 5 episodes released 2 days after 4 go after them, and nothing earlier moves', () => {
+    const first = releaseInOrder(
+      ['ep1', 'ep2', 'ep3', 'ep4'].map((id) => ({ id, shorts: 8 })),
+    );
+
+    // Two days on: what was due has gone out
+    const twoDaysLater = new Date(NOW.getTime() + 2 * 86_400_000);
+    const before = first.map((p) =>
+      p.goesAt <= twoDaysLater ? { ...p, status: 'published' as const } : p,
+    );
+    const all = releaseInOrder(
+      ['ep5', 'ep6', 'ep7', 'ep8', 'ep9'].map((id) => ({ id, shorts: 8 })),
+      { occupied: before, now: twoDaysLater },
+    );
+
+    // Nothing of the first batch moved
+    expect(all.slice(0, before.length)).toEqual(before);
+
+    // Long videos in episode order, 3 days apart, at 20:00
+    const longs = all.filter((p) => p.contentType === 'full');
+    expect(longs.map((p) => p.episodeId)).toEqual([
+      'ep1',
+      'ep2',
+      'ep3',
+      'ep4',
+      'ep5',
+      'ep6',
+      'ep7',
+      'ep8',
+      'ep9',
+    ]);
+    longs.forEach((p, i) => {
+      expect(istTime(p.at)).toBe('20:00');
+      if (i > 0)
+        expect(p.at.getTime() - longs[i - 1]!.at.getTime()).toBe(
+          3 * 86_400_000,
+        );
+    });
+
+    // Shorts in episode order, each after its own long video, 2 a day at most
+    const queue = all
+      .filter((p) => p.contentType === 'short')
+      .sort((a, b) => a.at.getTime() - b.at.getTime());
+    const order = queue.map((p) => Number(p.episodeId.slice(2)));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    for (const short of queue) {
+      const long = longs.find((l) => l.episodeId === short.episodeId)!;
+      expect(short.at.getTime()).toBeGreaterThan(long.at.getTime());
+    }
+    expect(Math.max(...shortsPerDay(all).values())).toBe(2);
+  });
+
+  it('never puts a Short ahead of one already queued on the channel', () => {
+    // Episode 1's last Short was re-queued to the 10th, leaving days free
+    const occupied = [
+      post('ep1-full', 'ep1', 'full', new Date('2026-11-02T14:30:00Z')),
+      post('ep1-s1', 'ep1', 'short', new Date('2026-11-03T05:30:00Z')),
+      post('ep1-s2', 'ep1', 'short', new Date('2026-11-10T05:30:00Z')),
+    ];
     const result = plan({
       episodeId: 'ep2',
-      items: [fullItem(), ...shorts(3)],
+      items: [fullItem(), ...shorts(2)],
+      cadenceOf: ownerPlan(),
       occupied,
-      anchors: new Map([['ep1', ep1Full]]),
+      anchors: anchorsOf(occupied),
     });
 
-    const ep2Full = result.placed.find((p) => p.contentType === 'full')!;
-    expect(ist(ep2Full.slotAt)).toBe('2026-11-05');
-
-    // ep1's Shorts on the 3rd and 4th stay; the 5th, 6th and 7th are after
-    // ep2's long video at 17:00 on the 5th
-    expect(result.bumped.map((b) => b.publishId).sort()).toEqual([
-      's3',
-      's4',
-      's5',
-    ]);
-
-    // ep2's Shorts take the days ep1's gave up
     expect(
-      result.placed
-        .filter((p) => p.contentType === 'short')
-        .map((p) => ist(p.slotAt)),
-    ).toEqual(['2026-11-06', '2026-11-07', '2026-11-08']);
+      result.placed.filter((p) => p.contentType === 'short').map(dayTime),
+    ).toEqual(['2026-11-10 17:00', '2026-11-11 11:00']);
   });
 
-  it('holds this episode’s Shorts that do not fit before the next long video', () => {
-    // Releasing ep1's Shorts when ep2's long video is already on the 5th
-    const ep2Full = new Date('2026-11-05T11:30:00Z');
+  it('places an episode’s Shorts after the next episode’s long video when they do not fit before it', () => {
+    // Episode 1's Shorts, released after episode 2's long video is booked
+    const occupied = [
+      post('ep1-full', 'ep1', 'full', new Date('2026-11-02T14:30:00Z')),
+      post('ep2-full', 'ep2', 'full', new Date('2026-11-05T14:30:00Z')),
+    ];
     const result = plan({
       episodeId: 'ep1',
-      items: shorts(5),
-      occupied: [
-        {
-          publishId: 'ep1-full',
-          connectionId: 'yt',
-          episodeId: 'ep1',
-          contentType: 'full',
-          status: 'scheduled',
-          at: ep1Full,
-        },
-        {
-          publishId: 'ep2-full',
-          connectionId: 'yt',
-          episodeId: 'ep2',
-          contentType: 'full',
-          status: 'scheduled',
-          at: ep2Full,
-        },
-      ],
-      anchors: new Map([
-        ['ep1', ep1Full],
-        ['ep2', ep2Full],
-      ]),
+      items: shorts(8),
+      cadenceOf: ownerPlan(),
+      occupied,
+      anchors: anchorsOf(occupied),
     });
 
-    expect(result.placed.map((p) => ist(p.slotAt))).toEqual([
-      '2026-11-03',
-      '2026-11-04',
+    expect(result.unplaced).toEqual([]);
+    expect(result.placed.map(dayTime).slice(-2)).toEqual([
+      '2026-11-06 11:00',
+      '2026-11-06 17:00',
     ]);
-    expect(result.held).toHaveLength(3);
-    expect(result.held.every((h) => h.reason === 'next-episode')).toBe(true);
-    expect(result.held[0]!.before).toEqual(ep2Full);
-    expect(result.bumped).toEqual([]);
   });
 
-  it('never moves a Short already handed to the queue', () => {
-    const queued = occupied.map((post) =>
-      post.publishId === 's3' ? { ...post, status: 'queued' as const } : post,
+  it('posts Shorts every 2 days when told to, still 2 a day, across releases', () => {
+    const occupied = releaseInOrder(
+      [
+        { id: 'ep1', shorts: 6 },
+        { id: 'ep2', shorts: 2 },
+      ],
+      { cadenceOf: ownerPlan({ everyNDays: 2 }) },
     );
+    const days = [...shortsPerDay(occupied).entries()];
+
+    expect(days).toEqual([
+      ['2026-11-03', 2],
+      ['2026-11-05', 2],
+      ['2026-11-07', 2],
+      ['2026-11-09', 2],
+    ]);
+  });
+
+  it('never gives a long video and a Short one time on a channel', () => {
+    // Episode 1's Short already holds 17:00 on the 5th, the long-video slot
+    const shortAt = new Date('2026-11-05T11:30:00Z');
+    const occupied = [
+      post('ep1-full', 'ep1', 'full', new Date('2026-11-02T11:30:00Z')),
+      post('ep1-s', 'ep1', 'short', shortAt),
+    ];
     const result = plan({
       episodeId: 'ep2',
       items: [fullItem()],
-      occupied: queued,
-      anchors: new Map([['ep1', ep1Full]]),
-    });
-
-    expect(result.bumped.map((b) => b.publishId)).not.toContain('s3');
-  });
-
-  it('re-queues held Shorts after everything on the channel', () => {
-    const result = plan({
-      episodeId: 'ep1',
-      mode: 'append',
-      items: shorts(2),
+      cadenceOf: (_, type) =>
+        cadence(type, { slotTimes: ['17:00'], minDaysBetween: 3 }),
       occupied,
-      anchors: new Map([['ep1', ep1Full]]),
+      anchors: anchorsOf(occupied),
     });
 
-    expect(result.placed.map((p) => ist(p.slotAt))).toEqual([
-      '2026-11-08',
-      '2026-11-09',
-    ]);
-    expect(result.bumped).toEqual([]);
+    const [full] = result.placed;
+    expect(full!.slotAt).not.toEqual(shortAt);
+    expect(dayTime(full!)).toBe('2026-11-06 17:00');
+
+    // and a Short is never put on a long video's time
+    const shortsFirst = plan({
+      episodeId: 'ep1',
+      items: shorts(1),
+      cadenceOf: (_, type) =>
+        cadence(type, { slotTimes: ['17:00'], startAfterHours: 0 }),
+      occupied: [occupied[0]!],
+      anchors: anchorsOf([occupied[0]!]),
+    });
+    expect(dayTime(shortsFirst.placed[0]!)).toBe('2026-11-03 17:00');
   });
 
-  it('keeps each platform’s calendar separate', () => {
+  it('waits for the episode’s long video on the Short’s own channel', () => {
+    // Episode 2's long video went out on Facebook on the 2nd; YouTube's
+    // goes after episode 1's, on the 5th
+    const occupied = [
+      post('ep1-yt', 'ep1', 'full', new Date('2026-11-02T14:30:00Z')), // 20:00 IST
+    ];
+    const anchors = new Map([
+      ...anchorsOf(occupied),
+      [
+        'ep2',
+        {
+          earliest: new Date('2026-11-02T11:30:00Z'),
+          byChannel: new Map([['fb', new Date('2026-11-02T11:30:00Z')]]),
+        },
+      ],
+    ]);
     const result = plan({
       episodeId: 'ep2',
-      items: [fullItem(), ...shorts(2, 'ig')],
+      items: [fullItem('yt'), ...shorts(1, 'yt'), ...shorts(1, 'ig')],
+      cadenceOf: ownerPlan(),
       occupied,
-      anchors: new Map([['ep1', ep1Full]]),
+      anchors,
+    });
+    const placedOn = (id: string, type: 'full' | 'short') =>
+      result.placed.find(
+        (p) => p.connectionId === id && p.contentType === type,
+      )!;
+
+    expect(dayTime(placedOn('yt', 'full'))).toBe('2026-11-05 20:00');
+    expect(dayTime(placedOn('yt', 'short'))).toBe('2026-11-06 11:00');
+    // Instagram has no long video: its Reel follows the earliest one
+    expect(dayTime(placedOn('ig', 'short'))).toBe('2026-11-03 11:00');
+    expect(placedOn('ig', 'short').afterEpisodeFull).toBe(true);
+  });
+
+  it('keeps jittered posts on their slot’s day and in queue order', () => {
+    const draws = [1, 0, 0, 1, 0, 1];
+    let i = 0;
+    const result = plan({
+      items: [fullItem(), ...shorts(4)],
+      random: () => draws[i++ % draws.length]!,
+      cadenceOf: (_, type) =>
+        type === 'full'
+          ? cadence('full', { slotTimes: ['08:00'], jitterMinutes: 120 })
+          : cadence('short', {
+              slotTimes: ['00:30', '01:00'],
+              startAfterHours: 0,
+              jitterMinutes: 120,
+            }),
+    });
+    const placedShorts = result.placed.filter((p) => p.contentType === 'short');
+
+    for (const p of placedShorts) {
+      expect(ist(p.scheduledAt)).toBe(ist(p.slotAt));
+    }
+    for (let n = 1; n < placedShorts.length; n++) {
+      expect(placedShorts[n]!.scheduledAt.getTime()).toBeGreaterThanOrEqual(
+        placedShorts[n - 1]!.scheduledAt.getTime() + 60_000,
+      );
+    }
+  });
+
+  it('says how far the Shorts queue runs past the last long video', () => {
+    const occupied = releaseInOrder(
+      ['ep1', 'ep2', 'ep3'].map((id) => ({ id, shorts: 8 })),
+    );
+    const result = plan({
+      episodeId: 'ep4',
+      items: [fullItem(), ...shorts(8)],
+      cadenceOf: ownerPlan(),
+      occupied,
+      anchors: anchorsOf(occupied),
+    });
+    const [queue] = result.shortsQueues;
+
+    // 6 Short slots between long videos, 8 Shorts an episode: 2 more a time
+    expect(queue).toMatchObject({ connectionId: 'yt', queued: 32 });
+    expect(dayTime({ at: queue!.longVideosEndAt! })).toBe('2026-11-11 20:00');
+    expect(dayTime({ at: queue!.lastShortAt! })).toBe('2026-11-18 17:00');
+    expect(queue!.daysAhead).toBe(6.9);
+  });
+
+  it('refuses nothing silently: an upload with no slot in a year is unplaced', () => {
+    const result = plan({
+      items: [fullItem(), ...shorts(1)],
+      cadenceOf: (_, type) =>
+        type === 'short'
+          ? cadence('short', {
+              daysOfWeek: [1],
+              everyNDays: 7,
+              slotTimes: ['18:00'],
+            })
+          : cadence('full'),
+      occupied: [post('x', 'ep0', 'short', new Date('2026-11-03T12:30:00Z'))], // a Tuesday
     });
 
-    // Instagram has no posts, so ep1's YouTube Shorts are not held
-    expect(result.bumped).toEqual([]);
-    expect(result.placed.filter((p) => p.connectionId === 'ig')).toHaveLength(
-      2,
-    );
+    // Mondays only, every 7 days from a Tuesday: never
+    expect(result.unplaced).toEqual([
+      { key: 'short:yt:1', connectionId: 'yt', contentType: 'short' },
+    ]);
   });
 });
 
 describe('the five-channel release in the owner’s question', () => {
-  it('spreads five episodes on one channel without two episodes’ Shorts on a day', () => {
-    let occupied: OccupiedPost[] = [];
-    const anchors = new Map<string, Date>();
-
-    for (let ep = 1; ep <= 5; ep++) {
-      const episodeId = `ep${ep}`;
-      const result = plan({
-        episodeId,
-        items: [fullItem(), ...shorts(5)],
-        occupied,
-        anchors,
-        random: () => Math.random(),
+  it('spreads five episodes on one channel, one Short a day, oldest first', () => {
+    const occupied = releaseInOrder(
+      [1, 2, 3, 4, 5].map((n) => ({ id: `ep${n}`, shorts: 5 })),
+      {
         cadenceOf: (_, type) => cadence(type, { jitterMinutes: 20 }),
-      });
-
-      const bumpedIds = new Set(result.bumped.map((b) => b.publishId));
-      occupied = occupied.filter((post) => !bumpedIds.has(post.publishId));
-      anchors.set(episodeId, result.anchor!);
-      occupied.push(
-        ...result.placed.map((p) => ({
-          publishId: `${episodeId}:${p.key}`,
-          connectionId: p.connectionId,
-          episodeId,
-          contentType: p.contentType,
-          status: 'scheduled' as const,
-          at: p.slotAt,
-        })),
-      );
-    }
+        random: () => Math.random(),
+      },
+    );
 
     const fulls = occupied
       .filter((p) => p.contentType === 'full')
-      .map((p) => p.at.getTime())
-      .sort();
+      .map((p) => p.at.getTime());
     expect(fulls).toHaveLength(5);
     for (let i = 1; i < fulls.length; i++) {
       expect(fulls[i]! - fulls[i - 1]!).toBeGreaterThanOrEqual(3 * 86_400_000);
     }
 
-    const shortDays = occupied
-      .filter((p) => p.contentType === 'short')
-      .map((p) => ist(p.at));
-    expect(new Set(shortDays).size).toBe(shortDays.length);
+    expect(Math.max(...shortsPerDay(occupied).values())).toBe(1);
 
-    // Each episode's Shorts sit between its long video and the next one
-    const sortedAnchors = [...anchors.entries()].sort(
-      (a, b) => a[1].getTime() - b[1].getTime(),
-    );
-    sortedAnchors.forEach(([episodeId, at], i) => {
-      const next = sortedAnchors[i + 1]?.[1];
-      for (const post of occupied.filter(
-        (p) => p.episodeId === episodeId && p.contentType === 'short',
-      )) {
-        expect(post.at.getTime()).toBeGreaterThan(at.getTime());
-        if (next) expect(post.at.getTime()).toBeLessThan(next.getTime());
-      }
-    });
+    const order = occupied
+      .filter((p) => p.contentType === 'short')
+      .sort((a, b) => a.at.getTime() - b.at.getTime())
+      .map((p) => p.episodeId);
+    expect(order).toEqual([...order].sort());
   });
 });
 
@@ -462,6 +702,7 @@ describe('the cadence a channel posts on', () => {
           slot_times: ['19:00', '09:00'],
           days_of_week: [1, 2, 3, 4, 5],
           min_days_between: 0,
+          every_n_days: 2,
           start_after_hours: 4,
           jitter_minutes: 10,
           enabled: true,
@@ -474,6 +715,7 @@ describe('the cadence a channel posts on', () => {
       slotTimes: ['09:00', '19:00'],
       daysOfWeek: [1, 2, 3, 4, 5],
       minDaysBetween: 0,
+      everyNDays: 2,
       startAfterHours: 4,
       jitterMinutes: 10,
     });

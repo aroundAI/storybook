@@ -17,11 +17,12 @@ import { signInAs } from '../utils/session';
 import { byTest, visible } from '../utils/visible';
 
 /**
- * FILM-719. A release is scheduled on its channel's posting cadence (owner,
- * 2026-10-15): the long video in the channel's next free slot, its Shorts
- * one slot at a time after it, and only until the next episode's long
- * video. The second episode's long video holds back the first episode's
- * Shorts still scheduled after it, and the owner re-queues them.
+ * FILM-719, FILM-2209. A release is scheduled on its channel's posting
+ * cadence: the long video in the channel's next free slot, and its Shorts
+ * at the end of the channel's one Shorts queue, oldest episode first
+ * (owner, 2026-10-18). The second episode leaves the first one's Shorts
+ * where they were and queues its own after them; a Short an older release
+ * held goes back on at the end of the queue.
  *
  * Driven through the Publish screen against the real database, so the
  * planner, the slot index and RLS all apply. Nothing reaches a platform:
@@ -108,7 +109,7 @@ interface PublishRow {
   slot_at: string | null;
   scheduled_at: string | null;
   after_episode_full: boolean;
-  metadata: { heldReason?: string; createdVia?: string };
+  metadata: { heldReason?: string; heldBefore?: string; createdVia?: string };
 }
 
 function publishesOn(connectionId: string) {
@@ -160,7 +161,7 @@ async function openPublish(page: Page, team: SeededTeam, path: string) {
 }
 
 test.describe('A release follows its channel’s posting cadence', () => {
-  test('one Short a day after the long video, held back by the next episode, re-queued', async ({
+  test('Shorts every N days after the long video, the next episode’s queued after them, a held one re-queued to the end of the queue', async ({
     page,
   }) => {
     test.setTimeout(240_000);
@@ -196,64 +197,69 @@ test.describe('A release follows its channel’s posting cadence', () => {
     for (const short of shorts) expect(short.at > full.at).toBe(true);
     await capture(page, '01-default-cadence', true);
 
-    // --- Two Shorts a day: the posting rules, saved
+    // --- Two Shorts a day, every 2 days: the posting rules, saved
     await byTest(page, 'release-calendar-edit-channel').click();
     const dialog = visible(page, '[data-test="channel-cadence-dialog"]');
     await expect(byTest(dialog, 'cadence-slot-time')).toHaveCount(1);
+    await expect(byTest(dialog, 'cadence-every-n-days')).toHaveValue('1');
+    await expect(byTest(dialog, 'cadence-per-day')).toHaveText(
+      '1 Short a day, at these times.',
+    );
     await byTest(dialog, 'cadence-slot-add').click();
     await byTest(dialog, 'cadence-slot-time').nth(1).fill('10:00');
+    await byTest(dialog, 'cadence-every-n-days').fill('2');
+    await expect(byTest(dialog, 'cadence-per-day')).toHaveText(
+      '2 Shorts a day, at these times.',
+    );
     await capture(page, '02-posting-rules');
     await byTest(dialog, 'cadence-save').click();
     await expect(dialog).toBeHidden();
 
+    const shortRules = async () =>
+      (
+        await readRows<{ slot_times: string[]; every_n_days: number }>(
+          'channel_posting_cadences',
+          `platform_connection_id=eq.${yt}&content_type=eq.short&select=slot_times,every_n_days`,
+        )
+      )[0];
+
     await expect
-      .poll(
-        async () =>
-          (
-            await readRows<{ slot_times: string[] }>(
-              'channel_posting_cadences',
-              `platform_connection_id=eq.${yt}&content_type=eq.short&select=slot_times`,
-            )
-          )[0]?.slot_times,
-      )
-      .toEqual(['10:00', '18:00']);
+      .poll(shortRules)
+      .toEqual({ slot_times: ['10:00', '18:00'], every_n_days: 2 });
 
     await byTest(page, 'release-check-calendar').click();
+    const shortDays = async () =>
+      perDay(
+        (await calendarDays(page))
+          .filter((p) => p.key.startsWith('group-'))
+          .map((p) => p.at),
+      );
     await expect
-      .poll(async () =>
-        Math.max(
-          ...perDay(
-            (await calendarDays(page))
-              .filter((p) => p.key.startsWith('group-'))
-              .map((p) => p.at),
-          ).values(),
-        ),
-      )
-      .toBe(2);
-    await capture(page, '03-two-a-day', true);
+      .poll(async () => [...(await shortDays()).values()])
+      .toEqual([2, 2]);
+    const [firstDay, secondDay] = [...(await shortDays()).keys()];
+    expect((Date.parse(secondDay!) - Date.parse(firstDay!)) / 86_400_000).toBe(
+      2,
+    );
+    await capture(page, '03-two-a-day-every-2-days', true);
 
-    // --- The second save: back to one a day. The dialog opens on what was
-    //     saved, not on the defaults.
+    // --- The second save: back to one a day, every day. The dialog opens
+    //     on what was saved, not on the defaults.
     await byTest(page, 'release-calendar-edit-channel').click();
     await expect(byTest(dialog, 'cadence-slot-time')).toHaveCount(2);
     await expect(byTest(dialog, 'cadence-slot-time').first()).toHaveValue(
       '10:00',
     );
+    await expect(byTest(dialog, 'cadence-every-n-days')).toHaveValue('2');
+    await capture(page, '03b-posting-rules-after-save');
     await byTest(dialog, 'cadence-slot-remove').first().click();
+    await byTest(dialog, 'cadence-every-n-days').fill('1');
     await byTest(dialog, 'cadence-save').click();
     await expect(dialog).toBeHidden();
 
     await expect
-      .poll(
-        async () =>
-          (
-            await readRows<{ slot_times: string[] }>(
-              'channel_posting_cadences',
-              `platform_connection_id=eq.${yt}&content_type=eq.short&select=slot_times`,
-            )
-          )[0]?.slot_times,
-      )
-      .toEqual(['18:00']);
+      .poll(shortRules)
+      .toEqual({ slot_times: ['18:00'], every_n_days: 1 });
 
     await byTest(page, 'release-check-calendar').click();
     await expect
@@ -290,13 +296,14 @@ test.describe('A release follows its channel’s posting cadence', () => {
     ]);
     await capture(page, '04-episode-1-scheduled');
 
-    // --- Episode 2: its long video holds back episode 1's later Shorts
+    // --- Episode 2: its Shorts queue after episode 1's, which stay put
     await openPublish(page, team, `${project.slug}/episodes/${ep2.slug}`);
     await pickToday(page);
     await byTest(page, 'release-check-calendar').click();
-    await expect(byTest(page, 'release-calendar-displaced')).toBeVisible({
-      timeout: 30_000,
-    });
+    const queue = byTest(page, 'release-calendar-shorts-queue');
+    await expect(queue).toBeVisible({ timeout: 30_000 });
+    await expect(queue).toHaveAttribute('data-queued', '8');
+    await expect(byTest(page, 'release-calendar-displaced')).toHaveCount(0);
     posts = await calendarDays(page);
     const ep2PlannedFull = posts.find((p) => p.key.startsWith('full-'))!;
 
@@ -321,48 +328,64 @@ test.describe('A release follows its channel’s posting cadence', () => {
     const ep2Full = afterEp2.find(
       (r) => r.episode_id === ep2.episodeId && r.content_type === 'full',
     )!;
-    const heldEp1 = afterEp2.filter(
-      (r) => r.episode_id === ep1.episodeId && r.status === 'draft',
+    const ep2Shorts = afterEp2.filter(
+      (r) => r.episode_id === ep2.episodeId && r.content_type === 'short',
     );
-    const liveShorts = afterEp2.filter(
-      (r) => r.content_type === 'short' && r.status === 'scheduled',
+    const ep1ShortsAfter = afterEp2.filter(
+      (r) => r.episode_id === ep1.episodeId && r.content_type === 'short',
     );
+    const lastEp1Short = ep1Shorts
+      .map((r) => r.slot_at!)
+      .sort()
+      .at(-1)!;
 
-    // Episode 1's Shorts after episode 2's long video are held, not lost
-    expect(heldEp1.length).toBeGreaterThan(0);
-    expect(heldEp1.every((r) => r.metadata.heldReason === 'next-episode')).toBe(
-      true,
-    );
-    expect(heldEp1.every((r) => r.slot_at === null)).toBe(true);
-    for (const short of liveShorts) {
-      if (short.episode_id === ep1.episodeId) {
-        expect(short.slot_at! < ep2Full.slot_at!).toBe(true);
-      } else {
-        expect(short.slot_at! > ep2Full.slot_at!).toBe(true);
-      }
+    // Nothing is held, and episode 1's Shorts are where they were
+    expect(afterEp2.filter((r) => r.status === 'draft')).toEqual([]);
+    expect(
+      ep1ShortsAfter.map((r) => [r.id, r.status, r.slot_at]).sort(),
+    ).toEqual(ep1Shorts.map((r) => [r.id, r.status, r.slot_at]).sort());
+
+    // Episode 2's Shorts go after its long video and after episode 1's
+    for (const short of ep2Shorts) {
+      expect(short.slot_at! > ep2Full.slot_at!).toBe(true);
+      expect(short.slot_at! > lastEp1Short).toBe(true);
     }
     // Never two Shorts on one day, whichever episode
     expect(
-      Math.max(...perDay(liveShorts.map((r) => r.slot_at!)).values()),
+      Math.max(
+        ...perDay(
+          afterEp2
+            .filter((r) => r.content_type === 'short')
+            .map((r) => r.slot_at!),
+        ).values(),
+      ),
     ).toBe(1);
+    await capture(page, '06-episode-2-scheduled');
 
-    // --- On episode 1's page the held Shorts say why, and are re-queued
+    // --- A Short an older release held (FILM-719) goes back on at the end
+    //     of the queue, not into the day it left
+    const held = [...ep1Shorts].sort((a, b) =>
+      a.slot_at!.localeCompare(b.slot_at!),
+    )[1]!;
+    await updateRows('publishes', `id=eq.${held.id}`, {
+      status: 'draft',
+      slot_at: null,
+      scheduled_at: null,
+      metadata: {
+        ...held.metadata,
+        heldReason: 'next-episode',
+        heldBefore: ep2Full.slot_at,
+      },
+    });
+
     await openPublish(page, team, `${project.slug}/episodes/${ep1.slug}`);
-    await expect(byTest(page, 'published-content-held')).toHaveCount(
-      heldEp1.length,
-      { timeout: 30_000 },
-    );
-    await byTest(page, 'published-content-held')
-      .first()
-      .scrollIntoViewIfNeeded();
-    await capture(page, '06-held-on-episode-1');
+    await expect(byTest(page, 'published-content-held')).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    await byTest(page, 'published-content-held').scrollIntoViewIfNeeded();
+    await capture(page, '07-legacy-held-on-episode-1');
 
-    await (
-      heldEp1.length > 1
-        ? byTest(page, 'held-requeue-all')
-        : byTest(page, 'held-requeue').first()
-    ).click();
-
+    await byTest(page, 'held-requeue').click();
     await expect
       .poll(
         async () =>
@@ -371,21 +394,41 @@ test.describe('A release follows its channel’s posting cadence', () => {
       )
       .toBe(0);
 
-    const requeued = (await publishesOn(yt)).filter((r) =>
-      heldEp1.some((h) => h.id === r.id),
-    );
-    const lastEp2Short = afterEp2
-      .filter(
-        (r) => r.episode_id === ep2.episodeId && r.content_type === 'short',
-      )
+    const requeued = (await publishesOn(yt)).find((r) => r.id === held.id)!;
+    const lastEp2Short = ep2Shorts
       .map((r) => r.slot_at!)
       .sort()
       .at(-1)!;
 
-    expect(requeued.every((r) => r.status === 'scheduled')).toBe(true);
-    expect(requeued.every((r) => r.slot_at! > lastEp2Short)).toBe(true);
-    expect(requeued.every((r) => !r.metadata.heldReason)).toBe(true);
+    expect(requeued.status).toBe('scheduled');
+    expect(requeued.slot_at! > lastEp2Short).toBe(true);
+    expect(requeued.metadata.heldReason).toBeUndefined();
     await expect(byTest(page, 'published-content-held')).toHaveCount(0);
-    await capture(page, '07-requeued');
+    await capture(page, '08-requeued');
+  });
+
+  test('says no channel takes the videos, rather than that the calendars could not be read', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const team = await seedTeamAccount({ emailPrefix: 'cadnone' });
+    const yt = await youtubeChannel(team);
+    // The episode's video is English; the project's one channel is Hindi
+    await updateRows('platform_connections', `id=eq.${yt}`, { language: 'hi' });
+    const project = await seedProject(team, { name: 'Cadence no channel' });
+    await addProjectChannels(project.id, [yt]);
+    const ep = await episodeWithShorts(project.id, 1);
+
+    await signInAs(page, team);
+    await openPublish(page, team, `${project.slug}/episodes/${ep.slug}`);
+    await pickToday(page);
+    await byTest(page, 'release-check-calendar').click();
+
+    await expect(byTest(page, 'release-calendar-error')).toHaveText(
+      'No matching channels for uploaded videos. Check language settings.',
+      { timeout: 30_000 },
+    );
+    expect(await publishesOn(yt)).toEqual([]);
   });
 });

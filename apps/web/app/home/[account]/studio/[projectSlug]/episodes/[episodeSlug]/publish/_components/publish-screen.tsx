@@ -89,7 +89,12 @@ import { PublishRenderPicker } from './render-picker';
 import { ShortsSection } from './shorts-section';
 import { UnpublishDialog } from './unpublish-dialog';
 import { UploadVideoDialog } from './upload-video-dialog';
-import { type ReleaseConfig, useCadenceRelease } from './use-cadence-release';
+import {
+  CHANNELS_LOADING,
+  NO_MATCHING_CHANNELS,
+  type ReleaseConfig,
+  useCadenceRelease,
+} from './use-cadence-release';
 import { useYouTubeAudienceGate } from './use-youtube-audience-gate';
 
 const NO_PROJECT_CHANNELS =
@@ -1016,9 +1021,7 @@ export function PublishScreen({
     const releaseConfigs = buildReleaseConfigs(config.schedule);
 
     if (releaseConfigs.length === 0) {
-      toast.error(
-        'No matching channels for uploaded videos. Check language settings.',
-      );
+      toast.error(NO_MATCHING_CHANNELS);
       return;
     }
 
@@ -1643,7 +1646,9 @@ export function PublishScreen({
                 }
                 isScheduling={isScheduling}
                 onPreviewCadence={(start, schedule) =>
-                  cadence.preview(buildReleaseConfigs(schedule), start)
+                  loadingConnections
+                    ? Promise.resolve({ ok: false, error: CHANNELS_LOADING })
+                    : cadence.preview(buildReleaseConfigs(schedule), start)
                 }
                 onEditChannelCadence={cadence.editChannel}
               />

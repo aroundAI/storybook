@@ -40,8 +40,7 @@ export interface ScheduleTarget {
   description: string;
   tags: string[];
   thumbnailUrl?: string | null;
-  /** Null only for a held Short (FILM-719), written as a draft */
-  scheduledAt: string | null;
+  scheduledAt: string;
   /** The video's language; the channel's own language when absent */
   language?: string;
   platformSpecific: PublishPlatformInput['platformSpecific'];
@@ -49,8 +48,6 @@ export interface ScheduleTarget {
   slotAt?: string | null;
   /** FILM-719: a Short that waits for its episode's long video */
   afterEpisodeFull?: boolean;
-  /** FILM-719: a Short that did not fit before the next episode */
-  held?: { reason: string; before: string | null } | null;
 }
 
 export type ScheduleVia = 'mcp' | 'cadence';
@@ -130,8 +127,6 @@ export async function prepareScheduledRows(
   const now = input.now ?? new Date();
 
   for (const target of input.targets) {
-    if (target.held) continue;
-
     if (
       !target.scheduledAt ||
       new Date(target.scheduledAt).getTime() <= now.getTime()
@@ -249,9 +244,9 @@ export async function prepareScheduledRows(
         platform.thumbnailUrl,
         episodeThumbnail,
       ),
-      status: target.held ? 'draft' : 'scheduled',
-      scheduled_at: target.held ? null : platform.scheduledAt,
-      slot_at: target.held ? null : (target.slotAt ?? null),
+      status: 'scheduled',
+      scheduled_at: platform.scheduledAt,
+      slot_at: target.slotAt ?? null,
       after_episode_full: target.afterEpisodeFull ?? false,
       metadata: JSON.parse(
         JSON.stringify({
@@ -260,12 +255,6 @@ export async function prepareScheduledRows(
           shortsGroupId: platform.shortsGroupId,
           createdBy: userId,
           createdVia: input.via,
-          ...(target.held
-            ? {
-                heldReason: target.held.reason,
-                heldBefore: target.held.before,
-              }
-            : {}),
         }),
       ),
       language: platform.language!,

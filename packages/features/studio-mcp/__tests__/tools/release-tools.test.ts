@@ -204,21 +204,24 @@ beforeEach(() => {
           scheduledAt: '2026-10-18T02:30:00.000Z',
         },
       ],
-      held: [
+      channels: [],
+      shortsQueue: [
         {
-          key: 'target-2',
-          connectionId: IG,
-          reason: 'next-episode',
-          before: null,
+          connectionId: YT,
+          name: 'Story YT',
+          platform: 'youtube',
+          queued: 24,
+          lastShortAt: '2026-10-30T05:30:00.000Z',
+          longVideosEndAt: '2026-10-21T14:30:00.000Z',
+          daysAhead: 8.6,
+          runsAhead: true,
         },
       ],
-      displaced: [],
-      channels: [],
     },
   });
   service.scheduleCadenceRelease.mockResolvedValue({
     ok: true,
-    data: { scheduled: [], held: [], displaced: [] },
+    data: { scheduled: [], shortsQueue: [] },
   });
 });
 
@@ -231,8 +234,17 @@ describe('schedule_release', () => {
     expect(result.structuredContent).toMatchObject({
       preview: true,
       placed: [expect.objectContaining({ target: 0 })],
-      held: [expect.objectContaining({ target: 2, reason: 'next-episode' })],
+      shortsQueue: [expect.objectContaining({ queued: 24, runsAhead: true })],
     });
+    expect(result.structuredContent).not.toHaveProperty('held');
+  });
+
+  it('says when a channel’s Shorts queue runs more than 7 days past its long videos', async () => {
+    const result = await run(scheduleReleaseTool, RELEASE, client());
+
+    expect(result.text).toContain(
+      'Story YT (youtube): 24 queued, the last 2026-10-30T05:30:00.000Z, 8.6 days past the last long video — more than 7 days',
+    );
   });
 
   it('schedules as the person, with a key per target and the times left to the cadence', async () => {
@@ -320,6 +332,8 @@ describe('the channel cadence', () => {
     slotTimes: ['21:00', '11:00'],
     daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
     minDaysBetween: 0,
+    // The tool's input schema fills it in; the handler is called directly
+    everyNDays: 1,
     startAfterHours: 2,
     jitterMinutes: 15,
     enabled: true,
@@ -337,6 +351,36 @@ describe('the channel cadence', () => {
       expect.anything(),
       expect.objectContaining({ connectionId: YT, startAfterHours: 2 }),
     );
+  });
+
+  it('sets Shorts every N days, and refuses it for long videos', async () => {
+    service.saveChannelCadence.mockResolvedValue({
+      ok: true,
+      data: { connectionId: YT, contentType: 'short' },
+    });
+
+    const set = await run(
+      setChannelCadenceTool,
+      { ...CADENCE, everyNDays: 2 },
+      client(),
+    );
+    expect(set.text).toContain('every 2 days');
+    expect(service.saveChannelCadence).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ everyNDays: 2 }),
+    );
+
+    service.saveChannelCadence.mockClear();
+    const error = await rejection(
+      run(
+        setChannelCadenceTool,
+        { ...CADENCE, contentType: 'full', everyNDays: 3 },
+        client(),
+      ),
+    );
+    expect(error.code).toBe('VALIDATION_FAILED');
+    expect(error.message).toContain('days between them');
+    expect(service.saveChannelCadence).not.toHaveBeenCalled();
   });
 
   it('refuses another team’s channel, even one the person can see', async () => {

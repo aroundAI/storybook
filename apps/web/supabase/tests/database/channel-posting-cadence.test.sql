@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(15);
+select plan(20);
 
 -- FILM-719. A channel's posting cadence (channel_posting_cadences) and the
 -- slot a scheduled post holds (publishes.slot_at).
@@ -136,6 +136,45 @@ select throws_ok(
              '7190cade-0000-4000-8000-000000000001', 'short', '{09:00}') $$,
   '23505', null,
   'one cadence per channel and content type'
+);
+
+-- FILM-2209: Shorts on every Nth day, 2 hours after their long video
+select is(
+  (select (every_n_days, start_after_hours)::text
+     from public.channel_posting_cadences
+    where platform_connection_id = '7190cade-0000-4000-8000-000000000001'),
+  '(1,2)',
+  'Shorts post every day, 2 hours after their long video, unless told otherwise'
+);
+
+select lives_ok(
+  $$ update public.channel_posting_cadences set every_n_days = 2
+      where platform_connection_id = '7190cade-0000-4000-8000-000000000001' $$,
+  'a member sets Shorts to every 2 days'
+);
+
+select throws_ok(
+  $$ update public.channel_posting_cadences set every_n_days = 0
+      where platform_connection_id = '7190cade-0000-4000-8000-000000000001' $$,
+  '23514', null,
+  'every N days is at least every day'
+);
+
+select throws_ok(
+  $$ update public.channel_posting_cadences set every_n_days = 31
+      where platform_connection_id = '7190cade-0000-4000-8000-000000000001' $$,
+  '23514', null,
+  'and at most every 30 days'
+);
+
+select throws_ok(
+  $$ insert into public.channel_posting_cadences
+       (account_id, platform_connection_id, content_type, slot_times,
+        every_n_days)
+     values (current_setting('cad.story')::uuid,
+             '7190cade-0000-4000-8000-000000000001', 'full', '{20:00}', 3) $$,
+  '23514', null,
+  'long videos are spaced by min_days_between, not every N days'
 );
 
 select lives_ok(

@@ -14,6 +14,7 @@ import {
   type ChannelCadenceState,
 } from '@kit/publishing/components';
 import {
+  QUEUE_WARNING_DAYS,
   type ReleasePreview,
   releaseTargetKey,
 } from '@kit/publishing/lib/cadence/release-types';
@@ -27,6 +28,14 @@ import {
 import { toast } from '@kit/ui/sonner';
 
 import type { PlatformConfig } from './publish-types';
+
+/** No channel of the episode's project takes any of its uploaded videos */
+export const NO_MATCHING_CHANNELS =
+  'No matching channels for uploaded videos. Check language settings.';
+
+/** The project's channels have not been read yet */
+export const CHANNELS_LOADING =
+  'The channels are still loading. Check again in a moment.';
 
 /** A target of the release: one schedule item on one channel */
 export type ReleaseConfig = PlatformConfig & { itemKey: string };
@@ -47,9 +56,9 @@ function targetsOf(configs: ReleaseConfig[]) {
 }
 
 /**
- * FILM-719. The Publish screen's cadence release: where a release would land
- * on its channels' calendars, scheduling it there, a channel's posting
- * rules, and the Shorts a release held back.
+ * FILM-719, FILM-2209. The Publish screen's cadence release: where a release
+ * would land on its channels' calendars, scheduling it there, a channel's
+ * posting rules, and Shorts an earlier release held back.
  */
 export function useCadenceRelease(props: {
   episodeId: string;
@@ -72,6 +81,11 @@ export function useCadenceRelease(props: {
     configs: ReleaseConfig[],
     notBefore: Date,
   ): Promise<ActionResult<ReleasePreview>> => {
+    // Nothing to place is the caller's state, not a failed read
+    if (configs.length === 0) {
+      return { ok: false, error: NO_MATCHING_CHANNELS };
+    }
+
     try {
       return {
         ok: true,
@@ -95,20 +109,14 @@ export function useCadenceRelease(props: {
       const result = await unwrap(
         scheduleCadenceReleaseAction(release(configs, notBefore)),
       );
-      const parts = [`Scheduled ${result.scheduled.length} uploads`];
+      const behind = result.shortsQueue.filter((queue) => queue.runsAhead);
 
-      if (result.held.length > 0) {
-        parts.push(
-          `${result.held.length} held: they don't fit before the next episode`,
+      toast.success(`Scheduled ${result.scheduled.length} uploads`);
+      if (behind.length > 0) {
+        toast.warning(
+          `The Shorts queue on ${behind.map((queue) => queue.name).join(', ')} runs more than ${QUEUE_WARNING_DAYS} days past the last long video. Add Short times, or post long videos less often.`,
         );
       }
-      if (result.displaced.length > 0) {
-        parts.push(
-          `${result.displaced.length} of an earlier episode's Shorts held back`,
-        );
-      }
-
-      toast.success(parts.join(' · '));
       props.onChanged();
     } catch (error) {
       toast.error(refusalMessage(error, 'Could not schedule the release.'));
@@ -121,9 +129,7 @@ export function useCadenceRelease(props: {
         requeueHeldShortsAction({ publishIds, timezone }),
       );
       toast.success(
-        result.stillHeld.length
-          ? `Re-queued ${result.requeued.length}; ${result.stillHeld.length} found no free slot`
-          : `Re-queued ${result.requeued.length} Short${result.requeued.length === 1 ? '' : 's'}`,
+        `Re-queued ${result.requeued.length} Short${result.requeued.length === 1 ? '' : 's'}`,
       );
       props.onChanged();
     } catch (error) {

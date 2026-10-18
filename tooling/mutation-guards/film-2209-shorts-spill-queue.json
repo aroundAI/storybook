@@ -1,0 +1,163 @@
+{
+  "feature": "FILM-2209 one Shorts queue per channel, oldest first: Shorts spill past the next long video, never past the daily cap, on every Nth day; late posts move the queue on in order",
+  "mutations": [
+    {
+      "name": "Q1 Shorts set to every 2 days post every day",
+      "file": "packages/features/publishing/src/lib/cadence/cadence.ts",
+      "find": "    if (origin && ((daysBetween(origin, day) % every) + every) % every !== 0) {\n",
+      "replace": "    if (false) {\n",
+      "pattern": "posts Shorts every 2 days",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q2 a Short follows the episode's first long video anywhere, not its own channel's",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "    const own = anchorOn(connectionId);\n",
+      "replace": "    const own = anchor;\n",
+      "pattern": "waits for the episode’s long video on the Short’s own channel",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q3 a long video takes a time a Short holds",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "    const slot = nextFreeSlot(cadence, from, slotsOf(fulls), {\n      blocked: slotsOf(postsOn(item.connectionId)),\n    });\n",
+      "replace": "    const slot = nextFreeSlot(cadence, from, slotsOf(fulls));\n",
+      "pattern": "never gives a long video and a Short one time",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q4 a Short takes a time a long video holds",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "        { blocked: slotsOf(postsOn(connectionId)), origin },\n",
+      "replace": "        { origin },\n",
+      "pattern": "never gives a long video and a Short one time",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q5 long videos are spaced in 24-hour steps, not local days",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "      lastFull &&\n        startOfLocalDay(\n          addDays(\n            localDate(lastFull, cadence.timezone),\n            cadence.minDaysBetween,\n          ),\n          cadence.timezone,\n        ),\n",
+      "replace": "      lastFull &&\n        new Date(lastFull.getTime() + cadence.minDaysBetween * 86_400_000),\n",
+      "pattern": "keeps 20:00 every 3 days across a daylight-saving change",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q6 jitter moves a post to another local day",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "    onSlotDay(\n      new Date(slot.getTime() + offset * MINUTE_MS),\n      slot,\n      cadence.timezone,\n    ),\n",
+      "replace": "    new Date(slot.getTime() + offset * MINUTE_MS),\n",
+      "pattern": "keeps jittered posts on their slot’s day and in queue order",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q7 jitter reorders the queue",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "    previous && new Date(previous.getTime() + MINUTE_MS),\n",
+      "replace": "",
+      "pattern": "keeps jittered posts on their slot’s day and in queue order",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q8 the release hides how far the Shorts queue runs past the long videos",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "      daysAhead:\n        lastShortAt && longVideosEndAt\n",
+      "replace": "      daysAhead:\n        false\n",
+      "pattern": "says how far the Shorts queue runs past the last long video",
+      "test": "__tests__/plan-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q9 an upload no slot fits is released anyway",
+      "file": "packages/features/publishing/src/server/schedule-release.service.ts",
+      "find": "  if (plan.unplaced.length) {\n",
+      "replace": "  if (false) {\n",
+      "pattern": "refuses, saying why, an upload no slot in a year fits",
+      "test": "__tests__/schedule-release.service.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q10 a late post jumps the Shorts queued after it",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    ...calendar.filter((post) => post.id !== publish.id && inQueue(post)),\n",
+      "replace": "",
+      "pattern": "moves it and the Shorts queued after it",
+      "test": "__tests__/cadence-gate.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q11 the job sends a Short when another channel's long video is live",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    const rows = longVideosFor(\n      data.filter((row) => row.episode_id === publish.episode_id),\n      publish.platform_connection_id,\n    );\n",
+      "replace": "    const rows = data.filter((row) => row.episode_id === publish.episode_id);\n",
+      "pattern": "waits for the long video on its own channel",
+      "test": "__tests__/cadence-gate.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q12 the job counts the last 24 hours, not the local day",
+      "file": "packages/features/publishing/src/lib/cadence/dispatch.ts",
+      "find": "  const since = startOfLocalDay(localDate(now, timezone), timezone).getTime();\n",
+      "replace": "  const since = now.getTime() - 86_400_000;\n",
+      "pattern": "counts the local day, not the last 24 hours",
+      "test": "__tests__/cadence-gate.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q13 a re-queued held Short goes ahead of the Shorts already queued",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "        later(floor, lastShort && new Date(lastShort.getTime() + 1)),\n",
+      "replace": "        floor,\n",
+      "pattern": "re-queues them at the end of their channel’s queue",
+      "test": "__tests__/schedule-release.service.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "Q15 a post an earlier post of the run moved is moved again",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    new Date(current.slot_at).getTime() !== slotAt.getTime()\n",
+      "replace": "    false\n",
+      "pattern": "leaves a post alone that an earlier post of the run already moved on",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/cadence-gate.test.ts"
+    },
+    {
+      "name": "E2E Q14 a later batch's long videos go back to back over MCP",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
+      "find": "      lastFull &&\n        startOfLocalDay(\n          addDays(\n            localDate(lastFull, cadence.timezone),\n            cadence.minDaysBetween,\n          ),\n          cadence.timezone,\n        ),\n",
+      "replace": "",
+      "spec": "tests/mcp/cadence-release.spec.ts",
+      "grep": "nine episodes"
+    },
+    {
+      "name": "E2E Q16 a preview with no channel for the videos says the calendars could not be read",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/use-cadence-release.tsx",
+      "find": "    if (configs.length === 0) {\n",
+      "replace": "    if (false) {\n",
+      "spec": "tests/publishing/cadence-release.spec.ts",
+      "grep": "says no channel takes the videos"
+    }
+  ]
+}

@@ -572,7 +572,7 @@ export function ScheduleReleasePanel({
             </Tabs>
             <p className="text-xs text-muted-foreground">
               {cadenceMode
-                ? 'Each channel gets the long video in its next free slot and the Shorts one at a time after it, until the next episode’s long video. Nothing lands in a burst.'
+                ? 'Each channel gets the long video in its next free slot, and the Shorts at the end of its Shorts queue, oldest episode first, never more a day than its Short times. Nothing lands in a burst.'
                 : 'Every video goes at the start time plus the stagger interval: they all land within hours.'}
             </p>
           </div>
