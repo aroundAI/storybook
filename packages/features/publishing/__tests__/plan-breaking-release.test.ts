@@ -267,6 +267,18 @@ describe('a breaking release at a time the owner gives', () => {
   });
 });
 
+describe('the hour after the long video', () => {
+  it('keeps a breaking Short off a time less than an hour after its long video', () => {
+    const plan = breaking([], {
+      at: new Date('2026-11-02T05:15:00Z'), // 10:45 IST
+      items: items(1),
+    });
+    const short = plan.placed.find((p) => p.contentType === 'short')!;
+
+    expect(istTime(short.slotAt!)).toBe('14:00');
+  });
+});
+
 describe('posts that stay where they are', () => {
   const at = (iso: string) => new Date(iso);
   const short = (
