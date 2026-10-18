@@ -60,7 +60,7 @@ acceptance_criteria:
     evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:446`"
   - text: "Fetches traffic source breakdown"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:495`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:505` (by day since FILM-1734, #TBD)"
   - text: "Fetches geographic breakdown"
     met: true
     evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:522`"

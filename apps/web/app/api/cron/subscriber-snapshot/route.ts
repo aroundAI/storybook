@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 
-import { captureSubscriberSnapshots } from '@kit/content-analytics/server';
+import {
+  captureChannelLifetimeTotals,
+  captureSubscriberSnapshots,
+} from '@kit/content-analytics/server';
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
 
 /**
- * Daily absolute subscriber capture (FILM-1607).
+ * Daily absolute subscriber capture (FILM-1607), and each YouTube channel's
+ * lifetime statistics beside it (FILM-1734).
  *
  * Scheduled at 02:00 UTC, well clear of midnight, so an ordinary retry cannot
  * straddle the boundary and land two rows on two dates for one reading.
@@ -42,8 +46,11 @@ export const GET = enhanceRouteHandler(
 
     try {
       const result = await captureSubscriberSnapshots();
+      // Each YouTube channel's lifetime views, subscribers and videos
+      // (FILM-1734), from the same `channels.list`. Never throws.
+      const channelTotals = await captureChannelLifetimeTotals();
 
-      return NextResponse.json({ success: true, ...result });
+      return NextResponse.json({ success: true, ...result, channelTotals });
     } catch (error) {
       logger.error({ ...ctx, error }, 'Subscriber snapshot batch failed');
 

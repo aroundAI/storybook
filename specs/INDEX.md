@@ -628,6 +628,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1731 | [instagram-ai-label](./phase-17-analytics-provenance/FILM-1731-instagram-ai-label.yaml) | DONE | S | FILM-1728; owner decision 2026-10-02 |
 | FILM-1732 | [rate-denominator-records](./phase-17-analytics-provenance/FILM-1732-rate-denominator-records.yaml) | ✅ DONE | M | FILM-1713, FILM-1722; FILM-1719 for the record shape |
 | FILM-1733 | [audience-comments](./phase-17-analytics-provenance/FILM-1733-audience-comments.yaml) | 🟡 PARTIAL | L | FILM-1711, FILM-1903, FILM-1906, FILM-1724, KB-20; Meta App Review (instagram_manage_comments, pages_read_user_content) and the YouTube III.L request, both owner steps |
+| FILM-1734 | [complete-analytics-collection](./phase-17-analytics-provenance/FILM-1734-complete-analytics-collection.yaml) | ✅ DONE | L | FILM-1711, FILM-1712, FILM-1720, FILM-1607 |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 

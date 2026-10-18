@@ -71,6 +71,15 @@ const SOURCE_TO_GROUP: Record<string, TrafficSourceGroup> = {
   PRODUCT_PAGE: 'other',
   HASHTAG_PAGE: 'other',
   LIVE_REDIRECT: 'other',
+  // The Analytics API's names for the same surfaces (FILM-1734), whose copy
+  // of a day is read until the Reporting CSV's arrives. Its other names
+  // (`HASHTAGS`, `YT_OTHER_PAGE`, `CAMPAIGN_CARD`, …) fall to `other`, as
+  // their CSV equivalents do.
+  EXT_URL: 'external',
+  NO_LINK_EMBEDDED: 'external',
+  YT_CHANNEL: 'channel_page',
+  YT_PLAYLIST_PAGE: 'playlists',
+  NO_LINK_OTHER: 'direct',
 };
 
 /**

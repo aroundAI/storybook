@@ -52,6 +52,7 @@ import { addViews } from '../src/lib/views';
 import {
   getClickHouseClient,
   insertChannelDaily,
+  insertChannelMetricsDaily,
   insertChannelReachDaily,
   insertChannelWindows,
   insertEditSessionFacts,
@@ -68,8 +69,10 @@ import {
   queryAudienceRows,
   queryBackCatalogShare,
   queryChannelExperimentVideoDays,
+  queryChannelMetricsDays,
   queryChannelNewAccounts,
   queryChannelReach,
+  queryChannelSubscriberDays,
   queryChannelWatchWindow,
   queryCohortMedians,
   queryCompleteChannelWindowDays,
@@ -85,6 +88,7 @@ import {
   queryLanguagePairs,
   queryLatestSnapshots,
   queryLatestSubscriberLevels,
+  queryLatestVideoSnapshots,
   queryMedianViewsPerVideo,
   queryNetSubscribersForVideos,
   queryObservedCoverage,
@@ -109,6 +113,11 @@ import {
   queryTrafficSources,
   queryVideoBenchmark,
   queryVideoLanguages,
+  queryVideoMetricDays,
+  queryVideoMetricSums,
+  queryVideoReachDays,
+  queryVideoReachSums,
+  queryVideoSnapshotDays,
   queryVideoViewsAtAge,
   queryViewsForVideos,
   queryWatchWindowTotals,
@@ -117,6 +126,7 @@ import type { EditSessionFactRow } from '../src/server';
 import type {
   AnalyticsPlatform,
   VideoMetric,
+  VideoSnapshot,
   YouTubeVideoMetric,
 } from '../src/types';
 
@@ -306,6 +316,9 @@ async function seed() {
         video_id: NORMAL,
         platform: 'youtube',
         snapshot_date: '2026-01-20',
+        source: 'data_api',
+        dislikes: null,
+        profile_visits: null,
         views: 500,
         likes: 5,
         comments: 2,
@@ -340,6 +353,9 @@ async function seed() {
         video_id: videoId,
         platform: 'instagram' as const,
         snapshot_date: '2026-10-01',
+        source: 'graph_api' as const,
+        dislikes: null,
+        profile_visits: null,
         views: 221,
         likes: 0,
         comments: 0,
@@ -408,6 +424,7 @@ async function seed() {
         source: 'RELATED_VIDEO',
         views: 60,
         watch_time_minutes: 6,
+        metric_source: 'reporting_api' as const,
       },
       {
         project_id: PROJECT,
@@ -417,6 +434,7 @@ async function seed() {
         source: 'YT_SEARCH',
         views: 40,
         watch_time_minutes: 4,
+        metric_source: 'reporting_api' as const,
       },
     ]),
   );
@@ -1907,6 +1925,9 @@ async function assertions() {
         {
           ...post,
           snapshot_date: '2026-09-26',
+          source: 'graph_api',
+          dislikes: null,
+          profile_visits: null,
           views: 20,
           likes: 0,
           comments: 0,
@@ -2654,6 +2675,7 @@ async function scanScopeSteps() {
           source: `SRC_${index % 7}`,
           views: 1,
           watch_time_minutes: 0,
+          metric_source: 'reporting_api' as const,
         })),
         insertVideoTrafficSources,
       );
@@ -3742,6 +3764,7 @@ async function handComputedSteps() {
       source,
       views,
       watch_time_minutes: views / 10,
+      metric_source: 'reporting_api' as const,
     });
 
     await insertVideoTrafficSources([
@@ -5241,6 +5264,7 @@ async function observedCoverageSteps() {
       source,
       views: 1,
       watch_time_minutes: 0,
+      metric_source: 'reporting_api' as const,
     });
 
     await insertVideoTrafficSources([
@@ -5991,6 +6015,9 @@ async function xSteps() {
         video_id: X_POST,
         platform: 'twitter',
         snapshot_date: '2026-01-07',
+        source: 'x_api',
+        dislikes: null,
+        profile_visits: null,
         views: 500,
         likes: 8,
         comments: 3,
@@ -6976,6 +7003,404 @@ async function editStyleSteps() {
   await step('editStyle: cleanup', clearEditStyleFixture);
 }
 
+const FIG_PROJECT = 'f1734000-0000-4000-8000-000000000001';
+const FIG_CHANNEL = 'f1734000-0000-4000-8000-0000000000c1';
+const FIG_IG_CHANNEL = 'f1734000-0000-4000-8000-0000000000c2';
+
+async function clearFiguresFixture(): Promise<void> {
+  const byProject = [
+    'video_metrics',
+    'video_snapshots',
+    'video_reach_daily',
+    'video_traffic_sources',
+  ];
+  for (const table of byProject) {
+    await getClickHouseClient().command({
+      query: `ALTER TABLE ${table} DELETE WHERE project_id = {p:UUID}`,
+      query_params: { p: FIG_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+  for (const table of [
+    'channel_metrics_daily',
+    'channel_subscribers',
+    'channel_windows',
+  ]) {
+    await getClickHouseClient().command({
+      query: `ALTER TABLE ${table} DELETE WHERE connection_id IN ({a:UUID}, {b:UUID})`,
+      query_params: { a: FIG_CHANNEL, b: FIG_IG_CHANNEL },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
+/**
+ * FILM-1734: the morning report's reads, each against figures worked out by
+ * hand. One YouTube video has an Analytics-API day (10-10) and a
+ * Reporting-CSV day (10-11), two Data-API snapshots with dislikes measured
+ * then left out, a day of impressions, and traffic sources from both
+ * writers; an Instagram post has a day of profile visits; a channel has a
+ * whole-channel day, its lifetime statistics, a subscriber anchor and a
+ * 1-day reach window.
+ */
+async function figuresSteps() {
+  await step('figures: cleanup before', clearFiguresFixture);
+
+  const ytDay = (
+    date: string,
+    source: 'analytics_api' | 'reporting_api',
+    f: [number, number, number, number, number, number, number, number],
+  ): YouTubeVideoMetric => ({
+    project_id: FIG_PROJECT,
+    video_id: 'fig-yt',
+    platform: 'youtube',
+    metric_date: date,
+    views: f[0],
+    likes: f[1],
+    dislikes: f[2],
+    comments: f[3],
+    shares: 1,
+    saves: null,
+    watch_time_seconds: f[4],
+    subscribers_gained: f[5],
+    subscribers_lost: f[6],
+    avg_view_duration_seconds: 60,
+    avg_view_percentage: f[7],
+    engaged_views: f[0] - 10,
+    metric_source: source,
+    extra_metrics: '{}',
+  });
+
+  await step('figures: insert', async () => {
+    await insertVideoMetrics([
+      ytDay('2026-10-10', 'analytics_api', [100, 10, 2, 3, 6000, 4, 1, 50]),
+      ytDay('2026-10-11', 'reporting_api', [300, 20, 1, 5, 6000, 2, 0, 30]),
+      {
+        project_id: FIG_PROJECT,
+        video_id: 'fig-ig',
+        platform: 'instagram',
+        metric_date: '2026-10-11',
+        views: 50,
+        likes: 5,
+        comments: 1,
+        shares: 0,
+        saves: 2,
+        watch_time_seconds: null,
+        subscribers_gained: 3,
+        profile_visits: 7,
+        metric_source: 'snapshot_delta',
+        extra_metrics: '{}',
+      },
+    ]);
+
+    const snapshot = (
+      date: string,
+      fetchedAt: string,
+      f: { views: number; likes: number | null; dislikes: number | null },
+    ) => ({
+      project_id: FIG_PROJECT,
+      video_id: 'fig-yt',
+      platform: 'youtube' as const,
+      snapshot_date: date,
+      fetched_at: fetchedAt,
+      source: 'data_api' as const,
+      ...f,
+      comments: 9,
+      shares: null,
+      saves: null,
+      watch_time_seconds: null,
+      subscribers_gained: null,
+      profile_visits: null,
+      accounts_reached: null,
+      reposts: null,
+      all_surface_views: null,
+      all_surface_likes: null,
+      all_surface_comments: null,
+      ig_reels_avg_watch_time_ms: null,
+      ig_reels_skip_rate: null,
+    });
+    // `fetched_at` rides along: the type has no field for it, the table does.
+    const snapshots: VideoSnapshot[] = [
+      snapshot('2026-10-10', '2026-10-10 23:00:00', {
+        views: 1000,
+        likes: 50,
+        dislikes: 4,
+      }),
+      snapshot('2026-10-11', '2026-10-11 23:00:00', {
+        views: 1300,
+        likes: null,
+        dislikes: null,
+      }),
+    ];
+    await insertVideoSnapshots(snapshots);
+
+    await insertVideoReachDaily([
+      {
+        project_id: FIG_PROJECT,
+        video_id: 'fig-yt',
+        platform: 'youtube',
+        metric_date: '2026-10-11',
+        impressions: 2000,
+        impressions_ctr: 0.05,
+      },
+    ]);
+
+    const traffic = (
+      date: string,
+      source: string,
+      views: number,
+      metric_source: 'analytics_api' | 'reporting_api',
+    ) => ({
+      project_id: FIG_PROJECT,
+      video_id: 'fig-yt',
+      platform: 'youtube' as const,
+      metric_date: date,
+      source,
+      views,
+      watch_time_minutes: views,
+      metric_source,
+    });
+    await insertVideoTrafficSources([
+      traffic('2026-10-10', 'YT_SEARCH', 30, 'analytics_api'),
+      traffic('2026-10-10', 'EXTERNAL_URL', 20, 'analytics_api'),
+      traffic('2026-10-10', 'YT_SEARCH', 35, 'reporting_api'),
+      traffic('2026-10-10', 'EXTERNAL_URL', 15, 'reporting_api'),
+      traffic('2026-10-11', 'YT_SEARCH', 40, 'analytics_api'),
+    ]);
+
+    const channel = {
+      connection_id: FIG_CHANNEL,
+      platform: 'youtube' as const,
+      metric_date: '2026-10-11',
+      views: null,
+      watch_time_seconds: null,
+      likes: null,
+      dislikes: null,
+      comments: null,
+      shares: null,
+      subscribers_gained: null,
+      subscribers_lost: null,
+      lifetime_views: null,
+      lifetime_subscribers: null,
+      lifetime_videos: null,
+    };
+    await insertChannelMetricsDaily([
+      {
+        ...channel,
+        source: 'analytics_api',
+        views: 5000,
+        watch_time_seconds: 90000,
+        likes: 200,
+        dislikes: 6,
+        comments: 30,
+        shares: 12,
+        subscribers_gained: 15,
+        subscribers_lost: 3,
+      },
+      {
+        ...channel,
+        source: 'data_api',
+        lifetime_views: 90000,
+        lifetime_subscribers: 1200,
+        lifetime_videos: 30,
+      },
+    ]);
+    await insertSubscriberSnapshot({
+      connectionId: FIG_CHANNEL,
+      snapshotDate: '2026-10-11',
+      subscriberCount: 1200,
+      roundingStep: 10,
+    });
+    await insertChannelWindows([
+      {
+        connectionId: FIG_IG_CHANNEL,
+        platform: 'instagram',
+        asOf: '2026-10-11',
+        windowDays: 1,
+        accountsReached: 77,
+        accountsReachedFollowers: null,
+        accountsReachedNonFollowers: null,
+        source: 'account_insights',
+      },
+    ]);
+  });
+
+  const scope = { projectIds: [FIG_PROJECT], videoIds: ['fig-yt', 'fig-ig'] };
+  const expect = (got: unknown, want: unknown) => {
+    const a = JSON.stringify(got);
+    const b = JSON.stringify(want);
+    if (a !== b) throw new Error(`expected ${b}, got ${a}`);
+    return a;
+  };
+
+  await step('queryVideoMetricDays', async () => {
+    const days = await queryVideoMetricDays({
+      ...scope,
+      from: '2026-10-10',
+      to: '2026-10-11',
+    });
+    return expect(
+      days.map((d) => [
+        d.videoId,
+        d.date,
+        d.metricSource,
+        d.views,
+        d.dislikes,
+        d.profileVisits,
+        d.subscribersGained,
+      ]),
+      [
+        ['fig-ig', '2026-10-11', 'snapshot_delta', 50, null, 7, 3],
+        ['fig-yt', '2026-10-10', 'analytics_api', 100, 2, null, 4],
+        ['fig-yt', '2026-10-11', 'reporting_api', 300, 1, null, 2],
+      ],
+    );
+  });
+
+  // 400 views, 12,000 s: 30 s a view. Percentage viewed weighted by views:
+  // (50 × 100 + 30 × 300) / 400 = 35.
+  await step('queryVideoMetricSums', async () => {
+    const [yt] = await queryVideoMetricSums({
+      projectIds: [FIG_PROJECT],
+      videoIds: ['fig-yt'],
+      to: '2026-10-11',
+    });
+    return expect(
+      [
+        yt?.views,
+        yt?.dislikes,
+        yt?.watchTimeSeconds,
+        yt?.avgViewDurationSeconds,
+        yt?.avgViewPercentage,
+        yt?.subscribersLost,
+        yt?.lastDate,
+      ],
+      [400, 3, 12000, 30, 35, 1, '2026-10-11'],
+    );
+  });
+
+  await step('queryVideoSnapshotDays', async () => {
+    const snaps = await queryVideoSnapshotDays({
+      ...scope,
+      from: '2026-10-10',
+      to: '2026-10-11',
+    });
+    return expect(
+      snaps.map((s) => [s.date, s.source, s.views, s.likes, s.dislikes]),
+      [
+        ['2026-10-10', 'data_api', 1000, 50, 4],
+        ['2026-10-11', 'data_api', 1300, null, null],
+      ],
+    );
+  });
+
+  await step('queryLatestVideoSnapshots', async () => {
+    const before = await queryLatestVideoSnapshots({
+      ...scope,
+      asOf: '2026-10-11 12:00:00',
+    });
+    const after = await queryLatestVideoSnapshots({
+      ...scope,
+      asOf: '2026-10-12 00:00:00',
+    });
+    return expect(
+      [before.map((s) => s.views), after.map((s) => [s.views, s.dislikes])],
+      [[1000], [[1300, null]]],
+    );
+  });
+
+  await step('queryVideoReachDays', async () =>
+    expect(
+      (
+        await queryVideoReachDays({
+          ...scope,
+          from: '2026-10-01',
+          to: '2026-10-31',
+        })
+      ).map((r) => [r.date, r.impressions, r.impressionsCtr]),
+      [['2026-10-11', 2000, 0.05]],
+    ),
+  );
+
+  await step('queryVideoReachSums', async () =>
+    expect(
+      (
+        await queryVideoReachSums({
+          projectIds: [FIG_PROJECT],
+          videoIds: ['fig-yt'],
+          to: '2026-10-11',
+        })
+      ).map((r) => [r.impressions, r.impressionsCtr, r.lastDate]),
+      [[2000, 0.05, '2026-10-11']],
+    ),
+  );
+
+  // 10-10 has both writers: the CSV's copy, 35 + 15 = 50, not 100.
+  // 10-11 has only the Analytics API's: 40.
+  await step('hand: traffic sources take one copy a day', async () =>
+    expect(
+      (
+        await queryTrafficSources({
+          projectIds: [FIG_PROJECT],
+          videoIds: ['fig-yt'],
+          byDate: true,
+        })
+      )
+        .map((r) => [r.date, r.source, r.views])
+        .sort(),
+      [
+        ['2026-10-10', 'EXTERNAL_URL', 15],
+        ['2026-10-10', 'YT_SEARCH', 35],
+        ['2026-10-11', 'YT_SEARCH', 40],
+      ],
+    ),
+  );
+
+  await step('queryChannelMetricsDays', async () =>
+    expect(
+      (
+        await queryChannelMetricsDays({
+          connectionIds: [FIG_CHANNEL],
+          from: '2026-10-11',
+          to: '2026-10-11',
+        })
+      ).map((r) => [r.source, r.views, r.dislikes, r.lifetimeViews]),
+      [
+        ['analytics_api', 5000, 6, null],
+        ['data_api', null, null, 90000],
+      ],
+    ),
+  );
+
+  await step('queryChannelSubscriberDays', async () =>
+    expect(
+      await queryChannelSubscriberDays({
+        connectionIds: [FIG_CHANNEL],
+        from: '2026-10-11',
+        to: '2026-10-11',
+      }),
+      [{ connectionId: FIG_CHANNEL, date: '2026-10-11', subscribers: 1200 }],
+    ),
+  );
+
+  await step('queryChannelReach (1-day window)', async () =>
+    expect(
+      (
+        await queryChannelReach({
+          connectionId: FIG_IG_CHANNEL,
+          platform: 'instagram',
+          windowDays: 1,
+          from: '2026-10-11',
+          to: '2026-10-11',
+        })
+      ).map((r) => r.accountsReached),
+      [77],
+    ),
+  );
+
+  await step('figures: cleanup', clearFiguresFixture);
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -7003,6 +7428,7 @@ async function main() {
   await noRowsViewsSteps();
   await rateDenominatorSteps();
   await editStyleSteps();
+  await figuresSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 

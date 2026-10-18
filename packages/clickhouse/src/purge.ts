@@ -28,6 +28,7 @@ export const PURGE_VIDEO_TABLES = [
 
 export const PURGE_CHANNEL_TABLES = [
   'channel_daily',
+  'channel_metrics_daily',
   'channel_subscribers',
   'channel_reach_daily',
   'channel_windows',

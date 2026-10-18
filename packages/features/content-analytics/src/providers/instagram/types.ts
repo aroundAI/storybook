@@ -91,6 +91,21 @@ export interface InstagramTotals {
   allSurfaceViews: number | null;
   allSurfaceLikes: number | null;
   allSurfaceComments: number | null;
+  /**
+   * Lifetime follows and profile visits from this post (FILM-1734). FEED
+   * and STORY only — Meta documents neither for REELS — so null for a Reel,
+   * or when Meta omits it.
+   */
+  follows: number | null;
+  profileVisits: number | null;
+}
+
+/** An Instagram account's views and unique reach over one UTC day. */
+export interface InstagramAccountDay {
+  date: string;
+  views: number | null;
+  /** A unique count: never summed across days. */
+  reach: number | null;
 }
 
 /**

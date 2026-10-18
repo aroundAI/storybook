@@ -21,11 +21,15 @@ import type {
   TrafficSourceData,
   YouTubeAnalyticsInput,
   YouTubeAnalyticsResult,
+  YouTubeChannelDay,
+  YouTubeChannelStatistics,
   YouTubeDailyMetrics,
   YouTubeDailyRevenue,
+  YouTubeDailyTrafficSource,
   YouTubeRevenueAccess,
   YouTubeTotals,
   YouTubeVideoInfo,
+  YouTubeVideoStatistics,
 } from './types';
 
 /**
@@ -157,7 +161,7 @@ export class YouTubeAnalyticsProvider {
         dailyData,
         retention,
         demographics,
-        trafficSources,
+        dailyTrafficSources,
         geography,
         deviceBreakdown,
         operatingSystem,
@@ -170,7 +174,7 @@ export class YouTubeAnalyticsProvider {
         this.fetchDailyMetrics(videoId, startDateStr, endDateStr),
         this.fetchRetention(videoId),
         this.fetchDemographics(videoId, startDateStr, endDateStr),
-        this.fetchTrafficSources(videoId, startDateStr, endDateStr),
+        this.fetchDailyTrafficSources(videoId, startDateStr, endDateStr),
         this.fetchGeography(videoId, startDateStr, endDateStr),
         this.fetchDeviceBreakdown(videoId, startDateStr, endDateStr),
         this.fetchOperatingSystemBreakdown(videoId, startDateStr, endDateStr),
@@ -187,7 +191,8 @@ export class YouTubeAnalyticsProvider {
         dailyData,
         retention,
         demographics,
-        trafficSources,
+        trafficSources: totalTrafficSources(dailyTrafficSources),
+        dailyTrafficSources,
         geography,
         deviceBreakdown:
           deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
@@ -490,30 +495,36 @@ export class YouTubeAnalyticsProvider {
   }
 
   /**
-   * Fetches traffic source breakdown
+   * Traffic sources by day (FILM-1734), so each day can be kept in
+   * `video_traffic_sources` beside the Reporting CSV's copy, which arrives
+   * about two days later. `day,insightTrafficSourceType` with a video filter
+   * is a documented combination (Analytics API, traffic source reports).
+   * Sources keep the Analytics API's names (`EXT_URL`, not the CSV's
+   * `EXTERNAL_URL`); `traffic-groups.ts` in @kit/clickhouse maps both.
    */
-  private async fetchTrafficSources(
+  private async fetchDailyTrafficSources(
     videoId: string,
     startDate: string,
     endDate: string,
-  ): Promise<TrafficSourceData[]> {
+  ): Promise<YouTubeDailyTrafficSource[]> {
     const response = await this.youtubeAnalytics.reports.query({
       ids: 'channel==MINE',
       startDate,
       endDate,
       metrics: 'views,estimatedMinutesWatched',
-      dimensions: 'insightTrafficSourceType',
+      dimensions: 'day,insightTrafficSourceType',
       filters: `video==${videoId}`,
-      sort: '-views',
+      sort: 'day',
     });
 
-    return ((response.data.rows as [string, number, number][]) ?? []).map(
-      (row) => ({
-        source: row[0] as TrafficSourceData['source'],
-        views: row[1] ?? 0,
-        watchTimeMinutes: row[2] ?? 0,
-      }),
-    );
+    return (
+      (response.data.rows as [string, string, number, number][]) ?? []
+    ).map(([date, source, views, minutes]) => ({
+      date,
+      source,
+      views: views ?? 0,
+      watchTimeMinutes: minutes ?? 0,
+    }));
   }
 
   /**
@@ -722,10 +733,172 @@ export class YouTubeAnalyticsProvider {
 
     return durations;
   }
+
+  /**
+   * Live lifetime counts (FILM-1734): `videos.list part=statistics`, 50 ids
+   * a call. Minutes old, where the Analytics API's days are 1–2 days behind.
+   *
+   * `dislikeCount` is returned to the channel owner only, which is who we
+   * connect as; when YouTube leaves it out — or `likeCount` because likes
+   * are hidden, or `commentCount` because comments are off — the figure is
+   * null, never 0. A video missing from the answer (deleted, private to
+   * another channel) is missing from the map.
+   */
+  async fetchVideoStatistics(
+    videoIds: string[],
+  ): Promise<Map<string, YouTubeVideoStatistics>> {
+    const statistics = new Map<string, YouTubeVideoStatistics>();
+
+    for (let i = 0; i < videoIds.length; i += YOUTUBE_VIDEOS_LIST_MAX_IDS) {
+      const response = await this.youtube.videos.list({
+        part: ['statistics'],
+        id: videoIds.slice(i, i + YOUTUBE_VIDEOS_LIST_MAX_IDS),
+        maxResults: YOUTUBE_VIDEOS_LIST_MAX_IDS,
+      });
+
+      for (const video of response.data.items ?? []) {
+        if (!video.id) continue;
+
+        statistics.set(video.id, {
+          videoId: video.id,
+          views: count(video.statistics?.viewCount),
+          likes: count(video.statistics?.likeCount),
+          dislikes: count(video.statistics?.dislikeCount),
+          comments: count(video.statistics?.commentCount),
+        });
+      }
+    }
+
+    return statistics;
+  }
+
+  /**
+   * One channel's lifetime statistics (FILM-1734): views, subscribers and
+   * public videos. By channel id, never `mine: true`: one Google account can
+   * own several channels (`YouTubeProvider.getSubscriberCount`). Null when
+   * YouTube returns no channel.
+   */
+  async getChannelStatistics(
+    channelId: string,
+  ): Promise<YouTubeChannelStatistics | null> {
+    const response = await this.youtube.channels.list({
+      part: ['statistics'],
+      id: [channelId],
+    });
+
+    const channel = response.data.items?.[0];
+    if (!channel) return null;
+
+    return {
+      views: count(channel.statistics?.viewCount),
+      // Hidden is the creator's setting, and a hidden count is not measured.
+      subscribers: channel.statistics?.hiddenSubscriberCount
+        ? null
+        : count(channel.statistics?.subscriberCount),
+      videos: count(channel.statistics?.videoCount),
+    };
+  }
+
+  /**
+   * The whole channel's days (FILM-1734): no video filter, so videos
+   * StoryBook did not publish are in it. By the channel's own id, for the
+   * reason `getChannelStatistics` gives. Read by column name; a metric
+   * YouTube leaves out of the answer is null for every day, never 0.
+   *
+   * @throws {YouTubeAnalyticsScopeError} If the connection is missing analytics scope
+   */
+  async getChannelDailyMetrics(
+    channelId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<YouTubeChannelDay[]> {
+    try {
+      const response = await this.youtubeAnalytics.reports.query({
+        ids: `channel==${channelId}`,
+        startDate: formatDate(startDate),
+        endDate: formatDate(endDate),
+        metrics: CHANNEL_DAY_METRICS.join(','),
+        dimensions: 'day',
+        sort: 'day',
+      });
+
+      const headers = (response.data.columnHeaders ?? []).map((h) => h.name);
+      const rows = (response.data.rows as unknown[][] | undefined) ?? [];
+      const dayIndex = headers.indexOf('day');
+
+      if (dayIndex < 0) return [];
+
+      return rows.map((row) => {
+        const value = (name: (typeof CHANNEL_DAY_METRICS)[number]) => {
+          const column = headers.indexOf(name);
+          const cell = column < 0 ? undefined : row[column];
+          return typeof cell === 'number' && Number.isFinite(cell)
+            ? cell
+            : null;
+        };
+
+        return {
+          date: String(row[dayIndex]),
+          views: value('views'),
+          estimatedMinutesWatched: value('estimatedMinutesWatched'),
+          likes: value('likes'),
+          dislikes: value('dislikes'),
+          comments: value('comments'),
+          shares: value('shares'),
+          subscribersGained: value('subscribersGained'),
+          subscribersLost: value('subscribersLost'),
+        };
+      });
+    } catch (error) {
+      // A quota 403 says nothing about access.
+      if (isQuotaError(error)) throw error;
+      if (isScopeMissingError(error)) throw new YouTubeAnalyticsScopeError();
+      throw error;
+    }
+  }
 }
 
 /** `videos.list` accepts at most 50 comma-separated ids. */
 const YOUTUBE_VIDEOS_LIST_MAX_IDS = 50;
+
+/** The whole-channel day's metrics (FILM-1734): valid with `dimensions=day` and no filter. */
+const CHANNEL_DAY_METRICS = [
+  'views',
+  'estimatedMinutesWatched',
+  'likes',
+  'dislikes',
+  'comments',
+  'subscribersGained',
+  'subscribersLost',
+  'shares',
+] as const;
+
+/** A Data API count: a decimal string, or absent when YouTube withholds it. */
+function count(value: string | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** The period's traffic by source, from its days. */
+export function totalTrafficSources(
+  days: readonly YouTubeDailyTrafficSource[],
+): TrafficSourceData[] {
+  const bySource = new Map<string, TrafficSourceData>();
+
+  for (const day of days) {
+    const total = bySource.get(day.source) ?? {
+      source: day.source as TrafficSourceData['source'],
+      views: 0,
+      watchTimeMinutes: 0,
+    };
+    total.views += day.views;
+    total.watchTimeMinutes += day.watchTimeMinutes;
+    bySource.set(day.source, total);
+  }
+
+  return [...bySource.values()].sort((a, b) => b.views - a.views);
+}
 
 /**
  * Creates a YouTubeAnalyticsProvider with the given access token

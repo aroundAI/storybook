@@ -287,6 +287,7 @@ export function ContentTable({
                   />
                 </div>
               </TableHead>
+              <TableHead className="w-[90px]">Dislikes</TableHead>
               <TableHead
                 className="w-[100px] cursor-pointer"
                 onClick={() => handleSort('comments')}
@@ -396,6 +397,15 @@ export function ContentTable({
                   {formatViews(item.views, formatNumber)}
                 </TableCell>
                 <TableCell>{formatNumber(item.likes)}</TableCell>
+                <TableCell data-test="content-dislikes">
+                  {item.dislikes === null ? (
+                    <span className="text-muted-foreground">
+                      {VIEWS_NOT_MEASURED}
+                    </span>
+                  ) : (
+                    formatNumber(item.dislikes)
+                  )}
+                </TableCell>
                 <TableCell>{formatNumber(item.comments)}</TableCell>
                 <TableCell>
                   {item.engagementRate === null ? (

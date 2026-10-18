@@ -43,6 +43,13 @@ export interface SyncStatusResponse {
   platform: string;
   /** The last *successful* sync. Null when there has never been one. */
   lastSyncedAt: string | null;
+  /**
+   * The newest day the platform's figures run through (FILM-1734), YYYY-MM-DD.
+   * YouTube's is the last day its Analytics API reported, 1–2 days behind;
+   * a lifetime-counter platform's is the day of its last successful sync,
+   * when its counts were read. Null when nothing was ever read.
+   */
+  lastDataDate: string | null;
   /** The latest attempt's outcome. Null when nothing was ever attempted. */
   lastSyncStatus: SyncAttemptStatus | null;
   /** What the platform gave as the reason, when the latest attempt failed. */

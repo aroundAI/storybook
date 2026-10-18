@@ -10,6 +10,7 @@ import {
   sumByChunk,
 } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import { trafficSourcesOneCopy } from './traffic-sources';
 import type {
   AudienceDimension,
   RetentionCurvePoint,
@@ -937,8 +938,7 @@ async function queryTrafficSourcesSingle(input: {
         source,
         sum(views) as views,
         sum(watch_time_minutes) as watch_time_minutes
-      FROM video_traffic_sources FINAL
-      WHERE ${conditions.join(' AND ')}
+      FROM ${trafficSourcesOneCopy(conditions.join(' AND '))}
       GROUP BY source${dateGroup}${videoGroup}
       ORDER BY views DESC
     `,

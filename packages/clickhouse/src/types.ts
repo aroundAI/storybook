@@ -99,6 +99,11 @@ export interface VideoMetric extends Partial<FacebookDenominators> {
   all_surface_views?: number | null;
   all_surface_likes?: number | null;
   all_surface_comments?: number | null;
+  /**
+   * Profile visits added that day (migration 025, FILM-1734). Instagram
+   * FEED and STORY only; **null means not measured**.
+   */
+  profile_visits?: number | null;
   extra_metrics: string;
 }
 
@@ -210,6 +215,8 @@ export type YouTubeVideoMetric = Omit<
   all_surface_views?: null;
   all_surface_likes?: null;
   all_surface_comments?: null;
+  /** Instagram only (migration 025). */
+  profile_visits?: null;
   metric_source: MetricSource;
   /** YouTube has no saves metric (KB-114): not measured, never 0. */
   saves: null;
@@ -263,9 +270,17 @@ export interface VideoAudienceRow {
 }
 
 /**
+ * The API a snapshot came from (migration 025, FILM-1734). YouTube's are the
+ * Data API's live `videos.list` counts; every other platform's are its own
+ * lifetime counters.
+ */
+export type SnapshotSource = 'data_api' | 'graph_api' | 'tiktok_api' | 'x_api';
+
+/**
  * Lifetime cumulative totals snapshot for a video, one retained row per day.
  * Baseline store for TikTok/Instagram delta derivation, whose APIs only
- * expose lifetime counters.
+ * expose lifetime counters, and YouTube's live Data API counts (FILM-1734),
+ * which are never a delta baseline.
  */
 export interface VideoSnapshot
   extends AllSurfaceAggregates,
@@ -275,10 +290,18 @@ export interface VideoSnapshot
   video_id: string;
   platform: AnalyticsPlatform;
   snapshot_date: string;
+  /** Required, so no writer leaves it '' (migration 025). */
+  source: SnapshotSource;
   /** Null for Facebook (migration 020), as on `VideoMetric`. */
   views: number | null;
-  likes: number;
-  comments: number;
+  /** Null where YouTube hides the count (migration 025); a number elsewhere. */
+  likes: number | null;
+  /** Null where YouTube has comments off (migration 025). */
+  comments: number | null;
+  /** YouTube only, owner-only; null wherever YouTube left it out (migration 025). */
+  dislikes: number | null;
+  /** Instagram FEED and STORY only; null when not measured (migration 025). */
+  profile_visits: number | null;
   /** Null for X (migration 021), as on `VideoMetric`. */
   shares: number | null;
   /** Null where the platform does not measure it (migration 017). */
@@ -326,7 +349,9 @@ export interface VideoRevenueDaily {
 }
 
 /**
- * Traffic-source row per video/day/source.
+ * Traffic-source row per video/day/source, and per writer (migration 025):
+ * the Reporting CSV and the Analytics API name sources differently, so each
+ * keeps its own copy and a reader takes one copy per (video, day).
  */
 export interface VideoTrafficSource {
   project_id: string;
@@ -336,6 +361,37 @@ export interface VideoTrafficSource {
   source: string;
   views: number;
   watch_time_minutes: number;
+  /**
+   * Required, not optional: the column is in the sort key and has no
+   * default, so an omitted field would write '' — which readers count as
+   * the CSV's, the only writer before migration 025.
+   */
+  metric_source: 'analytics_api' | 'reporting_api';
+}
+
+/**
+ * One channel's whole-channel figures for one day from one API (migration
+ * 025, FILM-1734), videos StoryBook did not publish included. Every figure
+ * is required and nullable: a source fills its own and names the rest null,
+ * so no JSONEachRow field is ever omitted into a silent default.
+ */
+export interface ChannelMetricsDaily {
+  connection_id: string;
+  platform: AnalyticsPlatform;
+  metric_date: string;
+  source: 'analytics_api' | 'data_api' | 'graph_api';
+  views: number | null;
+  watch_time_seconds: number | null;
+  likes: number | null;
+  dislikes: number | null;
+  comments: number | null;
+  shares: number | null;
+  subscribers_gained: number | null;
+  subscribers_lost: number | null;
+  /** `data_api` only: the channel's lifetime figures that day. */
+  lifetime_views: number | null;
+  lifetime_subscribers: number | null;
+  lifetime_videos: number | null;
 }
 
 /**
@@ -449,6 +505,8 @@ export interface SnapshotTotals
   accounts_reached: number | null;
   /** The latest snapshot's own value: null when it recorded no reposts. */
   reposts: number | null;
+  /** The latest snapshot's own value (migration 025); absent or null: none recorded. */
+  profile_visits?: number | null;
 }
 
 /**

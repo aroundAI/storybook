@@ -119,6 +119,10 @@ const NOT_A_RATE_OVER_VIEWS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'A view-weighted average: views are the weights.',
   },
+  [at('packages', 'clickhouse', 'src', 'figures.ts')]: {
+    count: 2,
+    why: 'A lifetime average view duration (watch time over views) and a view-weighted average percentage viewed, rebuilt from their definitions (FILM-1734).',
+  },
   [at('packages', 'clickhouse', 'src', 'queries-detail.ts')]: {
     count: 1,
     why: 'A view-weighted average: views are the weights.',

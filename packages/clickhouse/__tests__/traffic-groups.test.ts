@@ -30,6 +30,17 @@ describe('groupForSource', () => {
     ]);
   });
 
+  it("groups the Analytics API's names as their Reporting CSV equivalents (FILM-1734)", () => {
+    expect(groupForSource('EXT_URL')).toBe(groupForSource('EXTERNAL_URL'));
+    expect(groupForSource('YT_CHANNEL')).toBe(groupForSource('CHANNEL_PAGE'));
+    expect(groupForSource('YT_PLAYLIST_PAGE')).toBe(
+      groupForSource('PLAYLIST_PAGE'),
+    );
+    expect(groupForSource('NO_LINK_OTHER')).toBe(
+      groupForSource('DIRECT_OR_UNKNOWN'),
+    );
+  });
+
   it('keeps CHANNEL_PAGE out of browse+suggested', () => {
     // Locked decision: folding it in would silently move the 60% milestone.
     expect(groupForSource('CHANNEL_PAGE')).toBe('channel_page');

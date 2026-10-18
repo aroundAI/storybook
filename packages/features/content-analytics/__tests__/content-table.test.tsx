@@ -21,7 +21,11 @@ function byTest(id: string): HTMLElement {
   return element;
 }
 
-function item(publishId: string, title: string): ContentListItem {
+function item(
+  publishId: string,
+  title: string,
+  dislikes: number | null = null,
+): ContentListItem {
   return {
     publishId,
     episodeId: `episode-${publishId}`,
@@ -35,6 +39,9 @@ function item(publishId: string, title: string): ContentListItem {
     comments: 0,
     shares: 0,
     saves: 0,
+    dislikes,
+    engagedViews: null,
+    subscribersLost: null,
     engagementRate: recorded(1),
   };
 }
@@ -155,5 +162,23 @@ describe('ContentTable with tagging', () => {
     render(<ContentTable data={[]} tagging={tagging()} />);
 
     expect(document.body.textContent).toContain('No content published yet.');
+  });
+});
+
+// FILM-1734: dislikes are read for the channel owner; nowhere else are they
+// measured, and the table says so rather than showing 0.
+describe('ContentTable dislikes', () => {
+  it('shows a measured count, and "Not measured" where nothing measured it', () => {
+    render(
+      <ContentTable
+        data={[item('p1', 'Measured', 4), item('p2', 'Unmeasured', null)]}
+      />,
+    );
+
+    const cells = [
+      ...document.querySelectorAll('[data-test="content-dislikes"]'),
+    ].map((cell) => cell.textContent);
+
+    expect(cells).toEqual(['4', 'Not measured']);
   });
 });

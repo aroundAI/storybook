@@ -58,6 +58,8 @@
     "./server/dashboard-service": "./src/server/dashboard-service.ts",
     "./server/deep-dive-service": "./src/server/deep-dive-service.ts",
     "./server/diagnostics-service": "./src/server/diagnostics-service.ts",
+    "./server/daily-figures": "./src/server/daily-figures.ts",
+    "./lib/daily-figures": "./src/lib/daily-figures.ts",
     "./server/subscriber-series-service": "./src/server/subscriber-series-service.ts",
     "./server/video-log-service": "./src/server/video-log-service.ts",
     "./server/sync-service": "./src/server/sync-service.ts",

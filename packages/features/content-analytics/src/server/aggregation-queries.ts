@@ -24,6 +24,7 @@ import {
   queryDailyTimeSeriesByPlatform,
   queryPlatformBreakdown,
   queryTotalsByVideoIds,
+  queryVideoMetricSums,
 } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
@@ -1099,6 +1100,15 @@ export interface ContentListItem {
   shares: number;
   /** Null where the platform did not measure it: TikTok, YouTube (KB-162). */
   saves: number | null;
+  /**
+   * Lifetime, from the stored days (FILM-1734). YouTube only — dislikes to
+   * the channel owner — so null on every other platform, never 0.
+   */
+  dislikes: number | null;
+  /** YouTube's engaged views, lifetime; null where not reported. */
+  engagedViews: number | null;
+  /** YouTube's subscribers lost, lifetime; null where not reported. */
+  subscribersLost: number | null;
   /** Lifetime, so recorded from its publish date to today (FILM-1732). */
   engagementRate: RecordedRate | null;
 }
@@ -1164,9 +1174,18 @@ export async function getContentList(
 
   // Get per-publish metrics from ClickHouse
   const publishIds = publishes.map((p) => p.id);
-  const latestAnalytics = await queryTotalsByVideoIds(publishIds, {
-    projectIds: [projectId],
-  });
+  const [latestAnalytics, figureTotals] = await Promise.all([
+    queryTotalsByVideoIds(publishIds, { projectIds: [projectId] }),
+    // The figures the totals above do not carry (FILM-1734), through today.
+    queryVideoMetricSums({
+      projectIds: [projectId],
+      videoIds: publishIds,
+      to: new Date().toISOString().slice(0, 10),
+    }),
+  ]);
+  const figuresByVideo = new Map(
+    figureTotals.map((total) => [total.videoId, total]),
+  );
 
   // Build content list
   return publishes.map((publish) => {
@@ -1207,6 +1226,9 @@ export async function getContentList(
       comments: stats.comments,
       shares: stats.shares,
       saves: measuredFigure(latestAnalytics.get(publish.id), 'saves'),
+      dislikes: figuresByVideo.get(publish.id)?.dislikes ?? null,
+      engagedViews: figuresByVideo.get(publish.id)?.engagedViews ?? null,
+      subscribersLost: figuresByVideo.get(publish.id)?.subscribersLost ?? null,
       engagementRate,
     };
   });

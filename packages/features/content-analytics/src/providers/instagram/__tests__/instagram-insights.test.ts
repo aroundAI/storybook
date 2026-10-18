@@ -102,6 +102,8 @@ describe('InstagramInsightsProvider', () => {
         'reach',
         'total_interactions',
         'shares',
+        'follows',
+        'profile_visits',
       ]);
     });
 

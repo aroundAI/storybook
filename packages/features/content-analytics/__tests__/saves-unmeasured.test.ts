@@ -84,6 +84,7 @@ vi.mock('@kit/clickhouse/server', () => ({
   queryDailyTimeSeriesByPlatform: async () => [],
   queryPlatformBreakdown: async () => [],
   queryTotalsByVideoIds: async () => state.totals,
+  queryVideoMetricSums: async () => [],
 }));
 
 function stats(saves: number | null): PerVideoTotals {
