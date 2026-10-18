@@ -87,6 +87,13 @@ notes: >
   suite (124 files) passes on a throwaway database; without the migration
   channel-posting-cadence.test.sql fails at every_n_days.
 
+  Found while verifying: "Check channel calendars" sent a preview with no
+  targets when no channel matched the videos' language, or before the
+  project's channels had loaded, and the person read "Could not read the
+  channels' calendars". It now says no channel matches (as Schedule
+  already did), or that the channels are still loading. E2E 'says no
+  channel takes the videos…', guard E2E Q16.
+
   The FILM-719 hold columns stay readable: requeue_held_shorts and
   discard_held_shorts remain for drafts an older release held.
 feature:

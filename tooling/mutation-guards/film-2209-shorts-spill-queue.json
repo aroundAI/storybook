@@ -149,6 +149,15 @@
       "replace": "",
       "spec": "tests/mcp/cadence-release.spec.ts",
       "grep": "nine episodes"
+    },
+    {
+      "name": "E2E Q16 a preview with no channel for the videos says the calendars could not be read",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/use-cadence-release.tsx",
+      "find": "    if (configs.length === 0) {\n",
+      "replace": "    if (false) {\n",
+      "spec": "tests/publishing/cadence-release.spec.ts",
+      "grep": "says no channel takes the videos"
     }
   ]
 }

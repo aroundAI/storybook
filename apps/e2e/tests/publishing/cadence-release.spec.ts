@@ -406,4 +406,29 @@ test.describe('A release follows its channel’s posting cadence', () => {
     await expect(byTest(page, 'published-content-held')).toHaveCount(0);
     await capture(page, '08-requeued');
   });
+
+  test('says no channel takes the videos, rather than that the calendars could not be read', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const team = await seedTeamAccount({ emailPrefix: 'cadnone' });
+    const yt = await youtubeChannel(team);
+    // The episode's video is English; the project's one channel is Hindi
+    await updateRows('platform_connections', `id=eq.${yt}`, { language: 'hi' });
+    const project = await seedProject(team, { name: 'Cadence no channel' });
+    await addProjectChannels(project.id, [yt]);
+    const ep = await episodeWithShorts(project.id, 1);
+
+    await signInAs(page, team);
+    await openPublish(page, team, `${project.slug}/episodes/${ep.slug}`);
+    await pickToday(page);
+    await byTest(page, 'release-check-calendar').click();
+
+    await expect(byTest(page, 'release-calendar-error')).toHaveText(
+      'No matching channels for uploaded videos. Check language settings.',
+      { timeout: 30_000 },
+    );
+    expect(await publishesOn(yt)).toEqual([]);
+  });
 });

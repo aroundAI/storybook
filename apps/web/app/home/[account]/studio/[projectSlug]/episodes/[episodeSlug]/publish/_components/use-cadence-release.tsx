@@ -29,6 +29,14 @@ import { toast } from '@kit/ui/sonner';
 
 import type { PlatformConfig } from './publish-types';
 
+/** No channel of the episode's project takes any of its uploaded videos */
+export const NO_MATCHING_CHANNELS =
+  'No matching channels for uploaded videos. Check language settings.';
+
+/** The project's channels have not been read yet */
+export const CHANNELS_LOADING =
+  'The channels are still loading. Check again in a moment.';
+
 /** A target of the release: one schedule item on one channel */
 export type ReleaseConfig = PlatformConfig & { itemKey: string };
 
@@ -73,6 +81,11 @@ export function useCadenceRelease(props: {
     configs: ReleaseConfig[],
     notBefore: Date,
   ): Promise<ActionResult<ReleasePreview>> => {
+    // Nothing to place is the caller's state, not a failed read
+    if (configs.length === 0) {
+      return { ok: false, error: NO_MATCHING_CHANNELS };
+    }
+
     try {
       return {
         ok: true,
