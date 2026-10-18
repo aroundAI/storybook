@@ -108,6 +108,7 @@ function inputs(): DigestInputs {
         connectionId: CHANNEL,
         url: 'https://youtu.be/old',
         publishedAt: '2026-06-01T10:00:00.000Z',
+        shortsGroup: null,
       },
       {
         id: NEW_VIDEO,
@@ -119,6 +120,7 @@ function inputs(): DigestInputs {
         connectionId: CHANNEL,
         url: 'https://youtube.com/shorts/new',
         publishedAt: '2026-10-15T12:00:00.000Z',
+        shortsGroup: null,
       },
       {
         id: QUIET_OLD,
@@ -130,6 +132,7 @@ function inputs(): DigestInputs {
         connectionId: CHANNEL,
         url: null,
         publishedAt: '2026-05-01T10:00:00.000Z',
+        shortsGroup: null,
       },
     ],
     videoDay: [
@@ -148,6 +151,7 @@ function inputs(): DigestInputs {
         source: 'data_api',
       },
     ],
+    engagementCounts: { day: new Map(), lifetime: new Map() },
     viewsAtAge: new Map([[NEW_VIDEO, { 1: 300, 7: 999, 28: 999 }]]),
     retentionCurves: new Map([
       [
@@ -188,6 +192,7 @@ function inputs(): DigestInputs {
         label: null,
       },
     ],
+    trendComments: [],
     reactions: [],
     commentsDisclosure:
       'Calculated by StoryBook from the comments, not from YouTube.',
