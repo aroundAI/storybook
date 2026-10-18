@@ -198,6 +198,15 @@ async function deferredForCap(
     return true;
   }
 
+  // An earlier post of this run already moved it on: it is not due now
+  const current = calendar.find((post) => post.id === publish.id);
+  if (
+    current?.slot_at &&
+    new Date(current.slot_at).getTime() !== slotAt.getTime()
+  ) {
+    return true;
+  }
+
   const sameType = (post: ChannelPost) =>
     (post.content_type === 'short') === (contentType === 'short');
   const inQueue = (post: ChannelPost) =>

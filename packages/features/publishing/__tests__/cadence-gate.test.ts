@@ -282,6 +282,34 @@ describe('a cadence post on a channel that has had its local day', () => {
     ).toBe(11 * 60_000);
   });
 
+  it('leaves a post alone that an earlier post of the run already moved on', async () => {
+    const { client, calls } = fakeClient({
+      cadence: ROW,
+      recent: [publishedToday('11:04'), publishedToday('11:20')],
+      calendar: [
+        {
+          id: 'short-1',
+          content_type: 'short',
+          status: 'scheduled',
+          slot_at: '2026-11-06T05:30:00.000Z',
+          scheduled_at: '2026-11-06T05:41:00.000Z',
+        },
+        {
+          id: 'q2',
+          content_type: 'short',
+          status: 'scheduled',
+          slot_at: '2026-11-06T11:30:00.000Z',
+          scheduled_at: '2026-11-06T11:30:00.000Z',
+        },
+      ],
+    });
+    // Still carrying the slot the run read before the move
+    const stale = short({ after_episode_full: false });
+
+    expect(await cadenceGate(client, stale, new Map(), NOW)).toBe('deferred');
+    expect(moves(calls)).toEqual([]);
+  });
+
   it('leaves the rest for the next run when a slot was taken meanwhile', async () => {
     const { client, calls } = fakeClient({
       cadence: ROW,

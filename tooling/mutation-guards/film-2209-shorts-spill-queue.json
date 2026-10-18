@@ -132,6 +132,16 @@
       "cwd": "packages/features/publishing"
     },
     {
+      "name": "Q15 a post an earlier post of the run moved is moved again",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    new Date(current.slot_at).getTime() !== slotAt.getTime()\n",
+      "replace": "    false\n",
+      "pattern": "leaves a post alone that an earlier post of the run already moved on",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/cadence-gate.test.ts"
+    },
+    {
       "name": "E2E Q14 a later batch's long videos go back to back over MCP",
       "kind": "e2e",
       "file": "packages/features/publishing/src/lib/cadence/plan-release.ts",
