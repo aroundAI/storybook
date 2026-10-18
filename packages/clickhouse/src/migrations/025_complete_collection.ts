@@ -89,14 +89,17 @@ export const STATEMENTS = [
   // restatement now writes 'reporting_api', which would sit beside the ''
   // copy on a different key and count the day twice, so the old rows are
   // copied under their real name — `inserted_at` kept, so a later write
-  // still replaces them — and the '' copies deleted. Safe to re-run.
+  // still replaces them — and the '' copies deleted. Safe to re-run. The
+  // table is partitioned by month, so the copy spans every month it holds:
+  // the 100-partition ceiling on one insert is lifted for it alone.
   `INSERT INTO video_traffic_sources
     (project_id, video_id, platform, metric_date, source, views,
      watch_time_minutes, inserted_at, metric_source)
     SELECT project_id, video_id, platform, metric_date, source, views,
       watch_time_minutes, inserted_at, 'reporting_api'
     FROM video_traffic_sources FINAL
-    WHERE metric_source = ''`,
+    WHERE metric_source = ''
+    SETTINGS max_partitions_per_insert_block = 0`,
   `ALTER TABLE video_traffic_sources DELETE WHERE metric_source = ''
     SETTINGS mutations_sync = 2`,
   `CREATE TABLE IF NOT EXISTS channel_metrics_daily (
