@@ -209,6 +209,39 @@ describe('get_audience_comments', () => {
     expect(ids).not.toContain(THEIRS);
   });
 
+  it('FILM-1735: keeps to one local day with since and until, inclusive then exclusive', async () => {
+    const { context } = setup();
+    const ids = async (args: Record<string, unknown>) =>
+      (
+        (
+          await callTool(
+            tools,
+            'get_audience_comments',
+            { episodeId: EPISODE, ...args },
+            context,
+          )
+        ).structuredContent as { comments: Array<{ id: string }> }
+      ).comments.map((c) => c.id);
+
+    // 19:30 in Kolkata is 14:00 UTC: MINE is made at the bound, so it is in
+    expect(
+      await ids({
+        since: '2026-10-10T19:30:00+05:30',
+        until: '2026-10-11T00:00:00+05:30',
+      }),
+    ).toEqual([MINE]);
+    expect(
+      await ids({
+        since: '2026-10-10T00:00:00+05:30',
+        until: '2026-10-10T19:30:00+05:30',
+      }),
+    ).toEqual([UNLABELLED]);
+    await expect(
+      ids({ since: '2026-10-11T00:00:00Z', until: '2026-10-10T00:00:00Z' }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(ids({ since: 'yesterday' })).rejects.toThrow();
+  });
+
   it('refuses a cursor it did not give', async () => {
     const { context } = setup();
     const forged = Buffer.from(

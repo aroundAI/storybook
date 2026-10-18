@@ -156,7 +156,7 @@ const CommentCursor = z.object({
 export const getAudienceComments = defineTool({
   name: 'get_audience_comments',
   title: 'Audience comments',
-  description: `The comments on a project's, an episode's or some publishes' videos (none of the three: every video of the connection's team), newest first, with each one's label (null when unlabelled). Filter by \`sentiment\`, \`topic\`, or \`unlabelled: true\` for the comments waiting to be labelled; that page also carries \`labelling\`, the rules and topic list label_audience_comments accepts. No commenter names or ids are stored. ${UNTRUSTED_NOTE} ${PAGING_NOTE}`,
+  description: `The comments on a project's, an episode's or some publishes' videos (none of the three: every video of the connection's team), newest first, with each one's label (null when unlabelled). Filter by \`sentiment\`, \`topic\`, or \`unlabelled: true\` for the comments waiting to be labelled, and by when a comment was made with \`since\` (inclusive) and \`until\` (exclusive), e.g. one local day; that page also carries \`labelling\`, the rules and topic list label_audience_comments accepts. No commenter names or ids are stored. ${UNTRUSTED_NOTE} ${PAGING_NOTE}`,
   inputSchema: {
     ...scopeArgs,
     sentiment: z.enum(COMMENT_SENTIMENTS).optional(),
@@ -165,6 +165,16 @@ export const getAudienceComments = defineTool({
       .boolean()
       .optional()
       .describe('Only comments with no label yet.'),
+    since: z
+      .string()
+      .datetime({ offset: true })
+      .optional()
+      .describe('Only comments made at or after this time (ISO 8601).'),
+    until: z
+      .string()
+      .datetime({ offset: true })
+      .optional()
+      .describe('Only comments made before this time (ISO 8601).'),
     limit: limitArg,
     cursor: cursorArg,
   },
@@ -178,6 +188,17 @@ export const getAudienceComments = defineTool({
       );
     }
 
+    if (
+      input.since &&
+      input.until &&
+      new Date(input.since) >= new Date(input.until)
+    ) {
+      throw new McpToolError(
+        'VALIDATION_FAILED',
+        '`since` must be before `until`.',
+      );
+    }
+
     const scope = await requireCommentScope(context, input, {
       teamWhenNone: true,
     });
@@ -188,6 +209,8 @@ export const getAudienceComments = defineTool({
         sentiment: input.sentiment,
         topic: input.topic,
         unlabelled: input.unlabelled,
+        since: input.since,
+        until: input.until,
         limit: input.limit,
         after,
       }),
