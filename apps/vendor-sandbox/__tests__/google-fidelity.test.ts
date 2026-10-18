@@ -202,6 +202,7 @@ describe('what the Google origin serves is what the reference documents', () => 
       'country',
       'ageGroup',
       'insightTrafficSourceType',
+      'day,insightTrafficSourceType',
     ]) {
       const result = await call(
         query({
@@ -451,6 +452,41 @@ describe('§3: YouTube behaviour the sandbox must reproduce', () => {
         dimensions,
       ).toBe(total);
     }
+  });
+
+  // FILM-1734: the traffic-source report takes `day` beside its required
+  // dimension (channel reports reference); no other pair is served.
+  it('traffic sources by day: each day’s sources add up to that day’s views', async () => {
+    const params = {
+      startDate: pacificDate(T0),
+      endDate: pacificDate(now),
+      metrics: 'views',
+    };
+    const days = (
+      (await call(query({ ...params, dimensions: 'day' }))).body as {
+        rows: Array<[string, number]>;
+      }
+    ).rows;
+    const bySource = (
+      (
+        await call(
+          query({ ...params, dimensions: 'day,insightTrafficSourceType' }),
+        )
+      ).body as { rows: Array<[string, string, number]> }
+    ).rows;
+
+    expect(days.length).toBeGreaterThan(0);
+    for (const [date, views] of days) {
+      expect(
+        bySource
+          .filter(([day]) => day === date)
+          .reduce((sum, [, , v]) => sum + v, 0),
+        date,
+      ).toBe(views);
+    }
+
+    const refused = await call(query({ ...params, dimensions: 'day,country' }));
+    expect(refused.status).toBe(400);
   });
 
   it("the client is checked: another app's client id gets invalid_client", async () => {

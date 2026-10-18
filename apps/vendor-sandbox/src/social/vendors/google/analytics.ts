@@ -186,6 +186,16 @@ export const ANALYTICS_DIMENSIONS = {
 
 type Dimension = keyof typeof ANALYTICS_DIMENSIONS;
 
+/**
+ * The dimensions a report takes `day` beside (FILM-1734). The channel
+ * reports reference lists `insightTrafficSourceType` as the traffic-source
+ * report's required dimension with `day` among its optional ones, so
+ * `dimensions=day,insightTrafficSourceType` is a documented query; no other
+ * two-dimension query the app makes is served, and every other pair is
+ * refused as before.
+ */
+const WITH_DAY = new Set<Dimension>(['insightTrafficSourceType']);
+
 function isDimension(name: string): name is Dimension {
   return Object.hasOwn(ANALYTICS_DIMENSIONS, name);
 }
@@ -470,7 +480,11 @@ const reportsQuery: SocialRoute = ({
       return true;
     }
   }
-  if (metrics.length === 0 || dimensions.length > 1) {
+  const byDay =
+    dimensions.length === 2 &&
+    dimensions[0] === 'day' &&
+    WITH_DAY.has(dimensions[1] as Dimension);
+  if (metrics.length === 0 || (dimensions.length > 1 && !byDay)) {
     sendJson(res, 400, badRequest('The query is not supported.'));
     return true;
   }
@@ -483,7 +497,7 @@ const reportsQuery: SocialRoute = ({
   }
 
   const videoFilter = /(?:^|;)video==([^;]+)/.exec(q.get('filters') ?? '')?.[1];
-  const dimension = dimensions[0] as Dimension | undefined;
+  const dimension = dimensions.at(-1) as Dimension | undefined;
   const retentionAsked = metrics.some((m) => RETENTION.has(m));
 
   if (
@@ -521,6 +535,7 @@ const reportsQuery: SocialRoute = ({
     to: pacificMidnight(nextDate(endDate)),
   };
   const columnHeaders = [
+    ...(byDay ? [header('day', 'DIMENSION')] : []),
     ...(dimension ? [header(dimension, 'DIMENSION')] : []),
     ...metrics.map((m) => header(m, 'METRIC')),
   ];
@@ -531,7 +546,23 @@ const reportsQuery: SocialRoute = ({
     objects.length > 0 &&
     processedDays(social, objects, startDate, endDate).length > 0
   ) {
-    if (!dimension) {
+    if (byDay) {
+      // Each day's breakdown, built as the single-dimension one is, so a
+      // day's sources sum to that day's figures.
+      rows = processedDays(social, objects, startDate, endDate).flatMap(
+        (date) =>
+          breakdown(
+            social,
+            objects,
+            {
+              from: pacificMidnight(date),
+              to: pacificMidnight(nextDate(date)),
+            },
+            dimension as Exclude<Dimension, 'day' | 'elapsedVideoTimeRatio'>,
+            metrics,
+          ).map((row) => [date, ...row]),
+      );
+    } else if (!dimension) {
       const t = totals(social, objects, window);
       rows = [metrics.map((m) => metricValue(m, t))];
     } else if (dimension === 'day') {

@@ -230,6 +230,15 @@
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/purge.test.ts"
+    },
+    {
+      "name": "S1 the sandbox refuses traffic sources by day",
+      "file": "apps/vendor-sandbox/src/social/vendors/google/analytics.ts",
+      "find": "const WITH_DAY = new Set<Dimension>(['insightTrafficSourceType']);\n",
+      "replace": "const WITH_DAY = new Set<Dimension>([]);\n",
+      "kind": "unit",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/google-fidelity.test.ts"
     }
   ]
 }
