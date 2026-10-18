@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from 'react';
 
-import { useQuery } from '@tanstack/react-query';
-
 import {
   type ActionResult,
   refusalMessage,
@@ -11,8 +9,7 @@ import {
 } from '@kit/next/action-result';
 import {
   type BreakingSettings,
-  ChannelCadenceDialog,
-  type ChannelCadenceState,
+  ChannelPostingRulesDialog,
 } from '@kit/publishing/components';
 import { YOUTUBE_UPLOADS_PER_DAY } from '@kit/publishing/lib/cadence/plan-breaking-release';
 import {
@@ -23,7 +20,6 @@ import {
 } from '@kit/publishing/lib/cadence/release-types';
 import {
   discardHeldShortsAction,
-  getChannelCadencesAction,
   previewBreakingReleaseAction,
   previewCadenceReleaseAction,
   requeueHeldShortsAction,
@@ -207,9 +203,11 @@ export function useCadenceRelease(props: {
 
   const channel = props.channels.find((c) => c.id === editing);
   const dialog = channel ? (
-    <CadenceRulesDialog
+    <ChannelPostingRulesDialog
       channel={{ id: channel.id, name: channel.platformAccountName }}
-      timezone={timezone}
+      onSaved={() =>
+        toast.success('Posting rules saved. Check the calendars again.')
+      }
       onClose={() => setEditing(null)}
     />
   ) : null;
@@ -224,32 +222,4 @@ export function useCadenceRelease(props: {
     editChannel: setEditing,
     dialog,
   };
-}
-
-function CadenceRulesDialog(props: {
-  channel: { id: string; name: string };
-  timezone: string;
-  onClose: () => void;
-}) {
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['channel-cadences', props.channel.id],
-    queryFn: () =>
-      getChannelCadencesAction({ connectionIds: [props.channel.id] }),
-  });
-
-  if (isLoading || !data) return null;
-
-  return (
-    <ChannelCadenceDialog
-      channel={props.channel}
-      cadences={data as ChannelCadenceState[]}
-      defaultTimezone={props.timezone}
-      onSaved={() => {
-        toast.success('Posting rules saved. Check the calendars again.');
-        void refetch();
-        props.onClose();
-      }}
-      onCancel={props.onClose}
-    />
-  );
 }

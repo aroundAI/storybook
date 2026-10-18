@@ -1,0 +1,89 @@
+spec_id: "FILM-2211"
+title: "Schedule page and posting rules without an episode: every post of a project in one table, filtered, and each channel's rules edited from the page and from Settings → Platforms"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DONE
+effort: S
+dependencies:
+  - spec_id: "FILM-719"
+    note: "the channel posting cadence and its dialog"
+  - spec_id: "FILM-2208"
+    note: "readPublishCalendar, the read get_publish_calendar makes"
+  - spec_id: "FILM-2209"
+    note: "held Shorts, re-queued or discarded"
+  - spec_id: "FILM-2210"
+    note: "release_priority marks a breaking post"
+summary: >
+  The owner, 2026-10-18: "Posting rules are channel-wide — why must I open
+  an episode to see/edit them? And give me a tab on the left where I see
+  what's published and what's scheduled, in a table with timings, filters
+  for long/short and platform." A channel's posting rules were reachable
+  only from an episode's Publish screen, and a project's calendar only
+  over MCP and in the morning digest.
+
+  A Schedule item in the project's left nav opens a page with the
+  project's channels and how each posts, in one line, and every post of
+  the project in time order in the viewer's timezone, filtered by type,
+  platform, status and dates in the URL. A scheduled post is cancelled and
+  a held Short re-queued or discarded from the table. Every connected
+  channel in Settings → Platforms has a Posting rules button that opens the
+  same dialog. Nothing new is stored: the page reads the calendar service
+  and the cadence table through the existing services and actions.
+acceptance_criteria:
+  - text: "A channel's posting rules open without an episode: a Posting rules button on every connected channel in Settings → Platforms (and the project's Platforms page, which shows the same list), and an Edit per channel on the Schedule page, both opening the Publish screen's dialog, which says the rules apply to every project and episode posting to that channel"
+    met: true
+    evidence: "Met (#675): packages/features/publishing/src/components/channel-posting-rules-dialog.tsx ChannelPostingRulesDialog, the one dialog the Publish screen (use-cadence-release.tsx), the Schedule page (posting-rules-section.tsx) and platform-connections.tsx ConnectionRow open; channel-cadence-dialog.tsx data-test channel-cadence-scope. E2E apps/e2e/tests/publishing/schedule-page.spec.ts 'edits a channel’s posting rules from the Schedule page and from Settings → Platforms, without opening an episode'. Guard E2E P1"
+  - text: "Reads and writes go through readChannelCadences and saveChannelCadence via the existing getChannelCadencesAction and saveChannelCadenceAction; a refusal comes back as a value"
+    met: true
+    evidence: "Met (#675): the Schedule page reads readChannelCadences (schedule/page.tsx); the dialog reads getChannelCadencesAction and saves with saveChannelCadenceAction (returnRefusals), unchanged. E2E: the Instagram long-video rules saved from Settings read back from channel_posting_cadences as slot_times ['20:00'], min_days_between 2"
+  - text: "The Schedule page's Posting rules section lists the project's channels with a one-line summary per channel ('Long 20:00 every 3 days · Shorts 11:00, 17:00 daily, from 2 h after · Asia/Kolkata'), a type on the defaults (none saved, or switched off) saying so, and the summary changes after a save"
+    met: true
+    evidence: "Met (#675): packages/features/publishing/src/lib/schedule-view.ts cadenceSummary. Tests: schedule-view.test.ts 'says each type’s times, spacing and zone in one line', 'names the days when not every day, and every N days for Shorts', 'says when a type posts on the defaults: none saved, or switched off', 'gives each type its zone when the two differ'. E2E: the YouTube summary from defaults to 'Shorts 11:00, 17:00 daily, from 2 h after (Asia/Kolkata)' after a save on the page; the Instagram one to 'Long 20:00 every 2 days (Asia/Kolkata)' after a save in Settings. Guards S1, E2E P2"
+  - text: "A Schedule item with an icon in the project's left nav (and the mobile header) opens apps/web/app/home/[account]/studio/[projectSlug]/schedule"
+    met: true
+    evidence: "Met (#675): studio-sidebar.tsx and mobile-studio-header.tsx NavItem 'Schedule' (CalendarClock); studio:routes.schedule titles the page. E2E: the listing test opens the page from studio-nav-schedule. Guard E2E N1"
+  - text: "The table reads readPublishCalendar (extended with the episode's slug and the breaking flag) and shows, in time order with held Shorts last, the date and time in the viewer's timezone, platform, channel, episode (linking to its Publish screen), long video or Short, title and status: scheduled, queued, publishing, published with its link, failed with its reason, held with its reason, and a Breaking badge"
+    met: true
+    evidence: "Met (#675): publish-calendar.service.ts (release_priority, episodes.slug; MCP get_publish_calendar returns both too), schedule/_components/schedule-table.tsx (useSyncExternalStore for the viewer's zone). Tests: schedule-view.test.ts scheduleStatusOf; release-tools.test.ts 'marks a breaking post and names its episode’s slug (FILM-2211)'. E2E: five seeded posts in order, two times in Asia/Kolkata as the browser formats them, the published link, the failed and held reasons, the Breaking badge, the episode link. Guards S5, S6"
+  - text: "Filters in the URL: type (all, long, short), platform, status, and a date range defaulting to 7 days back and 30 days ahead, at most 62 days (the calendar read's cap, now one constant shared with get_publish_calendar); anything unknown in the URL is ignored"
+    met: true
+    evidence: "Met (#675): schedule-view.ts parseScheduleFilters, matchesScheduleFilters, MAX_CALENDAR_DAYS (release.ts imports it); schedule-filters.tsx. Tests: schedule-view.test.ts 'defaults to every post from 7 days back to 30 days ahead', 'ignores values it does not know rather than showing nothing', 'reads at most 62 days, and says it cut the range', 'long means anything that is not a Short', 'filters by platform and status'. E2E: Shorts (3 rows), Shorts on Instagram (2), Failed on any platform (1), an empty state for Publishing. Guards S2, S3, S4, E2E F1"
+  - text: "Empty and loading states: an empty state for a range with nothing in it, a skeleton while the page loads, a spinner while a filter change is read"
+    met: true
+    evidence: "Met (#675): schedule-table.tsx data-test schedule-empty, schedule/loading.tsx, schedule-filters.tsx data-test schedule-loading. E2E: the empty state for status Publishing"
+  - text: "Row actions through existing services, each confirmed first, refusals as values, the page read again after: cancel a scheduled post (cancelScheduledPublish), re-queue or discard a held Short (requeueHeldShorts, discardHeldShorts)"
+    met: true
+    evidence: "Met (#675): schedule-release-actions.ts cancelScheduledPublishAction (new, over the existing cancelScheduledPublish, returnRefusals) beside requeueHeldShortsAction and discardHeldShortsAction; schedule-table.tsx RowActions (AlertDialog, router.refresh). E2E: the scheduled Short cancelled and gone from the table and from publishes; the held Short discarded and gone. Guard E2E C1"
+open_questions: []
+notes: >
+  Decisions the plan left open. The page reads the posts in UTC days from
+  the From and To dates, and shows each post's time in the browser's zone;
+  a post near midnight can fall a day outside the dates as written. The
+  Posting rules button shows on every connected channel, not only YouTube,
+  Facebook and Instagram: the rules are per connection whatever its
+  platform. The sidebar's labels are not translated (none of its items
+  are); the page title is studio:routes.schedule. Re-queueing a held Short
+  from the table re-queues that one Short, through the same action the
+  Publish screen uses for an episode's held Shorts.
+
+  Found while verifying: two filter changes made faster than the server
+  answered lost the first, because each built the URL from search params
+  that lag until the read finishes; the filters now build on the URL they
+  asked for (useOptimistic), guard E2E F1. And a type whose saved rules
+  are switched off showed the saved times although the defaults apply;
+  the summary now shows the defaults, guard S1.
+feature:
+  database: null
+  queries:
+    - name: "readPublishCalendar (episode slug, breaking)"
+      file: "packages/features/publishing/src/server/publish-calendar.service.ts"
+  actions:
+    - name: "cancelScheduledPublishAction"
+      file: "packages/features/publishing/src/server/schedule-release-actions.ts"
+  ui:
+    - component: "Schedule page (PostingRulesSection, ScheduleFilters, ScheduleTable)"
+      file: "apps/web/app/home/[account]/studio/[projectSlug]/schedule/page.tsx"
+    - component: "ChannelPostingRulesDialog"
+      file: "packages/features/publishing/src/components/channel-posting-rules-dialog.tsx"
+  provider_integration: null

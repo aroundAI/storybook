@@ -71,6 +71,11 @@ export const BreakingFormSchema = z
     { message: 'Choose a time in the future.', path: ['at'] },
   );
 
+/** FILM-2211: the Schedule page cancels one scheduled post */
+export const CancelScheduledPublishSchema = z.object({
+  publishId: z.string().uuid(),
+});
+
 export const HeldShortsSchema = z.object({
   publishIds: z.array(z.string().uuid()).min(1).max(200),
   timezone: TimeZoneSchema,

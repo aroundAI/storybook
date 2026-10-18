@@ -9,6 +9,7 @@ import {
   type ShortsQueueSummary,
 } from '@kit/publishing/lib/cadence/release-types';
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
+import { MAX_CALENDAR_DAYS } from '@kit/publishing/lib/schedule-view';
 import { ChannelCadenceSchema } from '@kit/publishing/lib/schemas/schedule-release';
 import { readPublishCalendar } from '@kit/publishing/server/publish-calendar';
 import {
@@ -633,8 +634,6 @@ export const discardHeldShortsTool = defineTool({
     };
   },
 });
-
-const MAX_CALENDAR_DAYS = 62;
 
 export const getPublishCalendarTool = defineTool({
   name: 'get_publish_calendar',

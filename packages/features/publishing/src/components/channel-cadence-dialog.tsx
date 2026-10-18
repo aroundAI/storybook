@@ -74,9 +74,11 @@ export function ChannelCadenceDialog(props: {
       >
         <DialogHeader>
           <DialogTitle>Posting rules for {props.channel.name}</DialogTitle>
-          <DialogDescription>
-            A release follows these rules, so a channel never gets a burst of
-            uploads. The number of posting times is the most it posts in a day.
+          <DialogDescription data-test="channel-cadence-scope">
+            These rules are the channel&apos;s: every project and episode that
+            posts to {props.channel.name} follows them, so it never gets a burst
+            of uploads. The number of posting times is the most it posts in a
+            day.
           </DialogDescription>
         </DialogHeader>
 

@@ -9,11 +9,13 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   BreakingReleaseSchema,
+  CancelScheduledPublishSchema,
   ChannelCadenceSchema,
   ChannelCadencesQuerySchema,
   HeldShortsSchema,
   ScheduleReleaseSchema,
 } from '../lib/schemas/schedule-release.schema';
+import { cancelScheduledPublish } from './schedule-publishes.service';
 import {
   discardHeldShorts,
   previewBreakingRelease,
@@ -122,5 +124,20 @@ export const saveChannelCadenceAction = returnRefusals(
     async (input) =>
       unwrapResult(await saveChannelCadence(getSupabaseServerClient(), input)),
     { schema: ChannelCadenceSchema, auth: true },
+  ),
+);
+
+/** FILM-2211: the Schedule page cancels a post the scheduled job has not claimed */
+export const cancelScheduledPublishAction = returnRefusals(
+  enhanceAction(
+    async ({ publishId }, user) =>
+      unwrapResult(
+        await cancelScheduledPublish(
+          getSupabaseServerClient(),
+          user.id,
+          publishId,
+        ),
+      ),
+    { schema: CancelScheduledPublishSchema, auth: true },
   ),
 );
