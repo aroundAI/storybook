@@ -55,6 +55,31 @@ afterEach(() => {
 });
 
 describe('recordUploadChecksum', () => {
+  // FILM-2212: a video may be close to 5 GB, more than a tab can hold as
+  // one buffer. The hash reads the body's stream, chunk by chunk, and never
+  // the whole body at once.
+  it('hashes a large body chunk by chunk, never reading it whole', async () => {
+    const chunk = new Uint8Array(1024 * 1024).fill(7);
+    const chunks = Array.from({ length: 8 }, () => chunk);
+    const body = new Blob(chunks);
+    Object.defineProperty(body, 'arrayBuffer', {
+      value: () => {
+        throw new Error('read the whole body into memory');
+      },
+    });
+    const whole = createHash('sha256');
+    for (const part of chunks) whole.update(part);
+
+    await expect(
+      recordUploadChecksum(body, 'project-assets', PATH),
+    ).resolves.toBe(true);
+
+    expect(calls[0]?.body).toMatchObject({
+      sha256: whole.digest('hex'),
+      size: 8 * 1024 * 1024,
+    });
+  });
+
   it('reports the SHA-256 and size of the body it is given', async () => {
     await expect(
       recordUploadChecksum(new Blob([BYTES]), 'project-assets', PATH),

@@ -71,7 +71,8 @@ export interface BreakingPreview {
     after: { queued: number; lastShortAt: string | null };
   }>;
   /** Pacific days past YouTube's upload budget: a warning, not a stop */
-  quota: Array<{ day: string; uploads: number }>;
+  /** Days past `limit` YouTube uploads (YOUTUBE_DAILY_UPLOAD_WARN, 6 unset) */
+  quota: Array<{ day: string; uploads: number; limit: number }>;
 }
 
 /** A release target's key: its schedule item, then its channel */

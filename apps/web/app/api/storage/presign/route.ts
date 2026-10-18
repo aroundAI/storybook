@@ -34,6 +34,7 @@ import {
   uploadCategoryForType,
 } from '@kit/assets/upload-validation';
 import { getLogger } from '@kit/shared/logger';
+import { formatUploadSize } from '@kit/shared/upload-limits';
 import { canWriteProjectKey, getStorageAdapter } from '@kit/storage';
 import {
   ACCOUNT_IMAGE_BUCKET,
@@ -172,7 +173,7 @@ export async function POST(request: NextRequest) {
     if (size > maxSize) {
       return refuse(
         'size',
-        `File is ${megabytes(size)} MB; ${CATEGORY_NOUN[category]} may be at most ${megabytes(maxSize)} MB`,
+        `File is ${megabytes(size)} MB; ${CATEGORY_NOUN[category]} may be at most ${formatUploadSize(maxSize)}`,
         400,
       );
     }

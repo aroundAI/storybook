@@ -1059,9 +1059,12 @@ export function PublishScreen({
       toast.success(`Scheduled ${platformConfigs.length} uploads`);
       refetchPublishes();
     } catch (error) {
-      // Use generic error message for security (avoid exposing server details)
+      // A refusal says why (FILM-2212: a video over Facebook's or
+      // Instagram's limit); anything else stays generic
       console.error('Scheduling failed:', error);
-      toast.error('Failed to schedule uploads. Please try again.');
+      toast.error(
+        refusalMessage(error, 'Failed to schedule uploads. Please try again.'),
+      );
     } finally {
       setIsScheduling(false);
     }

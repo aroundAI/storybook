@@ -2257,6 +2257,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.965.0
         version: 3.965.0
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
       mime-types:
         specifier: ^2.1.35
         version: 2.1.35
@@ -2840,6 +2843,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@noble/hashes':
+        specifier: 1.8.0
+        version: 1.8.0
       pino:
         specifier: ^9.9.5
         version: 9.9.5

@@ -6,6 +6,8 @@
  *
  * This module is designed to be used in client-side code across all packages.
  */
+import { calculateFileHash } from '@kit/shared/utils';
+
 import {
   ACCOUNT_IMAGE_BUCKET,
   PROJECT_ASSETS_BUCKET,
@@ -88,18 +90,6 @@ export async function requestPresignedUpload(
   return data;
 }
 
-/** A body's SHA-256, lower-case hex, computed in the browser */
-async function sha256OfBody(body: Blob): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    await body.arrayBuffer(),
-  );
-
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('');
-}
-
 /**
  * Record the SHA-256 of a file just PUT to `project-assets` (KB-189), so the
  * edit package can hand StorybookStudio a hash to verify it by. The server
@@ -123,7 +113,7 @@ export async function recordUploadChecksum(
       body: JSON.stringify({
         bucket,
         path,
-        sha256: await sha256OfBody(body),
+        sha256: await calculateFileHash(body),
         size: body.size,
       }),
     });

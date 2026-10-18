@@ -11,7 +11,6 @@ import {
   type BreakingSettings,
   ChannelPostingRulesDialog,
 } from '@kit/publishing/components';
-import { YOUTUBE_UPLOADS_PER_DAY } from '@kit/publishing/lib/cadence/plan-breaking-release';
 import {
   type BreakingPreview,
   QUEUE_WARNING_DAYS,
@@ -166,7 +165,7 @@ export function useCadenceRelease(props: {
       );
       if (result.quota.length > 0) {
         toast.warning(
-          `More than ${YOUTUBE_UPLOADS_PER_DAY} YouTube uploads on ${result.quota.map((q) => q.day).join(', ')}: uploads past the daily quota fail until it resets.`,
+          `More than ${result.quota[0]!.limit} YouTube uploads on ${result.quota.map((q) => q.day).join(', ')}: uploads past the daily quota fail until it resets.`,
         );
       }
       props.onChanged();

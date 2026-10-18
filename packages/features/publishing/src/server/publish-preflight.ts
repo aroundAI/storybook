@@ -23,6 +23,10 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
+import {
+  hasVideoLimits,
+  platformVideoRefusal,
+} from '../lib/platform-video-limits';
 import { PLATFORM_NAMES } from '../lib/platforms';
 import type { PublishToAllSchema } from '../lib/schemas/publish.schema';
 import { groupTakesPlatform } from '../lib/shorts-targets';
@@ -140,7 +144,7 @@ async function declareYouTubeUploads(
 async function assertXWillAccept(
   client: Client,
   platforms: PublishPlatformInput[],
-  episode: Parameters<typeof resolveEpisodeVideo>[0] & { project_id: string },
+  episode: PreflightEpisode,
   episodeId: string,
 ) {
   const toX = platforms.filter((platform) => platform.platform === 'twitter');
@@ -159,29 +163,105 @@ async function assertXWillAccept(
       );
     }
 
-    const language =
+    const videoUrl = await videoOfTarget(
+      client,
+      platform,
       platform.language ??
-      connections.find((row) => row.id === platform.connectionId)?.language;
-    const short = platform.contentType === 'short';
-    const resolved = resolveEpisodeVideo(episode, {
-      language: language ?? 'en',
-      platform: platform.platform,
-      short,
-      shortsGroupId: short ? platform.shortsGroupId : null,
-      ...PUBLISH_NOW_PRECEDENCE,
-    });
-    const videoUrl =
-      resolved &&
-      (await ownedEpisodeVideo(
-        resolved.url,
-        { episodeId, projectId: episode.project_id },
-        projectOfEpisodeVia(client),
-      ));
+        connections.find((row) => row.id === platform.connectionId)?.language,
+      episode,
+      episodeId,
+    );
 
     // The upload refuses these itself, with its own words.
     if (!videoUrl) continue;
 
     const refusal = xVideoRefusal(await readMp4Facts(videoUrl));
+
+    if (refusal) throw new ActionRefusal(refusal);
+  }
+}
+
+type PreflightEpisode = Parameters<typeof resolveEpisodeVideo>[0] & {
+  project_id: string;
+};
+
+/** The video a target would send: the one the upload resolves, if owned */
+async function videoOfTarget(
+  client: Client,
+  platform: PublishPlatformInput,
+  language: string | null | undefined,
+  episode: PreflightEpisode,
+  episodeId: string,
+) {
+  const short = platform.contentType === 'short';
+  const resolved = resolveEpisodeVideo(episode, {
+    language: language ?? 'en',
+    platform: platform.platform,
+    short,
+    shortsGroupId: short ? platform.shortsGroupId : null,
+    ...PUBLISH_NOW_PRECEDENCE,
+  });
+
+  return (
+    resolved &&
+    (await ownedEpisodeVideo(
+      resolved.url,
+      { episodeId, projectId: episode.project_id },
+      projectOfEpisodeVia(client),
+    ))
+  );
+}
+
+/**
+ * FILM-2212. Refuses, before anything is written, a video Facebook or
+ * Instagram would refuse for its size or length: StoryBook takes uploads up
+ * to `MAX_VIDEO_UPLOAD_BYTES`, and both platforms take less. Read from the
+ * file's own header and size, as for X; a fact the file does not give is
+ * left to the upload.
+ */
+async function assertPlatformsWillAccept(
+  client: Client,
+  platforms: PublishPlatformInput[],
+  episode: PreflightEpisode,
+  episodeId: string,
+) {
+  const limited = platforms.filter((platform) =>
+    hasVideoLimits(platform.platform),
+  );
+
+  if (limited.length === 0) return;
+
+  const { data: connections, error } = await client
+    .from('platform_connections')
+    .select('id, language')
+    .in('id', [...new Set(limited.map((platform) => platform.connectionId))]);
+
+  if (error) {
+    throw new Error('Could not read the channels being published to');
+  }
+
+  const factsOf = new Map<string, ReturnType<typeof readMp4Facts>>();
+
+  for (const platform of limited) {
+    if (!hasVideoLimits(platform.platform)) continue;
+
+    const videoUrl = await videoOfTarget(
+      client,
+      platform,
+      platform.language ??
+        connections?.find((row) => row.id === platform.connectionId)?.language,
+      episode,
+      episodeId,
+    );
+
+    if (!videoUrl) continue;
+
+    if (!factsOf.has(videoUrl)) factsOf.set(videoUrl, readMp4Facts(videoUrl));
+
+    const refusal = platformVideoRefusal(
+      platform.platform,
+      await factsOf.get(videoUrl)!,
+    );
 
     if (refusal) throw new ActionRefusal(refusal);
   }
@@ -225,8 +305,8 @@ async function assertXUploadScope(
  * Every refusal a publish gets before a row is written: the episode has a
  * video, each channel is the team's and the project's, each Shorts group
  * goes to the platform it is sent to, each thumbnail is the episode's own,
- * each YouTube upload declares its audience (KB-30), and X would accept it
- * (FILM-1729).
+ * each YouTube upload declares its audience (KB-30), and X, Facebook and
+ * Instagram would accept it (FILM-1729, FILM-2212).
  */
 export async function preparePublish(
   client: Client,
@@ -323,6 +403,9 @@ export async function preparePublish(
 
   // FILM-1729: nothing goes to X that X would refuse
   await assertXWillAccept(client, platforms, episode, episodeId);
+
+  // FILM-2212: nor to Facebook or Instagram, whose limits are below ours
+  await assertPlatformsWillAccept(client, platforms, episode, episodeId);
 
   return { episode, episodeThumbnail, declared };
 }

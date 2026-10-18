@@ -13,10 +13,12 @@ import {
  * What StorybookStudio sends back (FILM-2003): the inputs of
  * request_render_upload, finalize_render and deliver_edit. The size limits
  * are the `project-assets` bucket's (KB-28): a render is a video, at most
- * 500 MB; its thumbnail an image, at most 10 MB; its captions a WebVTT file,
+ * what one PUT to R2 carries (FILM-2212: `MAX_VIDEO_UPLOAD_BYTES` in
+ * `@kit/shared/upload-limits`, written out here because the fork copies
+ * this file, and bound to it by a test); its thumbnail an image, at most 10 MB; its captions a WebVTT file,
  * at most 2 MB. Zod only, so the fork copies this file unchanged.
  */
-export const MAX_RENDER_BYTES = 500 * 1024 * 1024;
+export const MAX_RENDER_BYTES = 5 * 1024 ** 3 - 5 * 1024 ** 2;
 export const MAX_RENDER_THUMBNAIL_BYTES = 10 * 1024 * 1024;
 export const MAX_RENDER_CAPTIONS_BYTES = 2 * 1024 * 1024;
 

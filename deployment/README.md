@@ -196,6 +196,12 @@ ANALYTICS_SCOPES_ENABLED=youtube,meta
 # never past day 28 of X's 30-day wall. Leave unset (off) until a funded
 # pay-per-use X account exists; set to exactly `true` to turn it on.
 # X_ANALYTICS_ENABLED=true
+
+# YouTube upload warning (FILM-2212). A breaking release warns when a Pacific
+# day would hold more YouTube uploads than this, across the team's channels.
+# Unset = 6, YouTube's default budget (10,000 units / 1,600 per upload). Raise
+# it once Google grants the project more quota. It warns; it never refuses.
+# YOUTUBE_DAILY_UPLOAD_WARN=6
 ```
 
 ### Configuration Files

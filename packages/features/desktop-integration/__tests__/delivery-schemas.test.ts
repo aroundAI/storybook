@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { MAX_VIDEO_UPLOAD_BYTES } from '@kit/shared/upload-limits';
+
 import {
   DeliveryPackageSchema,
   ExplainWhyReportSchema,
@@ -98,6 +100,18 @@ describe('RequestRenderUploadSchema', () => {
   it('accepts a render and defaults the language to en', () => {
     const parsed = RequestRenderUploadSchema.parse(valid);
     expect(parsed.language).toBe('en');
+  });
+
+  // FILM-2212: the fork copies this schema, so the cap is written out; it is
+  // still the one video upload limit.
+  it('caps a render at the one video upload limit', () => {
+    expect(MAX_RENDER_BYTES).toBe(MAX_VIDEO_UPLOAD_BYTES);
+    expect(
+      RequestRenderUploadSchema.safeParse({
+        ...valid,
+        bytes: MAX_VIDEO_UPLOAD_BYTES,
+      }).success,
+    ).toBe(true);
   });
 
   it('refuses another container, a zero size and a size over the bucket limit', () => {

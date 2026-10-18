@@ -10,6 +10,7 @@ import {
   type PlanBreakingInput,
   boostDayTimes,
   planBreakingRelease,
+  youtubeDailyUploadWarnAt,
   youtubeQuotaWarnings,
 } from '../src/lib/cadence/plan-breaking-release';
 import {
@@ -413,11 +414,20 @@ describe('the YouTube upload budget', () => {
 
   it('warns past 6 uploads in a Pacific day', () => {
     expect(youtubeQuotaWarnings(pacificNoon(7))).toEqual([
-      { day: '2026-11-02', uploads: 7 },
+      { day: '2026-11-02', uploads: 7, limit: 6 },
     ]);
   });
 
   it('says nothing at 6', () => {
     expect(youtubeQuotaWarnings(pacificNoon(6))).toEqual([]);
+  });
+
+  // FILM-2212: YOUTUBE_DAILY_UPLOAD_WARN, server-only
+  it('takes the threshold from the server setting, 6 when unset or not a positive whole number', () => {
+    expect(youtubeDailyUploadWarnAt('12')).toBe(12);
+    for (const value of [undefined, '', '0', '-3', '2.5', 'six']) {
+      expect(youtubeDailyUploadWarnAt(value)).toBe(6);
+    }
+    expect(youtubeQuotaWarnings(pacificNoon(7), 12)).toEqual([]);
   });
 });

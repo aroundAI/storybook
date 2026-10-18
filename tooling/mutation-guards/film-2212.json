@@ -1,0 +1,104 @@
+{
+  "feature": "FILM-2212 one video upload limit, what one PUT to R2 carries (4.99 GB), on every path; the browser hashes a large file in chunks; Facebook's and Instagram's limits refused when a publish is prepared; the YouTube upload warning set by YOUTUBE_DAILY_UPLOAD_WARN",
+  "mutations": [
+    {
+      "name": "F2212-U1 the presign route's video category writes 500 MB out again",
+      "kind": "unit",
+      "file": "packages/features/assets/src/lib/upload-validation.ts",
+      "find": "    maxSize: MAX_VIDEO_UPLOAD_BYTES,\n",
+      "replace": "    maxSize: 500 * 1024 * 1024,\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/video-upload-limit.test.ts",
+      "pattern": "not written out as the old 500 MB"
+    },
+    {
+      "name": "F2212-U2 request_episode_video_upload caps a video at 500 MB",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/author/episode-production.ts",
+      "find": ".max(MAX_VIDEO_UPLOAD_BYTES),",
+      "replace": ".max(500 * 1024 * 1024),",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/flexible-production-tools.test.ts",
+      "pattern": "takes a video up to the upload limit"
+    },
+    {
+      "name": "F2212-U3 a render's cap drifts from the upload limit",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/delivery-package.schema.ts",
+      "find": "export const MAX_RENDER_BYTES = 5 * 1024 ** 3 - 5 * 1024 ** 2;",
+      "replace": "export const MAX_RENDER_BYTES = 1024 ** 3;",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/delivery-schemas.test.ts",
+      "pattern": "caps a render at the one video upload limit"
+    },
+    {
+      "name": "F2212-U4 the browser reads the whole file into memory to hash it",
+      "kind": "unit",
+      "file": "packages/shared/src/utils/file-hashing.ts",
+      "find": "  const hash = sha256.create();\n  const reader = file.stream().getReader();\n",
+      "replace": "  await file.arrayBuffer();\n  const hash = sha256.create();\n  const reader = file.stream().getReader();\n",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/upload-checksum-client.test.ts",
+      "pattern": "hashes a large body chunk by chunk"
+    },
+    {
+      "name": "F2212-U5 a host that ignores Range has its whole file read",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/mp4-facts.ts",
+      "find": "  if (response.status !== 206) {\n",
+      "replace": "  if (!response.ok) {\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/mp4-facts.test.ts",
+      "pattern": "ignores Range"
+    },
+    {
+      "name": "F2212-U6 preflight does not ask Facebook's and Instagram's limits",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-preflight.ts",
+      "find": "  await assertPlatformsWillAccept(client, platforms, episode, episodeId);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-platform-limits.test.ts",
+      "pattern": "refuses a 2.5 GB long video to Facebook"
+    },
+    {
+      "name": "F2212-U7 a platform's size limit is not checked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platform-video-limits.ts",
+      "find": "  if (bytes !== null && bytes > limits.maxBytes) {",
+      "replace": "  if (bytes !== null && bytes > limits.maxBytes * 10) {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-platform-limits.test.ts",
+      "pattern": "refuses a 400 MB Short to Instagram"
+    },
+    {
+      "name": "F2212-U8 a platform's length limit is not checked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platform-video-limits.ts",
+      "find": "  if (durationSeconds !== null && durationSeconds > limits.maxSeconds) {",
+      "replace": "  if (durationSeconds !== null && durationSeconds > limits.maxSeconds * 2) {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-platform-limits.test.ts",
+      "pattern": "Facebook would refuse for its length"
+    },
+    {
+      "name": "F2212-U9 the quota warning ignores YOUTUBE_DAILY_UPLOAD_WARN",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/schedule-release.service.ts",
+      "find": "    youtubeDailyUploadWarnAt(process.env.YOUTUBE_DAILY_UPLOAD_WARN),\n",
+      "replace": "    youtubeDailyUploadWarnAt(undefined),\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-release.service.test.ts",
+      "pattern": "warns, without refusing, past 6 YouTube uploads"
+    },
+    {
+      "name": "F2212-E1 the Publish screen's upload dialog states 500 MB again",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/upload-video-dialog.tsx",
+      "find": "                    Max {formatUploadSize(MAX_VIDEO_UPLOAD_BYTES)}\n",
+      "replace": "                    Max 500MB\n",
+      "spec": "tests/publishing/large-uploads.spec.ts",
+      "grep": "the upload dialog offers 4.99 GB"
+    }
+  ]
+}

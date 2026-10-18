@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
+import { MAX_VIDEO_UPLOAD_BYTES } from '@kit/shared/upload-limits';
 import type { StorageAdapter } from '@kit/storage';
 
 import { McpToolError } from '../../src/errors';
@@ -259,6 +261,22 @@ describe('episode video tools', () => {
     );
     expect(store.signed).toEqual([result.structuredContent.key]);
     expect(fake.tables()).toContain('rpc:can_write_project_storage');
+  });
+
+  // FILM-2212: up to what one PUT to R2 carries, 4.99 GB; was 500 MB
+  it('request_episode_video_upload takes a video up to the upload limit, and a byte over is refused', () => {
+    const input = z.object(tools(storage(null).adapter).request.inputSchema);
+    const asking = (bytes: number) =>
+      input.safeParse({
+        episodeId: EPISODE,
+        language: 'en',
+        contentType: 'video/mp4',
+        bytes,
+      }).success;
+
+    expect(asking(2_000_000_000)).toBe(true);
+    expect(asking(MAX_VIDEO_UPLOAD_BYTES)).toBe(true);
+    expect(asking(MAX_VIDEO_UPLOAD_BYTES + 1)).toBe(false);
   });
 
   it('request_episode_video_upload refuses a caller who cannot write the project', async () => {

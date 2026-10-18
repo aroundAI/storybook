@@ -56,7 +56,8 @@ describe('Upload Validation', () => {
     });
 
     it('should have correct video constraints', () => {
-      expect(UPLOAD_CONSTRAINTS.video.maxSize).toBe(500 * 1024 * 1024); // 500MB
+      // FILM-2212: what one PUT to R2 carries, 5 GiB less 5 MiB
+      expect(UPLOAD_CONSTRAINTS.video.maxSize).toBe(5_363_466_240);
       expect(UPLOAD_CONSTRAINTS.video.allowedTypes).toContain('video/mp4');
       expect(UPLOAD_CONSTRAINTS.video.allowedTypes).toContain('video/webm');
       expect(UPLOAD_CONSTRAINTS.video.allowedTypes).toContain(
@@ -108,7 +109,7 @@ describe('Upload Validation', () => {
           magicBytes,
           'test.webm',
           'video/webm',
-          500 * 1024 * 1024,
+          UPLOAD_CONSTRAINTS.video.maxSize,
         );
 
         const result = await validateUpload(file, 'video');
@@ -121,7 +122,7 @@ describe('Upload Validation', () => {
           magicBytes,
           'test.webm',
           'video/webm',
-          500 * 1024 * 1024 + 1,
+          UPLOAD_CONSTRAINTS.video.maxSize + 1,
         );
 
         const result = await validateUpload(file, 'video');
@@ -452,7 +453,7 @@ describe('Upload Validation', () => {
   describe('getMaxFileSizeForCategory', () => {
     it('should return correct max sizes', () => {
       expect(getMaxFileSizeForCategory('image')).toBe('10 MB');
-      expect(getMaxFileSizeForCategory('video')).toBe('500 MB');
+      expect(getMaxFileSizeForCategory('video')).toBe('4.99 GB');
       expect(getMaxFileSizeForCategory('audio')).toBe('50 MB');
     });
   });

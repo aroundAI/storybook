@@ -8,6 +8,10 @@ import { useDropzone } from 'react-dropzone';
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
 import { LANG_INFO } from '@kit/publishing/lib/constants';
 import { takesVideo } from '@kit/publishing/lib/constants';
+import {
+  MAX_VIDEO_UPLOAD_BYTES,
+  formatUploadSize,
+} from '@kit/shared/upload-limits';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -71,7 +75,7 @@ export function UploadVideoDialog({
       'video/webm': ['.webm'],
     },
     maxFiles: 1,
-    maxSize: 500 * 1024 * 1024,
+    maxSize: MAX_VIDEO_UPLOAD_BYTES,
   });
 
   const handleUpload = () => {
@@ -182,7 +186,7 @@ export function UploadVideoDialog({
                   </p>
                   <p className="mt-1 text-xs text-gray-400">
                     {uploadType === 'full' ? '16:9' : '9:16'} • MP4, MOV, WebM •
-                    Max 500MB
+                    Max {formatUploadSize(MAX_VIDEO_UPLOAD_BYTES)}
                   </p>
                 </div>
               )}

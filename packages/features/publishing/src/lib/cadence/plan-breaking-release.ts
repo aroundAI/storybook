@@ -408,6 +408,21 @@ export function planBreakingRelease(input: PlanBreakingInput): BreakingPlan {
 /** YouTube's daily upload budget: 10,000 quota units ÷ 1,600 per upload */
 export const YOUTUBE_UPLOADS_PER_DAY = 6;
 
+/**
+ * The uploads a Pacific day may hold before a release warns (FILM-2212):
+ * `YOUTUBE_DAILY_UPLOAD_WARN`, a positive whole number, server-only. Unset
+ * or anything else is YouTube's default budget, 6. Set it when Google
+ * grants the project more quota. It only moves the warning: nothing is
+ * refused either way.
+ */
+export function youtubeDailyUploadWarnAt(value: string | undefined): number {
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed > 0
+    ? parsed
+    : YOUTUBE_UPLOADS_PER_DAY;
+}
+
 /** YouTube's quota day starts at midnight Pacific time */
 const QUOTA_TIMEZONE = 'America/Los_Angeles';
 
@@ -415,6 +430,8 @@ export interface QuotaDay {
   /** The Pacific-time date */
   day: string;
   uploads: number;
+  /** The uploads a day may hold before it warns */
+  limit: number;
 }
 
 /**
@@ -434,6 +451,6 @@ export function youtubeQuotaWarnings(
 
   return [...perDay]
     .filter(([, count]) => count > limit)
-    .map(([day, count]) => ({ day, uploads: count }))
+    .map(([day, count]) => ({ day, uploads: count, limit }))
     .sort((a, b) => a.day.localeCompare(b.day));
 }
