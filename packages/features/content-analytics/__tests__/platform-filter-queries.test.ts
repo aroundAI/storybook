@@ -100,7 +100,7 @@ const totals = (views: number) => ({
 vi.mock('@kit/clickhouse/server', () => ({
   queryTotalsByVideoIds: async (ids: string[]) =>
     new Map(ids.map((id) => [id, totals(VIEWS[id] ?? 0)])),
-  queryVideoMetricTotals: async () => [],
+  queryVideoMetricSums: async () => [],
   queryPlatformBreakdown: async (filters: { platforms?: string[] }) => {
     calls.clickHouse.push({
       name: 'queryPlatformBreakdown',

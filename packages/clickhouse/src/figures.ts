@@ -146,7 +146,7 @@ export async function queryVideoMetricDays(
  * percentage viewed is weighted by each day's views. A sum over days none
  * of which measured a column is null (`count(col) = 0`), never 0.
  */
-export interface VideoMetricTotalsRow {
+export interface VideoMetricSumsRow {
   videoId: string;
   platform: string;
   lastDate: string;
@@ -166,11 +166,11 @@ export interface VideoMetricTotalsRow {
 const MEASURED_SUM = (column: string) =>
   `if(count(${column}) = 0, NULL, sum(${column})) AS ${column}`;
 
-export async function queryVideoMetricTotals(input: {
+export async function queryVideoMetricSums(input: {
   projectIds: string[];
   videoIds: string[];
   to: string;
-}): Promise<VideoMetricTotalsRow[]> {
+}): Promise<VideoMetricSumsRow[]> {
   if (input.videoIds.length === 0 || !isClickHouseEnabled()) return [];
 
   return concatByChunk(input.videoIds, async (videoIds) => {
@@ -408,18 +408,18 @@ export async function queryVideoReachDays(input: {
  * Each video's impressions up to and including `to`, and their CTR weighted
  * by impressions — the only way a CTR over several days is one CTR.
  */
-export interface VideoReachTotalsRow {
+export interface VideoReachSumsRow {
   videoId: string;
   lastDate: string;
   impressions: number;
   impressionsCtr: number | null;
 }
 
-export async function queryVideoReachTotals(input: {
+export async function queryVideoReachSums(input: {
   projectIds: string[];
   videoIds: string[];
   to: string;
-}): Promise<VideoReachTotalsRow[]> {
+}): Promise<VideoReachSumsRow[]> {
   if (input.videoIds.length === 0 || !isClickHouseEnabled()) return [];
 
   return concatByChunk(input.videoIds, async (videoIds) => {
@@ -429,8 +429,10 @@ export async function queryVideoReachTotals(input: {
           video_id,
           toString(max(metric_date)) AS last_date,
           sum(impressions) AS total_impressions,
+          -- Six places: the column is Float32, whose ~7 significant digits
+          -- would otherwise read 0.05 back as 0.05000000074505806.
           if(sum(impressions) = 0, NULL,
-            sum(impressions * impressions_ctr) / sum(impressions)) AS weighted_ctr
+            round(sum(impressions * impressions_ctr) / sum(impressions), 6)) AS weighted_ctr
         FROM video_reach_daily FINAL
         WHERE project_id IN {projectIds: Array(UUID)}
           AND video_id IN {videoIds: Array(String)}

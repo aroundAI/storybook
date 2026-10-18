@@ -24,7 +24,7 @@ import {
   queryDailyTimeSeriesByPlatform,
   queryPlatformBreakdown,
   queryTotalsByVideoIds,
-  queryVideoMetricTotals,
+  queryVideoMetricSums,
 } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
@@ -1177,7 +1177,7 @@ export async function getContentList(
   const [latestAnalytics, figureTotals] = await Promise.all([
     queryTotalsByVideoIds(publishIds, { projectIds: [projectId] }),
     // The figures the totals above do not carry (FILM-1734), through today.
-    queryVideoMetricTotals({
+    queryVideoMetricSums({
       projectIds: [projectId],
       videoIds: publishIds,
       to: new Date().toISOString().slice(0, 10),

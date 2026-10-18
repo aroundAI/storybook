@@ -830,8 +830,8 @@ export class YouTubeAnalyticsProvider {
 
       return rows.map((row) => {
         const value = (name: (typeof CHANNEL_DAY_METRICS)[number]) => {
-          const index = headers.indexOf(name);
-          const cell = index < 0 ? undefined : row[index];
+          const column = headers.indexOf(name);
+          const cell = column < 0 ? undefined : row[column];
           return typeof cell === 'number' && Number.isFinite(cell)
             ? cell
             : null;
@@ -850,9 +850,9 @@ export class YouTubeAnalyticsProvider {
         };
       });
     } catch (error) {
-      if (isScopeMissingError(error) && !isQuotaError(error)) {
-        throw new YouTubeAnalyticsScopeError();
-      }
+      // A quota 403 says nothing about access.
+      if (isQuotaError(error)) throw error;
+      if (isScopeMissingError(error)) throw new YouTubeAnalyticsScopeError();
       throw error;
     }
   }
@@ -868,9 +868,9 @@ const CHANNEL_DAY_METRICS = [
   'likes',
   'dislikes',
   'comments',
-  'shares',
   'subscribersGained',
   'subscribersLost',
+  'shares',
 ] as const;
 
 /** A Data API count: a decimal string, or absent when YouTube withholds it. */

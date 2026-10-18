@@ -11,9 +11,9 @@ import {
   queryChannelSubscriberDays,
   queryLatestVideoSnapshots,
   queryVideoMetricDays,
-  queryVideoMetricTotals,
+  queryVideoMetricSums,
   queryVideoReachDays,
-  queryVideoReachTotals,
+  queryVideoReachSums,
   queryVideoSnapshotDays,
 } from '@kit/clickhouse/server';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
@@ -450,12 +450,12 @@ export async function getVideoLifetimeFigures(
       videoIds: publishes.map((p) => p.id),
       asOf,
     }),
-    queryVideoMetricTotals({
+    queryVideoMetricSums({
       projectIds,
       videoIds: youtubeIds,
       to: throughDay,
     }),
-    queryVideoReachTotals({ projectIds, videoIds: youtubeIds, to: throughDay }),
+    queryVideoReachSums({ projectIds, videoIds: youtubeIds, to: throughDay }),
   ]);
 
   const rows: VideoLifetimeFigures[] = [

@@ -114,9 +114,9 @@ import {
   queryVideoBenchmark,
   queryVideoLanguages,
   queryVideoMetricDays,
-  queryVideoMetricTotals,
+  queryVideoMetricSums,
   queryVideoReachDays,
-  queryVideoReachTotals,
+  queryVideoReachSums,
   queryVideoSnapshotDays,
   queryVideoViewsAtAge,
   queryViewsForVideos,
@@ -7259,8 +7259,8 @@ async function figuresSteps() {
 
   // 400 views, 12,000 s: 30 s a view. Percentage viewed weighted by views:
   // (50 × 100 + 30 × 300) / 400 = 35.
-  await step('queryVideoMetricTotals', async () => {
-    const [yt] = await queryVideoMetricTotals({
+  await step('queryVideoMetricSums', async () => {
+    const [yt] = await queryVideoMetricSums({
       projectIds: [FIG_PROJECT],
       videoIds: ['fig-yt'],
       to: '2026-10-11',
@@ -7322,10 +7322,10 @@ async function figuresSteps() {
     ),
   );
 
-  await step('queryVideoReachTotals', async () =>
+  await step('queryVideoReachSums', async () =>
     expect(
       (
-        await queryVideoReachTotals({
+        await queryVideoReachSums({
           projectIds: [FIG_PROJECT],
           videoIds: ['fig-yt'],
           to: '2026-10-11',

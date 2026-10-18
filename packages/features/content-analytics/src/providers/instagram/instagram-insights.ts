@@ -481,7 +481,7 @@ export class InstagramInsightsProvider {
       const response = await metaFetch(
         `/${this.instagramAccountId}/insights?` +
           new URLSearchParams({
-            metric: 'views,reach',
+            metric: 'reach,views',
             metric_type: 'total_value',
             period: 'day',
             since: since.toString(),

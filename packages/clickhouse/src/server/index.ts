@@ -117,18 +117,18 @@ export {
   queryChannelMetricsDays,
   queryLatestVideoSnapshots,
   queryVideoMetricDays,
-  queryVideoMetricTotals,
+  queryVideoMetricSums,
   queryVideoReachDays,
-  queryVideoReachTotals,
+  queryVideoReachSums,
   queryVideoSnapshotDays,
 } from '../figures';
 export type {
   ChannelSubscriberDayRow,
   ChannelMetricsDayRow,
   VideoMetricDayRow,
-  VideoMetricTotalsRow,
+  VideoMetricSumsRow,
   VideoReachDayRow,
-  VideoReachTotalsRow,
+  VideoReachSumsRow,
   VideoSnapshotRow,
 } from '../figures';
 
