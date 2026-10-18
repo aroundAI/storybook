@@ -36,16 +36,22 @@ acceptance_criteria:
     evidence: "Met (#675): packages/features/publishing/src/components/channel-posting-rules-dialog.tsx ChannelPostingRulesDialog, the one dialog the Publish screen (use-cadence-release.tsx), the Schedule page (posting-rules-section.tsx) and platform-connections.tsx ConnectionRow open; channel-cadence-dialog.tsx data-test channel-cadence-scope. E2E apps/e2e/tests/publishing/schedule-page.spec.ts 'edits a channel’s posting rules from the Schedule page and from Settings → Platforms, without opening an episode'. Guard E2E P1"
   - text: "Reads and writes go through readChannelCadences and saveChannelCadence via the existing getChannelCadencesAction and saveChannelCadenceAction; a refusal comes back as a value"
     met: true
-    evidence: "Met (#675): the Schedule page reads readChannelCadences (schedule/page.tsx); the dialog reads getChannelCadencesAction and saves with saveChannelCadenceAction (returnRefusals), unchanged. E2E: the Instagram long-video rules saved from Settings read back from channel_posting_cadences as slot_times ['20:00'], min_days_between 2"
+    evidence: "Met (#675): the Schedule page reads readChannelCadences (schedule/page.tsx); the dialog reads getChannelCadencesAction and saves with saveChannelCadenceAction (returnRefusals), unchanged. E2E: the Instagram Shorts rules saved from Settings read back from channel_posting_cadences as slot_times ['20:00'], every_n_days 2"
   - text: "The Schedule page's Posting rules section lists the project's channels with a one-line summary per channel ('Long 20:00 every 3 days · Shorts 11:00, 17:00 daily, from 2 h after · Asia/Kolkata'), a type on the defaults (none saved, or switched off) saying so, and the summary changes after a save"
     met: true
-    evidence: "Met (#675): packages/features/publishing/src/lib/schedule-view.ts cadenceSummary. Tests: schedule-view.test.ts 'says each type’s times, spacing and zone in one line', 'names the days when not every day, and every N days for Shorts', 'says when a type posts on the defaults: none saved, or switched off', 'gives each type its zone when the two differ'. E2E: the YouTube summary from defaults to 'Shorts 11:00, 17:00 daily, from 2 h after (Asia/Kolkata)' after a save on the page; the Instagram one to 'Long 20:00 every 2 days (Asia/Kolkata)' after a save in Settings. Guards S1, E2E P2"
+    evidence: "Met (#675): packages/features/publishing/src/lib/schedule-view.ts cadenceSummary. Tests: schedule-view.test.ts 'says each type’s times, spacing and zone in one line', 'names the days when not every day, and every N days for Shorts', 'says when a type posts on the defaults: none saved, or switched off', 'gives each type its zone when the two differ'. E2E: the YouTube summary from defaults to 'Shorts 11:00, 17:00 daily, from 2 h after (Asia/Kolkata)' after a save on the page; the Instagram one to 'Shorts 20:00 every 2 days, from 2 h after · Asia/Kolkata' after a save in Settings. Guards S1, E2E P2"
+  - text: "A channel's summary and dialog show only the kinds of video its platform takes, from the one list takesVideo reads (FULL_VIDEO_PLATFORMS): Instagram's show the Shorts rule only, with no Long videos tab"
+    met: true
+    evidence: "Met (#675): schedule-view.ts cadenceSummary(cadences, platform) and channel-cadence-dialog.tsx takesLong, both through constants.ts takesVideo; every caller passes the channel's platform. Test: schedule-view.test.ts 'leaves out the long rule on a channel that takes no long videos'. E2E: Instagram's summary reads 'Shorts 18:00 daily, from 2 h after (default)', its dialog from Settings has no cadence-tab-full and shows cadence-shorts-only, YouTube's keeps the tab. Guards S7, E2E I1"
   - text: "A Schedule item with an icon in the project's left nav (and the mobile header) opens apps/web/app/home/[account]/studio/[projectSlug]/schedule"
     met: true
     evidence: "Met (#675): studio-sidebar.tsx and mobile-studio-header.tsx NavItem 'Schedule' (CalendarClock); studio:routes.schedule titles the page. E2E: the listing test opens the page from studio-nav-schedule. Guard E2E N1"
   - text: "The table reads readPublishCalendar (extended with the episode's slug and the breaking flag) and shows, in time order with held Shorts last, the date and time in the viewer's timezone, platform, channel, episode (linking to its Publish screen), long video or Short, title and status: scheduled, queued, publishing, published with its link, failed with its reason, held with its reason, and a Breaking badge"
     met: true
-    evidence: "Met (#675): publish-calendar.service.ts (release_priority, episodes.slug; MCP get_publish_calendar returns both too), schedule/_components/schedule-table.tsx (useSyncExternalStore for the viewer's zone). Tests: schedule-view.test.ts scheduleStatusOf; release-tools.test.ts 'marks a breaking post and names its episode’s slug (FILM-2211)'. E2E: five seeded posts in order, two times in Asia/Kolkata as the browser formats them, the published link, the failed and held reasons, the Breaking badge, the episode link. Guards S5, S6"
+    evidence: "Met (#675): publish-calendar.service.ts (release_priority, episodes.slug; MCP get_publish_calendar returns both too), schedule/_components/schedule-table.tsx (useSyncExternalStore for the viewer's zone; the header names it 'When (GMT+5:30)' through lib/time-zone-label.ts timeZoneLabel, which the release panel's 'Times shown in your local timezone' now uses too). Tests: schedule-view.test.ts scheduleStatusOf; time-zone-label.test.ts; release-tools.test.ts 'marks a breaking post and names its episode’s slug (FILM-2211)'. E2E: five seeded posts in order, two times in Asia/Kolkata as the browser formats them, the published link, the failed and held reasons, the Breaking badge, the episode link, the header 'When (GMT+5:30)'. Guards S5, S6, S8, E2E T1"
+  - text: "The Schedule page and Settings → Platforms log no console error of their own"
+    met: true
+    evidence: "Met (#675): schedule-page.spec.ts fails either test on any console error or page error but the two the LLM WebSocket provider logs (KNOWN_NOISE, see notes); seen red on a table row without its key. Guard E2E K1"
   - text: "Filters in the URL: type (all, long, short), platform, status, and a date range defaulting to 7 days back and 30 days ahead, at most 62 days (the calendar read's cap, now one constant shared with get_publish_calendar); anything unknown in the URL is ignored"
     met: true
     evidence: "Met (#675): schedule-view.ts parseScheduleFilters, matchesScheduleFilters, MAX_CALENDAR_DAYS (release.ts imports it); schedule-filters.tsx. Tests: schedule-view.test.ts 'defaults to every post from 7 days back to 30 days ahead', 'ignores values it does not know rather than showing nothing', 'reads at most 62 days, and says it cut the range', 'long means anything that is not a Short', 'filters by platform and status'. E2E: Shorts (3 rows), Shorts on Instagram (2), Failed on any platform (1), an empty state for Publishing. Guards S2, S3, S4, E2E F1"
@@ -73,6 +79,18 @@ notes: >
   asked for (useOptimistic), guard E2E F1. And a type whose saved rules
   are switched off showed the saved times although the defaults apply;
   the summary now shows the defaults, guard S1.
+
+  Review, 2026-10-18. The Next dev overlay's "2 Issues" on the Schedule
+  page and "1 Issue" on Settings → Platforms were not this spec's: read
+  from Playwright's console and pageerror events, the only errors on
+  either page are "WebSocket connection to 'ws://127.0.0.1:4121/'
+  failed" and "[LlmWebSocket] WebSocket error", which
+  packages/ui/src/hooks/llm-websocket-provider.tsx logs on every page
+  when no LLM WebSocket server runs (none does in a dev or test run). No
+  hydration, key or page error came from the branch; the E2E now fails on
+  any other. Instagram takes no long videos in this product, so its rules
+  are Shorts only, and the table names the viewer's zone as the release
+  panel does (GMT+5:30, not Asia/Calcutta, Chromium's older alias).
 feature:
   database: null
   queries:

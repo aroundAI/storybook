@@ -62,6 +62,26 @@
       "test": "__tests__/schedule-view.test.ts"
     },
     {
+      "name": "S7 Instagram's summary names a long-video rule",
+      "file": "packages/features/publishing/src/lib/schedule-view.ts",
+      "find": "    if (!state || !takesVideo(contentType, platform)) return [];\n",
+      "replace": "    if (!state) return [];\n",
+      "pattern": "leaves out the long rule",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-view.test.ts"
+    },
+    {
+      "name": "S8 a zone is named by its IANA name",
+      "file": "packages/features/publishing/src/lib/time-zone-label.ts",
+      "find": "    return formatInTimeZone(at, timeZone, 'zzz');\n",
+      "replace": "    return timeZone;\n",
+      "pattern": "names a zone by its offset",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/time-zone-label.test.ts"
+    },
+    {
       "name": "E2E P1 Settings → Platforms opens no posting rules",
       "kind": "e2e",
       "file": "packages/features/publishing/src/components/platform-connections.tsx",
@@ -103,6 +123,33 @@
       "file": "apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx",
       "find": "                href={`${basePath}/schedule`}\n",
       "replace": "                href={`${basePath}/episodes`}\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "lists every post in the viewer"
+    },
+    {
+      "name": "E2E T1 the When header names the zone by its IANA name",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/schedule/_components/schedule-table.tsx",
+      "find": "              When{timeZone ? ` (${timeZoneLabel(timeZone)})` : ''}\n",
+      "replace": "              When{timeZone ? ` (${timeZone})` : ''}\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "lists every post in the viewer"
+    },
+    {
+      "name": "E2E I1 Instagram's dialog offers long videos",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/components/channel-cadence-dialog.tsx",
+      "find": "  const takesLong = takesVideo('full', props.channel.platform);\n",
+      "replace": "  const takesLong = true;\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "edits a channel’s posting rules"
+    },
+    {
+      "name": "E2E K1 the table's rows lose their key (a console error)",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/schedule/_components/schedule-table.tsx",
+      "find": "              key={row.publishId}\n",
+      "replace": "              data-k={row.publishId}\n",
       "spec": "tests/publishing/schedule-page.spec.ts",
       "grep": "lists every post in the viewer"
     }

@@ -192,6 +192,35 @@ function summaryOf(page: Page, connectionId: string) {
   );
 }
 
+/**
+ * The LLM WebSocket provider (packages/ui) logs these on every page when
+ * nothing listens on :4121, as in a test run: the dev overlay's "Issues" on
+ * both pages, and not theirs. Anything else logged as an error fails.
+ */
+const KNOWN_NOISE = [
+  /^WebSocket connection to 'ws:\/\/127\.0\.0\.1:4121\/' failed/,
+  /^\[LlmWebSocket\] WebSocket error/,
+];
+
+let consoleErrors: string[] = [];
+
+test.beforeEach(({ page }) => {
+  consoleErrors = [];
+  page.on('console', (message) => {
+    if (
+      message.type() === 'error' &&
+      !KNOWN_NOISE.some((noise) => noise.test(message.text()))
+    ) {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('pageerror', (error) => consoleErrors.push(error.message));
+});
+
+test.afterEach(() => {
+  expect(consoleErrors, 'console errors on the page').toEqual([]);
+});
+
 test.describe('The Schedule page', () => {
   test('lists every post in the viewer’s time, filters by type, platform and status, and cancels a scheduled post', async ({
     page,
@@ -224,12 +253,8 @@ test.describe('The Schedule page', () => {
     const row = (id: string) =>
       visible(page, `[data-test="schedule-row"][data-publish-id="${id}"]`);
 
-    // Times in the viewer's zone, which the header names
-    // Chromium names Asia/Kolkata by its older alias: ask the browser
-    const zone = await page.evaluate(
-      () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-    );
-    await expect(byTest(page, 'schedule-when')).toHaveText(`When (${zone})`);
+    // Times in the viewer's zone, which the header names as the release panel does
+    await expect(byTest(page, 'schedule-when')).toHaveText('When (GMT+5:30)');
     await expect(
       row(posts.scheduled.id).locator('[data-test="schedule-row-time"]'),
     ).toHaveText(await shown(page, times.scheduled));
@@ -347,6 +372,10 @@ test.describe('The Schedule page', () => {
     await expect(summaryOf(page, yt)).toHaveText(
       'Long 17:00 every 3 days (default) · Shorts 18:00 daily, from 2 h after (default)',
     );
+    // Instagram takes no long videos: its Shorts rule only
+    await expect(summaryOf(page, ig)).toHaveText(
+      'Shorts 18:00 daily, from 2 h after (default)',
+    );
 
     // --- From the Schedule page: YouTube's Shorts at 11:00 and 17:00
     await visible(
@@ -357,6 +386,7 @@ test.describe('The Schedule page', () => {
     await expect(byTest(page, 'channel-cadence-scope')).toContainText(
       'every project and episode that posts to Story YT',
     );
+    await expect(byTest(page, 'cadence-tab-full')).toBeVisible();
     const times = byTest(page, 'cadence-slot-time');
     await times.first().fill('11:00');
     await byTest(page, 'cadence-slot-add').click();
@@ -370,7 +400,7 @@ test.describe('The Schedule page', () => {
     );
     await capture(page, '06-rules-after-save');
 
-    // --- From Settings → Platforms: Instagram's long videos at 20:00, every 2 days
+    // --- From Settings → Platforms: Instagram's Shorts at 20:00, every 2 days
     await page.goto(`/home/${team.slug}/settings/platforms`);
     const igRow = visible(
       page,
@@ -385,32 +415,33 @@ test.describe('The Schedule page', () => {
     await expect(byTest(page, 'channel-cadence-scope')).toContainText(
       'every project and episode that posts to Story IG',
     );
-    await byTest(page, 'cadence-tab-full').click();
     await expect(
       visible(
         page,
-        '[data-test="channel-cadence-form"][data-content-type="full"]',
+        '[data-test="channel-cadence-form"][data-content-type="short"]',
       ),
     ).toBeVisible();
+    await expect(page.locator('[data-test="cadence-tab-full"]')).toHaveCount(0);
+    await expect(byTest(page, 'cadence-shorts-only')).toBeVisible();
     await byTest(page, 'cadence-slot-time').first().fill('20:00');
-    await byTest(page, 'cadence-min-days-between').fill('2');
+    await byTest(page, 'cadence-every-n-days').fill('2');
     await byTest(page, 'cadence-timezone').fill(TZ);
     await capture(page, '08-rules-dialog-from-settings');
     await saveRules(page);
 
     const [saved] = await readRows<{
       slot_times: string[];
-      min_days_between: number;
+      every_n_days: number;
     }>(
       'channel_posting_cadences',
-      `platform_connection_id=eq.${ig}&content_type=eq.full&select=slot_times,min_days_between`,
+      `platform_connection_id=eq.${ig}&content_type=eq.short&select=slot_times,every_n_days`,
     );
-    expect(saved).toEqual({ slot_times: ['20:00'], min_days_between: 2 });
+    expect(saved).toEqual({ slot_times: ['20:00'], every_n_days: 2 });
 
     // The Schedule page reads the same rules
     await page.goto(`/home/${team.slug}/studio/${project.slug}/schedule`);
     await expect(summaryOf(page, ig)).toHaveText(
-      `Long 20:00 every 2 days (${TZ}) · Shorts 18:00 daily, from 2 h after (default)`,
+      `Shorts 20:00 every 2 days, from 2 h after · ${TZ}`,
       { timeout: 60_000 },
     );
     await capture(page, '09-schedule-after-settings-save');
