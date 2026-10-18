@@ -1,0 +1,79 @@
+spec_id: "FILM-1736"
+title: "Daily Digest Per Episode"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DONE
+effort: M
+dependencies:
+  - spec_id: "FILM-1735"
+    note: "the daily digest (get_daily_digest) this lays out by episode and extends"
+  - spec_id: "FILM-1734"
+    note: "the figure readers: each video's days by source and its lifetime figures, Instagram Reels' skip rate and watch time"
+  - spec_id: "FILM-1732"
+    note: "the engagement rate and its denominator record, which the digest reads through the Content tab's own function"
+  - spec_id: "FILM-1733"
+    note: "audience comments, their labels, and the 20-label threshold for shares"
+  - spec_id: "FILM-2207"
+    note: "Shorts groups (upsert_shorts_group, publishes.metadata.shortsGroupId), which name an episode's Shorts"
+summary: >
+  The owner wants each morning report laid out per channel, then per
+  episode: the long video one row per platform (YouTube, Facebook,
+  Instagram) with likes, dislikes, comment trend, view time, engagement
+  rate and retention, then each Short of the episode the same way, an
+  assessment per episode and one of the channel (2026-10-18). The digest
+  now carries what that needs: an `episodes` section grouping the listed
+  videos by episode, long video and Shorts by platform; each video's
+  engagement rate on the day and through it, the Content tab's figure;
+  its retention in its platform's own kind; and its last seven days by
+  source with the comments read on each. Facebook's and Instagram's
+  dislikes are null with "No dislikes on this platform.", never 0.
+acceptance_criteria:
+  - text: "Each video's engagement rate on the day and through it is the Content tab's Engagement figure, from one function, and null with its reason when its denominator is not measured"
+    met: true
+    evidence: "Met (#672): publishEngagementRate (packages/features/content-analytics/src/lib/publish-engagement-rate.ts) is now what getContentList (src/server/aggregation-queries.ts) and the digest's engagementOf (src/lib/daily-digest.ts) both call, over queryTotalsByVideoIds' rows on the day and through it; engagementRateNullReason names Facebook's missing views, zero views and no stored rows. rate-denominator-aggregation-reads.test.ts 'for the same rows, to the figure' compares the two (guard DPE6); daily-digest-per-episode.test.ts 'engagement rate' (DPE5, DPE7); the E2E reads 10% on the day and 9.2% through it, worked out by hand (DPE16)"
+  - text: "Every listed video carries its retention labelled by kind: avg_percent_viewed for YouTube (with average view duration, the curve's steepest drop and the median of the channel's other videos of the same format family, FILM-1716), curve for Facebook, skip_rate for Instagram Reels"
+    met: true
+    evidence: "Met (#672): retentionOf (lib/daily-digest.ts); the service reads Facebook's curves as well as YouTube's and lifetime figures for every published video, so the medians compare with all of them; an episode's long video and Shorts are told apart by format family too, as FILM-1716's guard requires. daily-digest-per-episode.test.ts 'retention, in each platform’s own kind' (DPE8, DPE9); the E2E reads YouTube's 44% and 28 s against the Pilot's 36%, Facebook's curve and Instagram's skip rate (DPE14, DPE18)"
+  - text: "Every listed video carries seven days, the report day and the six before it: each source's views, likes, dislikes, comments, watch time and engagement rate, and the comments read in each day of the zone with tone and topic counts, shares only from 20 labelled"
+    met: true
+    evidence: "Met (#672): trendOf (lib/daily-digest.ts) over getVideoDailyFigures for the seven days and every comment of the listed videos in the zone's seven days (trendComments in the service, paged with fetchAllByIds, never capped); countComments and sharesOf are the reaction's own. A video whose comments were not read is null with why. daily-digest-per-episode.test.ts 'the seven-day trend' in Asia/Kolkata (DPE10, DPE11, DPE12); the E2E (DPE17)"
+  - text: "An episodes section lists the listed videos by episode, newest first: the long video one entry per platform, then each Short (a Shorts group with its name and title, or a Short posted without one) one entry per platform; every video of a listed episode is listed"
+    met: true
+    evidence: "Met (#672): episodesSection and listedVideos' same_episode (lib/daily-digest.ts); the service reads metadata->>shortsGroupId and the episode's shorts_groups. daily-digest-per-episode.test.ts 'episodes' (DPE1, DPE2, DPE3, DPE13); the E2E groups the Heist's long video on YouTube and Facebook and its two Shorts, YT 1 on YouTube and IG/FB 1 on Instagram (DPE15)"
+  - text: "Platforms without dislikes show them as null with “No dislikes on this platform.”, never 0"
+    met: true
+    evidence: "Met (#672): nullReason (lib/daily-digest.ts). daily-digest-per-episode.test.ts 'dislikes on a platform that has none' (DPE4); the E2E reads Facebook's"
+  - text: "The digest stays deterministic: the same facts give the same digest and hash, whatever order they were read in"
+    met: true
+    evidence: "Met (#672): every new list is sorted (episodes newest first then id, Shorts oldest first then key, entries by platform then id, the trend by date then source). daily-digest-per-episode.test.ts 'the same facts give the same digest' (DPE13); FILM-1735's own determinism tests and guards DR1, DR2 still pass; the E2E reads the digest twice"
+  - text: "The get_daily_digest description and the workflow guide's morning-report recipe describe the per-episode layout"
+    met: true
+    evidence: "Met (#672): packages/features/studio-mcp/src/server/tools/analytics/daily-digest.ts and workflow-guide.ts; workflow-guide.test.ts 'lays the morning report out by episode'"
+test_plan:
+  unit:
+    - {text: "Episodes, dislikes, engagement rate, retention by kind, the seven-day trend in Asia/Kolkata, determinism", met: true, evidence: "Met (#672): packages/features/content-analytics/__tests__/daily-digest-per-episode.test.ts (15)"}
+    - {text: "The digest's engagement rate equals the content list's for the same rows", met: true, evidence: "Met (#672): packages/features/content-analytics/__tests__/rate-denominator-aggregation-reads.test.ts (1 added)"}
+    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#672): tooling/mutation-guards/film-1736-digest-per-episode.json, DPE1–DPE13 (unit), E2E DPE14–DPE18, all red under their mutations"}
+  integration: []
+  e2e:
+    - {text: "Hand-computed ClickHouse figures: an episode with a long video on YouTube and Facebook and two Shorts, its engagement rates, retention and seven days, read over the real MCP endpoint", met: true, evidence: "Met (#672): apps/e2e/tests/mcp/daily-report.spec.ts 'reads hand-computed ClickHouse figures' (CLICKHOUSE_EVIDENCE=1)"}
+remaining: []
+open_questions:
+  - "The channel assessment's per-platform engagement rate: the digest gives each video's, not a channel's. A channel's would be a pooled rate over its videos' rows; not built until the owner asks for it"
+notes: |
+  ## Kept from FILM-1735
+
+  The `retention` section (videos under 7 days old, their curve against the
+  channel's median curve) is kept as it was, with two corrections: it now
+  reads Facebook's curves, which FILM-1720 stores, and compares a curve with
+  the channel's videos on the same platform. Each video's own `retention`
+  under `videos` is the one a report reads; it covers every listed video.
+
+  ## Two engagement rates, one definition
+
+  `videos[].engagementRate` is the Content tab's figure, over the video's
+  stored days (video_daily_stats). Each trend source's `engagementRate` is
+  the same function over that source's own counts, so YouTube's live counts
+  (data_api), which carry no shares, give their own figure beside the stored
+  one. A report quotes `engagementRate`; the trend shows how it moved.
