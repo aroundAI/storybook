@@ -145,6 +145,8 @@ interface ScheduleReleasePanelProps {
     settings: BreakingSettings,
     schedule: ScheduleItem[],
   ) => Promise<ActionResult<BreakingPreview>>;
+  /** KB-198: the project's channels are still being read; previews wait */
+  channelsLoading?: boolean;
 }
 
 type CadencePreviewState =
@@ -293,6 +295,7 @@ export function ScheduleReleasePanel({
   onPreviewCadence,
   onEditChannelCadence,
   onPreviewBreaking,
+  channelsLoading = false,
 }: ScheduleReleasePanelProps) {
   // State
   const [mode, setMode] = useState<ReleaseMode>(
@@ -637,6 +640,7 @@ export function ScheduleReleasePanel({
         {breakingMode && onPreviewBreaking && !showConfirmation && (
           <BreakingReleaseForm
             disabled={isPublishing}
+            channelsLoading={channelsLoading}
             isScheduling={isScheduling}
             labelOf={labelOf}
             onPreview={(settings) =>
@@ -744,15 +748,21 @@ export function ScheduleReleasePanel({
                 variant="outline"
                 size="sm"
                 data-test="release-check-calendar"
-                disabled={cadencePreview.status === 'loading'}
+                data-loading={channelsLoading || undefined}
+                aria-busy={channelsLoading}
+                disabled={
+                  channelsLoading || cadencePreview.status === 'loading'
+                }
                 onClick={handleCheckCalendar}
               >
-                {cadencePreview.status === 'loading' && (
+                {(channelsLoading || cadencePreview.status === 'loading') && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {cadencePreview.status === 'ready'
-                  ? 'Check again'
-                  : 'Check channel calendars'}
+                {channelsLoading
+                  ? 'Loading channels…'
+                  : cadencePreview.status === 'ready'
+                    ? 'Check again'
+                    : 'Check channel calendars'}
               </Button>
             </div>
 
