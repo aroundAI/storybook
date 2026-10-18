@@ -30,52 +30,52 @@ summary: >
 acceptance_criteria:
   - text: "get_daily_digest(projectId, date, timezone) returns a project's day in a fixed order: freshness, channels, videos, retention, traffic, audience, comments, publishing, revenue"
     met: true
-    evidence: "Met (#TBD): assembleDigest (packages/features/content-analytics/src/lib/daily-digest.ts) over getDailyDigestService (src/server/daily-digest-service.ts); the tool is packages/features/studio-mcp/src/server/tools/analytics/daily-digest.ts (studio:read). E2E apps/e2e/tests/mcp/daily-report.spec.ts reads it over the real endpoint"
+    evidence: "Met (#671): assembleDigest (packages/features/content-analytics/src/lib/daily-digest.ts) over getDailyDigestService (src/server/daily-digest-service.ts); the tool is packages/features/studio-mcp/src/server/tools/analytics/daily-digest.ts (studio:read). E2E apps/e2e/tests/mcp/daily-report.spec.ts reads it over the real endpoint"
   - text: "The same facts give the same digest and digestHash, whatever order they were read in, and nothing in it depends on when it is read"
     met: true
-    evidence: "Met (#TBD): every list is sorted by id and every object's keys by canonicalJson before sha256; the age checkpoints are judged against the report day, not now. daily-digest.test.ts 'the same facts give the same digest' (guards DR1, DR2); the E2E reads the digest twice and compares digest and hash"
+    evidence: "Met (#671): every list is sorted by id and every object's keys by canonicalJson before sha256; the age checkpoints are judged against the report day, not now. daily-digest.test.ts 'the same facts give the same digest' (guards DR1, DR2); the E2E reads the digest twice and compares digest and hash"
   - text: "The day runs from midnight to midnight in the given zone; platform figures are by the platform's own data day"
     met: true
-    evidence: "Met (#TBD): localDay (lib/daily-digest.ts) works out the zone's midnights, including a 25-hour and a 23-hour day; comments and posts are read inside them. daily-digest.test.ts 'the day' (Asia/Kolkata, UTC, America/New_York, Europe/London; guard DR5); the E2E seeds a comment half an hour before IST's day and it is left out (guard E2E DR12)"
+    evidence: "Met (#671): localDay (lib/daily-digest.ts) works out the zone's midnights, including a 25-hour and a 23-hour day; comments and posts are read inside them. daily-digest.test.ts 'the day' (Asia/Kolkata, UTC, America/New_York, Europe/London; guard DR5); the E2E seeds a comment half an hour before IST's day and it is left out (guard E2E DR12)"
   - text: "Every figure is a number or null, a null carries its reason, and nothing unmeasured is 0; a mean leaves out the days not measured"
     met: true
-    evidence: "Met (#TBD): each row's notMeasured lists its null figures with nullReason (the store being off, a platform that does not report the figure, a lifetime-only figure, or not reported yet); viewsAtAge for an age not reached is null with that reason; revenue with no rows says it is not zero. daily-digest.test.ts 'an unmeasured figure' (guards DR3, DR4, DR6)"
+    evidence: "Met (#671): each row's notMeasured lists its null figures with nullReason (the store being off, a platform that does not report the figure, a lifetime-only figure, or not reported yet); viewsAtAge for an age not reached is null with that reason; revenue with no rows says it is not zero. daily-digest.test.ts 'an unmeasured figure' (guards DR3, DR4, DR6)"
   - text: "Channels are compared with the mean of the previous 7 and 28 days; videos active that day or under 30 days old carry the day's and lifetime figures by source and their views at 1, 7 and 28 days; videos under 7 days old have their retention against the channel's median"
     met: true
-    evidence: "Met (#TBD): channelSection, videoSection and retentionSection (lib/daily-digest.ts) on FILM-1734's readers, getVideoLogService's views at age and queryRetentionCurves keyed by the project's own publish ids. daily-digest.test.ts 'is left out of a mean', 'which videos are listed', 'reads a new video’s curve against the channel’s other videos'; against the local ClickHouse, daily-report.spec.ts 'reads hand-computed ClickHouse figures' reads a channel's 300 views as +100% on the 7-day mean of 150 (two measured days) and 0% on the 28-day mean of 300, the channel's lifetime views and videos (data_api), and a video's 120 views and 2 dislikes (analytics_api)"
+    evidence: "Met (#671): channelSection, videoSection and retentionSection (lib/daily-digest.ts) on FILM-1734's readers, getVideoLogService's views at age and queryRetentionCurves keyed by the project's own publish ids. daily-digest.test.ts 'is left out of a mean', 'which videos are listed', 'reads a new video’s curve against the channel’s other videos'; against the local ClickHouse, daily-report.spec.ts 'reads hand-computed ClickHouse figures' reads a channel's 300 views as +100% on the 7-day mean of 150 (two measured days) and 0% on the 28-day mean of 300, the channel's lifetime views and videos (data_api), and a video's 120 views and 2 dislikes (analytics_api)"
   - text: "The comments section gives each video's new comments that day, labelled and unlabelled, the unlabelled ids, the unanswered questions, each video's reaction, and YouTube's disclosure"
     met: true
-    evidence: "Met (#TBD): commentsSection (lib/daily-digest.ts) over listAudienceComments with since/until and getCommentReactions; a question is unanswered at reply_count 0, and Instagram's unknown reply count is counted apart. daily-digest.test.ts and the E2E (three of four seeded comments in the day, the unanswered one named)"
+    evidence: "Met (#671): commentsSection (lib/daily-digest.ts) over listAudienceComments with since/until and getCommentReactions; a question is unanswered at reply_count 0, and Instagram's unknown reply count is counted apart. daily-digest.test.ts and the E2E (three of four seeded comments in the day, the unanswered one named)"
   - text: "get_audience_comments takes since (inclusive) and until (exclusive)"
     met: true
-    evidence: "Met (#TBD): CommentListFilter.since/until (server/audience-comments-service.ts) and the tool's arguments (studio-mcp tools/analytics/audience-comments.ts). audience-comment-tools.test.ts 'keeps to one local day' (guard DR11)"
+    evidence: "Met (#671): CommentListFilter.since/until (server/audience-comments-service.ts) and the tool's arguments (studio-mcp tools/analytics/audience-comments.ts). audience-comment-tools.test.ts 'keeps to one local day' (guard DR11)"
   - text: "The publishing section names what went out with its link, what failed and why, the held Shorts, the next 3 days, and when each channel runs out of scheduled long videos"
     met: true
-    evidence: "Met (#TBD): readPublishCalendar and readScheduledThrough (packages/features/publishing/src/server/publish-calendar.service.ts), which get_publish_calendar now calls too (guard R5 re-anchored). The E2E asserts the went-out link, the failure's reason, the next post and the channel's last scheduled long video"
+    evidence: "Met (#671): readPublishCalendar and readScheduledThrough (packages/features/publishing/src/server/publish-calendar.service.ts), which get_publish_calendar now calls too (guard R5 re-anchored). The E2E asserts the went-out link, the failure's reason, the next post and the channel's last scheduled long video"
   - text: "save_project_report keeps the first report of a project's day: a later save writes nothing and returns the saved report with status exists, including one that loses a race"
     met: true
-    evidence: "Met (#TBD): saveProjectReport (server/project-reports-service.ts) reads first and answers a 23505 from the unique (project_id, report_date) with the winner's row. project-report-tools.test.ts (guard DR7), project-reports-service.test.ts (guard DR8); the E2E saves twice and reads one row back"
+    evidence: "Met (#671): saveProjectReport (server/project-reports-service.ts) reads first and answers a 23505 from the unique (project_id, report_date) with the winner's row. project-report-tools.test.ts (guard DR7), project-reports-service.test.ts (guard DR8); the E2E saves twice and reads one row back"
   - text: "get_project_report and list_project_reports read the saved reports back; another team's project is refused by every tool"
     met: true
-    evidence: "Met (#TBD): tools/analytics/project-reports.ts; analytics-forbidden.test.ts lists all four tools (guards DR9, DR10); the E2E refuses another team's token"
+    evidence: "Met (#671): tools/analytics/project-reports.ts; analytics-forbidden.test.ts lists all four tools (guards DR9, DR10); the E2E refuses another team's token"
   - text: "Saved reports are stored once per project and day, readable by the team, written by a member as themself for the team's own project, rewritten or deleted by nobody on the team, and on a team account only"
     met: true
-    evidence: "Met (#TBD): migration 20261018060406_film-1735-project-daily-reports.sql; apps/web/supabase/tests/database/project-daily-reports.test.sql (14; guards DB1–DB4); team-accounts-only.test.sql pins 33 guarded tables"
+    evidence: "Met (#671): migration 20261018060406_film-1735-project-daily-reports.sql; apps/web/supabase/tests/database/project-daily-reports.test.sql (14; guards DB1–DB4); team-accounts-only.test.sql pins 33 guarded tables"
   - text: "The project's Analytics page has a Daily reports tab listing the saved days and rendering the chosen report as GitHub-flavoured Markdown (tables included, raw HTML never rendered), with its zone, model and data-through dates, and an empty state saying how a report is made"
     met: true
-    evidence: "Met (#TBD): DailyReports (apps/web/app/home/[account]/studio/[projectSlug]/analytics/_components/daily-reports.tsx, server-rendered with react-markdown and remark-gfm 4.0.1, no rehype-raw); daily-report.spec.ts asserts a report's table renders as <table> and an <img onerror> in it renders as text and DailyReportsView (content-analytics components/daily-reports). E2E daily-report.spec.ts (guard E2E DR13); screenshots on the PR"
+    evidence: "Met (#671): DailyReports (apps/web/app/home/[account]/studio/[projectSlug]/analytics/_components/daily-reports.tsx, server-rendered with react-markdown and remark-gfm 4.0.1, no rehype-raw); daily-report.spec.ts asserts a report's table renders as <table> and an <img onerror> in it renders as text and DailyReportsView (content-analytics components/daily-reports). E2E daily-report.spec.ts (guard E2E DR13); screenshots on the PR"
   - text: "The workflow guide gives the morning-report recipe: get_project_report, label the day's comments, get_daily_digest, write, save_project_report, show the saved text"
     met: true
-    evidence: "Met (#TBD): 'A morning report' in packages/features/studio-mcp/src/server/tools/workflow-guide.ts; workflow-guide.test.ts"
+    evidence: "Met (#671): 'A morning report' in packages/features/studio-mcp/src/server/tools/workflow-guide.ts; workflow-guide.test.ts"
 test_plan:
   unit:
-    - {text: "The digest: the day's edges, determinism, listing, nulls and means, comments, retention; another team's project refused before any read", met: true, evidence: "Met (#TBD): packages/features/content-analytics/__tests__/daily-digest.test.ts (18)"}
-    - {text: "Saving: the first kept, a lost race answered with the winner", met: true, evidence: "Met (#TBD): packages/features/studio-mcp/__tests__/tools/project-report-tools.test.ts (6), packages/features/content-analytics/__tests__/project-reports-service.test.ts (1)"}
-    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#TBD): tooling/mutation-guards/film-1735-daily-reports.json, DR1–DR11 (unit), DB1–DB4 (pgTAP), E2E DR12–DR14, all red under their mutations"}
+    - {text: "The digest: the day's edges, determinism, listing, nulls and means, comments, retention; another team's project refused before any read", met: true, evidence: "Met (#671): packages/features/content-analytics/__tests__/daily-digest.test.ts (18)"}
+    - {text: "Saving: the first kept, a lost race answered with the winner", met: true, evidence: "Met (#671): packages/features/studio-mcp/__tests__/tools/project-report-tools.test.ts (6), packages/features/content-analytics/__tests__/project-reports-service.test.ts (1)"}
+    - {text: "Mutation guards, each seen red", met: true, evidence: "Met (#671): tooling/mutation-guards/film-1735-daily-reports.json, DR1–DR11 (unit), DB1–DB4 (pgTAP), E2E DR12–DR14, all red under their mutations"}
   integration:
-    - {text: "pgTAP: who reads and saves reports, one per day, no rewrite or delete, KB-99", met: true, evidence: "Met (#TBD): apps/web/supabase/tests/database/project-daily-reports.test.sql (14); the whole suite on a throwaway Postgres"}
+    - {text: "pgTAP: who reads and saves reports, one per day, no rewrite or delete, KB-99", met: true, evidence: "Met (#671): apps/web/supabase/tests/database/project-daily-reports.test.sql (14); the whole suite on a throwaway Postgres"}
   e2e:
-    - {text: "Over the real MCP endpoint and in the browser: the digest twice, save, a second save, another team refused, the Daily reports tab and its empty state; hand-computed ClickHouse figures read off the digest and the saved report", met: true, evidence: "Met (#TBD): apps/e2e/tests/mcp/daily-report.spec.ts (3; the ClickHouse one with CLICKHOUSE_EVIDENCE=1), screenshots with CAPTURE_EVIDENCE=1"}
+    - {text: "Over the real MCP endpoint and in the browser: the digest twice, save, a second save, another team refused, the Daily reports tab and its empty state; hand-computed ClickHouse figures read off the digest and the saved report", met: true, evidence: "Met (#671): apps/e2e/tests/mcp/daily-report.spec.ts (3; the ClickHouse one with CLICKHOUSE_EVIDENCE=1), screenshots with CAPTURE_EVIDENCE=1"}
 remaining: []
 open_questions:
   - "Should the owner be able to delete a day's report from the page? Not built: no one on the team may delete one, so two jobs can never leave two versions of a day; a removal is a service-role repair"
