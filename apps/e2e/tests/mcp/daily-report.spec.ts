@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { insertClickHouse } from '../utils/clickhouse';
 import { callMcpTool, mintPersonalAccessToken } from '../utils/mcp';
 import {
   insertRow,
@@ -13,7 +14,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest, visible } from '../utils/visible';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-1735, the morning report end to end over the real MCP endpoint: a
@@ -372,11 +373,11 @@ test.describe('A morning report over MCP, saved and shown', () => {
     await page.goto(
       `/home/${day.team.slug}/studio/${day.project.slug}/analytics`,
     );
-    await visible(page, '[data-test="analytics-tab-daily-reports"]').click({
+    await byTest(page, 'analytics-tab-daily-reports').click({
       timeout: 60_000,
     });
 
-    const report = visible(page, '[data-test="daily-report"]');
+    const report = byTest(page, 'daily-report');
     await expect(report).toHaveAttribute('data-report-date', DATE);
     await expect(byTest(report, 'daily-report-model')).toHaveText(
       'Written by claude-opus-5-5',
@@ -396,7 +397,7 @@ test.describe('A morning report over MCP, saved and shown', () => {
     await expect(body).not.toContainText('A different text');
 
     if (EVIDENCE) {
-      await visible(page, '[data-test="daily-reports"]').screenshot({
+      await byTest(page, 'daily-reports').screenshot({
         path: `${EVIDENCE_DIR}/01-daily-report-saved.png`,
       });
     }
@@ -408,18 +409,179 @@ test.describe('A morning report over MCP, saved and shown', () => {
 
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/${project.slug}/analytics`);
-    await visible(page, '[data-test="analytics-tab-daily-reports"]').click({
+    await byTest(page, 'analytics-tab-daily-reports').click({
       timeout: 60_000,
     });
 
-    const empty = visible(page, '[data-test="daily-reports-empty"]');
+    const empty = byTest(page, 'daily-reports-empty');
     await expect(empty).toContainText('No daily reports yet');
     await expect(empty).toContainText('save_project_report');
-    await expect(page.locator('[data-test="daily-report"]')).toHaveCount(0);
+    await expect(byTest(page, 'daily-report')).toHaveCount(0);
 
     if (EVIDENCE) {
       await empty.screenshot({
         path: `${EVIDENCE_DIR}/02-daily-reports-empty.png`,
+      });
+    }
+  });
+
+  /**
+   * Figures worked out by hand, through FILM-1734's readers, against the
+   * local ClickHouse: the channel's day against the mean of the days it
+   * measured, and a video's day by its source.
+   */
+  test('reads hand-computed ClickHouse figures into the digest and the saved report', async ({
+    page,
+  }) => {
+    test.skip(
+      !process.env.CLICKHOUSE_EVIDENCE,
+      'Set CLICKHOUSE_EVIDENCE=1 with a server reading the local ClickHouse.',
+    );
+    test.setTimeout(180_000);
+
+    const day = await seedDay('daily-report-ch');
+    const before = (n: number) =>
+      new Date(Date.parse(`${DATE}T00:00:00Z`) - n * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+
+    await insertClickHouse('video_metrics', [
+      {
+        project_id: day.project.id,
+        video_id: day.episode.publishId,
+        platform: 'youtube',
+        metric_date: DATE,
+        metric_source: 'analytics_api',
+        views: 120,
+        likes: 10,
+        dislikes: 2,
+        comments: 3,
+        shares: 1,
+        watch_time_seconds: 3600,
+        subscribers_gained: 4,
+        subscribers_lost: 1,
+        extra_metrics: '{}',
+      },
+    ]);
+    const channelDay = (date: string, views: number) => ({
+      connection_id: day.connectionId,
+      platform: 'youtube',
+      metric_date: date,
+      source: 'analytics_api',
+      views,
+    });
+    await insertClickHouse('channel_metrics_daily', [
+      channelDay(DATE, 300),
+      // Prior 7 days: two measured (200, 100), the rest not measured
+      channelDay(before(1), 200),
+      channelDay(before(3), 100),
+      // Prior 28 days add a third: (200 + 100 + 600) / 3 = 300
+      channelDay(before(10), 600),
+      {
+        connection_id: day.connectionId,
+        platform: 'youtube',
+        metric_date: DATE,
+        source: 'data_api',
+        lifetime_views: 50_000,
+        lifetime_videos: 12,
+      },
+    ]);
+
+    const token = await mintPersonalAccessToken(day.team, {
+      scopes: ['studio:read', 'studio:write'],
+    });
+    const read = await callMcpTool(token, 'get_daily_digest', {
+      projectId: day.project.id,
+      date: DATE,
+      timezone: ZONE,
+    });
+    expect(read.isError, read.text).toBe(false);
+
+    const digest = read.structuredContent.digest as {
+      channels: Array<{
+        connectionId: string;
+        sources: Array<{
+          source: string;
+          day: Record<string, number | null>;
+          vsPrior: Record<string, Record<string, number | null>>;
+        }>;
+      }>;
+      videos: Array<{
+        publishId: string;
+        day: Array<{ source: string; figures: Record<string, number | null> }>;
+      }>;
+    };
+
+    const channel = digest.channels.find(
+      (c) => c.connectionId === day.connectionId,
+    )!;
+    const analytics = channel.sources.find(
+      (s) => s.source === 'analytics_api',
+    )!;
+    expect(analytics.day.views).toBe(300);
+    expect(analytics.vsPrior.views).toEqual({
+      prior7Mean: 150,
+      prior7Days: 2,
+      pctVsPrior7: 100,
+      prior28Mean: 300,
+      prior28Days: 3,
+      pctVsPrior28: 0,
+    });
+    const dataApi = channel.sources.find((s) => s.source === 'data_api')!;
+    expect(dataApi.day).toMatchObject({
+      lifetimeViews: 50_000,
+      lifetimeVideos: 12,
+    });
+
+    const video = digest.videos.find(
+      (v) => v.publishId === day.episode.publishId,
+    )!;
+    const videoDay = video.day.find(
+      (row) => row.source === 'analytics_api',
+    )!.figures;
+    expect(videoDay).toMatchObject({
+      views: 120,
+      likes: 10,
+      dislikes: 2,
+      comments: 3,
+      watchTimeSeconds: 3600,
+      subscribersGained: 4,
+      subscribersLost: 1,
+    });
+
+    // The routine writes those figures; the page shows what was saved
+    const body = [
+      '# Morning report',
+      '',
+      `- Channel views: **${analytics.day.views}** (${analytics.vsPrior.views!.pctVsPrior7}% vs the 7-day mean of ${analytics.vsPrior.views!.prior7Mean})`,
+      `- The Vault: **${videoDay.dislikes} dislikes**, ${videoDay.views} views`,
+    ].join('\n');
+    const saved = await callMcpTool(token, 'save_project_report', {
+      projectId: day.project.id,
+      date: DATE,
+      timezone: ZONE,
+      digestHash: read.structuredContent.digestHash,
+      bodyMd: body,
+      model: 'claude-opus-5-5',
+    });
+    expect(saved.structuredContent.status).toBe('saved');
+
+    await signInAs(page, day.team);
+    await page.goto(
+      `/home/${day.team.slug}/studio/${day.project.slug}/analytics`,
+    );
+    await byTest(page, 'analytics-tab-daily-reports').click({
+      timeout: 60_000,
+    });
+    const items = byTest(page, 'daily-report-body').locator('li');
+    await expect(items).toHaveText([
+      'Channel views: 300 (100% vs the 7-day mean of 150)',
+      'The Vault: 2 dislikes, 120 views',
+    ]);
+
+    if (EVIDENCE) {
+      await byTest(page, 'daily-reports').screenshot({
+        path: `${EVIDENCE_DIR}/03-daily-report-measured.png`,
       });
     }
   });

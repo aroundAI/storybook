@@ -162,6 +162,8 @@ const ONLY_ON: Partial<Record<string, readonly string[]>> = {
   saves: ['instagram', 'tiktok'],
   reach: ['instagram', 'facebook'],
   accountViews: ['instagram'],
+  lifetimeViews: ['youtube'],
+  lifetimeVideos: ['youtube'],
   reelsAvgWatchTimeMs: ['instagram'],
   reelsSkipRate: ['instagram'],
   fbViews3s: ['facebook'],

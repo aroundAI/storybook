@@ -42,7 +42,7 @@ acceptance_criteria:
     evidence: "Met (#TBD): each row's notMeasured lists its null figures with nullReason (the store being off, a platform that does not report the figure, a lifetime-only figure, or not reported yet); viewsAtAge for an age not reached is null with that reason; revenue with no rows says it is not zero. daily-digest.test.ts 'an unmeasured figure' (guards DR3, DR4, DR6)"
   - text: "Channels are compared with the mean of the previous 7 and 28 days; videos active that day or under 30 days old carry the day's and lifetime figures by source and their views at 1, 7 and 28 days; videos under 7 days old have their retention against the channel's median"
     met: true
-    evidence: "Met (#TBD): channelSection, videoSection and retentionSection (lib/daily-digest.ts) on FILM-1734's readers, getVideoLogService's views at age and queryRetentionCurves keyed by the project's own publish ids. daily-digest.test.ts 'is left out of a mean', 'which videos are listed', 'reads a new video’s curve against the channel’s other videos'"
+    evidence: "Met (#TBD): channelSection, videoSection and retentionSection (lib/daily-digest.ts) on FILM-1734's readers, getVideoLogService's views at age and queryRetentionCurves keyed by the project's own publish ids. daily-digest.test.ts 'is left out of a mean', 'which videos are listed', 'reads a new video’s curve against the channel’s other videos'; against the local ClickHouse, daily-report.spec.ts 'reads hand-computed ClickHouse figures' reads a channel's 300 views as +100% on the 7-day mean of 150 (two measured days) and 0% on the 28-day mean of 300, the channel's lifetime views and videos (data_api), and a video's 120 views and 2 dislikes (analytics_api)"
   - text: "The comments section gives each video's new comments that day, labelled and unlabelled, the unlabelled ids, the unanswered questions, each video's reaction, and YouTube's disclosure"
     met: true
     evidence: "Met (#TBD): commentsSection (lib/daily-digest.ts) over listAudienceComments with since/until and getCommentReactions; a question is unanswered at reply_count 0, and Instagram's unknown reply count is counted apart. daily-digest.test.ts and the E2E (three of four seeded comments in the day, the unanswered one named)"
@@ -75,7 +75,7 @@ test_plan:
   integration:
     - {text: "pgTAP: who reads and saves reports, one per day, no rewrite or delete, KB-99", met: true, evidence: "Met (#TBD): apps/web/supabase/tests/database/project-daily-reports.test.sql (14); the whole suite on a throwaway Postgres"}
   e2e:
-    - {text: "Over the real MCP endpoint and in the browser: the digest twice, save, a second save, another team refused, the Daily reports tab and its empty state", met: true, evidence: "Met (#TBD): apps/e2e/tests/mcp/daily-report.spec.ts (2), screenshots with CAPTURE_EVIDENCE=1"}
+    - {text: "Over the real MCP endpoint and in the browser: the digest twice, save, a second save, another team refused, the Daily reports tab and its empty state; hand-computed ClickHouse figures read off the digest and the saved report", met: true, evidence: "Met (#TBD): apps/e2e/tests/mcp/daily-report.spec.ts (3; the ClickHouse one with CLICKHOUSE_EVIDENCE=1), screenshots with CAPTURE_EVIDENCE=1"}
 remaining: []
 open_questions:
   - "Report bodies render without GitHub-flavoured Markdown (no tables): the repo has react-markdown but not remark-gfm, so the recipe asks for headings, lists and bold. Adding remark-gfm would allow tables"
