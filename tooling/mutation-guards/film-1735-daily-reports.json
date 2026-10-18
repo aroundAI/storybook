@@ -1,0 +1,157 @@
+{
+  "feature": "FILM-1735 a project's morning report (a deterministic daily digest over MCP, saved once per project and day, shown under Daily reports)",
+  "mutations": [
+    {
+      "name": "DR1 the digest lists videos in the order they were read",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "    .sort((a, b) => byText(a.publish.id, b.publish.id));\n",
+      "replace": ";\n",
+      "pattern": "whatever order the reads returned them in",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest.test.ts"
+    },
+    {
+      "name": "DR2 the digest's hash depends on the order fields were written",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "      Object.keys(value as Record<string, unknown>)\n        .sort()\n",
+      "replace": "      Object.keys(value as Record<string, unknown>)\n",
+      "pattern": "whatever order their fields were written in",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest.test.ts"
+    },
+    {
+      "name": "DR3 an unmeasured figure becomes 0",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "      return [key, typeof value === 'number' ? value : null];\n",
+      "replace": "      return [key, typeof value === 'number' ? value : 0];\n",
+      "pattern": "stays null with its reason",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest.test.ts"
+    },
+    {
+      "name": "DR4 an unmeasured day counts as 0 in a mean",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "    .filter((value): value is number => typeof value === 'number');\n",
+      "replace": "    .map((value) => value ?? 0);\n",
+      "pattern": "is left out of a mean",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest.test.ts"
+    },
+    {
+      "name": "DR5 the day starts at UTC midnight whatever the zone",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "    start: new Date(localMidnight(date, timezone)).toISOString(),\n",
+      "replace": "    start: new Date(localMidnight(date, 'UTC')).toISOString(),\n",
+      "pattern": "runs from midnight to midnight in the zone",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest.test.ts"
+    },
+    {
+      "name": "DR6 a checkpoint the video had not reached shows its later figure",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "        const reached = ageDays !== null && ageDays >= days;\n",
+      "replace": "        const reached = true;\n",
+      "pattern": "a checkpoint the video had not reached",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest.test.ts"
+    },
+    {
+      "name": "DR7 a second save of the day writes its own text",
+      "file": "packages/features/content-analytics/src/server/project-reports-service.ts",
+      "find": "  if (existing) return { status: 'exists', report: existing };\n",
+      "replace": "",
+      "pattern": "a second save of the day writes nothing",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/project-report-tools.test.ts"
+    },
+    {
+      "name": "DR8 a save that lost the race fails instead of returning the winner",
+      "file": "packages/features/content-analytics/src/server/project-reports-service.ts",
+      "find": "  if (error?.code === '23505') {\n",
+      "replace": "  if (error?.code === 'never') {\n",
+      "pattern": "lost the race",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/project-reports-service.test.ts"
+    },
+    {
+      "name": "DR9 a report is saved for another team's project",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/project-reports.ts",
+      "find": "    await requireTeamScope(context, { projectId: report.projectId });\n",
+      "replace": "",
+      "pattern": "save_project_report",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-forbidden.test.ts"
+    },
+    {
+      "name": "DR10 another team's day is read",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/daily-digest.ts",
+      "find": "    await requireTeamScope(context, { projectId: input.projectId });\n",
+      "replace": "",
+      "pattern": "get_daily_digest",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-forbidden.test.ts"
+    },
+    {
+      "name": "DR11 a day's comments are read without its start",
+      "file": "packages/features/content-analytics/src/server/audience-comments-service.ts",
+      "find": "  if (filter.since) query = query.gte('commented_at', instant(filter.since));\n",
+      "replace": "",
+      "pattern": "keeps to one local day",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/audience-comment-tools.test.ts"
+    },
+    {
+      "name": "DB1 a member rewrites a saved report",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/project-daily-reports.test.sql",
+      "sql": "grant update, delete on public.project_daily_reports to authenticated; create policy project_daily_reports_rewrite on public.project_daily_reports for all to authenticated using (public.has_account_access(account_id)) with check (public.has_account_access(account_id));"
+    },
+    {
+      "name": "DB2 a report names the team and another team's project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/project-daily-reports.test.sql",
+      "sql": "drop policy project_daily_reports_insert on public.project_daily_reports; create policy project_daily_reports_insert on public.project_daily_reports for insert to authenticated with check (public.has_account_access(account_id) and created_by = (select auth.uid()));"
+    },
+    {
+      "name": "DB3 a project's day holds two reports",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/project-daily-reports.test.sql",
+      "sql": "alter table public.project_daily_reports drop constraint project_daily_reports_project_day_key;"
+    },
+    {
+      "name": "DB4 a report sits on a personal account",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/project-daily-reports.test.sql",
+      "sql": "drop trigger require_team_account on public.project_daily_reports;"
+    },
+    {
+      "name": "E2E DR12 the digest's day is UTC's, not the zone's",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/daily-digest-service.ts",
+      "find": "  const day = localDay(input.date, input.timezone);\n",
+      "replace": "  const day = localDay(input.date, 'UTC');\n",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "the first save is kept"
+    },
+    {
+      "name": "E2E DR13 the Daily reports tab drops the saved text",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/daily-reports/daily-reports-view.tsx",
+      "find": "{selected.body}",
+      "replace": "{null}",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "the first save is kept"
+    }
+  ]
+}
