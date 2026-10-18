@@ -450,6 +450,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/storage/src/media-checksum.ts',
       ),
+      '@kit/storage/public-url': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/public-url.ts',
+      ),
       '@kit/storage/upload-paths': path.resolve(
         __dirname,
         '../../packages/features/storage/src/upload-paths.ts',
@@ -457,6 +461,10 @@ export default defineConfig({
       '@kit/storage': path.resolve(
         __dirname,
         '../../packages/features/storage/src/index.ts',
+      ),
+      '@kit/publishing/components': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/components/index.ts',
       ),
       '@kit/ui/alert': path.resolve(
         __dirname,
@@ -485,6 +493,50 @@ export default defineConfig({
       '@kit/ui/dropdown-menu': path.resolve(
         __dirname,
         '../../packages/ui/src/shadcn/dropdown-menu.tsx',
+      ),
+      '@kit/ui/avatar': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/avatar.tsx',
+      ),
+      '@kit/ui/calendar': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/calendar.tsx',
+      ),
+      '@kit/ui/checkbox': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/checkbox.tsx',
+      ),
+      '@kit/ui/dialog': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/dialog.tsx',
+      ),
+      '@kit/ui/form': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/form.tsx',
+      ),
+      '@kit/ui/label': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/label.tsx',
+      ),
+      '@kit/ui/popover': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/popover.tsx',
+      ),
+      '@kit/ui/radio-group': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/radio-group.tsx',
+      ),
+      '@kit/ui/select': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/select.tsx',
+      ),
+      '@kit/ui/skeleton': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/skeleton.tsx',
+      ),
+      '@kit/ui/switch': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/switch.tsx',
       ),
       '@kit/ui/input': path.resolve(
         __dirname,

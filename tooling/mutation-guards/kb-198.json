@@ -1,0 +1,44 @@
+{
+  "feature": "KB-198 the calendar check and the breaking preview wait for the project's channels: disabled and loading until they are read, so a first click is answered with the calendar rather than \"still loading\"",
+  "mutations": [
+    {
+      "name": "KB198-U1 the calendar check can be clicked while the channels load",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/components/schedule-release-panel.tsx",
+      "find": "                  channelsLoading || cadencePreview.status === 'loading'\n",
+      "replace": "                  cadencePreview.status === 'loading'\n",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/__tests__/release-checks-wait-for-channels.test.tsx",
+      "pattern": "the calendar check is disabled"
+    },
+    {
+      "name": "KB198-U2 the breaking preview can be clicked while the channels load",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/components/breaking-release-form.tsx",
+      "find": "            props.disabled ||\n            props.channelsLoading ||\n",
+      "replace": "            props.disabled ||\n",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/__tests__/release-checks-wait-for-channels.test.tsx",
+      "pattern": "the breaking preview is disabled"
+    },
+    {
+      "name": "KB198-U3 the panel does not tell the breaking form the channels are loading",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/components/schedule-release-panel.tsx",
+      "find": "            channelsLoading={channelsLoading}\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/__tests__/release-checks-wait-for-channels.test.tsx",
+      "pattern": "the breaking preview is disabled"
+    },
+    {
+      "name": "KB198-E1 the Publish screen does not pass the channels' loading to the panel",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx",
+      "find": "                channelsLoading={loadingConnections}\n",
+      "replace": "",
+      "spec": "tests/publishing/cadence-release.spec.ts",
+      "grep": "wait for the project’s channels"
+    }
+  ]
+}

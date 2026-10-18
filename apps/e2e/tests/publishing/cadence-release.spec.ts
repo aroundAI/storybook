@@ -45,10 +45,15 @@ async function capture(page: Page, name: string, panel = false) {
   if (!process.env.CAPTURE_EVIDENCE) return;
 
   mkdirSync(OUT, { recursive: true });
+  // A spinner never finishes: wait for every other animation
   await page.waitForFunction(() =>
     document
       .getAnimations()
-      .every((animation) => animation.playState !== 'running'),
+      .every(
+        (animation) =>
+          animation.playState !== 'running' ||
+          animation.effect?.getTiming().iterations === Infinity,
+      ),
   );
   const path = `${OUT}/cadence-release-${name}.png`;
 
@@ -133,6 +138,23 @@ async function pickToday(page: Page) {
   await expect(page.locator('[role="gridcell"]').first()).toBeHidden();
 }
 
+/** A server action's body that reads the project's channels */
+function readsChannels(body: string | null) {
+  try {
+    const [args] = JSON.parse(body ?? '') as [Record<string, unknown>];
+    return Object.keys(args).sort().join() === 'accountId,projectId';
+  } catch {
+    return false;
+  }
+}
+
+/** KB-198: the check waits for the project's channels, then runs */
+async function checkCalendar(page: Page) {
+  const check = byTest(page, 'release-check-calendar');
+  await expect(check).toBeEnabled({ timeout: 30_000 });
+  await check.click();
+}
+
 async function calendarDays(page: Page) {
   const posts = byTest(page, 'release-calendar-post');
   const keys = await posts.evaluateAll((nodes) =>
@@ -183,7 +205,7 @@ test.describe('A release follows its channel’s posting cadence', () => {
     );
 
     await pickToday(page);
-    await byTest(page, 'release-check-calendar').click();
+    await checkCalendar(page);
     await expect(byTest(page, 'release-calendar-post')).toHaveCount(5, {
       timeout: 30_000,
     });
@@ -227,7 +249,7 @@ test.describe('A release follows its channel’s posting cadence', () => {
       .poll(shortRules)
       .toEqual({ slot_times: ['10:00', '18:00'], every_n_days: 2 });
 
-    await byTest(page, 'release-check-calendar').click();
+    await checkCalendar(page);
     const shortDays = async () =>
       perDay(
         (await calendarDays(page))
@@ -261,7 +283,7 @@ test.describe('A release follows its channel’s posting cadence', () => {
       .poll(shortRules)
       .toEqual({ slot_times: ['18:00'], every_n_days: 1 });
 
-    await byTest(page, 'release-check-calendar').click();
+    await checkCalendar(page);
     await expect
       .poll(async () =>
         Math.max(
@@ -299,7 +321,7 @@ test.describe('A release follows its channel’s posting cadence', () => {
     // --- Episode 2: its Shorts queue after episode 1's, which stay put
     await openPublish(page, team, `${project.slug}/episodes/${ep2.slug}`);
     await pickToday(page);
-    await byTest(page, 'release-check-calendar').click();
+    await checkCalendar(page);
     const queue = byTest(page, 'release-calendar-shorts-queue');
     await expect(queue).toBeVisible({ timeout: 30_000 });
     await expect(queue).toHaveAttribute('data-queued', '8');
@@ -407,6 +429,69 @@ test.describe('A release follows its channel’s posting cadence', () => {
     await capture(page, '08-requeued');
   });
 
+  test('the calendar check and the breaking preview wait for the project’s channels (KB-198)', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const team = await seedTeamAccount({ emailPrefix: 'cadwait' });
+    const yt = await youtubeChannel(team);
+    const project = await seedProject(team, { name: 'Cadence wait' });
+    await addProjectChannels(project.id, [yt]);
+    const ep = await episodeWithShorts(project.id, 1);
+
+    await signInAs(page, team);
+
+    // The project's channels are read by a server action called with
+    // exactly { accountId, projectId }: hold it until the buttons have been
+    // seen waiting for it
+    let releaseChannels = () => {};
+    const channelsHeld = new Promise<void>((resolve) => {
+      releaseChannels = resolve;
+    });
+    await page.route('**/*', async (route) => {
+      const request = route.request();
+      if (request.headers()['next-action'] && readsChannels(request.postData()))
+        await channelsHeld;
+      await route.fallback();
+    });
+
+    await openPublish(page, team, `${project.slug}/episodes/${ep.slug}`);
+    await pickToday(page);
+
+    const check = byTest(page, 'release-check-calendar');
+    await expect(check).toBeDisabled();
+    await expect(check).toHaveAttribute('data-loading', 'true');
+    await expect(check).toHaveText('Loading channels…');
+    await capture(page, 'kb198-01-check-waits-for-channels', true);
+
+    await byTest(page, 'release-mode-breaking').click();
+    const preview = byTest(page, 'breaking-preview');
+    await expect(preview).toBeDisabled();
+    await expect(preview).toHaveAttribute('data-loading', 'true');
+    await capture(page, 'kb198-02-preview-waits-for-channels', true);
+
+    releaseChannels();
+
+    await expect(preview).toBeEnabled({ timeout: 30_000 });
+    await expect(preview).not.toHaveAttribute('data-loading');
+    await expect(preview).toHaveText('Preview breaking release');
+    await capture(page, 'kb198-03-preview-ready', true);
+
+    await byTest(page, 'release-mode-cadence').click();
+    await expect(check).toBeEnabled();
+    await expect(check).toHaveText('Check channel calendars');
+    await capture(page, 'kb198-04-check-ready', true);
+
+    // The first click is answered with the calendar, not "still loading"
+    await check.click();
+    await expect(byTest(page, 'release-calendar-post')).toHaveCount(5, {
+      timeout: 30_000,
+    });
+    await expect(byTest(page, 'release-calendar-error')).toHaveCount(0);
+    await capture(page, 'kb198-05-first-click-answered', true);
+  });
+
   test('says no channel takes the videos, rather than that the calendars could not be read', async ({
     page,
   }) => {
@@ -423,7 +508,7 @@ test.describe('A release follows its channel’s posting cadence', () => {
     await signInAs(page, team);
     await openPublish(page, team, `${project.slug}/episodes/${ep.slug}`);
     await pickToday(page);
-    await byTest(page, 'release-check-calendar').click();
+    await checkCalendar(page);
 
     await expect(byTest(page, 'release-calendar-error')).toHaveText(
       'No matching channels for uploaded videos. Check language settings.',

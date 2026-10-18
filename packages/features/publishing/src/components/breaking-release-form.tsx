@@ -72,6 +72,8 @@ function settingsOf(values: BreakingFormValues): BreakingSettings {
  */
 export function BreakingReleaseForm(props: {
   disabled: boolean;
+  /** KB-198: the project's channels are still being read */
+  channelsLoading: boolean;
   isScheduling: boolean;
   /** The schedule item a target came from, by its item key */
   labelOf: (itemKey: string) => { label: string; full: boolean };
@@ -236,12 +238,22 @@ export function BreakingReleaseForm(props: {
           size="sm"
           className="w-full"
           data-test="breaking-preview"
-          disabled={props.disabled || preview.status === 'loading'}
+          data-loading={props.channelsLoading || undefined}
+          aria-busy={props.channelsLoading}
+          disabled={
+            props.disabled ||
+            props.channelsLoading ||
+            preview.status === 'loading'
+          }
         >
-          {preview.status === 'loading' && (
+          {(props.channelsLoading || preview.status === 'loading') && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
-          {previewed ? 'Preview again' : 'Preview breaking release'}
+          {props.channelsLoading
+            ? 'Loading channels…'
+            : previewed
+              ? 'Preview again'
+              : 'Preview breaking release'}
         </Button>
 
         {preview.status === 'error' && (

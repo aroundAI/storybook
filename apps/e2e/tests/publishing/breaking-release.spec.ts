@@ -288,19 +288,19 @@ test.describe('A breaking-news release', () => {
     // A time in the past is refused in the form
     await byTest(page, 'breaking-when-at').click();
     await byTest(page, 'breaking-at').fill('2020-01-01T10:00');
+    // KB-198: the preview waits for the project's channels
+    await expect(byTest(page, 'breaking-preview')).toBeEnabled({
+      timeout: 30_000,
+    });
     await byTest(page, 'breaking-preview').click();
     await expect(page.getByText('Choose a time in the future.')).toBeVisible();
     await capture(page, '02-past-time-refused', true);
     await byTest(page, 'breaking-when-now').click();
 
-    // The project's channels load after the panel: until then the preview
-    // says so, and is asked again
-    await expect(async () => {
-      await byTest(page, 'breaking-preview').click();
-      await expect(byTest(page, 'breaking-preview-result')).toBeVisible({
-        timeout: 5_000,
-      });
-    }).toPass({ timeout: 60_000 });
+    await byTest(page, 'breaking-preview').click();
+    await expect(byTest(page, 'breaking-preview-result')).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(byTest(page, 'breaking-placed')).toHaveCount(7);
     await expect(byTest(page, 'breaking-quota-warning')).toBeVisible();
     const movedInPreview = await byTest(page, 'breaking-moved').count();

@@ -1657,6 +1657,7 @@ export function PublishScreen({
                     : cadence.preview(buildReleaseConfigs(schedule), start)
                 }
                 onEditChannelCadence={cadence.editChannel}
+                channelsLoading={loadingConnections}
                 onPreviewBreaking={(settings, schedule) =>
                   loadingConnections
                     ? Promise.resolve({ ok: false, error: CHANNELS_LOADING })
