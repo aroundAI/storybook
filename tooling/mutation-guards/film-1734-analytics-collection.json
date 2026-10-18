@@ -1,0 +1,235 @@
+{
+  "feature": "FILM-1734 complete analytics collection: live counts, channel totals, traffic copies, Instagram follows, the figure readers",
+  "mutations": [
+    {
+      "name": "C1 a withheld YouTube count is stored as 0",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "  if (value === null || value === undefined) return null;\n",
+      "replace": "  if (value === null || value === undefined) return 0;\n",
+      "pattern": "a withheld count as null",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C2 videos.list is asked for every id at once",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "        part: ['statistics'],\n        id: videoIds.slice(i, i + YOUTUBE_VIDEOS_LIST_MAX_IDS),\n",
+      "replace": "        part: ['statistics'],\n        id: videoIds,\n",
+      "pattern": "at most 50 ids a call",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C3 a hidden subscriber count is read as a count",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "      subscribers: channel.statistics?.hiddenSubscriberCount\n        ? null\n        : count(channel.statistics?.subscriberCount),\n",
+      "replace": "      subscribers: count(channel.statistics?.subscriberCount),\n",
+      "pattern": "a hidden subscriber count is null",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C4 a channel metric YouTube left out is 0",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "          return typeof cell === 'number' && Number.isFinite(cell)\n            ? cell\n            : null;\n",
+      "replace": "          return typeof cell === 'number' && Number.isFinite(cell)\n            ? cell\n            : 0;\n",
+      "pattern": "a missing metric is null",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C5 traffic sources are fetched for the period, not by day",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "      dimensions: 'day,insightTrafficSourceType',\n",
+      "replace": "      dimensions: 'insightTrafficSourceType',\n",
+      "pattern": "traffic sources by day",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C6 a Reel is asked for follows and profile visits",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "              ...(isReels ? [] : ['follows', 'profile_visits']),\n",
+      "replace": "              'follows',\n              'profile_visits',\n",
+      "pattern": "a Reel is never asked",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C7 an account figure Meta left out is 0",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "        data.data?.find((item) => item.name === name)?.total_value?.value ??\n        null;\n",
+      "replace": "        data.data?.find((item) => item.name === name)?.total_value?.value ??\n        0;\n",
+      "pattern": "a figure Meta leaves out is null",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C8 the Analytics API traffic copy is labelled the CSV",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    watch_time_minutes: day.watchTimeMinutes,\n    metric_source: 'analytics_api' as const,\n",
+      "replace": "    watch_time_minutes: day.watchTimeMinutes,\n    metric_source: 'reporting_api' as const,\n",
+      "pattern": "own copy",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "C9 Instagram follows are dropped from the day",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    subscribers_gained: input.delta.subscribers_gained,\n    profile_visits: input.delta.profile_visits ?? null,\n",
+      "replace": "    subscribers_gained: null,\n    profile_visits: input.delta.profile_visits ?? null,\n",
+      "pattern": "keeps Instagram saves, watch time and follows",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts"
+    },
+    {
+      "name": "C10 a channel without a token stops every channel",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "      if (!token.valid || !token.accessToken) continue;\n\n      const statistics",
+      "replace": "      if (!token.valid || !token.accessToken) return written;\n\n      const statistics",
+      "pattern": "costs only its own counts",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-live-counts.test.ts"
+    },
+    {
+      "name": "C11 YouTube data date is the sync time",
+      "file": "packages/features/content-analytics/src/server/sync-status.ts",
+      "find": "  if (platform === 'youtube') return sync?.last_data_date ?? null;\n",
+      "replace": "",
+      "pattern": "YouTube: the last day",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/complete-collection.test.ts"
+    },
+    {
+      "name": "D1 a public project’s publish is read without its account check",
+      "file": "packages/features/content-analytics/src/server/daily-figures.ts",
+      "find": "    await assertAccountAccess(client, accountId).catch(() => {\n      throw new ActionRefusal('That video is not in your library.');\n    });\n",
+      "replace": "",
+      "pattern": "whose account is not the caller",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D2 an id the caller cannot see is dropped, not refused",
+      "file": "packages/features/content-analytics/src/server/daily-figures.ts",
+      "find": "  if (rows.length !== unique.length) {\n    throw new ActionRefusal('That video is not in your library.');\n  }\n",
+      "replace": "",
+      "pattern": "refuses the whole read when one publish is not visible",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D3 the store off reads as zeros",
+      "file": "packages/features/content-analytics/src/lib/daily-figures.ts",
+      "find": "export const NO_VIDEO_FIGURES: VideoFigures = {\n  views: null,\n",
+      "replace": "export const NO_VIDEO_FIGURES: VideoFigures = {\n  views: 0,\n",
+      "pattern": "nothing measured, never 0",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D4 a change across a withheld count is 0",
+      "file": "packages/features/content-analytics/src/lib/daily-figures.ts",
+      "find": "  return current === null || previous === null ? null : current - previous;\n",
+      "replace": "  return current === null || previous === null ? 0 : current - previous;\n",
+      "pattern": "a side that withheld a count makes it null",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D5 a Reporting CSV day is labelled the Analytics API",
+      "file": "packages/features/content-analytics/src/server/daily-figures.ts",
+      "find": "  return row.metricSource === 'reporting_api'\n",
+      "replace": "  return row.metricSource === 'never'\n",
+      "pattern": "never merges across them",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D6 Meta follows are read as subscribers gained",
+      "file": "packages/features/content-analytics/src/server/daily-figures.ts",
+      "find": "    avgPercentViewed: row.avgViewPercentage,\n    subscribersGained: isMeta(row.platform) ? null : row.subscribersGained,\n",
+      "replace": "    avgPercentViewed: row.avgViewPercentage,\n    subscribersGained: row.subscribersGained,\n",
+      "pattern": "Instagram follows are follows",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D7 an audience figure the platform does not report is kept",
+      "file": "packages/features/content-analytics/src/server/daily-figures.ts",
+      "find": "            views: measures.views ? row.views : null,\n",
+      "replace": "            views: row.views,\n",
+      "pattern": "nulls the figure a platform does not report",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D8 the channel’s data date is its first publish’s",
+      "file": "packages/features/content-analytics/src/server/daily-figures.ts",
+      "find": "      lastDataDate: latest(current?.lastDataDate ?? null, status.lastDataDate),\n",
+      "replace": "      lastDataDate: current?.lastDataDate ?? status.lastDataDate,\n",
+      "pattern": "the newest data day",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-figures.test.ts"
+    },
+    {
+      "name": "D9 unmeasured dislikes show as 0 in the content table",
+      "file": "packages/features/content-analytics/src/components/content-table.tsx",
+      "find": "                  {item.dislikes === null ? (\n",
+      "replace": "                  {item.dislikes === undefined ? (\n",
+      "pattern": "Not measured\" where nothing measured it",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/content-table.test.tsx"
+    },
+    {
+      "name": "T1 a reader sums both traffic copies",
+      "file": "packages/clickhouse/src/queries-detail.ts",
+      "find": "      FROM ${trafficSourcesOneCopy(conditions.join(' AND '))}\n",
+      "replace": "      FROM video_traffic_sources FINAL\n      WHERE ${conditions.join(' AND ')}\n",
+      "pattern": "selects from video_traffic_sources",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/traffic-one-copy.test.ts"
+    },
+    {
+      "name": "T2 the one-copy read keeps both copies",
+      "file": "packages/clickhouse/src/traffic-sources.ts",
+      "find": "    WHERE metric_source != 'analytics_api' OR day_has_csv = 0\n",
+      "replace": "    WHERE 1 = 1\n",
+      "pattern": "takes the CSV",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/traffic-one-copy.test.ts"
+    },
+    {
+      "name": "T3 a purge leaves channel_metrics_daily behind",
+      "file": "packages/clickhouse/src/purge.ts",
+      "find": "  'channel_daily',\n  'channel_metrics_daily',\n",
+      "replace": "  'channel_daily',\n",
+      "pattern": "covers every table",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/purge.test.ts"
+    }
+  ]
+}
