@@ -2,9 +2,14 @@
  * ClickHouse Migration Runner
  *
  * Applies pending migrations in order and records them in the _migrations
- * table. Safe to re-run: already-applied migrations are skipped.
+ * table. Safe to re-run: already-applied migrations are skipped. Refuses to
+ * run anything when _migrations is empty but tables exist (KB-200).
  *
  * Usage: pnpm --filter @kit/clickhouse migrate
+ *        pnpm --filter @kit/clickhouse migrate --baseline
+ *          records every migration as applied without running it, for a
+ *          database whose schema is current but whose _migrations was lost.
+ *          Never run by deploy.sh.
  */
 import { closeClickHouseClient, getClickHouseClient } from '../client';
 import { migration as m001 } from './001_create_tables';
@@ -33,6 +38,7 @@ import { migration as m023 } from './023_reels_attention';
 import { migration as m024 } from './024_edit_sessions_fact';
 import { migration as m025 } from './025_complete_collection';
 import type { ClickHouseMigration } from './migration-types';
+import { runMigrations } from './runner';
 
 const MIGRATIONS: ClickHouseMigration[] = [
   m001,
@@ -62,49 +68,21 @@ const MIGRATIONS: ClickHouseMigration[] = [
   m025,
 ];
 
-const MIGRATION_TABLE = `
-CREATE TABLE IF NOT EXISTS _migrations (
-    name String,
-    applied_at DateTime DEFAULT now()
-)
-ENGINE = MergeTree()
-ORDER BY name
-`;
+const baseline = process.argv.includes('--baseline');
 
-async function runMigrations() {
-  console.log('🚀 Running ClickHouse migrations...\n');
+async function main() {
+  console.log(
+    baseline
+      ? '📌 Recording ClickHouse migrations as applied (--baseline)...\n'
+      : '🚀 Running ClickHouse migrations...\n',
+  );
 
   const client = getClickHouseClient();
 
   try {
-    await client.command({ query: MIGRATION_TABLE });
-
-    const result = await client.query({
-      query: 'SELECT name FROM _migrations',
-      format: 'JSONEachRow',
+    const { applied, baselined } = await runMigrations(client, MIGRATIONS, {
+      baseline,
     });
-    const applied = new Set(
-      (await result.json<{ name: string }>()).map((row) => row.name),
-    );
-
-    let appliedCount = 0;
-
-    for (const migration of MIGRATIONS) {
-      if (applied.has(migration.name)) {
-        console.log(`  ⏭️  ${migration.name} already applied — skipping.`);
-        continue;
-      }
-
-      console.log(`  Applying ${migration.name}...`);
-      await migration.up(client);
-      await client.insert({
-        table: '_migrations',
-        values: [{ name: migration.name }],
-        format: 'JSONEachRow',
-      });
-      console.log(`  ✅ ${migration.name} applied.`);
-      appliedCount++;
-    }
 
     const tables = await client.query({
       query: 'SHOW TABLES',
@@ -113,11 +91,15 @@ async function runMigrations() {
     const tableList = await tables.json<{ name: string }>();
     console.log('\n  📋 Tables:', tableList.map((t) => t.name).join(', '));
 
-    console.log(
-      appliedCount > 0
-        ? `\n✅ ${appliedCount} migration(s) applied.`
-        : '\n✅ Nothing to do.',
-    );
+    if (baselined.length > 0) {
+      console.log(`\n✅ ${baselined.length} migration(s) recorded, none run.`);
+    } else {
+      console.log(
+        applied.length > 0
+          ? `\n✅ ${applied.length} migration(s) applied.`
+          : '\n✅ Nothing to do.',
+      );
+    }
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exitCode = 1;
@@ -126,4 +108,4 @@ async function runMigrations() {
   }
 }
 
-void runMigrations();
+void main();

@@ -338,49 +338,19 @@ echo ""
 if [ "${CLICKHOUSE_ENABLED}" = "true" ] && [ -n "$CLICKHOUSE_HOST" ]; then
     echo -e "${YELLOW}📊 Applying ClickHouse migrations...${NC}"
 
-    MIGRATIONS_DIR="packages/clickhouse/src/migrations"
+    # KB-200: run.ts is the only file that applies anything. It skips what
+    # _migrations records and refuses an emptied _migrations over existing
+    # tables, so its own output is the log; never pass --baseline here.
+    set +e
+    npx tsx packages/clickhouse/src/migrations/run.ts
+    MIGRATION_EXIT=$?
+    set -e
 
-    if [ ! -d "$MIGRATIONS_DIR" ]; then
-        echo -e "${YELLOW}⚠️  No ClickHouse migrations directory found at ${MIGRATIONS_DIR}${NC}"
+    if [ $MIGRATION_EXIT -eq 0 ]; then
+        echo -e "${GREEN}✓ ClickHouse migrations up to date${NC}"
     else
-        # Collect migration files in numeric order (001_, 002_, ...)
-        MIGRATION_FILES=$(ls "$MIGRATIONS_DIR"/*.ts 2>/dev/null | sort)
-
-        if [ -z "$MIGRATION_FILES" ]; then
-            echo -e "${GREEN}✓ No ClickHouse migration files found — nothing to run${NC}"
-        else
-            echo "  Found ClickHouse migrations:"
-            for f in $MIGRATION_FILES; do
-                echo "    - $(basename "$f")"
-            done
-            echo ""
-
-            MIGRATION_FAILED=false
-            for MIGRATION_FILE in $MIGRATION_FILES; do
-                MIGRATION_NAME=$(basename "$MIGRATION_FILE")
-                echo -e "  Running ${MIGRATION_NAME}..."
-
-                set +e
-                npx tsx "$MIGRATION_FILE"
-                MIGRATION_EXIT=$?
-                set -e
-
-                if [ $MIGRATION_EXIT -eq 0 ]; then
-                    echo -e "  ${GREEN}✓ ${MIGRATION_NAME} applied${NC}"
-                else
-                    echo -e "  ${RED}✗ ${MIGRATION_NAME} failed (exit code: ${MIGRATION_EXIT})${NC}"
-                    MIGRATION_FAILED=true
-                    break
-                fi
-            done
-
-            if [ "$MIGRATION_FAILED" = true ]; then
-                fail_deploy "ClickHouse migration ${MIGRATION_NAME} failed" \
-                    "With CLICKHOUSE_ENABLED=true the app reads tables these migrations create"
-            else
-                echo -e "${GREEN}✓ All ClickHouse migrations applied successfully${NC}"
-            fi
-        fi
+        fail_deploy "ClickHouse migrations failed (exit code: ${MIGRATION_EXIT})" \
+            "With CLICKHOUSE_ENABLED=true the app reads tables these migrations create"
     fi
 else
     echo -e "${YELLOW}📊 ClickHouse migrations skipped (CLICKHOUSE_ENABLED != true)${NC}"

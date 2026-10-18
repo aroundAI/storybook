@@ -15,12 +15,18 @@
  * DESTRUCTIVE: drops the v1 video_daily_stats materialized view and
  * video_metrics table. The v1 data is over-counted beyond repair (lifetime
  * totals summed per sync) and is re-populated via the FILM-1503 backfill.
+ *
+ * KB-200: the video_metrics drop is skipped when the table holds rows, so a
+ * re-run (a lost _migrations) cannot delete v2 data. The video_daily_stats
+ * drop only rebuilds a view and is safe to repeat.
  */
 import type { ClickHouseMigration } from './migration-types';
 
+const DROP_VIDEO_METRICS = 'DROP TABLE IF EXISTS video_metrics';
+
 const STATEMENTS = [
   `DROP TABLE IF EXISTS video_daily_stats`,
-  `DROP TABLE IF EXISTS video_metrics`,
+  DROP_VIDEO_METRICS,
   `CREATE TABLE IF NOT EXISTS video_metrics (
     project_id UUID,
     video_id String,
@@ -78,7 +84,19 @@ const STATEMENTS = [
 export const migration: ClickHouseMigration = {
   name: '002_metrics_v2',
   async up(client) {
+    const existing = await client.query({
+      query: `SELECT total_rows FROM system.tables
+              WHERE database = currentDatabase() AND name = 'video_metrics'`,
+      format: 'JSONEachRow',
+    });
+    const [table] = await existing.json<{ total_rows: string | null }>();
+    const hasRows = Number(table?.total_rows ?? 0) > 0;
+
     for (const query of STATEMENTS) {
+      if (query === DROP_VIDEO_METRICS && hasRows) {
+        console.log('  ⚠️  video_metrics holds rows — not dropping it.');
+        continue;
+      }
       await client.command({ query });
     }
   },
