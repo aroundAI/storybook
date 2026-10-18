@@ -35,6 +35,7 @@
     "./server/connection-actions": "./src/server/connection-actions.ts",
     "./server/oauth-app-credentials": "./src/server/oauth-app-credentials.ts",
     "./server/queries": "./src/server/publishing-queries.ts",
+    "./server/project-channels": "./src/server/project-channels.ts",
     "./server/upload-only": "./src/server/upload-only-actions.ts",
     "./server/link-published-video": "./src/server/link-published-video.service.ts",
     "./server/schedule-publishes": "./src/server/schedule-publishes.service.ts",

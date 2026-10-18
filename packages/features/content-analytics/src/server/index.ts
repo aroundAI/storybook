@@ -20,7 +20,11 @@ export { runReportingIngestJob } from './reporting/report-ingest';
 export type { ReportIngestResult } from './reporting/report-ingest';
 
 // Channel dimension (FILM-1602)
-export { listAccountChannels, listProjectChannels } from './channels';
+export {
+  listAccountChannels,
+  listProjectChannels,
+  listProjectLinkedChannels,
+} from './channels';
 export type { ChannelRef } from './channels';
 export { listChannelsAction } from './channels-actions';
 export { fetchAccountAnalyticsSettings } from './settings-queries';

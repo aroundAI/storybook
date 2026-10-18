@@ -3,7 +3,11 @@ import 'server-only';
 import { z } from 'zod';
 
 import type { AnalyticsClient } from './analytics-client';
-import { listAccountChannels, listProjectChannels } from './channels';
+import {
+  listAccountChannels,
+  listProjectChannels,
+  listProjectLinkedChannels,
+} from './channels';
 import { assertScopeAccess } from './scope-access';
 
 export const ListChannelsSchema = z
@@ -35,5 +39,23 @@ export async function listChannelsService(
 
   return projectId
     ? listProjectChannels(projectId, client)
+    : listAccountChannels(accountId!, client);
+}
+
+/**
+ * MCP `list_channels` (KB-199): a project's linked channels — exactly what
+ * `schedule_release` accepts — and the channels it published from that are
+ * no longer linked, each flagged `linked`. Without a project, every channel
+ * on the team. The Deep Dive filter keeps `listChannelsService`: it filters
+ * figures, which only published channels have.
+ */
+export async function listPublishingChannelsService(
+  client: AnalyticsClient,
+  { projectId, accountId }: ListChannelsInput,
+) {
+  await assertScopeAccess(client, projectId ? { projectId } : { accountId });
+
+  return projectId
+    ? listProjectLinkedChannels(projectId, client)
     : listAccountChannels(accountId!, client);
 }

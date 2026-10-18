@@ -1,0 +1,73 @@
+{
+  "feature": "KB-199 MCP list_channels(projectId) lists the project's linked channels, the set scheduling accepts, plus channels it published from that are no longer linked, flagged; a release preview refuses a channel outside the project",
+  "mutations": [
+    {
+      "name": "KB199-U1 list_channels lists the channels the project published from",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/coverage.ts",
+      "edits": [
+        {
+          "find": "  listPublishingChannelsService,\n} from",
+          "replace": "  listChannelsService,\n} from"
+        },
+        {
+          "find": "      listPublishingChannelsService(\n",
+          "replace": "      listChannelsService(\n"
+        }
+      ],
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/list-channels-linked.test.ts",
+      "pattern": "before anything is published"
+    },
+    {
+      "name": "KB199-U2 the linked channels are left out of the list",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channels.ts",
+      "find": "    [...linkedIds, ...publishedIds],\n",
+      "replace": "    publishedIds,\n",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/list-channels-linked.test.ts",
+      "pattern": "before anything is published"
+    },
+    {
+      "name": "KB199-U3 a channel published from and no longer linked is left out",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channels.ts",
+      "find": "    [...linkedIds, ...publishedIds],\n",
+      "replace": "    [...linkedIds],\n",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/list-channels-linked.test.ts",
+      "pattern": "no longer linked"
+    },
+    {
+      "name": "KB199-U4 every listed channel claims to be linked",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channels.ts",
+      "find": "      linked: linkedIds.has(channel.connectionId),\n",
+      "replace": "      linked: true,\n",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/list-channels-linked.test.ts",
+      "pattern": "no longer linked"
+    },
+    {
+      "name": "KB199-U5 a switched-off link counts as the project's channel",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/project-channels.ts",
+      "find": "        .eq('is_enabled', true)\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/list-channels-linked.test.ts",
+      "pattern": "before anything is published"
+    },
+    {
+      "name": "KB199-U6 a release preview places posts on a channel outside the project",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/schedule-release.service.ts",
+      "find": "    throw new ActionRefusal('That episode was not found.');\n  }\n\n  await assertConnectionOfProject(",
+      "replace": "    throw new ActionRefusal('That episode was not found.');\n  }\n\n  return;\n  await assertConnectionOfProject(",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-release.service.test.ts",
+      "pattern": "outside the episode's project"
+    }
+  ]
+}

@@ -62,7 +62,7 @@ export const WORKFLOW_GUIDE_TEXT = [
   '',
   '## Publishing',
   '',
-  'An episode publishes two kinds of video, and each channel of the project gets the one in its own language (`list_channels(projectId)` gives each channel its platform and language):',
+  'An episode publishes two kinds of video, and each channel of the project gets the one in its own language (`list_channels(projectId)` lists the project’s linked channels — exactly the ones scheduling accepts, even before anything is published — with each one’s platform and language; a channel it published from that is no longer linked comes back `linked: false`):',
   '',
   '- **The episode video** (the master): one per language, the same cut on every platform that takes long videos (YouTube, Facebook). Attach it with `request_episode_video_upload(episodeId, language, contentType, bytes)`, PUT the file to the uploadUrl with exactly the headers returned, then `finalize_episode_video(episodeId, language, key)`. Upload once per language.',
   '- **Shorts**: a short is cut differently per platform, so each cut is a Shorts group naming the platforms it goes to, with one video per language. `upsert_shorts_group(episodeId, name, platforms)` makes one (e.g. "YT cut" with [youtube], "IG/FB cut" with [instagram, facebook]; an empty list means every Shorts platform) and returns its id; the same tool with shortsGroupId renames it, changes its platforms or sets the title, description and tags its shorts post with. Upload each language of a cut with `request_episode_video_upload` and then `finalize_episode_video(..., shortsGroupId)`. `delete_shorts_group` removes a group no scheduled publish uses.',

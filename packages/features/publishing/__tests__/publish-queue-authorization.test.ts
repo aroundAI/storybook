@@ -201,6 +201,10 @@ function builder(table: string) {
     is: () => b,
     in: () => b,
     order: () => b,
+    range: (from: number, to: number) => ({
+      then: (resolve: (value: unknown) => unknown) =>
+        resolve({ data: result().data.slice(from, to + 1), error: null }),
+    }),
     single: async () => {
       const { data } = result();
       return data[0]

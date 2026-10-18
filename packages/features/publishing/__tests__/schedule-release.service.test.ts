@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ActionRefusal } from '@kit/next/action-result';
+
 import type { ChannelCadenceRow } from '../src/lib/cadence/cadence';
 import type { ScheduleTarget } from '../src/server/schedule-publishes.service';
 import {
@@ -21,6 +23,21 @@ import {
 vi.mock('server-only', () => ({}));
 vi.mock('../src/server/connection-tokens', () => ({
   getAccessToken: async () => 'token',
+}));
+const projectChannels = vi.hoisted(() => ({ outside: new Set<string>() }));
+vi.mock('../src/server/project-channels', () => ({
+  assertConnectionOfProject: async (
+    _client: unknown,
+    connectionIds: string[],
+    projectId: string,
+  ) => {
+    if (projectId !== 'project') throw new Error(projectId);
+    if (connectionIds.some((id) => projectChannels.outside.has(id))) {
+      throw new ActionRefusal(
+        "That channel isn't one of this project's channels.",
+      );
+    }
+  },
 }));
 vi.mock('../src/server/publish-preflight', () => ({
   preparePublish: async () => undefined,
@@ -107,6 +124,18 @@ function fakeDb() {
     );
 
   const from = (table: string) => {
+    if (table === 'episodes') {
+      const episode = {
+        select: () => episode,
+        eq: () => episode,
+        maybeSingle: async () => ({
+          data: { project_id: 'project' },
+          error: null,
+        }),
+      };
+      return episode;
+    }
+
     const filters: Array<(row: Row) => boolean> = [];
     let op: 'select' | 'update' | 'insert' = 'select';
     let values: Record<string, unknown> | Row[] = {};
@@ -319,6 +348,7 @@ const ist = (iso: unknown) =>
 let db: ReturnType<typeof fakeDb>;
 
 beforeEach(() => {
+  projectChannels.outside.clear();
   db = fakeDb();
   db.tables.channel_posting_cadences!.push(
     cadenceRow(YT, 'full') as unknown as Row,
@@ -469,6 +499,31 @@ describe('a cadence release through the service', () => {
       ok: false,
       refusal: expect.stringContaining('No free slot in the next 365 days'),
     });
+  });
+});
+
+// KB-199: a preview shows only posts scheduling would make; a channel
+// outside the episode's project is refused there, as at preflight.
+describe("a preview to a channel outside the episode's project", () => {
+  it('is refused, for a cadence and for a breaking release', async () => {
+    projectChannels.outside.add(YT);
+
+    const cadence = await previewCadenceRelease(db.client, release('ep1', 1), {
+      now: NOW,
+    });
+    const breaking = await previewBreakingRelease(
+      db.client,
+      { ...release('news', 1), breaking: {} },
+      { now: NOW },
+    );
+
+    for (const result of [cadence, breaking]) {
+      expect(result).toEqual({
+        ok: false,
+        refusal: "That channel isn't one of this project's channels.",
+      });
+    }
+    expect(db.writes).toHaveLength(0);
   });
 });
 

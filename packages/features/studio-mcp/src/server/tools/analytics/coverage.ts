@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { CoverageMatrixSchema } from '@kit/content-analytics/lib/schemas/coverage';
 import {
   ListChannelsSchema,
-  listChannelsService,
+  listPublishingChannelsService,
 } from '@kit/content-analytics/server/channels-service';
 import { getCoverageMatrixService } from '@kit/content-analytics/server/coverage-service';
 
@@ -75,7 +75,7 @@ export const listChannels = defineTool({
   name: 'list_channels',
   title: 'List channels',
   description:
-    'The channels a project publishes to, or every channel connected to the team: connection id, platform, name, whether it is active, its target language and whether its grant reaches the platform’s analytics. Channel ids are what the other tools take as `channelId`.',
+    'With projectId, the project’s linked channels — exactly the ones schedule_publish and schedule_release accept for it, even before anything is published — and any channel it published from that is no longer linked, flagged `linked: false`. Without one, every channel connected to the team. Each has its connection id, platform, name, whether it is active, its target language and whether its grant reaches the platform’s analytics. Channel ids are what the other tools take as `channelId` and `connectionId`.',
   inputSchema: { projectId: z.string().uuid().optional() },
   scope: 'studio:read',
   annotations: READ_ONLY,
@@ -85,7 +85,7 @@ export const listChannels = defineTool({
     });
 
     const data = await callService(() =>
-      listChannelsService(
+      listPublishingChannelsService(
         context.principal.supabase,
         parseWith(ListChannelsSchema, {
           projectId: scope.projectId,
