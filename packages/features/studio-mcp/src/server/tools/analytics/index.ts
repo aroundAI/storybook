@@ -22,6 +22,11 @@ import { getGenomeFindings } from './genome';
 import { getLanguageAnalytics } from './language';
 import { getPerformanceByOrigin } from './origin-split';
 import { getProjectAnalytics } from './project-analytics';
+import {
+  getProjectReport,
+  listProjectReports,
+  saveProjectReport,
+} from './project-reports';
 import { getReachOverview } from './reach';
 import { getReportDownload, listReports } from './reports';
 import { getRetentionCurve } from './retention';
@@ -72,6 +77,8 @@ export const analyticsReadTools = [
   getCommentReaction,
   getAudienceComments,
   getPendingWork,
+  getProjectReport,
+  listProjectReports,
 ].map((tool) => tool as unknown as McpToolDefinition);
 
 export const analyticsWriteTools = [
@@ -82,6 +89,7 @@ export const analyticsWriteTools = [
   concludeExperiment,
   abandonExperiment,
   labelAudienceComments,
+  saveProjectReport,
 ].map((tool) => tool as unknown as McpToolDefinition);
 
 export const analyticsTools: McpToolDefinition[] = [
