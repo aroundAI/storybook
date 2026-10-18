@@ -20,13 +20,56 @@ export const CadenceTargetSchema = PlatformConfigSchema.omit({
   key: z.string().min(1).max(200),
 });
 
+/**
+ * FILM-2210. A breaking release: the long video now (or at `at`), its
+ * Shorts at the front of each channel's queue with extra times a day
+ */
+export const BreakingSchema = z.object({
+  at: z.string().datetime({ offset: true }).optional(),
+  boost: z
+    .object({
+      extraPerDay: z.coerce.number().int().min(0).max(4),
+      days: z.coerce.number().int().min(1).max(7),
+    })
+    .optional(),
+  startAfterHours: z.coerce.number().min(0).max(48).optional(),
+});
+
 export const ScheduleReleaseSchema = z.object({
   episodeId: z.string().uuid(),
   targets: z.array(CadenceTargetSchema).min(1).max(200),
   notBefore: z.string().datetime(),
   timezone: TimeZoneSchema,
   aiGenerated: z.boolean().optional(),
+  breaking: BreakingSchema.optional(),
 });
+
+export const BreakingReleaseSchema = ScheduleReleaseSchema.extend({
+  breaking: BreakingSchema,
+});
+
+/** FILM-2210: the Publish screen's Breaking news form */
+export const BreakingFormSchema = z
+  .object({
+    when: z.enum(['now', 'at']),
+    /** A datetime-local value, in the browser's zone */
+    at: z.string(),
+    extraPerDay: z.coerce
+      .number()
+      .int()
+      .min(0, 'No fewer than 0 extra Shorts.')
+      .max(4, 'At most 4 extra Shorts a day.'),
+    days: z.coerce
+      .number()
+      .int()
+      .min(1, 'At least 1 day.')
+      .max(7, 'At most 7 days.'),
+  })
+  .refine(
+    (value) =>
+      value.when === 'now' || new Date(value.at).getTime() > Date.now(),
+    { message: 'Choose a time in the future.', path: ['at'] },
+  );
 
 export const HeldShortsSchema = z.object({
   publishIds: z.array(z.string().uuid()).min(1).max(200),
@@ -68,3 +111,5 @@ export const ChannelCadencesQuerySchema = z.object({
 export type ScheduleReleaseInput = z.infer<typeof ScheduleReleaseSchema>;
 export type CadenceTargetInput = z.infer<typeof CadenceTargetSchema>;
 export type ChannelCadenceInput = z.infer<typeof ChannelCadenceSchema>;
+export type BreakingInput = z.infer<typeof BreakingSchema>;
+export type BreakingFormValues = z.infer<typeof BreakingFormSchema>;

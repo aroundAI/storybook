@@ -1,0 +1,177 @@
+{
+  "feature": "FILM-2210 breaking-news release: the long video now or at a given time beside the scheduled ones, its Shorts at the front of each channel's queue with extra times for a few days, the queued Shorts moved back in order, all written in one transaction",
+  "mutations": [
+    {
+      "name": "B1 the queued Shorts stay put: breaking Shorts take whatever time is left",
+      "file": "packages/features/publishing/src/lib/cadence/plan-breaking-release.ts",
+      "find": "      p.at >= floor;\n",
+      "replace": "      false;\n",
+      "pattern": "puts the breaking Shorts first",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "B2 a breaking release gets no extra Short times",
+      "file": "packages/features/publishing/src/lib/cadence/plan-breaking-release.ts",
+      "find": "    const times = boostDayTimes(cadence.slotTimes, input.boost.extraPerDay);\n",
+      "replace": "    const times = boostDayTimes(cadence.slotTimes, 0);\n",
+      "pattern": "on the extra times",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "B3 breaking Shorts on a boost day count toward its normal limit",
+      "file": "packages/features/publishing/src/lib/cadence/plan-breaking-release.ts",
+      "find": "        .filter((p) => !boostDays.has(localDate(p.slotAt!, timezone)))\n",
+      "replace": "        .filter(() => true)\n",
+      "pattern": "a normal time the breaking Shorts left free",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "B4 a queued (claimed) Short is moved",
+      "file": "packages/features/publishing/src/lib/cadence/plan-breaking-release.ts",
+      "find": "      p.status === 'scheduled' &&\n      p.slotted !== false &&\n",
+      "replace": "      p.slotted !== false &&\n",
+      "pattern": "leaves a queued Short at the front",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "B5 a Short scheduled by hand is moved",
+      "file": "packages/features/publishing/src/lib/cadence/plan-breaking-release.ts",
+      "find": "      p.status === 'scheduled' &&\n      p.slotted !== false &&\n",
+      "replace": "      p.status === 'scheduled' &&\n",
+      "pattern": "scheduled by hand",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "B6 the shift pulls a queued Short forward into a gap",
+      "file": "packages/features/publishing/src/lib/cadence/dispatch.ts",
+      "find": "    if (input.from && post.slotAt > from) from = post.slotAt;\n",
+      "replace": "",
+      "pattern": "never pulls a queued Short forward",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "B7 breaking Shorts start with the long video, not an hour after",
+      "file": "packages/features/publishing/src/lib/cadence/plan-breaking-release.ts",
+      "find": "      own && new Date(own.getTime() + input.startAfterHours * HOUR_MS),\n",
+      "replace": "      own,\n",
+      "pattern": "puts the breaking Shorts first",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "B8 the upload warning fires at 6, not past it",
+      "file": "packages/features/publishing/src/lib/cadence/plan-breaking-release.ts",
+      "find": "    .filter(([, count]) => count > limit)\n",
+      "replace": "    .filter(([, count]) => count >= limit)\n",
+      "pattern": "says nothing at 6",
+      "test": "__tests__/plan-breaking-release.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "G1 a breaking post is moved for the day's limit",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "  if (publish.release_priority === 'breaking') return false;\n",
+      "replace": "",
+      "pattern": "sends a breaking post although its channel has had its day",
+      "test": "__tests__/cadence-gate.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "G2 a breaking post counts toward the day's limit",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    .neq('release_priority', 'breaking')\n",
+      "replace": "",
+      "pattern": "sends the scheduled long video on the day a breaking one went out",
+      "test": "__tests__/cadence-gate.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "G3 the gate moves a breaking Short with the normal queue",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    (counted(post) &&\n",
+      "replace": "    (sameType(post) &&\n",
+      "pattern": "moves the normal queue past a breaking Short",
+      "test": "__tests__/cadence-gate.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "G4 a breaking Short goes although its long video failed",
+      "file": "packages/features/publishing/src/lib/cadence/gate.ts",
+      "find": "    if (state === 'gone') {\n",
+      "replace": "    if (state === 'gone' && publish.release_priority !== 'breaking') {\n",
+      "pattern": "holds a breaking Short for its own channel",
+      "test": "__tests__/cadence-gate.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "S1 a calendar that changed is refused at once, not planned again",
+      "file": "packages/features/publishing/src/server/schedule-release.service.ts",
+      "find": "      if (error && CALENDAR_CHANGED.has(error.code) && attempt < 2) continue;\n",
+      "replace": "",
+      "pattern": "plans again once when the calendar changed",
+      "test": "__tests__/schedule-release.service.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "S2 the upload warning counts another team's YouTube channels",
+      "file": "packages/features/publishing/src/server/schedule-release.service.ts",
+      "find": "    .eq('account_id', owner.account_id)\n",
+      "replace": "",
+      "pattern": "warns, without refusing, past 6 YouTube uploads",
+      "test": "__tests__/schedule-release.service.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/publishing"
+    },
+    {
+      "name": "M1 a breaking preview schedules",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "    if (input.breaking && input.preview) {\n",
+      "replace": "    if (input.breaking && false) {\n",
+      "pattern": "previews through the breaking planner",
+      "test": "__tests__/tools/release-tools.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp"
+    },
+    {
+      "name": "M2 schedule_release needs only studio:write",
+      "file": "packages/features/studio-mcp/src/server/tools/publish/release.ts",
+      "find": "  scope: 'studio:publish',\n  annotations: PUBLISH,\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireEpisodeInAccount(",
+      "replace": "  scope: 'studio:write',\n  annotations: PUBLISH,\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireEpisodeInAccount(",
+      "pattern": "refused on a connection without studio:publish",
+      "test": "__tests__/tools/release-tools.test.ts",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp"
+    },
+    {
+      "name": "D1 reschedule_publishes writes new slots without giving up the old ones first",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/reschedule-publishes.test.sql",
+      "sql": "create or replace function public.reschedule_publishes(\n  p_moves jsonb,\n  p_inserts jsonb default '[]'::jsonb\n)\nreturns setof public.publishes\nlanguage plpgsql\nsecurity invoker\nset search_path = ''\nas $$\ndeclare\n  v_ids uuid[];\n  v_moved integer;\nbegin\n  select coalesce(array_agg((m ->> 'id')::uuid), '{}')\n    into v_ids\n    from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m;\n\n  if cardinality(v_ids) <> (select count(distinct x) from unnest(v_ids) x) then\n    raise exception 'Each post moves once.' using errcode = '22023';\n  end if;\n\n  if exists (\n    select 1 from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m\n     where m ->> 'slot_at' is null or m ->> 'scheduled_at' is null\n  ) then\n    raise exception 'A moved post needs a slot and a time.' using errcode = '22023';\n  end if;\n\n  update public.publishes\n     set status = status\n   where id = any (v_ids)\n     and status = 'scheduled';\n\n  get diagnostics v_moved = row_count;\n\n  if v_moved <> cardinality(v_ids) then\n    raise exception 'Only scheduled posts move: % of % are.', v_moved, cardinality(v_ids)\n      using errcode = '55000';\n  end if;\n\n  update public.publishes p\n     set slot_at = (m ->> 'slot_at')::timestamptz,\n         scheduled_at = (m ->> 'scheduled_at')::timestamptz\n    from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m\n   where p.id = (m ->> 'id')::uuid;\n\n  return query\n  with inserted as (\n    insert into public.publishes (\n      episode_id, platform_connection_id, platform, content_type, title,\n      description, tags, thumbnail_url, status, scheduled_at, slot_at,\n      after_episode_full, metadata, language, ai_generated, release_priority\n    )\n    select r.episode_id, r.platform_connection_id, r.platform, r.content_type,\n           r.title, r.description, r.tags, r.thumbnail_url, 'scheduled',\n           r.scheduled_at, r.slot_at, coalesce(r.after_episode_full, false),\n           coalesce(r.metadata, '{}'::jsonb), r.language,\n           coalesce(r.ai_generated, false),\n           coalesce(r.release_priority, 'normal')\n      from jsonb_populate_recordset(\n             null::public.publishes, coalesce(p_inserts, '[]'::jsonb)\n           ) r\n    returning *\n  )\n  select * from inserted;\nend;\n$$;"
+    },
+    {
+      "name": "D2 reschedule_publishes moves a post that is not scheduled",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/reschedule-publishes.test.sql",
+      "sql": "create or replace function public.reschedule_publishes(\n  p_moves jsonb,\n  p_inserts jsonb default '[]'::jsonb\n)\nreturns setof public.publishes\nlanguage plpgsql\nsecurity invoker\nset search_path = ''\nas $$\ndeclare\n  v_ids uuid[];\n  v_moved integer;\nbegin\n  select coalesce(array_agg((m ->> 'id')::uuid), '{}')\n    into v_ids\n    from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m;\n\n  if cardinality(v_ids) <> (select count(distinct x) from unnest(v_ids) x) then\n    raise exception 'Each post moves once.' using errcode = '22023';\n  end if;\n\n  if exists (\n    select 1 from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m\n     where m ->> 'slot_at' is null or m ->> 'scheduled_at' is null\n  ) then\n    raise exception 'A moved post needs a slot and a time.' using errcode = '22023';\n  end if;\n\n  update public.publishes\n     set slot_at = null\n   where id = any (v_ids);\n\n  get diagnostics v_moved = row_count;\n\n  if v_moved <> cardinality(v_ids) then\n    raise exception 'Only scheduled posts move: % of % are.', v_moved, cardinality(v_ids)\n      using errcode = '55000';\n  end if;\n\n  update public.publishes p\n     set slot_at = (m ->> 'slot_at')::timestamptz,\n         scheduled_at = (m ->> 'scheduled_at')::timestamptz\n    from jsonb_array_elements(coalesce(p_moves, '[]'::jsonb)) m\n   where p.id = (m ->> 'id')::uuid;\n\n  return query\n  with inserted as (\n    insert into public.publishes (\n      episode_id, platform_connection_id, platform, content_type, title,\n      description, tags, thumbnail_url, status, scheduled_at, slot_at,\n      after_episode_full, metadata, language, ai_generated, release_priority\n    )\n    select r.episode_id, r.platform_connection_id, r.platform, r.content_type,\n           r.title, r.description, r.tags, r.thumbnail_url, 'scheduled',\n           r.scheduled_at, r.slot_at, coalesce(r.after_episode_full, false),\n           coalesce(r.metadata, '{}'::jsonb), r.language,\n           coalesce(r.ai_generated, false),\n           coalesce(r.release_priority, 'normal')\n      from jsonb_populate_recordset(\n             null::public.publishes, coalesce(p_inserts, '[]'::jsonb)\n           ) r\n    returning *\n  )\n  select * from inserted;\nend;\n$$;"
+    }
+  ]
+}

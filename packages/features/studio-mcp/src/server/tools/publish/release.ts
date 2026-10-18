@@ -2,7 +2,9 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { YOUTUBE_UPLOADS_PER_DAY } from '@kit/publishing/lib/cadence/plan-breaking-release';
 import {
+  type BreakingMove,
   QUEUE_WARNING_DAYS,
   type ShortsQueueSummary,
 } from '@kit/publishing/lib/cadence/release-types';
@@ -11,10 +13,12 @@ import { ChannelCadenceSchema } from '@kit/publishing/lib/schemas/schedule-relea
 import { readPublishCalendar } from '@kit/publishing/server/publish-calendar';
 import {
   discardHeldShorts,
+  previewBreakingRelease,
   previewCadenceRelease,
   readChannelCadences,
   requeueHeldShorts,
   saveChannelCadence,
+  scheduleBreakingRelease,
   scheduleCadenceRelease,
 } from '@kit/publishing/server/schedule-release';
 
@@ -162,6 +166,30 @@ function queueLines(queues: readonly ShortsQueueSummary[]) {
     .join('\n')}`;
 }
 
+/** FILM-2210: the posts a breaking release moves back, and the upload-budget warning */
+function breakingLines(
+  moves: readonly BreakingMove[],
+  quota: ReadonlyArray<{ day: string; uploads: number }>,
+) {
+  const moved = moves.length
+    ? `\nMoved back (${moves.length}):\n${moves
+        .map(
+          (m) =>
+            `- ${m.title ?? m.publishId} on ${m.name}: ${m.from} → ${m.to}`,
+        )
+        .join('\n')}`
+    : '\nNothing already scheduled moves.';
+  const warned = quota.length
+    ? `\nYouTube upload budget (${YOUTUBE_UPLOADS_PER_DAY} a day across the team's channels) passed on ${quota
+        .map((q) => `${q.day} (${q.uploads})`)
+        .join(
+          ', ',
+        )}: uploads past it fail until the quota resets at midnight Pacific. A warning; nothing is refused.`
+    : '';
+
+  return moved + warned;
+}
+
 /** The release's own key for target `index`, echoed back in the plan */
 const keyOf = (index: number) => `target-${index}`;
 const indexOf = (key: string) => Number(key.replace('target-', ''));
@@ -170,7 +198,7 @@ export const scheduleReleaseTool = defineTool({
   name: 'schedule_release',
   title: 'Schedule a release on the channels’ cadence',
   description:
-    "Schedules an episode's long video and its Shorts on each channel's posting cadence (get_channel_cadence), as the Publish screen's Schedule Release panel does: the long video takes the channel's next free long-video slot, the channel's days after its last one. Each channel has one Shorts queue, oldest first: this release's Shorts go after every Short already queued there, in the order listed, no earlier than the channel's hours after their long video on that channel, never more a day than its Short times and only on its every-N-days. An episode's Shorts keep posting after the next episode's long video; nothing already scheduled moves, and nothing is held. Each Short waits for its long video to be live. shortsQueue says, per channel, how many Shorts wait, when the last goes and how many days that is past the last long video: runsAhead (over 7 days) means the episodes have more Shorts than Short slots between long videos, so the queue keeps growing. A long video carries the episode's thumbnail for its language (request_episode_thumbnail_upload); Shorts carry none. Call it with preview: true first: it returns where every post would go and writes nothing. Release episodes in order: each goes after the channel's last one.",
+    "Schedules an episode's long video and its Shorts on each channel's posting cadence (get_channel_cadence), as the Publish screen's Schedule Release panel does: the long video takes the channel's next free long-video slot, the channel's days after its last one. Each channel has one Shorts queue, oldest first: this release's Shorts go after every Short already queued there, in the order listed, no earlier than the channel's hours after their long video on that channel, never more a day than its Short times and only on its every-N-days. An episode's Shorts keep posting after the next episode's long video; nothing already scheduled moves, and nothing is held. Each Short waits for its long video to be live. shortsQueue says, per channel, how many Shorts wait, when the last goes and how many days that is past the last long video: runsAhead (over 7 days) means the episodes have more Shorts than Short slots between long videos, so the queue keeps growing. A long video carries the episode's thumbnail for its language (request_episode_thumbnail_upload); Shorts carry none. Call it with preview: true first: it returns where every post would go and writes nothing. Release episodes in order: each goes after the channel's last one. For breaking news, pass `breaking`: the episode goes ahead of the queue instead of after it, and the preview lists the posts it moves back and any YouTube upload-budget warning.",
   inputSchema: {
     episodeId: z.string().uuid(),
     targets: z
@@ -198,6 +226,37 @@ export const scheduleReleaseTool = defineTool({
       .default(false)
       .describe(
         'Label the videos as AI-generated on the platforms that have such a label.',
+      ),
+    breaking: z
+      .object({
+        at: z
+          .string()
+          .datetime({ offset: true })
+          .optional()
+          .describe(
+            'When the long video goes, ISO 8601 with a time zone. Left out: the next scheduler run, about 5 minutes away.',
+          ),
+        boost: z
+          .object({
+            extraPerDay: z.number().int().min(0).max(4).default(2),
+            days: z.number().int().min(1).max(7).default(3),
+          })
+          .optional()
+          .describe(
+            'Extra Short times a day on each channel, used only by this release’s Shorts, for this many days. Default 2 a day for 3 days.',
+          ),
+        startAfterHours: z
+          .number()
+          .min(0)
+          .max(48)
+          .optional()
+          .describe(
+            'Hours after the long video before its first Short. Default 1.',
+          ),
+      })
+      .optional()
+      .describe(
+        'Breaking news (FILM-2210): the long video goes now (or at `at`) whatever the channel’s long-video spacing, and no scheduled long video moves; its Shorts go to the front of each channel’s Shorts queue with the extra times, and the Shorts already queued move back in order. notBefore is ignored. Preview first and show the person what moves.',
       ),
   },
   scope: 'studio:publish',
@@ -237,6 +296,62 @@ export const scheduleReleaseTool = defineTool({
         ? `${target.contentType === 'full' ? 'long video' : `short ${target.shortsGroupId}`} → ${target.connectionId}`
         : key;
     };
+
+    if (input.breaking && input.preview) {
+      const result = await previewBreakingRelease(client, {
+        ...release,
+        breaking: input.breaking,
+      });
+      if (!result.ok) throw refused(result.refusal, 'targets');
+
+      const { placed, moves, quota, shortsQueue } = result.data;
+      const lines = placed.map(
+        (p) =>
+          `- ${p.scheduledAt}: ${describe(p.key)}${p.extra ? ' (extra time)' : ''}`,
+      );
+
+      return {
+        text: `Breaking preview, nothing written: ${placed.length} placed.\n${lines.join('\n')}${breakingLines(moves, quota)}`,
+        structuredContent: {
+          episodeId: input.episodeId,
+          preview: true,
+          breaking: true,
+          placed: placed.map((p) => ({ ...p, target: indexOf(p.key) })),
+          moves,
+          quota,
+          shortsQueue,
+        },
+      };
+    }
+
+    if (input.breaking) {
+      const result = await scheduleBreakingRelease(
+        client,
+        context.principal.userId,
+        { ...release, breaking: input.breaking },
+      );
+      if (!result.ok) throw refused(result.refusal, 'targets');
+
+      const { scheduled, moves, quota, shortsQueue } = result.data;
+
+      return {
+        text: `Scheduled breaking release: ${scheduled.length} post${scheduled.length === 1 ? '' : 's'}.\n${scheduled
+          .map(
+            (row) =>
+              `- ${row.scheduledAt}: ${row.platform} ${row.contentType} (${row.language}), publish ${row.publishId}`,
+          )
+          .join('\n')}${breakingLines(moves, quota)}`,
+        structuredContent: {
+          episodeId: input.episodeId,
+          preview: false,
+          breaking: true,
+          scheduled,
+          moves,
+          quota,
+          shortsQueue,
+        },
+      };
+    }
 
     if (input.preview) {
       const result = await previewCadenceRelease(client, release);

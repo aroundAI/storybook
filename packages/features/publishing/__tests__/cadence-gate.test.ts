@@ -34,6 +34,7 @@ interface CalendarRow {
   status: string;
   slot_at: string | null;
   scheduled_at: string | null;
+  release_priority?: string;
 }
 
 /** A client whose reads answer from `options`; updates are recorded */
@@ -43,7 +44,11 @@ function fakeClient(options: {
     platform_connection_id: string;
     status: string;
   }>;
-  recent?: Array<{ status: string; published_at: string | null }>;
+  recent?: Array<{
+    status: string;
+    published_at: string | null;
+    release_priority?: string;
+  }>;
   cadence?: Partial<ChannelCadenceRow> | null;
   calendar?: CalendarRow[];
   /** Ids whose move fails on the slot index */
@@ -79,7 +84,13 @@ function fakeClient(options: {
         ];
         return { data: rows.slice(start, end + 1), error: null };
       }
-      return { data: options.recent ?? [], error: null };
+      const skipped = call.filters['not release_priority'];
+      return {
+        data: (options.recent ?? []).filter(
+          (row) => !skipped || row.release_priority !== skipped,
+        ),
+        error: null,
+      };
     };
 
     const q = {
@@ -385,6 +396,128 @@ describe('a cadence post on a channel that has had its local day', () => {
 
     expect(await cadenceGate(client, byHand, new Map(), NOW)).toBe('go');
     expect(moves(calls)).toEqual([]);
+  });
+});
+
+describe('FILM-2210: a breaking release at the gate', () => {
+  const at = (iso: string) => new Date(`${iso}+05:30`).toISOString();
+  // 20:05 IST, Thursday: two long videos are due at 20:00
+  const evening = new Date('2026-11-05T14:35:00Z');
+  const LONG_ROW = { ...ROW, content_type: 'full', slot_times: ['20:00'] };
+  const long = (overrides: Partial<GatedPublish> = {}) =>
+    short({
+      id: 'long-1',
+      content_type: 'full',
+      after_episode_full: false,
+      slot_at: at('2026-11-05T20:00:00'),
+      scheduled_at: at('2026-11-05T20:00:00'),
+      ...overrides,
+    });
+
+  it('sends the scheduled long video on the day a breaking one went out', async () => {
+    const { client, calls } = fakeClient({
+      cadence: LONG_ROW,
+      recent: [
+        {
+          status: 'published',
+          published_at: at('2026-11-05T20:01:00'),
+          release_priority: 'breaking',
+        },
+      ],
+    });
+
+    expect(await cadenceGate(client, long(), new Map(), evening)).toBe('go');
+    expect(moves(calls)).toEqual([]);
+  });
+
+  it('sends a breaking post although its channel has had its day', async () => {
+    const { client, calls } = fakeClient({
+      cadence: LONG_ROW,
+      recent: [
+        { status: 'published', published_at: at('2026-11-05T20:02:00') },
+      ],
+    });
+    const breaking = long({ id: 'breaking-1', release_priority: 'breaking' });
+
+    expect(await cadenceGate(client, breaking, new Map(), evening)).toBe('go');
+    expect(moves(calls)).toEqual([]);
+  });
+
+  it('moves the normal queue past a breaking Short, which keeps its time', async () => {
+    const { client, calls } = fakeClient({
+      cadence: ROW,
+      recent: [
+        { status: 'published', published_at: at('2026-11-05T11:04:00') },
+        { status: 'published', published_at: at('2026-11-05T14:00:00') },
+      ],
+      calendar: [
+        {
+          id: 'breaking-short',
+          content_type: 'short',
+          status: 'scheduled',
+          slot_at: at('2026-11-06T11:00:00'),
+          scheduled_at: at('2026-11-06T11:00:00'),
+          release_priority: 'breaking',
+        },
+        {
+          id: 'q1',
+          content_type: 'short',
+          status: 'scheduled',
+          slot_at: at('2026-11-06T17:00:00'),
+          scheduled_at: at('2026-11-06T17:00:00'),
+        },
+      ],
+    });
+    const post = short({ after_episode_full: false });
+
+    expect(await cadenceGate(client, post, new Map(), NOW)).toBe('deferred');
+    expect(moves(calls).map((m) => [m.id, m.slot_at])).toEqual([
+      ['q1', new Date(at('2026-11-07T11:00:00')).toISOString()],
+      ['short-1', new Date(at('2026-11-06T17:00:00')).toISOString()],
+    ]);
+  });
+
+  it('holds a breaking Short for its own channel’s long video, and fails it, saying why, if that fails', async () => {
+    const breakingShort = short({ release_priority: 'breaking' });
+    const waiting = fakeClient({
+      fullStatuses: [
+        {
+          episode_id: 'ep1',
+          platform_connection_id: 'yt',
+          status: 'publishing',
+        },
+      ],
+    });
+    expect(
+      await cadenceGate(
+        waiting.client,
+        breakingShort,
+        await longVideoStates(waiting.client, [breakingShort]),
+        NOW,
+      ),
+    ).toBe('waiting');
+
+    const failed = fakeClient({
+      fullStatuses: [
+        { episode_id: 'ep1', platform_connection_id: 'yt', status: 'failed' },
+        {
+          episode_id: 'ep1',
+          platform_connection_id: 'fb',
+          status: 'published',
+        },
+      ],
+    });
+    expect(
+      await cadenceGate(
+        failed.client,
+        breakingShort,
+        await longVideoStates(failed.client, [breakingShort]),
+        NOW,
+      ),
+    ).toBe('failed');
+    expect(
+      (moves(failed.calls)[0]!.metadata as { error: string }).error,
+    ).toMatch(/long video, which did not go out/);
   });
 });
 

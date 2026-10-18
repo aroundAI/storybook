@@ -8,6 +8,7 @@ import { returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  BreakingReleaseSchema,
   ChannelCadenceSchema,
   ChannelCadencesQuerySchema,
   HeldShortsSchema,
@@ -15,10 +16,12 @@ import {
 } from '../lib/schemas/schedule-release.schema';
 import {
   discardHeldShorts,
+  previewBreakingRelease,
   previewCadenceRelease,
   readChannelCadences,
   requeueHeldShorts,
   saveChannelCadence,
+  scheduleBreakingRelease,
   scheduleCadenceRelease,
 } from './schedule-release.service';
 
@@ -59,6 +62,33 @@ export const scheduleCadenceReleaseAction = returnRefusals(
         }),
       ),
     { schema: ScheduleReleaseSchema, auth: true },
+  ),
+);
+
+/** FILM-2210: a breaking-news release, previewed, then scheduled */
+export const previewBreakingReleaseAction = returnRefusals(
+  enhanceAction(
+    async (input) =>
+      unwrapResult(
+        await previewBreakingRelease(getSupabaseServerClient(), {
+          ...input,
+          aiGenerated: input.aiGenerated ?? false,
+        }),
+      ),
+    { schema: BreakingReleaseSchema, auth: true },
+  ),
+);
+
+export const scheduleBreakingReleaseAction = returnRefusals(
+  enhanceAction(
+    async (input, user) =>
+      unwrapResult(
+        await scheduleBreakingRelease(getSupabaseServerClient(), user.id, {
+          ...input,
+          aiGenerated: input.aiGenerated ?? false,
+        }),
+      ),
+    { schema: BreakingReleaseSchema, auth: true },
   ),
 );
 

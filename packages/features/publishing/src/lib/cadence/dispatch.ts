@@ -110,6 +110,10 @@ export interface MovedPost extends QueuedPost {
  * queue. Each keeps its jitter. `others` are the channel's other posts of
  * this type, `blocked` the times its posts of the other type hold. Null
  * when a post finds no slot.
+ *
+ * FILM-2210: with `from`, the queue is laid from that time instead, and no
+ * post goes earlier than the slot it held: a breaking release's Shorts
+ * push the queue back, never forward.
  */
 export function shiftQueue(
   cadence: ChannelCadence,
@@ -119,6 +123,7 @@ export function shiftQueue(
     queue: readonly QueuedPost[];
     others: readonly Date[];
     blocked: readonly Date[];
+    from?: Date;
   },
 ): MovedPost[] | null {
   const { timezone } = cadence;
@@ -128,12 +133,13 @@ export function shiftQueue(
   const origin = localDate(first.slotAt, timezone);
   const taken = [...input.others];
   const moved: MovedPost[] = [];
-  let from = startOfLocalDay(
-    addDays(localDate(input.now, timezone), 1),
-    timezone,
-  );
+  let from =
+    input.from ??
+    startOfLocalDay(addDays(localDate(input.now, timezone), 1), timezone);
 
   for (const post of input.queue) {
+    if (input.from && post.slotAt > from) from = post.slotAt;
+
     const slot = nextFreeSlot(cadence, from, taken, {
       blocked: input.blocked,
       origin,

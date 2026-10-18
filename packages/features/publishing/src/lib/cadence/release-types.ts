@@ -1,5 +1,5 @@
 /**
- * FILM-719, FILM-2209. What a cadence release looks like on its channels'
+ * FILM-719, FILM-2209, FILM-2210. What a cadence release looks like on its channels'
  * calendars, as the schedule action returns it and the Publish screen shows
  * it.
  */
@@ -44,6 +44,34 @@ export interface ReleasePreview {
   placed: PlannedPost[];
   channels: ChannelQueue[];
   shortsQueue: ShortsQueueSummary[];
+}
+
+/** FILM-2210: a scheduled Short a breaking release moves back */
+export interface BreakingMove {
+  publishId: string;
+  connectionId: string;
+  name: string;
+  platform: string;
+  title: string | null;
+  from: string;
+  to: string;
+}
+
+/** FILM-2210: a breaking release, as the Publish screen and the MCP show it */
+export interface BreakingPreview {
+  placed: Array<
+    PlannedPost & { extra: boolean; name: string; platform: string }
+  >;
+  moves: BreakingMove[];
+  shortsQueue: Array<{
+    connectionId: string;
+    name: string;
+    platform: string;
+    before: { queued: number; lastShortAt: string | null };
+    after: { queued: number; lastShortAt: string | null };
+  }>;
+  /** Pacific days past YouTube's upload budget: a warning, not a stop */
+  quota: Array<{ day: string; uploads: number }>;
 }
 
 /** A release target's key: its schedule item, then its channel */

@@ -13,6 +13,13 @@ import {
   resolveCadence,
 } from '../lib/cadence/cadence';
 import {
+  BREAKING_DEFAULTS,
+  type BreakingPlan,
+  type QuotaDay,
+  planBreakingRelease,
+  youtubeQuotaWarnings,
+} from '../lib/cadence/plan-breaking-release';
+import {
   type EpisodeAnchor,
   type OccupiedPost,
   type ReleaseItem,
@@ -20,10 +27,15 @@ import {
   planRelease,
 } from '../lib/cadence/plan-release';
 import {
+  type BreakingMove,
+  type BreakingPreview,
   QUEUE_WARNING_DAYS,
   type ReleasePreview,
 } from '../lib/cadence/release-types';
-import type { ChannelCadenceInput } from '../lib/schemas/schedule-release.schema';
+import type {
+  BreakingInput,
+  ChannelCadenceInput,
+} from '../lib/schemas/schedule-release.schema';
 import {
   type ScheduleTarget,
   type ScheduledPublish,
@@ -80,10 +92,11 @@ interface CalendarRow {
   slot_at: string | null;
   scheduled_at: string | null;
   published_at: string | null;
+  release_priority: string;
 }
 
 const CALENDAR_COLUMNS =
-  'id, episode_id, platform_connection_id, content_type, status, slot_at, scheduled_at, published_at';
+  'id, episode_id, platform_connection_id, content_type, status, slot_at, scheduled_at, published_at, release_priority';
 
 function contentTypeOf(row: { content_type: string | null }) {
   return row.content_type === 'short' ? 'short' : 'full';
@@ -154,6 +167,8 @@ async function readCalendar(
         status: row.status as OccupiedPost['status'],
         at,
         goesAt: goesAt(row) ?? at,
+        slotted: !!row.slot_at,
+        breaking: row.release_priority === 'breaking',
       },
     ];
   });
@@ -272,22 +287,35 @@ async function planFor(
     episodeId: input.episodeId,
     notBefore: input.notBefore,
     items: input.items,
-    cadenceOf: (connectionId, contentType) =>
-      resolveCadence(
-        cadences.find(
-          (row) =>
-            row.platform_connection_id === connectionId &&
-            row.content_type === contentType,
-        ),
-        contentType,
-        input.timezone,
-      ),
+    cadenceOf: cadenceOfRows(cadences, input.timezone),
     occupied,
     anchors,
     now: input.now,
     random: input.random,
   });
 
+  refuseUnplaced(plan, channels);
+
+  return { plan, channels };
+}
+
+function cadenceOfRows(cadences: ChannelCadenceRow[], timezone: string) {
+  return (connectionId: string, contentType: 'full' | 'short') =>
+    resolveCadence(
+      cadences.find(
+        (row) =>
+          row.platform_connection_id === connectionId &&
+          row.content_type === contentType,
+      ),
+      contentType,
+      timezone,
+    );
+}
+
+function refuseUnplaced(
+  plan: Pick<ReleasePlan, 'unplaced'>,
+  channels: Awaited<ReturnType<typeof readChannels>>,
+) {
   if (plan.unplaced.length) {
     const names = [
       ...new Set(
@@ -303,8 +331,6 @@ async function planFor(
       `No free slot in the next ${HORIZON_DAYS} days for ${plan.unplaced.length} upload${plan.unplaced.length === 1 ? '' : 's'} on ${names.join(', ')}. Add posting times or days to its posting rules.`,
     );
   }
-
-  return { plan, channels };
 }
 
 function previewOf({ plan, channels }: PlanContext): ReleasePreview {
@@ -470,6 +496,318 @@ async function scheduleRelease(
 
       throw error;
     }
+  }
+}
+
+/**
+ * FILM-2210. A breaking-news release: the long video at the next scheduler
+ * run (or `breaking.at`), its Shorts at the front of each channel's Shorts
+ * queue with extra times for a few days, and the normal Shorts behind them
+ * moved back in order (planBreakingRelease). The new posts and the moves
+ * are written together by reschedule_publishes, all or nothing; a calendar
+ * that changed meanwhile is planned again once.
+ */
+export interface BreakingReleaseInput extends ReleaseInput {
+  breaking: BreakingInput;
+}
+
+interface BreakingContext {
+  plan: BreakingPlan;
+  channels: Awaited<ReturnType<typeof readChannels>>;
+  occupied: OccupiedPost[];
+}
+
+async function planBreakingFor(
+  client: Client,
+  input: {
+    episodeId: string;
+    items: ReleaseItem[];
+    breaking: BreakingInput;
+    timezone: string;
+    now: Date;
+    random: () => number;
+  },
+): Promise<BreakingContext> {
+  const connectionIds = [...new Set(input.items.map((i) => i.connectionId))];
+
+  const [channels, cadences, occupied] = await Promise.all([
+    readChannels(client, connectionIds),
+    readCadences(client, connectionIds),
+    readCalendar(client, connectionIds, input.now),
+  ]);
+
+  const anchors = await readAnchors(client, [
+    input.episodeId,
+    ...occupied.map((post) => post.episodeId),
+  ]);
+
+  const plan = planBreakingRelease({
+    episodeId: input.episodeId,
+    at: input.breaking.at ? new Date(input.breaking.at) : null,
+    boost: input.breaking.boost ?? { ...BREAKING_DEFAULTS.boost },
+    startAfterHours:
+      input.breaking.startAfterHours ?? BREAKING_DEFAULTS.startAfterHours,
+    items: input.items,
+    cadenceOf: cadenceOfRows(cadences, input.timezone),
+    occupied,
+    anchors,
+    now: input.now,
+    random: input.random,
+  });
+
+  refuseUnplaced(plan, channels);
+
+  return { plan, channels, occupied };
+}
+
+/** QUOTA_LOOKBACK: a published upload still counts for its Pacific day */
+const QUOTA_LOOKBACK_MS = 86_400_000;
+
+/**
+ * YouTube uploads a day across the team's YouTube channels once the plan
+ * is written: every post not yet out (with its move), the day's published
+ * ones, and the release's own
+ */
+async function quotaWarnings(
+  client: Client,
+  context: BreakingContext,
+  now: Date,
+): Promise<QuotaDay[]> {
+  const releaseChannels = context.channels.map((c) => c.id);
+  const { data: owner, error: ownerError } = await client
+    .from('platform_connections')
+    .select('account_id')
+    .in('id', releaseChannels)
+    .limit(1)
+    .maybeSingle();
+
+  if (ownerError || !owner) {
+    throw new Error(
+      `Could not read the team's channels: ${ownerError?.message ?? 'none'}`,
+    );
+  }
+
+  const { data: youtube, error } = await client
+    .from('platform_connections')
+    .select('id')
+    .eq('account_id', owner.account_id)
+    .eq('platform', 'youtube');
+
+  if (error) {
+    throw new Error(`Could not read the team's channels: ${error.message}`);
+  }
+
+  const ids = youtube.map((c) => c.id);
+  if (ids.length === 0) return [];
+
+  const since = new Date(now.getTime() - QUOTA_LOOKBACK_MS);
+  const posts = await readCalendar(client, ids, now);
+  const moved = new Map(
+    context.plan.moves.map((m) => [m.publishId, m.scheduledAt]),
+  );
+
+  return youtubeQuotaWarnings([
+    ...posts
+      .filter((p) => p.goesAt >= since)
+      .map((p) => moved.get(p.publishId) ?? p.goesAt),
+    ...context.plan.placed
+      .filter((p) => ids.includes(p.connectionId))
+      .map((p) => p.scheduledAt),
+  ]);
+}
+
+async function breakingPreviewOf(
+  client: Client,
+  context: BreakingContext,
+  now: Date,
+): Promise<BreakingPreview> {
+  const { plan, channels } = context;
+  const named = (connectionId: string) => {
+    const channel = channels.find((c) => c.id === connectionId);
+
+    return {
+      name: channel?.platform_account_name ?? 'Channel',
+      platform: channel?.platform ?? '',
+    };
+  };
+
+  const titles = await fetchAllByIds<{ id: string; title: string | null }>(
+    plan.moves.map((m) => m.publishId),
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select('id, title')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'moved posts',
+  );
+
+  const iso = (at: Date | null) => at?.toISOString() ?? null;
+
+  return {
+    placed: plan.placed.map((item) => ({
+      key: item.key,
+      connectionId: item.connectionId,
+      ...named(item.connectionId),
+      contentType: item.contentType,
+      scheduledAt: item.scheduledAt.toISOString(),
+      extra: item.extra,
+    })),
+    moves: plan.moves.map((m) => ({
+      publishId: m.publishId,
+      connectionId: m.connectionId,
+      ...named(m.connectionId),
+      title: titles.find((t) => t.id === m.publishId)?.title ?? null,
+      from: m.fromScheduledAt.toISOString(),
+      to: m.scheduledAt.toISOString(),
+    })),
+    shortsQueue: plan.queues
+      .filter((q) => q.after.queued > 0)
+      .map((q) => ({
+        connectionId: q.connectionId,
+        ...named(q.connectionId),
+        before: {
+          queued: q.before.queued,
+          lastShortAt: iso(q.before.lastShortAt),
+        },
+        after: {
+          queued: q.after.queued,
+          lastShortAt: iso(q.after.lastShortAt),
+        },
+      })),
+    quota: await quotaWarnings(client, context, now),
+  };
+}
+
+/** Where a breaking release would go, and what it moves: nothing is written */
+export async function previewBreakingRelease(
+  client: Client,
+  input: BreakingReleaseInput,
+  options: { now?: Date } = {},
+): Promise<Result<BreakingPreview>> {
+  try {
+    const now = options.now ?? new Date();
+    const context = await planBreakingFor(client, {
+      episodeId: input.episodeId,
+      items: itemsOf(input.targets),
+      breaking: input.breaking,
+      timezone: input.timezone,
+      now,
+      random: () => 0.5,
+    });
+
+    return { ok: true, data: await breakingPreviewOf(client, context, now) };
+  } catch (error) {
+    return refused(error);
+  }
+}
+
+export interface ScheduledBreakingRelease {
+  scheduled: ScheduledPublish[];
+  moves: BreakingMove[];
+  shortsQueue: BreakingPreview['shortsQueue'];
+  quota: QuotaDay[];
+}
+
+/** The calendar changed between planning and writing: a slot was taken, or a post claimed */
+const CALENDAR_CHANGED = new Set(['23505', '55000']);
+
+export async function scheduleBreakingRelease(
+  client: Client,
+  userId: string,
+  input: BreakingReleaseInput,
+  options: { now?: Date; random?: () => number } = {},
+): Promise<Result<ScheduledBreakingRelease>> {
+  try {
+    const items = itemsOf(input.targets);
+    const random = options.random ?? Math.random;
+
+    for (let attempt = 1; ; attempt++) {
+      const now = options.now ?? new Date();
+      const context = await planBreakingFor(client, {
+        episodeId: input.episodeId,
+        items,
+        breaking: input.breaking,
+        timezone: input.timezone,
+        now,
+        random,
+      });
+      const { plan } = context;
+
+      const targets: ScheduleTarget[] = input.targets.map(
+        ({ key, ...target }) => {
+          const placed = plan.placed.find((item) => item.key === key)!;
+
+          return {
+            ...target,
+            scheduledAt: placed.scheduledAt.toISOString(),
+            slotAt: placed.slotAt?.toISOString() ?? null,
+            afterEpisodeFull: placed.afterEpisodeFull,
+          };
+        },
+      );
+
+      // Every target is checked before anything is written
+      const rows = await prepareScheduledRows(client, userId, {
+        episodeId: input.episodeId,
+        targets,
+        aiGenerated: input.aiGenerated,
+        now,
+        via: 'cadence',
+      });
+
+      // Read before the write, which would put the release in it twice
+      const preview = await breakingPreviewOf(client, context, now);
+
+      const { data, error } = await client.rpc('reschedule_publishes', {
+        p_moves: plan.moves.map((m) => ({
+          id: m.publishId,
+          slot_at: m.slotAt.toISOString(),
+          scheduled_at: m.scheduledAt.toISOString(),
+        })),
+        p_inserts: rows.map((row) => ({
+          ...row,
+          release_priority: 'breaking',
+        })) as unknown as Json,
+      });
+
+      if (error && CALENDAR_CHANGED.has(error.code) && attempt < 2) continue;
+
+      if (error && CALENDAR_CHANGED.has(error.code)) {
+        throw new ActionRefusal(
+          'The channels’ calendar changed while this release was planned. Try again.',
+        );
+      }
+
+      if (error || !data) {
+        throw new Error(
+          `Could not schedule the breaking release: ${error?.message ?? 'no rows'}`,
+        );
+      }
+
+      return {
+        ok: true,
+        data: {
+          scheduled: data.map((row) => ({
+            publishId: row.id,
+            connectionId: row.platform_connection_id ?? '',
+            platform: row.platform,
+            contentType: row.content_type === 'short' ? 'short' : 'full',
+            shortsGroupId:
+              (row.metadata as { shortsGroupId?: string | null } | null)
+                ?.shortsGroupId ?? null,
+            language: row.language ?? '',
+            scheduledAt: row.scheduled_at ?? '',
+          })),
+          moves: preview.moves,
+          shortsQueue: preview.shortsQueue,
+          quota: preview.quota,
+        },
+      };
+    }
+  } catch (error) {
+    return refused(error);
   }
 }
 
