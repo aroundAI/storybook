@@ -13,6 +13,8 @@ import {
 } from '@kit/ui/empty-state';
 import { cn } from '@kit/ui/utils';
 
+import { platformLabel } from '../../lib/platform-labels';
+
 /**
  * FILM-1735. The project's saved morning reports: a list of days, and the
  * chosen day's report as its AI wrote it. The text is rendered on the
@@ -94,7 +96,7 @@ export function DailyReportsView({ reports }: { reports: DailyReportItem[] }) {
                 variant="secondary"
                 data-test={`daily-report-data-through-${platform}`}
               >
-                {platform} data through {date}
+                {platformLabel(platform)} data through {date}
               </Badge>
             ))}
           </div>

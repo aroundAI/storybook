@@ -13,6 +13,7 @@ import {
   type VideoFigures,
   type VideoLifetimeFigures,
 } from './daily-figures';
+import { platformLabel } from './platform-labels';
 import type { RetentionPoint } from './retention';
 import { retentionAtRatio } from './retention';
 
@@ -147,14 +148,6 @@ function round(value: number, places = 2) {
 // Why a figure is null
 // ---------------------------------------------------------------------------
 
-const PLATFORM_LABEL: Record<string, string> = {
-  youtube: 'YouTube',
-  instagram: 'Instagram',
-  facebook: 'Facebook',
-  tiktok: 'TikTok',
-  twitter: 'X',
-};
-
 /** Figures only some platforms report; any other platform's is null for that reason */
 const ONLY_ON: Partial<Record<string, readonly string[]>> = {
   dislikes: ['youtube'],
@@ -186,7 +179,7 @@ export function nullReason(
 ): string {
   if (context.storeOff) return context.storeOff;
 
-  const label = PLATFORM_LABEL[platform] ?? platform;
+  const label = platformLabel(platform);
   const only = ONLY_ON[figure];
 
   if (only && !only.includes(platform)) {
@@ -515,7 +508,7 @@ function videoSection(inputs: DigestInputs) {
                 reason: !reached
                   ? `The video was not ${days} day${days === 1 ? '' : 's'} old on this day.`
                   : (inputs.storeOff ??
-                    `${PLATFORM_LABEL[publish.platform] ?? publish.platform} has no view count at this age.`),
+                    `${platformLabel(publish.platform)} has no view count at this age.`),
               }
             : {}),
         };
@@ -562,9 +555,9 @@ function retentionSection(inputs: DigestInputs) {
               curve: null,
               reason:
                 publish.platform !== 'youtube'
-                  ? `Only YouTube reports a retention curve; this is a ${PLATFORM_LABEL[publish.platform] ?? publish.platform} video.`
+                  ? `Only ${platformLabel('youtube')} reports a retention curve; this is a ${platformLabel(publish.platform)} video.`
                   : (inputs.storeOff ??
-                    'YouTube has not reported this video’s curve yet.'),
+                    `${platformLabel('youtube')} has not reported this video’s curve yet.`),
             }
           : {
               curve: RETENTION_POSITIONS.map((position) => {
@@ -617,7 +610,7 @@ function trafficSection(inputs: DigestInputs) {
       day: null,
       reason:
         inputs.storeOff ??
-        'No traffic sources for this day yet: YouTube reports them about 48 hours late, and other platforms do not report them.',
+        `No traffic sources for this day yet: ${platformLabel('youtube')} reports them about 48 hours late, and other platforms do not report them.`,
     };
   }
 
@@ -690,7 +683,7 @@ function audienceSection(inputs: DigestInputs) {
 
   return {
     dimensions,
-    note: 'Lifetime audience of the videos listed above. Instagram shares are of the account’s followers (basis followers), not of a post’s viewers.',
+    note: `Lifetime audience of the videos listed above. ${platformLabel('instagram')} shares are of the account’s followers (basis followers), not of a post’s viewers.`,
   };
 }
 
