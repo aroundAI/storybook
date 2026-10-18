@@ -1,0 +1,45 @@
+{
+  "feature": "KB-200 (the deploy's ClickHouse step and an emptied _migrations)",
+  "mutations": [
+    {
+      "name": "KB-200 runner replays every migration over an emptied _migrations",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/migrations/runner.ts",
+      "find": "    if (tables.length > 0 && !baseline) {",
+      "replace": "    if (tables.length > 0 && baseline && !baseline) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/run-guard.test.ts",
+      "pattern": "refuses when _migrations is empty"
+    },
+    {
+      "name": "KB-200 baseline runs the migrations it should only record",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/migrations/runner.ts",
+      "find": "    if (baseline) {\n      log(`  📌",
+      "replace": "    if (baseline) {\n      await migration.up(client);\n      log(`  📌",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/run-guard.test.ts",
+      "pattern": "records every migration without running it"
+    },
+    {
+      "name": "KB-200 002 drops a video_metrics that holds rows",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/migrations/002_metrics_v2.ts",
+      "find": "      if (query === DROP_VIDEO_METRICS && hasRows) {",
+      "replace": "      if (query === DROP_VIDEO_METRICS && hasRows && !hasRows) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/run-guard.test.ts",
+      "pattern": "keeps video_metrics when it holds rows"
+    },
+    {
+      "name": "KB-200 deploy.sh passes --baseline to the runner",
+      "kind": "unit",
+      "file": "scripts/deploy.sh",
+      "find": "    npx tsx packages/clickhouse/src/migrations/run.ts\n",
+      "replace": "    npx tsx packages/clickhouse/src/migrations/run.ts --baseline\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/run-guard.test.ts",
+      "pattern": "never passes --baseline"
+    }
+  ]
+}
