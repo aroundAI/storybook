@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   BarChart3,
+  CalendarClock,
   Check,
   ChevronDown,
   Clapperboard,
@@ -243,6 +244,13 @@ export function MobileStudioHeader({
                     label="Episodes"
                     count={counts.episodes}
                     isActive={isActive(`${basePath}/episodes`)}
+                    onClick={closeSheet}
+                  />
+                  <NavItem
+                    href={`${basePath}/schedule`}
+                    icon={<CalendarClock className="h-4 w-4" />}
+                    label="Schedule"
+                    isActive={isActive(`${basePath}/schedule`)}
                     onClick={closeSheet}
                   />
                 </nav>

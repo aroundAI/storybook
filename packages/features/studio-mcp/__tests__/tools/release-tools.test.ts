@@ -677,6 +677,34 @@ describe('get_publish_calendar', () => {
     ]);
   });
 
+  it('marks a breaking post and names its episode’s slug (FILM-2211)', async () => {
+    const breaking = row(1, {
+      release_priority: 'breaking',
+      episodes: {
+        title: 'Fallen Unicorns',
+        number: 2,
+        slug: 'fallen-unicorns',
+      },
+    });
+    const queued = row(2, { release_priority: 'normal' });
+    const fake = client({
+      publishes: (call) =>
+        call.filters.some((f) => f.method === 'or')
+          ? { data: [breaking, queued] }
+          : { data: [] },
+    });
+
+    const result = await run(getPublishCalendarTool, RANGE, fake);
+
+    expect(result.structuredContent.posts).toEqual([
+      expect.objectContaining({
+        breaking: true,
+        episodeSlug: 'fallen-unicorns',
+      }),
+      expect.objectContaining({ breaking: false }),
+    ]);
+  });
+
   it('refuses a range longer than 62 days', async () => {
     const error = await rejection(
       run(

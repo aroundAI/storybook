@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { addMinutes, format, isSameDay } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
 import {
   AlertCircle,
   ArrowLeft,
@@ -49,6 +48,7 @@ import type {
 // =============================================================================
 
 import { getLangDisplay } from '../lib/constants';
+import { timeZoneLabel } from '../lib/time-zone-label';
 import {
   BreakingReleaseForm,
   type BreakingSettings,
@@ -353,14 +353,10 @@ export function ScheduleReleasePanel({
   }, []);
 
   // Get short timezone name (e.g., "IST", "PST")
-  const timezoneShort = useMemo(() => {
-    try {
-      const now = new Date();
-      return formatInTimeZone(now, userTimezone, 'zzz');
-    } catch {
-      return '';
-    }
-  }, [userTimezone]);
+  const timezoneShort = useMemo(
+    () => timeZoneLabel(userTimezone),
+    [userTimezone],
+  );
 
   // Calculate total videos
   const totalVideos = useMemo(() => {

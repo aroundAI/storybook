@@ -7,6 +7,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
   BarChart3,
+  CalendarClock,
   CheckCircle,
   Clock,
   Facebook,
@@ -70,6 +71,7 @@ import type {
   PlatformConnection,
   PlatformType,
 } from '../types';
+import { ChannelPostingRulesDialog } from './channel-posting-rules-dialog';
 import { disconnectCopyFor } from './disconnect-copy';
 import {
   PLATFORM_ACCESS_SETTINGS,
@@ -329,6 +331,7 @@ function ConnectionRow({
   accountId,
 }: ConnectionRowProps) {
   const [showDisconnect, setShowDisconnect] = useState(false);
+  const [showPostingRules, setShowPostingRules] = useState(false);
   const queryClient = useQueryClient();
 
   const refreshMutation = useMutation({
@@ -424,6 +427,17 @@ function ConnectionRow({
             />
           )}
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPostingRules(true)}
+            title="When this channel posts, for every project and episode"
+            data-test="connection-posting-rules"
+          >
+            <CalendarClock className="mr-1 h-4 w-4" />
+            <Trans i18nKey="platforms:postingRules" defaults="Posting rules" />
+          </Button>
+
           {/* Language Selector */}
           <Select
             value={connection.language ?? 'en'}
@@ -501,6 +515,18 @@ function ConnectionRow({
           access={connection.analyticsAccess}
           platformName={platform.name}
           onReconnect={() => initiateOAuth(platform.id, connection.accountSlug)}
+        />
+      )}
+
+      {showPostingRules && (
+        <ChannelPostingRulesDialog
+          channel={{
+            id: connection.id,
+            name: connection.accountName,
+            platform: connection.platform,
+          }}
+          onSaved={() => toast.success('Posting rules saved.')}
+          onClose={() => setShowPostingRules(false)}
         />
       )}
 

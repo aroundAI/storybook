@@ -15,7 +15,7 @@ import type { Database } from '@kit/supabase/database';
 type Client = SupabaseClient<Database>;
 
 const CALENDAR_COLUMNS =
-  'id, episode_id, platform, platform_connection_id, content_type, language, title, status, scheduled_at, slot_at, published_at, created_at, platform_url, metadata, episodes!inner(title, number, project_id)';
+  'id, episode_id, platform, platform_connection_id, content_type, language, title, status, scheduled_at, slot_at, published_at, created_at, platform_url, metadata, release_priority, episodes!inner(title, number, slug, project_id)';
 
 interface CalendarPublish {
   id: string;
@@ -32,7 +32,12 @@ interface CalendarPublish {
   created_at: string;
   platform_url: string | null;
   metadata: unknown;
-  episodes: { title: string | null; number: number | null };
+  release_priority: string;
+  episodes: {
+    title: string | null;
+    number: number | null;
+    slug: string | null;
+  };
 }
 
 type CalendarPage = PromiseLike<{
@@ -45,6 +50,7 @@ export interface CalendarPost {
   episodeId: string;
   episodeTitle: string | null;
   episodeNumber: number | null;
+  episodeSlug: string | null;
   platform: string;
   connectionId: string | null;
   contentType: string;
@@ -57,6 +63,8 @@ export interface CalendarPost {
   platformUrl: string | null;
   error: string | null;
   heldReason: string | null;
+  /** FILM-2210: part of a breaking-news release */
+  breaking: boolean;
 }
 
 /** When a post goes, or went, out; else when it was made (a failed Publish Now, a held draft) */
@@ -123,6 +131,7 @@ export async function readPublishCalendar(
       episodeId: row.episode_id,
       episodeTitle: row.episodes.title,
       episodeNumber: row.episodes.number,
+      episodeSlug: row.episodes.slug,
       platform: row.platform,
       connectionId: row.platform_connection_id,
       contentType: row.content_type,
@@ -134,6 +143,7 @@ export async function readPublishCalendar(
       platformUrl: row.platform_url,
       error: row.status === 'failed' ? (metadata.error ?? null) : null,
       heldReason: isHeld ? (metadata.heldReason ?? null) : null,
+      breaking: row.release_priority === 'breaking',
     };
   });
 

@@ -35,6 +35,7 @@ import {
   type ChannelCadence,
   DEFAULT_CADENCE,
 } from '../lib/cadence/cadence';
+import { takesVideo } from '../lib/constants';
 import { ChannelCadenceSchema } from '../lib/schemas/schedule-release.schema';
 import { saveChannelCadenceAction } from '../server/schedule-release-actions';
 
@@ -51,18 +52,20 @@ export interface ChannelCadenceState {
 /**
  * FILM-719, FILM-2209. When one channel posts: its slots (their count is
  * how many it posts a day), the days it posts, every how many days, and the
- * spacing. Shorts and long videos each have their own.
+ * spacing. Shorts and long videos each have their own; a channel shows
+ * only the kinds its platform takes (Instagram: Shorts).
  */
 export function ChannelCadenceDialog(props: {
-  channel: { id: string; name: string };
+  channel: { id: string; name: string; platform: string };
   cadences: ChannelCadenceState[];
   defaultTimezone: string;
   initialType?: CadenceContentType;
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const takesLong = takesVideo('full', props.channel.platform);
   const [contentType, setContentType] = useState<CadenceContentType>(
-    props.initialType ?? 'short',
+    takesLong ? (props.initialType ?? 'short') : 'short',
   );
   const state = props.cadences.find((c) => c.contentType === contentType);
 
@@ -74,25 +77,35 @@ export function ChannelCadenceDialog(props: {
       >
         <DialogHeader>
           <DialogTitle>Posting rules for {props.channel.name}</DialogTitle>
-          <DialogDescription>
-            A release follows these rules, so a channel never gets a burst of
-            uploads. The number of posting times is the most it posts in a day.
+          <DialogDescription data-test="channel-cadence-scope">
+            These rules are the channel&apos;s: every project and episode that
+            posts to {props.channel.name} follows them, so it never gets a burst
+            of uploads. The number of posting times is the most it posts in a
+            day.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs
-          value={contentType}
-          onValueChange={(value) => setContentType(value as CadenceContentType)}
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="short" data-test="cadence-tab-short">
-              Shorts &amp; Reels
-            </TabsTrigger>
-            <TabsTrigger value="full" data-test="cadence-tab-full">
-              Long videos
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {takesLong ? (
+          <Tabs
+            value={contentType}
+            onValueChange={(value) =>
+              setContentType(value as CadenceContentType)
+            }
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="short" data-test="cadence-tab-short">
+                Shorts &amp; Reels
+              </TabsTrigger>
+              <TabsTrigger value="full" data-test="cadence-tab-full">
+                Long videos
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : (
+          <p className="text-sm font-medium" data-test="cadence-shorts-only">
+            Shorts &amp; Reels: this channel takes no long videos.
+          </p>
+        )}
 
         <CadenceForm
           key={contentType}

@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  CalendarClock,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -453,6 +454,13 @@ export function StudioSidebar({
                 label="Episodes"
                 count={counts.episodes}
                 isActive={isActive(`${basePath}/episodes`)}
+                isCollapsed={isCollapsed}
+              />
+              <NavItem
+                href={`${basePath}/schedule`}
+                icon={<CalendarClock className="h-4 w-4" />}
+                label="Schedule"
+                isActive={isActive(`${basePath}/schedule`)}
                 isCollapsed={isCollapsed}
               />
             </nav>

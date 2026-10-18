@@ -27,6 +27,7 @@ export {
   ChannelCadenceDialog,
   type ChannelCadenceState,
 } from './channel-cadence-dialog';
+export { ChannelPostingRulesDialog } from './channel-posting-rules-dialog';
 
 // Re-export types
 export type {

@@ -5,6 +5,7 @@
   "connectAnother": "Connect Another",
   "disconnect": "Disconnect",
   "reconnect": "Reconnect",
+  "postingRules": "Posting rules",
   "noAccountsConnected": "No {{platform}} accounts connected",
   "connectToStart": "Connect an account to start publishing",
   "connectedTimeAgo": "Connected {{time}}",
