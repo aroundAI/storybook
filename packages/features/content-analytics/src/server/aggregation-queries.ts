@@ -33,6 +33,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { addRevenue } from '../lib/estimated-revenue';
 import type { EstimatedRevenue } from '../lib/estimated-revenue';
 import { measuredFigure, sumMeasured } from '../lib/export-coverage';
+import { publishEngagementRate } from '../lib/publish-engagement-rate';
 import {
   EMPTY_VIEWS_SCOPE,
   addViews,
@@ -1205,12 +1206,10 @@ export async function getContentList(
       revenue_cents: null,
       subscribers_gained: 0,
     };
-    const engagementRate = recordedEngagementRatePercent(
+    const engagementRate = publishEngagementRate(
       stats,
-      recordViewsDenominator({
-        platforms: [publish.platform],
-        window: lifetimeWindow([publish.published_at]),
-      }),
+      publish.platform,
+      lifetimeWindow([publish.published_at]),
     );
 
     return {
