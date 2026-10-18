@@ -1,0 +1,110 @@
+{
+  "feature": "FILM-2211 the Schedule page and posting rules without an episode",
+  "mutations": [
+    {
+      "name": "S1 switched-off rules read as the saved times",
+      "file": "packages/features/publishing/src/lib/schedule-view.ts",
+      "find": "    const cadence = applies ? state.cadence : DEFAULT_CADENCE[contentType];\n",
+      "replace": "    const cadence = state.cadence;\n",
+      "pattern": "says when a type posts on the defaults",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-view.test.ts"
+    },
+    {
+      "name": "S2 the Schedule page reads any span",
+      "file": "packages/features/publishing/src/lib/schedule-view.ts",
+      "find": "  const clamped = to > lastDay;\n  if (clamped) to = lastDay;\n",
+      "replace": "  const clamped = false;\n",
+      "pattern": "reads at most 62 days",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-view.test.ts"
+    },
+    {
+      "name": "S3 the long filter keeps Shorts",
+      "file": "packages/features/publishing/src/lib/schedule-view.ts",
+      "find": "  if (filters.type === 'long' && short) return false;\n",
+      "replace": "",
+      "pattern": "long means anything that is not a Short",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-view.test.ts"
+    },
+    {
+      "name": "S4 any platform in the URL is a filter",
+      "file": "packages/features/publishing/src/lib/schedule-view.ts",
+      "find": "    platform: platform && isOfferedPlatform(platform) ? platform : null,\n",
+      "replace": "    platform: platform ?? null,\n",
+      "pattern": "ignores values it does not know",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-view.test.ts"
+    },
+    {
+      "name": "S5 the calendar loses the breaking flag",
+      "file": "packages/features/publishing/src/server/publish-calendar.service.ts",
+      "find": "      breaking: row.release_priority === 'breaking',\n",
+      "replace": "      breaking: false,\n",
+      "pattern": "marks a breaking post",
+      "kind": "unit",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/release-tools.test.ts"
+    },
+    {
+      "name": "S6 a failed post reads as neutral",
+      "file": "packages/features/publishing/src/lib/schedule-view.ts",
+      "find": "  failed: { label: 'Failed', tone: 'danger' },\n",
+      "replace": "  failed: { label: 'Failed', tone: 'neutral' },\n",
+      "pattern": "failed reads Failed",
+      "kind": "unit",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-view.test.ts"
+    },
+    {
+      "name": "E2E P1 Settings → Platforms opens no posting rules",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/components/platform-connections.tsx",
+      "find": "            onClick={() => setShowPostingRules(true)}\n",
+      "replace": "            onClick={() => setShowPostingRules(false)}\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "edits a channel’s posting rules"
+    },
+    {
+      "name": "E2E P2 the Schedule page keeps the old summary after a save",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/schedule/_components/posting-rules-section.tsx",
+      "find": "            toast.success('Posting rules saved.');\n            router.refresh();\n",
+      "replace": "            toast.success('Posting rules saved.');\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "edits a channel’s posting rules"
+    },
+    {
+      "name": "E2E F1 a quick second filter change drops the first",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/schedule/_components/schedule-filters.tsx",
+      "find": "    const next = new URLSearchParams(params);\n",
+      "replace": "    const next = new URLSearchParams(searchParams?.toString());\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "lists every post in the viewer"
+    },
+    {
+      "name": "E2E C1 a cancelled post stays in the table",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/schedule/_components/schedule-table.tsx",
+      "find": "        setConfirming(null);\n        router.refresh();\n",
+      "replace": "        setConfirming(null);\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "lists every post in the viewer"
+    },
+    {
+      "name": "E2E N1 the left nav's Schedule goes elsewhere",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx",
+      "find": "                href={`${basePath}/schedule`}\n",
+      "replace": "                href={`${basePath}/episodes`}\n",
+      "spec": "tests/publishing/schedule-page.spec.ts",
+      "grep": "lists every post in the viewer"
+    }
+  ]
+}
