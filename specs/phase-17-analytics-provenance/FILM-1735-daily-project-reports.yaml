@@ -60,7 +60,7 @@ acceptance_criteria:
     evidence: "Met (#671): tools/analytics/project-reports.ts; analytics-forbidden.test.ts lists all four tools (guards DR9, DR10); the E2E refuses another team's token"
   - text: "Saved reports are stored once per project and day, readable by the team, written by a member as themself for the team's own project, rewritten or deleted by nobody on the team, and on a team account only"
     met: true
-    evidence: "Met (#671): migration 20261018060406_film-1735-project-daily-reports.sql; apps/web/supabase/tests/database/project-daily-reports.test.sql (14; guards DB1–DB4); team-accounts-only.test.sql pins 33 guarded tables"
+    evidence: "Met (#671): migration 20261018081316_film-1735-project-daily-reports.sql; apps/web/supabase/tests/database/project-daily-reports.test.sql (14; guards DB1–DB4); team-accounts-only.test.sql pins 33 guarded tables"
   - text: "The project's Analytics page has a Daily reports tab listing the saved days and rendering the chosen report as GitHub-flavoured Markdown (tables included, raw HTML never rendered), with its zone, model and data-through dates, and an empty state saying how a report is made"
     met: true
     evidence: "Met (#671): DailyReports (apps/web/app/home/[account]/studio/[projectSlug]/analytics/_components/daily-reports.tsx, server-rendered with react-markdown and remark-gfm 4.0.1, no rehype-raw); daily-report.spec.ts asserts a report's table renders as <table> and an <img onerror> in it renders as text and DailyReportsView (content-analytics components/daily-reports). E2E daily-report.spec.ts (guard E2E DR13); screenshots on the PR"
