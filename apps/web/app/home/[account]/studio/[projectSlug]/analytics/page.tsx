@@ -2,7 +2,7 @@
  * Project Analytics Page
  *
  * Displays aggregated analytics dashboard with tabs for all content in a project.
- * Includes Overview, Content, Audience, and AI Insights tabs.
+ * Includes Overview, Content, Audience, AI Insights and Daily reports tabs.
  */
 import { Suspense } from 'react';
 
@@ -16,8 +16,10 @@ import {
 } from '@kit/content-analytics/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
+import { Skeleton } from '@kit/ui/skeleton';
 
 import { loadTeamWorkspace } from '../../../_lib/server/team-account-workspace.loader';
+import { DailyReports } from './_components/daily-reports';
 import { LazyAnalyticsDashboard } from './_components/lazy-analytics-dashboard';
 
 interface PageParams {
@@ -78,6 +80,18 @@ export default async function ProjectAnalyticsPage({ params }: PageParams) {
           <LazyAnalyticsDashboard
             projectId={project.id}
             accountId={project.account_id}
+            dailyReports={
+              <Suspense
+                fallback={
+                  <Skeleton
+                    className="h-64 w-full"
+                    data-test="daily-reports-loading"
+                  />
+                }
+              >
+                <DailyReports projectId={project.id} />
+              </Suspense>
+            }
           />
         </Suspense>
 

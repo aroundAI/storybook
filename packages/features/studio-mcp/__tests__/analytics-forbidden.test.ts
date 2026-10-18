@@ -150,6 +150,26 @@ const ASKS: Array<[string, Record<string, unknown>]> = [
   ['get_audience_comments', { episodeId: EPISODE_B, unlabelled: true }],
   ['get_audience_comments', { publishIds: [PUBLISH_B] }],
   [
+    'get_daily_digest',
+    { projectId: PROJECT_B, date: '2026-10-17', timezone: 'Asia/Kolkata' },
+  ],
+  ['get_project_report', { projectId: PROJECT_B, date: '2026-10-17' }],
+  [
+    'list_project_reports',
+    { projectId: PROJECT_B, from: '2026-10-01', to: '2026-10-17' },
+  ],
+  [
+    'save_project_report',
+    {
+      projectId: PROJECT_B,
+      date: '2026-10-17',
+      timezone: 'UTC',
+      digestHash: 'a'.repeat(64),
+      bodyMd: '# Report',
+      model: 'm',
+    },
+  ],
+  [
     'update_publish_note',
     { publishId: PUBLISH_B, note: 'x', expectedUpdatedAt: null },
   ],

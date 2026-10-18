@@ -4870,6 +4870,94 @@ export type Database = {
           },
         ]
       }
+      project_daily_reports: {
+        Row: {
+          account_id: string
+          body_md: string
+          created_at: string
+          created_by: string | null
+          digest_hash: string
+          id: string
+          mcp_connection_id: string | null
+          model: string
+          project_id: string
+          report_date: string
+          summary: Json
+          timezone: string
+        }
+        Insert: {
+          account_id: string
+          body_md: string
+          created_at?: string
+          created_by?: string | null
+          digest_hash: string
+          id?: string
+          mcp_connection_id?: string | null
+          model: string
+          project_id: string
+          report_date: string
+          summary?: Json
+          timezone: string
+        }
+        Update: {
+          account_id?: string
+          body_md?: string
+          created_at?: string
+          created_by?: string | null
+          digest_hash?: string
+          id?: string
+          mcp_connection_id?: string | null
+          model?: string
+          project_id?: string
+          report_date?: string
+          summary?: Json
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_daily_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_daily_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_daily_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_daily_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_daily_reports_mcp_connection_id_fkey"
+            columns: ["mcp_connection_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_daily_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_intros: {
         Row: {
           created_at: string | null

@@ -254,6 +254,10 @@ export interface CommentListFilter {
   topic?: CommentTopic;
   /** Only comments no one has labelled yet */
   unlabelled?: boolean;
+  /** Only comments made at or after this instant (ISO, with offset) */
+  since?: string;
+  /** Only comments made before this instant (ISO, with offset) */
+  until?: string;
   limit: number;
   /** The last comment of the previous page */
   after?: { commentedAt: string; id: string };
@@ -300,6 +304,8 @@ export async function listAudienceComments(
     query = query.contains('comment_labels.topics', [filter.topic]);
   }
   if (filter.unlabelled) query = query.is('comment_labels', null);
+  if (filter.since) query = query.gte('commented_at', instant(filter.since));
+  if (filter.until) query = query.lt('commented_at', instant(filter.until));
   // Newest first, ties by id: the page goes on strictly after the last one
   if (filter.after) {
     // Both go into a filter string: only a timestamp and a uuid may
@@ -343,6 +349,15 @@ export async function listAudienceComments(
         ? { commentedAt: last.commented_at, id: last.id }
         : null,
   };
+}
+
+/** A bound as the database compares it: one instant, refused if not one */
+function instant(value: string) {
+  if (!TIMESTAMP.test(value)) {
+    throw new Error('A comment time bound is not an ISO timestamp');
+  }
+
+  return new Date(value).toISOString();
 }
 
 export type LabelWriteResult = {

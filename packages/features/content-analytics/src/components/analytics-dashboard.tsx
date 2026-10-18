@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { subDays } from 'date-fns';
@@ -78,11 +78,17 @@ export interface AnalyticsDashboardProps {
    * validation on this page.
    */
   accountId: string;
+  /**
+   * FILM-1735: the project's saved morning reports, rendered on the server.
+   * Shown under its own tab, whatever the platform filter says.
+   */
+  dailyReports?: ReactNode;
 }
 
 export function AnalyticsDashboard({
   projectId,
   accountId,
+  dailyReports,
 }: AnalyticsDashboardProps) {
   const [dateRange, setDateRange] = useState<DateRangeValue>({
     from: subDays(new Date(), 30),
@@ -375,9 +381,17 @@ export function AnalyticsDashboard({
           <TabsTrigger value="insights" data-test="analytics-tab-insights">
             AI Insights
           </TabsTrigger>
+          {dailyReports && (
+            <TabsTrigger
+              value="daily-reports"
+              data-test="analytics-tab-daily-reports"
+            >
+              Daily reports
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        {!anySelected && (
+        {!anySelected && activeTab !== 'daily-reports' && (
           <NoPlatformSelected
             onSelectAll={() =>
               setSelectedPlatforms([...SHOWN_ANALYTICS_PLATFORMS])
@@ -508,6 +522,12 @@ export function AnalyticsDashboard({
             />
           )}
         </TabsContent>
+
+        {dailyReports && (
+          <TabsContent value="daily-reports" className="mt-6">
+            {dailyReports}
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Export Dialog */}

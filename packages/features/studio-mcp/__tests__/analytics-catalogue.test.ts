@@ -43,6 +43,9 @@ const READ_TOOLS = [
   'get_comment_reaction',
   'get_audience_comments',
   'get_pending_work',
+  'get_daily_digest',
+  'get_project_report',
+  'list_project_reports',
 ];
 
 const WRITE_TOOLS = [
@@ -53,6 +56,7 @@ const WRITE_TOOLS = [
   'conclude_experiment',
   'abandon_experiment',
   'label_audience_comments',
+  'save_project_report',
 ];
 
 /** Criterion 9, as names: nothing in the catalogue may match one of these. */
