@@ -43,6 +43,7 @@ const READ_TOOLS = [
   'get_comment_reaction',
   'get_audience_comments',
   'get_pending_work',
+  'get_daily_digest',
   'get_project_report',
   'list_project_reports',
 ];

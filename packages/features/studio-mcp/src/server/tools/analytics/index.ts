@@ -14,6 +14,7 @@ import {
   listChannelExperiments,
 } from './channel-experiments';
 import { getDataCoverage, listChannels } from './coverage';
+import { getDailyDigest } from './daily-digest';
 import { getDeepDive } from './deep-dive';
 import { getEpisodeAnalytics } from './episode';
 import { getExperiment, listExperiments } from './experiments';
@@ -77,6 +78,7 @@ export const analyticsReadTools = [
   getCommentReaction,
   getAudienceComments,
   getPendingWork,
+  getDailyDigest,
   getProjectReport,
   listProjectReports,
 ].map((tool) => tool as unknown as McpToolDefinition);

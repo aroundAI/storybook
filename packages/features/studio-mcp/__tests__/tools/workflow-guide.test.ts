@@ -64,6 +64,11 @@ describe('get_workflow_guide', () => {
       'request_episode_thumbnail_upload',
       'finalize_episode_thumbnail',
       'get_publish_calendar',
+      // FILM-1735
+      'get_project_report',
+      'get_daily_digest',
+      'save_project_report',
+      'list_project_reports',
       'studio:publish',
       'MISSING_INPUTS',
     ]) {

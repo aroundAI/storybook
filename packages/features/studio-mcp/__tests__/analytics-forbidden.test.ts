@@ -149,6 +149,10 @@ const ASKS: Array<[string, Record<string, unknown>]> = [
   ['get_audience_comments', { projectId: PROJECT_B }],
   ['get_audience_comments', { episodeId: EPISODE_B, unlabelled: true }],
   ['get_audience_comments', { publishIds: [PUBLISH_B] }],
+  [
+    'get_daily_digest',
+    { projectId: PROJECT_B, date: '2026-10-17', timezone: 'Asia/Kolkata' },
+  ],
   ['get_project_report', { projectId: PROJECT_B, date: '2026-10-17' }],
   [
     'list_project_reports',
