@@ -41,6 +41,7 @@ export function toSyncStatus(row: SyncStatusRow): SyncStatusResponse {
     publishId: row.id,
     platform: row.platform,
     lastSyncedAt: sync?.last_synced_at ?? null,
+    lastDataDate: lastDataDate(row.platform, sync),
     lastSyncStatus: toAttemptStatus(sync?.last_sync_status),
     lastError: sync?.last_error ?? null,
     lastFailedAt: sync?.last_failed_at ?? null,
@@ -55,6 +56,20 @@ export function toSyncStatus(row: SyncStatusRow): SyncStatusResponse {
       maxConsecutiveFailures: MAX_CONSECUTIVE_FAILURES,
     }),
   };
+}
+
+/**
+ * The newest day a publish's figures run through. YouTube records the last
+ * day the Analytics API returned; every other platform's counts are read
+ * whole at the sync, so that day is the sync's (UTC).
+ */
+export function lastDataDate(
+  platform: string,
+  sync: SyncMetadata | undefined,
+): string | null {
+  if (platform === 'youtube') return sync?.last_data_date ?? null;
+
+  return sync?.last_synced_at ? sync.last_synced_at.slice(0, 10) : null;
 }
 
 /**
