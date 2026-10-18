@@ -66,6 +66,7 @@ async function seed(f: Fixture) {
       metric_date: today,
       source: 'SEARCH',
       views: 40,
+      metric_source: 'analytics_api',
     }),
     video_audience: perVideo({
       dimension: 'country',
@@ -79,6 +80,15 @@ async function seed(f: Fixture) {
     }),
     channel_daily: [
       { connection_id: f.connectionId, metric_date: today, views: 300 },
+    ],
+    channel_metrics_daily: [
+      {
+        connection_id: f.connectionId,
+        platform: 'youtube',
+        metric_date: today,
+        source: 'analytics_api',
+        views: 300,
+      },
     ],
     channel_subscribers: [
       {

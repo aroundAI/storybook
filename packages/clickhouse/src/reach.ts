@@ -33,7 +33,8 @@ const nullableNumber = (value: unknown): number | null =>
 export async function queryChannelReach(input: {
   connectionId: string;
   platform: ReachPlatform;
-  windowDays: 7 | 30;
+  /** 1: the day's own reach, for a morning report (FILM-1734). */
+  windowDays: 1 | 7 | 30;
   from: string;
   to: string;
 }): Promise<ChannelReachDay[]> {

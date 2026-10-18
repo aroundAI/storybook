@@ -17,7 +17,7 @@ import {
 const CONNECTION = '11111111-1111-4111-8111-111111111111';
 
 describe('purgeStatements', () => {
-  it('covers every table — eleven, with channel_windows (migration 016) — video_dim last', () => {
+  it('covers every table — thirteen, with channel_metrics_daily (migration 025) — video_dim last', () => {
     const statements = purgeStatements({
       connectionId: CONNECTION,
       videoIds: ['p1', 'p2'],
@@ -28,6 +28,7 @@ describe('purgeStatements', () => {
     expect([...new Set(statements.map((s) => s.table))].sort()).toEqual(
       [
         'channel_daily',
+        'channel_metrics_daily',
         'channel_reach_daily',
         'channel_subscribers',
         'channel_windows',
@@ -43,7 +44,7 @@ describe('purgeStatements', () => {
     );
     expect(statements.at(-1)?.table).toBe(PURGE_INDEX_TABLE);
     expect(PURGE_VIDEO_TABLES.length + PURGE_CHANNEL_TABLES.length + 1).toBe(
-      12,
+      13,
     );
   });
 

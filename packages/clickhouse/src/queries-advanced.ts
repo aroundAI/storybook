@@ -56,6 +56,7 @@ import type { TrafficBucket } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { ViewsColumn } from './lib/view-definitions';
 import { VIEWS_COLUMN_PLATFORMS } from './lib/view-definitions';
+import { trafficSourcesOneCopy } from './traffic-sources';
 import type { AnalyticsPlatform, VideoDim } from './types';
 
 export interface DimScope {
@@ -755,9 +756,10 @@ async function queryTrafficSourceRows(input: {
       source as source,
       sum(views) as views,
       sum(watch_time_minutes) as watch_time_minutes
-    FROM video_traffic_sources FINAL
-    WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
-      AND ${dateConditions.join(' AND ')}
+    FROM ${trafficSourcesOneCopy(
+      `video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
+      AND ${dateConditions.join(' AND ')}`,
+    )}
     GROUP BY bucket, source
     ORDER BY bucket ASC, views DESC
   `;

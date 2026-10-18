@@ -202,6 +202,7 @@ async function queryLatestSnapshotsSingle(input: {
       -- cover several days while dated to one.
       argMax(tuple(accounts_reached), fetched_at).1 as accounts_reached,
       argMax(tuple(reposts), fetched_at).1 as reposts,
+      argMax(tuple(profile_visits), fetched_at).1 as profile_visits,
       argMax(tuple(all_surface_views), fetched_at).1 as all_surface_views,
       argMax(tuple(all_surface_likes), fetched_at).1 as all_surface_likes,
       argMax(tuple(all_surface_comments), fetched_at).1 as all_surface_comments,
@@ -240,6 +241,7 @@ async function queryLatestSnapshotsSingle(input: {
       accounts_reached:
         row.accounts_reached == null ? null : Number(row.accounts_reached),
       reposts: row.reposts == null ? null : Number(row.reposts),
+      profile_visits: nullableNumber(row.profile_visits),
       all_surface_views:
         row.all_surface_views == null ? null : Number(row.all_surface_views),
       all_surface_likes:

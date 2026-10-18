@@ -112,6 +112,27 @@ export type {
 } from '../queries-advanced';
 
 export {
+  insertChannelMetricsDaily,
+  queryChannelSubscriberDays,
+  queryChannelMetricsDays,
+  queryLatestVideoSnapshots,
+  queryVideoMetricDays,
+  queryVideoMetricTotals,
+  queryVideoReachDays,
+  queryVideoReachTotals,
+  queryVideoSnapshotDays,
+} from '../figures';
+export type {
+  ChannelSubscriberDayRow,
+  ChannelMetricsDayRow,
+  VideoMetricDayRow,
+  VideoMetricTotalsRow,
+  VideoReachDayRow,
+  VideoReachTotalsRow,
+  VideoSnapshotRow,
+} from '../figures';
+
+export {
   queryLatestSubscriberLevels,
   querySubscriberSeries,
 } from '../subscriber-levels';

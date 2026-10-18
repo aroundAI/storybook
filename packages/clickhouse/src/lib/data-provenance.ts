@@ -93,7 +93,7 @@ export const METRIC_FAMILIES = [
   'reach', // impressions, CTR                     → video_reach_daily
   'accounts_reached', // a post's unique accounts    → video_metrics
   'channel_accounts_reached', // a channel's, per window → channel_windows
-  'channel_totals', // subscribers / followers     → channel_daily, channel_subscribers
+  'channel_totals', // subscribers / followers     → channel_daily, channel_subscribers, channel_metrics_daily
   'demographics', // age, gender                   → video_audience
   'geography', // country, city                    → video_audience
   'device', // device type, operating system       → video_audience
@@ -120,6 +120,7 @@ export type SourceTable =
   | 'video_reach_daily'
   | 'video_revenue_daily'
   | 'channel_daily'
+  | 'channel_metrics_daily'
   | 'channel_reach_daily'
   | 'channel_subscribers'
   | 'channel_windows'
@@ -1865,6 +1866,7 @@ export const TABLE_WRITERS: Record<SourceTable, string> = {
   video_reach_daily: 'insertVideoReachDaily',
   video_revenue_daily: 'insertVideoRevenueDaily',
   channel_daily: 'insertChannelDaily',
+  channel_metrics_daily: 'insertChannelMetricsDaily',
   channel_reach_daily: 'insertChannelReachDaily',
   channel_subscribers: 'insertSubscriberSnapshot',
   channel_windows: 'insertChannelWindows',
@@ -1896,6 +1898,8 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
   video_traffic_sources: [
     SEED_SCRIPT,
     VERIFY_SCRIPT,
+    // The Analytics API's copy, beside the CSV's (migration 025, FILM-1734).
+    `${CONTENT_ANALYTICS}/server/analytics-sync-cron.ts`,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
   ],
   video_retention_curves: [
@@ -1914,6 +1918,10 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
   ],
+  channel_metrics_daily: [
+    VERIFY_SCRIPT,
+    `${CONTENT_ANALYTICS}/server/channel-totals.ts`,
+  ],
   channel_reach_daily: [
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
@@ -1925,6 +1933,8 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
   channel_windows: [
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/channel-reach-windows.ts`,
+    // Instagram's 1-day account reach (FILM-1734).
+    `${CONTENT_ANALYTICS}/server/channel-totals.ts`,
   ],
   video_audience: [
     VERIFY_SCRIPT,

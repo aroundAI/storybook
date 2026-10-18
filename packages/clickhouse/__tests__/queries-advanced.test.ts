@@ -1725,7 +1725,9 @@ describe('queries-advanced', () => {
         }),
       );
 
-      expect(query).not.toContain('metric_source');
+      // The table's own `metric_source` (migration 025) names its writer,
+      // not how a row is dated, so only the fetch-dated filter is absent.
+      expect(query).not.toContain('snapshot_delta');
       expect(query_params.fetchDatedPlatforms).toBeUndefined();
     });
   });

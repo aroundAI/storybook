@@ -150,6 +150,9 @@ describe('@kit/clickhouse', () => {
             video_id: 'vid-1',
             platform: 'tiktok' as const,
             snapshot_date: '2026-01-15',
+            source: 'tiktok_api' as const,
+            dislikes: null,
+            profile_visits: null,
             views: 10000,
             likes: 500,
             comments: 100,
@@ -282,6 +285,8 @@ describe('@kit/clickhouse', () => {
           // A row from before migration 015 carries no reach: not measured.
           accounts_reached: null,
           reposts: null,
+          // Nor any profile visits (migration 025).
+          profile_visits: null,
           ...ALL_SURFACE_UNMEASURED,
           // Facebook's own denominators: not measured on any other platform.
           ...Object.fromEntries(
