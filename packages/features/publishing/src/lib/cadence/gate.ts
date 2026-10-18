@@ -250,14 +250,20 @@ async function deferredForCap(
   for (const post of moved.reverse()) {
     if (post.slotAt.getTime() === post.from.getTime()) continue;
 
-    const { error: moveError } = await client
+    const { data: updated, error: moveError } = await client
       .from('publishes')
       .update({
         slot_at: post.slotAt.toISOString(),
         scheduled_at: post.scheduledAt.toISOString(),
       })
       .eq('id', post.id)
-      .eq('status', 'scheduled');
+      .eq('status', 'scheduled')
+      .select('id');
+
+    // Claimed or cancelled meanwhile: it holds its slot as it is
+    if (!moveError && !updated?.length) {
+      console.log(`[Cadence] ${post.id} is no longer scheduled; not moved`);
+    }
 
     if (moveError) {
       console.error(
