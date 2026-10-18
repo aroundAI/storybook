@@ -1033,6 +1033,12 @@ export function PublishScreen({
       return;
     }
 
+    if (config.mode === 'breaking' && config.breaking) {
+      await cadence.scheduleBreaking(releaseConfigs, config.breaking);
+      setIsScheduling(false);
+      return;
+    }
+
     // Staggered: each item at its own time from the panel
     const platformConfigs = releaseConfigs.map(({ itemKey, ...rest }) => ({
       ...rest,
@@ -1651,6 +1657,14 @@ export function PublishScreen({
                     : cadence.preview(buildReleaseConfigs(schedule), start)
                 }
                 onEditChannelCadence={cadence.editChannel}
+                onPreviewBreaking={(settings, schedule) =>
+                  loadingConnections
+                    ? Promise.resolve({ ok: false, error: CHANNELS_LOADING })
+                    : cadence.previewBreaking(
+                        buildReleaseConfigs(schedule),
+                        settings,
+                      )
+                }
               />
               {cadence.dialog}
             </PublishSettingsSidebar>

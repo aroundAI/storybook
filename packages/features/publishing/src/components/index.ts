@@ -22,6 +22,7 @@ export {
   type ScheduleItem,
   type VideoToSchedule,
 } from './schedule-release-panel';
+export type { BreakingSettings } from './breaking-release-form';
 export {
   ChannelCadenceDialog,
   type ChannelCadenceState,
