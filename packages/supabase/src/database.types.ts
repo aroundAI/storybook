@@ -5341,6 +5341,7 @@ export type Database = {
           platform_content_id: string | null
           platform_url: string | null
           published_at: string | null
+          release_priority: string
           scheduled_at: string | null
           slot_at: string | null
           status: string
@@ -5368,6 +5369,7 @@ export type Database = {
           platform_content_id?: string | null
           platform_url?: string | null
           published_at?: string | null
+          release_priority?: string
           scheduled_at?: string | null
           slot_at?: string | null
           status?: string
@@ -5395,6 +5397,7 @@ export type Database = {
           platform_content_id?: string | null
           platform_url?: string | null
           published_at?: string | null
+          release_priority?: string
           scheduled_at?: string | null
           slot_at?: string | null
           status?: string
@@ -7850,6 +7853,43 @@ export type Database = {
       replace_experiment_tags: {
         Args: { p_experiment_id: string; p_tag_ids: string[] }
         Returns: undefined
+      }
+      reschedule_publishes: {
+        Args: { p_inserts?: Json; p_moves: Json }
+        Returns: {
+          after_episode_full: boolean
+          ai_generated: boolean
+          analytics_note: string | null
+          analytics_note_updated_at: string | null
+          analytics_note_updated_by: string | null
+          content_type: string
+          created_at: string
+          description: string | null
+          dubbed_version_id: string | null
+          duration_seconds: number | null
+          episode_id: string
+          id: string
+          language: string | null
+          metadata: Json | null
+          platform: string
+          platform_connection_id: string | null
+          platform_content_id: string | null
+          platform_url: string | null
+          published_at: string | null
+          release_priority: string
+          scheduled_at: string | null
+          slot_at: string | null
+          status: string
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "publishes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       restore_content_revision: {
         Args: { p_revision_id: string }

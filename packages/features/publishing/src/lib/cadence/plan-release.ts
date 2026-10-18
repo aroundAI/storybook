@@ -41,6 +41,10 @@ export interface OccupiedPost {
   at: Date;
   /** When it goes (or went) out: the slot plus its jitter */
   goesAt: Date;
+  /** FILM-2210: it holds a cadence slot; a post scheduled by hand does not */
+  slotted?: boolean;
+  /** FILM-2210: a breaking release's post */
+  breaking?: boolean;
 }
 
 /** When an episode's long videos go (or went) out */
@@ -130,19 +134,19 @@ const MINUTE_MS = 60_000;
 
 const NOT_OUT = new Set(['scheduled', 'queued', 'publishing']);
 
-function later(...dates: Array<Date | null | undefined>) {
+export function later(...dates: Array<Date | null | undefined>) {
   const times = dates.filter((d): d is Date => !!d).map((d) => d.getTime());
 
   return new Date(Math.max(...times));
 }
 
-function latest(dates: readonly Date[]) {
+export function latest(dates: readonly Date[]) {
   return dates.length
     ? new Date(Math.max(...dates.map((d) => d.getTime())))
     : null;
 }
 
-function earliestOf(dates: readonly Date[]) {
+export function earliestOf(dates: readonly Date[]) {
   return dates.length
     ? new Date(Math.min(...dates.map((d) => d.getTime())))
     : null;
@@ -153,7 +157,7 @@ function earliestOf(dates: readonly Date[]) {
  * not before `floor`, and at least a minute after `previous`, the post
  * before it on the channel, so jitter never reorders the queue.
  */
-function jittered(
+export function jittered(
   slot: Date,
   cadence: ChannelCadence,
   floor: Date,

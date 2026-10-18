@@ -40,12 +40,19 @@ import {
   TooltipTrigger,
 } from '@kit/ui/tooltip';
 
-import type { ReleasePreview } from '../lib/cadence/release-types';
+import type {
+  BreakingPreview,
+  ReleasePreview,
+} from '../lib/cadence/release-types';
 // =============================================================================
 // Language Display - imported from shared constants
 // =============================================================================
 
 import { getLangDisplay } from '../lib/constants';
+import {
+  BreakingReleaseForm,
+  type BreakingSettings,
+} from './breaking-release-form';
 import { ReleaseCalendar } from './release-calendar';
 
 // Types
@@ -70,14 +77,16 @@ export interface ScheduleConfig {
   /**
    * FILM-719. 'cadence': each channel's posting rules pick the times, from
    * startDateTime on. 'stagger': item i goes at start + i × stagger.
+   * FILM-2210 'breaking': ahead of every channel's queue, as `breaking` says.
    */
   mode: ReleaseMode;
   startDateTime: Date;
   staggerMinutes: number;
   schedule: ScheduleItem[];
+  breaking?: BreakingSettings;
 }
 
-export type ReleaseMode = 'cadence' | 'stagger';
+export type ReleaseMode = 'cadence' | 'stagger' | 'breaking';
 
 /** One schedule item's key, shared with the targets built from it */
 export function scheduleItemKey(item: VideoToSchedule) {
@@ -131,6 +140,11 @@ interface ScheduleReleasePanelProps {
   ) => Promise<ActionResult<ReleasePreview>>;
   /** FILM-719: opens a channel's posting rules */
   onEditChannelCadence?: (connectionId: string) => void;
+  /** FILM-2210: a breaking release's posts and what it moves; writes nothing */
+  onPreviewBreaking?: (
+    settings: BreakingSettings,
+    schedule: ScheduleItem[],
+  ) => Promise<ActionResult<BreakingPreview>>;
 }
 
 type CadencePreviewState =
@@ -278,6 +292,7 @@ export function ScheduleReleasePanel({
   isScheduling = false,
   onPreviewCadence,
   onEditChannelCadence,
+  onPreviewBreaking,
 }: ScheduleReleasePanelProps) {
   // State
   const [mode, setMode] = useState<ReleaseMode>(
@@ -292,6 +307,8 @@ export function ScheduleReleasePanel({
   const [showPreview, setShowPreview] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [pendingBreaking, setPendingBreaking] =
+    useState<BreakingSettings | null>(null);
 
   // Calculate minimum time if today is selected
   const minTime = useMemo(() => {
@@ -352,12 +369,12 @@ export function ScheduleReleasePanel({
     return fullCount + shortsCount;
   }, [fullVideoLanguages, shortsGroups]);
 
-  // Calculate schedule preview
+  // Calculate schedule preview; a breaking release needs no start date
   const schedulePreview = useMemo(() => {
-    if (!date) return [];
+    if (!date && mode !== 'breaking') return [];
 
-    const startDateTime = new Date(date);
-    startDateTime.setHours(time.hours, time.minutes, 0, 0);
+    const startDateTime = date ? new Date(date) : new Date();
+    if (date) startDateTime.setHours(time.hours, time.minutes, 0, 0);
 
     return calculateSchedule(
       startDateTime,
@@ -365,7 +382,7 @@ export function ScheduleReleasePanel({
       fullVideoLanguages,
       shortsGroups,
     );
-  }, [date, time, staggerMinutes, fullVideoLanguages, shortsGroups]);
+  }, [date, time, mode, staggerMinutes, fullVideoLanguages, shortsGroups]);
 
   // Build list of all items to translate (Full Video + Shorts Groups, non-English only)
   const itemsToTranslate = useMemo(() => {
@@ -435,6 +452,11 @@ export function ScheduleReleasePanel({
   }, [date, time]);
 
   const cadenceMode = mode === 'cadence';
+  const breakingMode = mode === 'breaking';
+  // Three tabs share a narrow sidebar: their labels wrap
+  const tabClass = onPreviewBreaking
+    ? 'h-full whitespace-normal text-xs leading-tight'
+    : undefined;
   const previewStale =
     cadencePreview.status === 'ready' &&
     cadencePreview.forStart !== releaseStart?.getTime();
@@ -479,7 +501,7 @@ export function ScheduleReleasePanel({
 
   // Step 1: User clicks "Prepare Schedule" -> trigger translations
   const handlePrepareSchedule = () => {
-    if (!date) return;
+    if (!date && !breakingMode) return;
 
     setShowConfirmation(true);
 
@@ -490,11 +512,11 @@ export function ScheduleReleasePanel({
   };
 
   // Step 2: User confirms -> build schedule with translations and submit
-  const handleConfirmSchedule = () => {
-    if (!date) return;
+  const handleConfirmSchedule = (breaking = pendingBreaking) => {
+    if (!date && !breakingMode) return;
 
-    const startDateTime = new Date(date);
-    startDateTime.setHours(time.hours, time.minutes, 0, 0);
+    const startDateTime = date ? new Date(date) : new Date();
+    if (date) startDateTime.setHours(time.hours, time.minutes, 0, 0);
 
     // Build schedule with translated metadata
     const scheduleWithTranslations = schedulePreview.map((item) => {
@@ -526,7 +548,20 @@ export function ScheduleReleasePanel({
       startDateTime,
       staggerMinutes,
       schedule: scheduleWithTranslations,
+      ...(breakingMode && breaking ? { breaking } : {}),
     });
+  };
+
+  // FILM-2210: the Breaking news tab schedules through the same two steps
+  const handleScheduleBreaking = (settings: BreakingSettings) => {
+    setPendingBreaking(settings);
+
+    if (languagesToTranslate.length > 0) {
+      handlePrepareSchedule();
+      return;
+    }
+
+    handleConfirmSchedule(settings);
   };
 
   // No videos to schedule
@@ -561,25 +596,58 @@ export function ScheduleReleasePanel({
               value={mode}
               onValueChange={(value) => setMode(value as ReleaseMode)}
             >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="cadence" data-test="release-mode-cadence">
+              <TabsList
+                className={`grid w-full ${onPreviewBreaking ? 'h-auto grid-cols-3' : 'grid-cols-2'}`}
+              >
+                <TabsTrigger
+                  value="cadence"
+                  className={tabClass}
+                  data-test="release-mode-cadence"
+                >
                   Channel cadence
                 </TabsTrigger>
-                <TabsTrigger value="stagger" data-test="release-mode-stagger">
+                <TabsTrigger
+                  value="stagger"
+                  className={tabClass}
+                  data-test="release-mode-stagger"
+                >
                   Custom
                 </TabsTrigger>
+                {onPreviewBreaking && (
+                  <TabsTrigger
+                    value="breaking"
+                    className={tabClass}
+                    data-test="release-mode-breaking"
+                  >
+                    Breaking news
+                  </TabsTrigger>
+                )}
               </TabsList>
             </Tabs>
             <p className="text-xs text-muted-foreground">
               {cadenceMode
                 ? 'Each channel gets the long video in its next free slot, and the Shorts at the end of its Shorts queue, oldest episode first, never more a day than its Short times. Nothing lands in a burst.'
-                : 'Every video goes at the start time plus the stagger interval: they all land within hours.'}
+                : breakingMode
+                  ? 'For news that cannot wait: the long video goes now or at your time, beside what is already scheduled, and its Shorts jump the queue with extra times for a few days.'
+                  : 'Every video goes at the start time plus the stagger interval: they all land within hours.'}
             </p>
           </div>
         )}
 
+        {breakingMode && onPreviewBreaking && !showConfirmation && (
+          <BreakingReleaseForm
+            disabled={isPublishing}
+            isScheduling={isScheduling}
+            labelOf={labelOf}
+            onPreview={(settings) =>
+              onPreviewBreaking(settings, schedulePreview)
+            }
+            onSchedule={handleScheduleBreaking}
+          />
+        )}
+
         {/* Date & Time Row: stacked, the card sits in a narrow sidebar */}
-        <div className="grid gap-4">
+        <div className={breakingMode ? 'hidden' : 'grid gap-4'}>
           {/* Date Picker */}
           <div className="space-y-2">
             <Label>{cadenceMode ? 'Not before (date)' : 'Start Date'}</Label>
@@ -626,7 +694,7 @@ export function ScheduleReleasePanel({
         </div>
 
         {/* Stagger Interval */}
-        <div className={cadenceMode ? 'hidden' : 'space-y-2'}>
+        <div className={mode !== 'stagger' ? 'hidden' : 'space-y-2'}>
           <div className="flex items-center gap-2">
             <Label>Stagger Interval</Label>
             <TooltipProvider>
@@ -715,7 +783,7 @@ export function ScheduleReleasePanel({
         )}
 
         {/* Summary */}
-        {!cadenceMode && date && (
+        {mode === 'stagger' && date && (
           <div className="rounded-lg bg-muted/50 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -864,7 +932,7 @@ export function ScheduleReleasePanel({
                 className="flex-1"
                 data-test="release-confirm-schedule"
                 disabled={!allTranslated || isScheduling}
-                onClick={handleConfirmSchedule}
+                onClick={() => handleConfirmSchedule()}
               >
                 {isScheduling ? (
                   <>
@@ -887,13 +955,13 @@ export function ScheduleReleasePanel({
           <div className="flex flex-col gap-3">
             <Button
               variant="default"
-              className="flex-1"
+              className={breakingMode ? 'hidden' : 'flex-1'}
               data-test="release-schedule"
               disabled={!date || isScheduling || isPublishing}
               onClick={
                 languagesToTranslate.length > 0
                   ? handlePrepareSchedule
-                  : handleConfirmSchedule
+                  : () => handleConfirmSchedule()
               }
             >
               {isScheduling ? (

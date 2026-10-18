@@ -29,6 +29,8 @@ export { setProjectChannelsAction } from './project-publishing-actions';
 export {
   previewCadenceReleaseAction,
   scheduleCadenceReleaseAction,
+  previewBreakingReleaseAction,
+  scheduleBreakingReleaseAction,
   requeueHeldShortsAction,
   discardHeldShortsAction,
   getChannelCadencesAction,

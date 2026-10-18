@@ -32,6 +32,8 @@ export interface GatedPublish {
   scheduled_at: string | null;
   slot_at: string | null;
   after_episode_full: boolean;
+  /** FILM-2210: 'breaking' goes at its own time, outside the day's limit */
+  release_priority?: string | null;
 }
 
 export type GateOutcome = 'go' | 'waiting' | 'deferred' | 'failed';
@@ -119,12 +121,16 @@ interface ChannelPost {
   status: string;
   slot_at: string | null;
   scheduled_at: string | null;
+  release_priority: string;
 }
 
 /**
  * A post holding a cadence slot on a channel that has already had its
  * local day's posts of that type moves on, with the posts queued after it,
  * to the next free slots (shiftQueue). True when it is not sent now.
+ *
+ * FILM-2210: a breaking post is never moved for the limit, and does not
+ * count toward it, so the normal posts on its day keep their times.
  */
 async function deferredForCap(
   client: Client,
@@ -132,6 +138,7 @@ async function deferredForCap(
   now: Date,
 ) {
   if (!publish.slot_at || !publish.platform_connection_id) return false;
+  if (publish.release_priority === 'breaking') return false;
 
   const connectionId = publish.platform_connection_id;
   const contentType = publish.content_type === 'short' ? 'short' : 'full';
@@ -163,6 +170,7 @@ async function deferredForCap(
     .select('status, published_at')
     .eq('platform_connection_id', connectionId)
     .neq('id', publish.id)
+    .neq('release_priority', 'breaking')
     .or(`status.in.(queued,publishing),published_at.gte.${since}`);
 
   const { data: recent, error } = await (contentType === 'short'
@@ -185,7 +193,9 @@ async function deferredForCap(
       (from, to) =>
         client
           .from('publishes')
-          .select('id, content_type, status, slot_at, scheduled_at')
+          .select(
+            'id, content_type, status, slot_at, scheduled_at, release_priority',
+          )
           .eq('platform_connection_id', connectionId)
           .in('status', ON_CALENDAR)
           .or(`slot_at.gte.${publish.slot_at},scheduled_at.gte.${since}`)
@@ -209,9 +219,11 @@ async function deferredForCap(
 
   const sameType = (post: ChannelPost) =>
     (post.content_type === 'short') === (contentType === 'short');
+  const counted = (post: ChannelPost) =>
+    sameType(post) && post.release_priority !== 'breaking';
   const inQueue = (post: ChannelPost) =>
     post.id === publish.id ||
-    (sameType(post) &&
+    (counted(post) &&
       post.status === 'scheduled' &&
       !!post.slot_at &&
       new Date(post.slot_at) > slotAt);
@@ -235,8 +247,8 @@ async function deferredForCap(
     contentType,
     now,
     queue,
-    others: rest.filter(sameType).map(timeOf),
-    blocked: rest.filter((post) => !sameType(post) && post.slot_at).map(timeOf),
+    others: rest.filter(counted).map(timeOf),
+    blocked: rest.filter((post) => !counted(post) && post.slot_at).map(timeOf),
   });
 
   if (!moved) {

@@ -10,10 +10,13 @@ import {
   unwrap,
 } from '@kit/next/action-result';
 import {
+  type BreakingSettings,
   ChannelCadenceDialog,
   type ChannelCadenceState,
 } from '@kit/publishing/components';
+import { YOUTUBE_UPLOADS_PER_DAY } from '@kit/publishing/lib/cadence/plan-breaking-release';
 import {
+  type BreakingPreview,
   QUEUE_WARNING_DAYS,
   type ReleasePreview,
   releaseTargetKey,
@@ -21,8 +24,10 @@ import {
 import {
   discardHeldShortsAction,
   getChannelCadencesAction,
+  previewBreakingReleaseAction,
   previewCadenceReleaseAction,
   requeueHeldShortsAction,
+  scheduleBreakingReleaseAction,
   scheduleCadenceReleaseAction,
 } from '@kit/publishing/server';
 import { toast } from '@kit/ui/sonner';
@@ -58,7 +63,8 @@ function targetsOf(configs: ReleaseConfig[]) {
 /**
  * FILM-719, FILM-2209. The Publish screen's cadence release: where a release
  * would land on its channels' calendars, scheduling it there, a channel's
- * posting rules, and Shorts an earlier release held back.
+ * posting rules, and Shorts an earlier release held back. FILM-2210: the
+ * same for a breaking release, which goes ahead of the queue.
  */
 export function useCadenceRelease(props: {
   episodeId: string;
@@ -77,22 +83,18 @@ export function useCadenceRelease(props: {
     aiGenerated: props.aiGenerated,
   });
 
-  const preview = async (
+  /** A preview of a release's configs: cadence or breaking */
+  const previewWith = async <T,>(
     configs: ReleaseConfig[],
-    notBefore: Date,
-  ): Promise<ActionResult<ReleasePreview>> => {
+    read: () => Promise<T>,
+  ): Promise<ActionResult<T>> => {
     // Nothing to place is the caller's state, not a failed read
     if (configs.length === 0) {
       return { ok: false, error: NO_MATCHING_CHANNELS };
     }
 
     try {
-      return {
-        ok: true,
-        data: await unwrap(
-          previewCadenceReleaseAction(release(configs, notBefore)),
-        ),
-      };
+      return { ok: true, data: await read() };
     } catch (error) {
       return {
         ok: false,
@@ -103,6 +105,14 @@ export function useCadenceRelease(props: {
       };
     }
   };
+
+  const preview = (
+    configs: ReleaseConfig[],
+    notBefore: Date,
+  ): Promise<ActionResult<ReleasePreview>> =>
+    previewWith(configs, () =>
+      unwrap(previewCadenceReleaseAction(release(configs, notBefore))),
+    );
 
   const schedule = async (configs: ReleaseConfig[], notBefore: Date) => {
     try {
@@ -120,6 +130,50 @@ export function useCadenceRelease(props: {
       props.onChanged();
     } catch (error) {
       toast.error(refusalMessage(error, 'Could not schedule the release.'));
+    }
+  };
+
+  const breakingRelease = (
+    configs: ReleaseConfig[],
+    settings: BreakingSettings,
+  ) => ({
+    ...release(configs, new Date()),
+    breaking: {
+      ...(settings.at ? { at: settings.at.toISOString() } : {}),
+      boost: { extraPerDay: settings.extraPerDay, days: settings.days },
+    },
+  });
+
+  const previewBreaking = (
+    configs: ReleaseConfig[],
+    settings: BreakingSettings,
+  ): Promise<ActionResult<BreakingPreview>> =>
+    previewWith(configs, () =>
+      unwrap(previewBreakingReleaseAction(breakingRelease(configs, settings))),
+    );
+
+  const scheduleBreaking = async (
+    configs: ReleaseConfig[],
+    settings: BreakingSettings,
+  ) => {
+    try {
+      const result = await unwrap(
+        scheduleBreakingReleaseAction(breakingRelease(configs, settings)),
+      );
+
+      toast.success(
+        `Scheduled ${result.scheduled.length} breaking uploads; ${result.moves.length} queued Short${result.moves.length === 1 ? '' : 's'} moved back`,
+      );
+      if (result.quota.length > 0) {
+        toast.warning(
+          `More than ${YOUTUBE_UPLOADS_PER_DAY} YouTube uploads on ${result.quota.map((q) => q.day).join(', ')}: uploads past the daily quota fail until it resets.`,
+        );
+      }
+      props.onChanged();
+    } catch (error) {
+      toast.error(
+        refusalMessage(error, 'Could not schedule the breaking release.'),
+      );
     }
   };
 
@@ -163,6 +217,8 @@ export function useCadenceRelease(props: {
   return {
     preview,
     schedule,
+    previewBreaking,
+    scheduleBreaking,
     requeueHeld,
     discardHeld,
     editChannel: setEditing,

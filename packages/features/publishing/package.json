@@ -63,6 +63,7 @@
     "./lib/schemas/schedule-release": "./src/lib/schemas/schedule-release.schema.ts",
     "./lib/cadence": "./src/lib/cadence/cadence.ts",
     "./lib/cadence/plan-release": "./src/lib/cadence/plan-release.ts",
+    "./lib/cadence/plan-breaking-release": "./src/lib/cadence/plan-breaking-release.ts",
     "./lib/cadence/gate": "./src/lib/cadence/gate.ts",
     "./lib/cadence/release-types": "./src/lib/cadence/release-types.ts",
     "./lib/token-expiry": "./src/lib/token-expiry.ts",

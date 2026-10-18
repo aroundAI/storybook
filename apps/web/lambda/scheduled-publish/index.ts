@@ -82,6 +82,7 @@ interface ScheduledPublish {
   scheduled_at: string | null;
   slot_at: string | null;
   after_episode_full: boolean;
+  release_priority: string;
   episodes: {
     project_id: string;
     final_video_url: string | null;
@@ -176,6 +177,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
       scheduled_at,
       slot_at,
       after_episode_full,
+      release_priority,
       episodes(
         project_id,
         final_video_url,

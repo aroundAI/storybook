@@ -3,16 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelCadenceRow } from '../src/lib/cadence/cadence';
 import type { ScheduleTarget } from '../src/server/schedule-publishes.service';
 import {
+  previewBreakingRelease,
   previewCadenceRelease,
   requeueHeldShorts,
+  scheduleBreakingRelease,
   scheduleCadenceRelease,
 } from '../src/server/schedule-release.service';
 
 /**
- * FILM-2209. A cadence release end to end through the service, on an
- * in-memory PostgREST that keeps `publishes_channel_slot_key`: what it
- * reads, what it writes, and what it never touches. Preparing a row (the
- * Publish screen's checks) is its own tests' subject.
+ * FILM-2209, FILM-2210. A cadence release and a breaking release end to
+ * end through the service, on an in-memory PostgREST that keeps
+ * `publishes_channel_slot_key` and runs reschedule_publishes all or
+ * nothing: what it reads, what it writes, and what it never touches.
+ * Preparing a row (the Publish screen's checks) is its own tests' subject.
  */
 
 vi.mock('server-only', () => ({}));
@@ -40,6 +43,7 @@ vi.mock('../src/server/schedule-publishes.service', async (importOriginal) => {
         platform_connection_id: target.connectionId,
         platform: target.connectionId === IG ? 'instagram' : 'youtube',
         content_type: target.contentType,
+        title: target.title,
         status: 'scheduled',
         scheduled_at: target.scheduledAt,
         slot_at: target.slotAt ?? null,
@@ -65,13 +69,30 @@ function fakeDb() {
   const tables: Record<string, Row[]> = {
     publishes: [],
     platform_connections: [
-      { id: YT, platform: 'youtube', platform_account_name: 'Story YT' },
-      { id: IG, platform: 'instagram', platform_account_name: 'Story IG' },
-      { id: FB, platform: 'facebook', platform_account_name: 'Story FB' },
+      {
+        id: YT,
+        account_id: 'team',
+        platform: 'youtube',
+        platform_account_name: 'Story YT',
+      },
+      {
+        id: IG,
+        account_id: 'team',
+        platform: 'instagram',
+        platform_account_name: 'Story IG',
+      },
+      {
+        id: FB,
+        account_id: 'team',
+        platform: 'facebook',
+        platform_account_name: 'Story FB',
+      },
     ],
     channel_posting_cadences: [],
   };
   const writes: Array<{ table: string; op: string; ids: string[] }> = [];
+  /** Error codes the next reschedule_publishes calls fail with, in order */
+  const rpcFailures: string[] = [];
   let nextId = 1;
 
   const slotTaken = (row: Row, others: Row[]) =>
@@ -141,6 +162,7 @@ function fakeDb() {
         return q;
       },
       order: () => q,
+      limit: () => q,
       range: (start: number, end: number) => {
         range = [start, end];
         return q;
@@ -155,17 +177,81 @@ function fakeDb() {
         values = patch;
         return q;
       },
-      maybeSingle: () => Promise.resolve(run()),
+      maybeSingle: () => {
+        const result = run();
+        return Promise.resolve({
+          ...result,
+          data: Array.isArray(result.data)
+            ? (result.data[0] ?? null)
+            : result.data,
+        });
+      },
       then: (resolve: (value: unknown) => unknown) => resolve(run()),
     };
 
     return q;
   };
 
+  /** reschedule_publishes: every move and insert, or none */
+  const rpc = async (
+    name: string,
+    args: {
+      p_moves: Array<{ id: string; slot_at: string; scheduled_at: string }>;
+      p_inserts: Row[];
+    },
+  ) => {
+    if (name !== 'reschedule_publishes') throw new Error(name);
+
+    const failure = rpcFailures.shift();
+    if (failure)
+      return { data: null, error: { code: failure, message: failure } };
+
+    const publishes = tables.publishes!;
+    const before = publishes.map((row) => ({ ...row }));
+    const undo = () => publishes.splice(0, publishes.length, ...before);
+
+    const moved = args.p_moves.map((move) =>
+      publishes.find((row) => row.id === move.id && row.status === 'scheduled'),
+    );
+    if (moved.some((row) => !row)) {
+      return { data: null, error: { code: '55000', message: 'not scheduled' } };
+    }
+
+    for (const row of moved) row!.slot_at = null;
+    args.p_moves.forEach((move, i) =>
+      Object.assign(moved[i]!, {
+        slot_at: move.slot_at,
+        scheduled_at: move.scheduled_at,
+      }),
+    );
+
+    const inserted = args.p_inserts.map((row) => ({
+      ...row,
+      id: `pub-${nextId++}`,
+      status: 'scheduled',
+    }));
+    publishes.push(...inserted);
+
+    if (publishes.some((row) => slotTaken(row, publishes))) {
+      undo();
+      return { data: null, error: { code: '23505', message: 'slot' } };
+    }
+
+    writes.push({
+      table: 'publishes',
+      op: 'rpc',
+      ids: [...moved.map((row) => row!.id), ...inserted.map((row) => row.id)],
+    });
+    return { data: inserted, error: null };
+  };
+
   return {
-    client: { from } as unknown as Parameters<typeof scheduleCadenceRelease>[0],
+    client: { from, rpc } as unknown as Parameters<
+      typeof scheduleCadenceRelease
+    >[0],
     tables,
     writes,
+    rpcFailures,
   };
 }
 
@@ -439,5 +525,163 @@ describe('Shorts an earlier release held (before FILM-2209)', () => {
         held.every((h) => String(row.slot_at) > String(h.slot_at)),
       ),
     ).toBe(true);
+  });
+});
+
+describe('FILM-2210: a breaking release through the service', () => {
+  const sixEpisodes = async () => {
+    for (const ep of ['ep1', 'ep2', 'ep3', 'ep4', 'ep5', 'ep6']) {
+      const result = await scheduleCadenceRelease(
+        db.client,
+        'u1',
+        release(ep, 4),
+        { now: NOW },
+      );
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+    }
+    return db.tables.publishes!.map((row) => ({ ...row }));
+  };
+
+  const breakingRelease = (breaking = {}) => ({
+    ...release('news', 6),
+    breaking,
+  });
+
+  it('previews what would go and move, writing nothing', async () => {
+    const before = await sixEpisodes();
+    const writes = db.writes.length;
+
+    const result = await previewBreakingRelease(db.client, breakingRelease(), {
+      now: NOW,
+    });
+    if (!result.ok) throw new Error(result.refusal);
+
+    expect(db.writes).toHaveLength(writes);
+    expect(db.tables.publishes).toEqual(before);
+    expect(result.data.placed).toHaveLength(7);
+    expect(result.data.moves.length).toBeGreaterThan(0);
+    expect(result.data.moves[0]).toMatchObject({
+      name: 'Story YT',
+      title: expect.stringContaining('short'),
+    });
+    expect(result.data.shortsQueue[0]!.after.queued).toBe(
+      result.data.shortsQueue[0]!.before.queued + 6,
+    );
+  });
+
+  it('writes the breaking posts and the moves in one call, and no long video moves', async () => {
+    const before = await sixEpisodes();
+    const result = await scheduleBreakingRelease(
+      db.client,
+      'u1',
+      breakingRelease(),
+      { now: NOW, random: () => 0.5 },
+    );
+    if (!result.ok) throw new Error(result.refusal);
+
+    expect(db.writes.filter((w) => w.op === 'rpc')).toHaveLength(1);
+
+    const long = rowsOf('news', 'full')[0]!;
+    expect(long).toMatchObject({
+      release_priority: 'breaking',
+      slot_at: null,
+      scheduled_at: new Date(NOW.getTime() + 60_000).toISOString(),
+    });
+    expect(rowsOf('news', 'short')).toHaveLength(6);
+    expect(
+      rowsOf('news', 'short').every(
+        (row) => row.release_priority === 'breaking' && row.after_episode_full,
+      ),
+    ).toBe(true);
+
+    for (const old of before.filter((row) => row.content_type === 'full')) {
+      expect(db.tables.publishes!.find((r) => r.id === old.id)).toEqual(old);
+    }
+
+    const moved = before.filter((old) => {
+      const now = db.tables.publishes!.find((r) => r.id === old.id)!;
+      return now.slot_at !== old.slot_at;
+    });
+    expect(result.data.moves.map((m) => m.publishId).sort()).toEqual(
+      moved.map((row) => row.id).sort(),
+    );
+    const firstBreaking = rowsOf('news', 'short')[0]!.slot_at as string;
+    const lastBreaking = rowsOf('news', 'short').at(-1)!.slot_at as string;
+    expect(ist(firstBreaking)).toBe('2026-11-02, 11:00:00');
+    for (const row of moved) {
+      const now = db.tables.publishes!.find((r) => r.id === row.id)!;
+      expect(String(now.slot_at) > lastBreaking).toBe(true);
+    }
+  });
+
+  it('plans again once when the calendar changed, then refuses', async () => {
+    await sixEpisodes();
+    db.rpcFailures.push('23505');
+    const retried = await scheduleBreakingRelease(
+      db.client,
+      'u1',
+      breakingRelease(),
+      { now: NOW },
+    );
+    expect(retried.ok, JSON.stringify(retried)).toBe(true);
+
+    db.rpcFailures.push('55000', '23505');
+    const refused = await scheduleBreakingRelease(
+      db.client,
+      'u1',
+      { ...release('news2', 1), breaking: {} },
+      { now: NOW },
+    );
+    expect(refused).toEqual({
+      ok: false,
+      refusal: expect.stringContaining('calendar changed'),
+    });
+    expect(rowsOf('news2')).toEqual([]);
+  });
+
+  it('warns, without refusing, past 6 YouTube uploads in a Pacific day across the team', async () => {
+    const YT2 = '00000000-0000-4000-8000-0000000000c4';
+    db.tables.platform_connections!.push(
+      {
+        id: YT2,
+        account_id: 'team',
+        platform: 'youtube',
+        platform_account_name: 'Second YT',
+      },
+      {
+        id: 'other-team-yt',
+        account_id: 'other',
+        platform: 'youtube',
+        platform_account_name: 'Not ours',
+      },
+    );
+    // Pacific 2026-11-02 runs 08:00Z on the 2nd to 08:00Z on the 3rd
+    const scheduledOn = (connectionId: string, n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        id: `${connectionId}-${i}`,
+        episode_id: 'elsewhere',
+        platform_connection_id: connectionId,
+        content_type: 'short',
+        status: 'scheduled',
+        slot_at: null,
+        scheduled_at: new Date(
+          Date.parse('2026-11-02T16:00:00Z') + i * 60_000,
+        ).toISOString(),
+      }));
+    db.tables.publishes!.push(...scheduledOn('other-team-yt', 10));
+
+    const quiet = await previewBreakingRelease(db.client, breakingRelease(), {
+      now: NOW,
+    });
+    if (!quiet.ok) throw new Error(quiet.refusal);
+    expect(quiet.data.quota).toEqual([]);
+
+    db.tables.publishes!.push(...scheduledOn(YT2, 3));
+    const busy = await previewBreakingRelease(db.client, breakingRelease(), {
+      now: NOW,
+    });
+    if (!busy.ok) throw new Error(busy.refusal);
+
+    expect(busy.data.quota).toEqual([{ day: '2026-11-02', uploads: 7 }]);
   });
 });

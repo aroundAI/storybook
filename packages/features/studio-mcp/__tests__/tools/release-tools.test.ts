@@ -1,9 +1,14 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MemoryCache } from '@kit/cache';
 import type { StorageAdapter } from '@kit/storage';
 
 import { McpToolError } from '../../src/errors';
+import type { McpPrincipal } from '../../src/principal';
 import type { McpToolDefinition } from '../../src/registry';
+import { buildMcpServer } from '../../src/server/build-server';
 import { createEpisodeThumbnailTools } from '../../src/server/tools/author/episode-thumbnail';
 import {
   discardHeldShortsTool,
@@ -29,6 +34,8 @@ import {
 const service = vi.hoisted(() => ({
   previewCadenceRelease: vi.fn(),
   scheduleCadenceRelease: vi.fn(),
+  previewBreakingRelease: vi.fn(),
+  scheduleBreakingRelease: vi.fn(),
   readChannelCadences: vi.fn(),
   saveChannelCadence: vi.fn(),
   requeueHeldShorts: vi.fn(),
@@ -39,6 +46,8 @@ const service = vi.hoisted(() => ({
 vi.mock('@kit/publishing/server/schedule-release', () => ({
   previewCadenceRelease: service.previewCadenceRelease,
   scheduleCadenceRelease: service.scheduleCadenceRelease,
+  previewBreakingRelease: service.previewBreakingRelease,
+  scheduleBreakingRelease: service.scheduleBreakingRelease,
   readChannelCadences: service.readChannelCadences,
   saveChannelCadence: service.saveChannelCadence,
   requeueHeldShorts: service.requeueHeldShorts,
@@ -222,6 +231,144 @@ beforeEach(() => {
   service.scheduleCadenceRelease.mockResolvedValue({
     ok: true,
     data: { scheduled: [], shortsQueue: [] },
+  });
+});
+
+const MOVE = {
+  publishId: 'old-short',
+  connectionId: YT,
+  name: 'Story YT',
+  platform: 'youtube',
+  title: 'Ep 3 short 2',
+  from: '2026-10-18T05:30:00.000Z',
+  to: '2026-10-19T11:30:00.000Z',
+};
+
+describe('schedule_release with breaking (FILM-2210)', () => {
+  beforeEach(() => {
+    service.previewBreakingRelease.mockResolvedValue({
+      ok: true,
+      data: {
+        placed: [
+          {
+            key: 'target-1',
+            connectionId: YT,
+            contentType: 'short',
+            scheduledAt: '2026-10-18T08:30:00.000Z',
+            extra: true,
+          },
+        ],
+        moves: [MOVE],
+        shortsQueue: [],
+        quota: [{ day: '2026-10-18', uploads: 8 }],
+      },
+    });
+    service.scheduleBreakingRelease.mockResolvedValue({
+      ok: true,
+      data: {
+        scheduled: [],
+        moves: [MOVE],
+        shortsQueue: [],
+        quota: [],
+      },
+    });
+  });
+
+  const BREAKING = {
+    ...RELEASE,
+    breaking: { boost: { extraPerDay: 3, days: 2 } },
+  };
+
+  it('previews through the breaking planner, writes nothing, and lists what moves and the quota warning', async () => {
+    const fake = client();
+    const result = await run(scheduleReleaseTool, BREAKING, fake);
+
+    expect(service.previewBreakingRelease).toHaveBeenCalledTimes(1);
+    expect(service.scheduleBreakingRelease).not.toHaveBeenCalled();
+    expect(service.previewCadenceRelease).not.toHaveBeenCalled();
+    expect(service.scheduleCadenceRelease).not.toHaveBeenCalled();
+    expect(fake.calls.filter((c) => c.op !== 'select')).toEqual([]);
+
+    const [, release] = service.previewBreakingRelease.mock.calls[0]!;
+    expect(release.breaking).toEqual({ boost: { extraPerDay: 3, days: 2 } });
+    expect(result.structuredContent).toMatchObject({
+      preview: true,
+      breaking: true,
+      moves: [MOVE],
+      quota: [{ day: '2026-10-18', uploads: 8 }],
+    });
+    expect(result.text).toContain(
+      'Ep 3 short 2 on Story YT: 2026-10-18T05:30:00.000Z → 2026-10-19T11:30:00.000Z',
+    );
+    expect(result.text).toContain('(extra time)');
+    expect(result.text).toContain('passed on 2026-10-18 (8)');
+  });
+
+  it('schedules as the person and says what moved', async () => {
+    const result = await run(
+      scheduleReleaseTool,
+      { ...BREAKING, preview: false },
+      client(),
+    );
+
+    expect(service.previewBreakingRelease).not.toHaveBeenCalled();
+    expect(service.scheduleCadenceRelease).not.toHaveBeenCalled();
+    const [, userId, release] = service.scheduleBreakingRelease.mock.calls[0]!;
+    expect(userId).toBe('11111111-1111-4111-8111-111111111111');
+    expect(release).toMatchObject({
+      episodeId: EPISODE,
+      breaking: { boost: { extraPerDay: 3, days: 2 } },
+    });
+    expect(result.structuredContent).toMatchObject({
+      preview: false,
+      breaking: true,
+      moves: [MOVE],
+    });
+    expect(result.text).toContain('Moved back (1)');
+  });
+
+  it('is refused on a connection without studio:publish, and nothing is planned', async () => {
+    const principal = {
+      userId: 'u1',
+      accountId: 'a1',
+      connectionId: 'c1',
+      scopes: ['studio:read', 'studio:write'],
+      clientName: 'laptop',
+      supabase: client().client,
+    } as unknown as McpPrincipal;
+    const cache = new MemoryCache();
+    const server = buildMcpServer(
+      principal,
+      [scheduleReleaseTool] as never,
+      {
+        cache,
+        limits: { callsPerMinute: 120, writesPerMinute: 20 },
+        recordToolCall: async () => undefined,
+        logInternalError: vi.fn(),
+      },
+      'req-1',
+    );
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    const mcp = new Client({ name: 'test', version: '0' });
+    await mcp.connect(clientSide);
+
+    const result = await mcp.callTool({
+      name: 'schedule_release',
+      arguments: { ...BREAKING, preview: false },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      code: 'FORBIDDEN',
+      details: { required_scope: 'studio:publish' },
+    });
+    expect(service.previewBreakingRelease).not.toHaveBeenCalled();
+    expect(service.scheduleBreakingRelease).not.toHaveBeenCalled();
+
+    await mcp.close();
+    await server.close();
+    cache.destroy();
   });
 });
 
