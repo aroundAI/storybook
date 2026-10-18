@@ -58,6 +58,7 @@
     "./lib/schemas/youtube-declaration": "./src/lib/schemas/youtube-declaration.schema.ts",
     "./lib/platforms": "./src/lib/platforms.ts",
     "./lib/schedule-view": "./src/lib/schedule-view.ts",
+    "./lib/time-zone-label": "./src/lib/time-zone-label.ts",
     "./lib/x-switch": "./src/lib/x-switch.ts",
     "./lib/ai-label": "./src/lib/ai-label.ts",
     "./lib/schemas/publish": "./src/lib/schemas/publish.schema.ts",

@@ -10,6 +10,7 @@ import { CalendarX, ExternalLink, Loader2, Zap } from 'lucide-react';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { PLATFORM_NAMES, isPlatform } from '@kit/publishing/lib/platforms';
 import { scheduleStatusOf } from '@kit/publishing/lib/schedule-view';
+import { timeZoneLabel } from '@kit/publishing/lib/time-zone-label';
 import {
   cancelScheduledPublishAction,
   discardHeldShortsAction,
@@ -118,7 +119,7 @@ export function ScheduleTable(props: {
         <TableHeader>
           <TableRow>
             <TableHead className="whitespace-nowrap" data-test="schedule-when">
-              When{timeZone ? ` (${timeZone})` : ''}
+              When{timeZone ? ` (${timeZoneLabel(timeZone)})` : ''}
             </TableHead>
             <TableHead>Platform</TableHead>
             <TableHead>Channel</TableHead>
