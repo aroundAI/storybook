@@ -1,6 +1,19 @@
-import type { TrafficGroupBucket } from '@kit/clickhouse';
+import {
+  FORMAT_BY_CONTENT_TYPE,
+  FORMAT_FAMILY_LABEL,
+  type FormatFamily,
+  type MeasuredEngagementCounts,
+  type TrafficGroupBucket,
+  denominatorSentence,
+  lifetimeWindow,
+} from '@kit/clickhouse';
 
-import type { CommentReaction } from './audience-comments/reaction';
+import {
+  type CommentReaction,
+  type ReactionComment,
+  countComments,
+  sharesOf,
+} from './audience-comments/reaction';
 import {
   type ChannelDailyFigures,
   type DataFreshness,
@@ -14,6 +27,10 @@ import {
   type VideoLifetimeFigures,
 } from './daily-figures';
 import { platformLabel } from './platform-labels';
+import {
+  engagementRateNullReason,
+  publishEngagementRate,
+} from './publish-engagement-rate';
 import type { RetentionPoint } from './retention';
 import { retentionAtRatio } from './retention';
 
@@ -29,7 +46,7 @@ import { retentionAtRatio } from './retention';
  * why a figure moved: the report's author may compare, not explain.
  */
 
-export const DIGEST_VERSION = 1;
+export const DIGEST_VERSION = 2;
 
 /** Videos younger than this are listed whatever they did that day */
 export const RECENT_VIDEO_DAYS = 30;
@@ -40,6 +57,8 @@ export const AGE_CHECKPOINTS = [1, 7, 28] as const;
 /** Where a retention curve is read */
 export const RETENTION_POSITIONS = [0.1, 0.25, 0.5, 0.75, 0.9] as const;
 export const UPCOMING_DAYS = 3;
+/** A video's trend covers the report day and the six before it */
+export const TREND_DAYS = 7;
 const MAX_QUESTIONS_PER_VIDEO = 20;
 const MAX_AUDIENCE_KEYS = 10;
 
@@ -185,7 +204,9 @@ export function nullReason(
   const only = ONLY_ON[figure];
 
   if (only && !only.includes(platform)) {
-    return `${label} does not report this figure.`;
+    return figure === 'dislikes'
+      ? 'No dislikes on this platform.'
+      : `${label} does not report this figure.`;
   }
 
   if (context.daily && LIFETIME_ONLY.has(figure)) {
@@ -247,6 +268,8 @@ export interface DigestPublish {
   connectionId: string | null;
   url: string | null;
   publishedAt: string | null;
+  /** The Shorts group a Short was cut from (publishes.metadata.shortsGroupId) */
+  shortsGroup: { id: string; name: string | null; title: string | null } | null;
 }
 
 export interface DigestChannel {
@@ -279,6 +302,11 @@ export interface DigestPost {
   heldReason: string | null;
 }
 
+/** A comment of the trend's seven days: when, and its label */
+export interface DigestTrendComment extends ReactionComment {
+  publishId: string;
+}
+
 export interface DigestRevenueRow {
   publishId: string;
   currency: string | null;
@@ -296,17 +324,27 @@ export interface DigestInputs {
   channelFigures: ChannelDailyFigures[];
   /** Every published video of the project */
   publishes: DigestPublish[];
-  /** The day's rows for every published video */
+  /** Every published video's rows for the trend's days, TREND_DAYS to the day */
   videoDay: VideoDailyFigures[];
-  /** Lifetime rows for the videos the digest lists */
+  /** Lifetime rows for every published video: the medians compare with them all */
   videoLifetime: VideoLifetimeFigures[];
+  /**
+   * The counts the Content tab's engagement rate divides, per publish: its
+   * stored days on the report date, and through it. Absent: nothing stored.
+   */
+  engagementCounts: {
+    day: Map<string, MeasuredEngagementCounts>;
+    lifetime: Map<string, MeasuredEngagementCounts>;
+  };
   /** Views at each age, per publish, from the video log; absent when not read */
   viewsAtAge: Map<string, Record<number, number | null>>;
-  /** Retention curves of the project's YouTube videos */
+  /** Retention curves of the project's YouTube and Facebook videos */
   retentionCurves: Map<string, RetentionPoint[]>;
   traffic: TrafficGroupBucket[];
   audience: VideoAudienceBreakdown | null;
   comments: DigestComment[];
+  /** The listed videos' comments over the trend's local days, every one */
+  trendComments: DigestTrendComment[];
   reactions: Array<{
     publishId: string;
     reaction: CommentReaction;
@@ -428,7 +466,10 @@ function hasActivity(row: VideoDailyFigures) {
   });
 }
 
-/** The videos a digest lists: active that day, or under 30 days old */
+/**
+ * The videos a digest lists: active that day, or under 30 days old, and
+ * every other video of their episodes, so an episode is reported whole.
+ */
 export function listedVideos(inputs: DigestInputs) {
   const active = new Set(
     inputs.videoDay
@@ -436,16 +477,23 @@ export function listedVideos(inputs: DigestInputs) {
       .map((row) => row.publishId),
   );
 
-  return inputs.publishes
-    .map((publish) => ({
-      publish,
-      ageDays: ageInDays(publish.publishedAt, inputs.day.end),
-      active: active.has(publish.id),
-    }))
-    .filter(
-      ({ ageDays, active }) =>
-        active || (ageDays !== null && ageDays < RECENT_VIDEO_DAYS),
-    )
+  const videos = inputs.publishes.map((publish) => {
+    const ageDays = ageInDays(publish.publishedAt, inputs.day.end);
+    const listedBecause = active.has(publish.id)
+      ? ('active_that_day' as const)
+      : ageDays !== null && ageDays < RECENT_VIDEO_DAYS
+        ? ('under_30_days_old' as const)
+        : null;
+
+    return { publish, ageDays, active: active.has(publish.id), listedBecause };
+  });
+  const episodes = new Set(
+    videos.filter((v) => v.listedBecause).map((v) => v.publish.episodeId),
+  );
+
+  return videos
+    .filter((v) => episodes.has(v.publish.episodeId))
+    .map((v) => ({ ...v, listedBecause: v.listedBecause ?? 'same_episode' }))
     .sort((a, b) => byText(a.publish.id, b.publish.id));
 }
 
@@ -454,7 +502,7 @@ function bySource<T extends { source: Source }>(rows: T[]) {
 }
 
 function videoSection(inputs: DigestInputs) {
-  return listedVideos(inputs).map(({ publish, ageDays, active }) => {
+  return listedVideos(inputs).map(({ publish, ageDays, listedBecause }) => {
     const daily = { storeOff: inputs.storeOff, daily: true };
     const lifetime = { storeOff: inputs.storeOff, daily: false };
     const atAge = inputs.viewsAtAge.get(publish.id);
@@ -470,7 +518,7 @@ function videoSection(inputs: DigestInputs) {
       url: publish.url,
       publishedAt: publish.publishedAt,
       ageDays,
-      listedBecause: active ? 'active_that_day' : 'under_30_days_old',
+      listedBecause,
       day: bySource(
         inputs.videoDay.filter(
           (row) => row.publishId === publish.id && row.date === inputs.day.date,
@@ -522,6 +570,9 @@ function videoSection(inputs: DigestInputs) {
             : {}),
         };
       }),
+      engagementRate: engagementOf(inputs, publish),
+      retention: retentionOf(inputs, publish),
+      trend: trendOf(inputs, publish),
     };
   });
 }
@@ -538,16 +589,15 @@ function median(values: number[]) {
 }
 
 function retentionSection(inputs: DigestInputs) {
-  const youtube = inputs.publishes.filter((p) => p.platform === 'youtube');
-
   return listedVideos(inputs)
     .filter(({ ageDays }) => ageDays !== null && ageDays < RETENTION_VIDEO_DAYS)
     .map(({ publish }) => {
       const points = inputs.retentionCurves.get(publish.id) ?? [];
-      const others = youtube
+      const others = inputs.publishes
         .filter(
           (other) =>
             other.id !== publish.id &&
+            other.platform === publish.platform &&
             other.connectionId === publish.connectionId &&
             (inputs.retentionCurves.get(other.id)?.length ?? 0) > 0,
         )
@@ -560,25 +610,14 @@ function retentionSection(inputs: DigestInputs) {
           ? {
               curve: null,
               reason:
-                publish.platform !== 'youtube'
-                  ? `Only ${platformLabel('youtube')} reports a retention curve; this is a ${platformLabel(publish.platform)} video.`
+                publish.platform !== 'youtube' &&
+                publish.platform !== 'facebook'
+                  ? `Only ${platformLabel('youtube')} and ${platformLabel('facebook')} report a retention curve; this is a ${platformLabel(publish.platform)} video (its retention is under videos).`
                   : (inputs.storeOff ??
-                    `${platformLabel('youtube')} has not reported this video’s curve yet.`),
+                    `${platformLabel(publish.platform)} has not reported this video’s curve yet.`),
             }
           : {
-              curve: RETENTION_POSITIONS.map((position) => {
-                const own = retentionAtRatio(points, position);
-                const channelMedian = median(
-                  others.map((curve) => retentionAtRatio(curve, position)),
-                );
-
-                return {
-                  position,
-                  retention: round(own, 4),
-                  channelMedian:
-                    channelMedian === null ? null : round(channelMedian, 4),
-                };
-              }),
+              curve: curveAgainst(points, others),
               steepestDrop: steepestDrop(points),
               channelVideosCompared: others.length,
             }),
@@ -605,6 +644,412 @@ function steepestDrop(points: RetentionPoint[]) {
   }
 
   return worst;
+}
+
+// ---------------------------------------------------------------------------
+// Per video: engagement rate, retention, the seven days
+// ---------------------------------------------------------------------------
+
+const NO_ENGAGEMENT_COUNTS: MeasuredEngagementCounts = {
+  views: null,
+  likes: null,
+  comments: null,
+  shares: null,
+};
+
+/**
+ * The video's engagement rate on the day and through it: the Content
+ * tab's figure (`publishEngagementRate`), over the same stored rows.
+ */
+function engagementOf(inputs: DigestInputs, publish: DigestPublish) {
+  const { date } = inputs.day;
+  const rate = (
+    counts: MeasuredEngagementCounts | undefined,
+    window: { from: string; to: string },
+  ) => {
+    const measured = counts ?? NO_ENGAGEMENT_COUNTS;
+    const recorded = publishEngagementRate(measured, publish.platform, window);
+
+    return recorded === null
+      ? {
+          percent: null,
+          reason:
+            inputs.storeOff ??
+            engagementRateNullReason(measured, publish.platform),
+        }
+      : {
+          percent: round(recorded.value),
+          denominator: denominatorSentence(recorded.denominator),
+        };
+  };
+
+  return {
+    day: rate(inputs.engagementCounts.day.get(publish.id), {
+      from: date,
+      to: date,
+    }),
+    lifetime: rate(
+      inputs.engagementCounts.lifetime.get(publish.id),
+      lifetimeWindow([publish.publishedAt], new Date(`${date}T00:00:00Z`)),
+    ),
+  };
+}
+
+const lifetimeRow = (inputs: DigestInputs, publishId: string, source: Source) =>
+  inputs.videoLifetime.find(
+    (row) => row.publishId === publishId && row.source === source,
+  );
+
+/** A publish's format family (FILM-1716), or null for a pair nothing maps */
+function familyOf(publish: DigestPublish): FormatFamily | null {
+  const byPlatform = (
+    FORMAT_BY_CONTENT_TYPE as Partial<
+      Record<string, Partial<Record<string, FormatFamily>>>
+    >
+  )[publish.contentType];
+
+  return byPlatform?.[publish.platform] ?? null;
+}
+
+const formatLabel = (publish: DigestPublish) => {
+  const family = familyOf(publish);
+  return family ? FORMAT_FAMILY_LABEL[family] : publish.contentType;
+};
+
+/** The same channel's other videos of the same format family */
+function peersOf(inputs: DigestInputs, publish: DigestPublish) {
+  return inputs.publishes.filter(
+    (other) =>
+      other.id !== publish.id &&
+      other.platform === publish.platform &&
+      other.connectionId === publish.connectionId &&
+      familyOf(other) === familyOf(publish),
+  );
+}
+
+/**
+ * The video's retention in the platform's own figure, labelled with its
+ * kind so two kinds are never read as one: YouTube's average percentage
+ * viewed, Facebook's curve, Instagram Reels' skip rate.
+ */
+function retentionOf(inputs: DigestInputs, publish: DigestPublish) {
+  const label = platformLabel(publish.platform);
+  const lifetime = { storeOff: inputs.storeOff, daily: false };
+  const points = inputs.retentionCurves.get(publish.id) ?? [];
+  const noCurve =
+    inputs.storeOff ?? `${label} has not reported this video’s curve yet.`;
+
+  if (publish.platform === 'youtube') {
+    const row = lifetimeRow(inputs, publish.id, 'analytics_api');
+    const figures = pick(row ?? {}, [
+      'avgPercentViewed',
+      'avgViewDurationSeconds',
+    ]);
+    const peers = peersOf(inputs, publish).flatMap((other) => {
+      const value = lifetimeRow(
+        inputs,
+        other.id,
+        'analytics_api',
+      )?.avgPercentViewed;
+      return typeof value === 'number' ? [value] : [];
+    });
+    const channelMedian = median(peers);
+    const dropOff = points.length ? steepestDrop(points) : null;
+
+    return {
+      kind: 'avg_percent_viewed' as const,
+      asOf: row?.asOf ?? null,
+      ...figures,
+      channelMedianAvgPercentViewed:
+        channelMedian === null ? null : round(channelMedian),
+      channelVideosCompared: peers.length,
+      dropOff,
+      notMeasured: {
+        ...notMeasured(
+          figures,
+          ['avgPercentViewed', 'avgViewDurationSeconds'],
+          publish.platform,
+          lifetime,
+        ),
+        ...(channelMedian === null
+          ? {
+              channelMedianAvgPercentViewed: `No other video of this format (${formatLabel(publish)}) on this channel has a measured average percentage viewed.`,
+            }
+          : {}),
+        ...(dropOff === null
+          ? {
+              dropOff: points.length ? 'The curve never falls.' : noCurve,
+            }
+          : {}),
+      },
+    };
+  }
+
+  if (publish.platform === 'facebook') {
+    const peers = peersOf(inputs, publish)
+      .map((other) => inputs.retentionCurves.get(other.id) ?? [])
+      .filter((curve) => curve.length > 0);
+
+    return {
+      kind: 'curve' as const,
+      basis:
+        'The share of the video’s 3-second views still playing at each point.',
+      curve: points.length ? curveAgainst(points, peers) : null,
+      dropOff: points.length ? steepestDrop(points) : null,
+      channelVideosCompared: peers.length,
+      notMeasured: points.length ? {} : { curve: noCurve, dropOff: noCurve },
+    };
+  }
+
+  if (publish.platform === 'instagram') {
+    const row = lifetimeRow(inputs, publish.id, 'graph_api');
+    const figures = pick(row ?? {}, ['reelsSkipRate', 'reelsAvgWatchTimeMs']);
+
+    return {
+      kind: 'skip_rate' as const,
+      asOf: row?.asOf ?? null,
+      ...figures,
+      notMeasured: notMeasured(
+        figures,
+        ['reelsAvgWatchTimeMs', 'reelsSkipRate'],
+        publish.platform,
+        lifetime,
+      ),
+    };
+  }
+
+  return {
+    kind: null,
+    reason: inputs.storeOff ?? `${label} reports no retention figure.`,
+  };
+}
+
+/** A curve read at RETENTION_POSITIONS, each against the median of `others` */
+function curveAgainst(points: RetentionPoint[], others: RetentionPoint[][]) {
+  return RETENTION_POSITIONS.map((position) => {
+    const channelMedian = median(
+      others.map((curve) => retentionAtRatio(curve, position)),
+    );
+
+    return {
+      position,
+      retention: round(retentionAtRatio(points, position), 4),
+      channelMedian: channelMedian === null ? null : round(channelMedian, 4),
+    };
+  });
+}
+
+const TREND_FIGURES = [
+  'views',
+  'likes',
+  'dislikes',
+  'comments',
+  'watchTimeSeconds',
+] as const;
+
+/** Why a video's comments cannot be counted, or null when they can */
+function commentsUnread(inputs: DigestInputs, publish: DigestPublish) {
+  const reaction = inputs.reactions.find(
+    (r) => r.publishId === publish.id,
+  )?.reaction;
+  const label = platformLabel(publish.platform);
+
+  switch (reaction?.kind) {
+    case 'read':
+    case 'no_comments':
+      return null;
+    case 'unsupported':
+      return `${label}’s comments cannot be read through its API.`;
+    case 'not_read':
+      return reaction.reason === 'not_authorised'
+        ? `The channel has not granted StoryBook its comments.`
+        : reaction.reason === 'sync_failed'
+          ? `The last read of this video’s comments failed.`
+          : `StoryBook has not read this video’s comments yet.`;
+    default:
+      return `StoryBook has not read this video’s comments yet.`;
+  }
+}
+
+/**
+ * The report day and the six before it: each source's figures and the
+ * engagement rate of each source's own counts, by the platform's data day,
+ * and the comments StoryBook read in the zone's day of the same date,
+ * with their tone and topics (shares from 20 labelled, as the reaction).
+ */
+function trendOf(inputs: DigestInputs, publish: DigestPublish) {
+  const daily = { storeOff: inputs.storeOff, daily: true };
+  const unread = commentsUnread(inputs, publish);
+  const dates = Array.from({ length: TREND_DAYS }, (_, i) =>
+    addDays(inputs.day.date, i - (TREND_DAYS - 1)),
+  );
+  const comments = inputs.trendComments.filter(
+    (c) => c.publishId === publish.id,
+  );
+
+  return dates.map((date) => {
+    const rows = bySource(
+      inputs.videoDay.filter(
+        (row) => row.publishId === publish.id && row.date === date,
+      ),
+    );
+    const { start, end } = localDay(date, inputs.day.timezone);
+    const read = countComments(
+      comments.filter(
+        (c) =>
+          Date.parse(c.commentedAt) >= Date.parse(start) &&
+          Date.parse(c.commentedAt) < Date.parse(end),
+      ),
+    );
+
+    return {
+      date,
+      sources: rows.map((row) => {
+        const figures = pick(row, TREND_FIGURES);
+        const counts = {
+          views: figures.views ?? null,
+          likes: figures.likes ?? null,
+          comments: figures.comments ?? null,
+          shares: typeof row.shares === 'number' ? row.shares : null,
+        };
+        const rate = publishEngagementRate(counts, publish.platform, {
+          from: date,
+          to: date,
+        });
+
+        const reasons = notMeasured(
+          figures,
+          TREND_FIGURES,
+          publish.platform,
+          daily,
+        );
+
+        if (rate === null) {
+          reasons.engagementRate =
+            inputs.storeOff ??
+            engagementRateNullReason(counts, publish.platform);
+        }
+
+        const withRate: FigureRow = {
+          ...figures,
+          engagementRate: rate === null ? null : round(rate.value),
+        };
+
+        return { source: row.source, figures: withRate, notMeasured: reasons };
+      }),
+      comments: unread === null ? { ...read, shares: sharesOf(read) } : null,
+      notMeasured: {
+        ...(rows.length === 0
+          ? {
+              sources:
+                inputs.storeOff ??
+                `No source has reported this video for this day yet.`,
+            }
+          : {}),
+        ...(unread === null ? {} : { comments: unread }),
+      },
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Episodes
+// ---------------------------------------------------------------------------
+
+const byPlatform = (
+  a: { platform: string; publishId: string },
+  b: { platform: string; publishId: string },
+) => byText(a.platform, b.platform) || byText(a.publishId, b.publishId);
+
+/** An episode's long video, and its Shorts: by format family, not content type */
+const LONG_FAMILIES = new Set<FormatFamily | null>([
+  'long_horizontal',
+  'long_vertical',
+]);
+const SHORT_FAMILIES = new Set<FormatFamily | null>(['short_vertical', 'clip']);
+
+const earliest = (publishes: DigestPublish[]) =>
+  publishes
+    .map((p) => p.publishedAt)
+    .filter((at): at is string => at !== null)
+    .sort(byText)[0] ?? null;
+
+/**
+ * The listed videos by episode, newest episode first: its long video one
+ * entry per platform, then each Short (a Shorts group, or a Short posted
+ * without one) with its posts by platform, oldest Short first. Entries
+ * name the publish; its figures are under `videos`.
+ */
+function episodesSection(inputs: DigestInputs) {
+  const byEpisode = new Map<string, DigestPublish[]>();
+
+  for (const { publish } of listedVideos(inputs)) {
+    byEpisode.set(publish.episodeId, [
+      ...(byEpisode.get(publish.episodeId) ?? []),
+      publish,
+    ]);
+  }
+
+  const entry = (p: DigestPublish) => ({
+    platform: p.platform,
+    publishId: p.id,
+  });
+
+  return [...byEpisode]
+    .map(([episodeId, publishes]) => {
+      const long = publishes.filter((p) => LONG_FAMILIES.has(familyOf(p)));
+      const shorts = new Map<string, DigestPublish[]>();
+
+      for (const p of publishes.filter((p) =>
+        SHORT_FAMILIES.has(familyOf(p)),
+      )) {
+        const key = p.shortsGroup
+          ? `group:${p.shortsGroup.id}`
+          : `post:${p.id}`;
+        shorts.set(key, [...(shorts.get(key) ?? []), p]);
+      }
+
+      return {
+        episodeId,
+        episodeTitle: publishes[0]!.episodeTitle,
+        publishedAt: earliest(long.length ? long : publishes),
+        long: long.map(entry).sort(byPlatform),
+        shorts: [...shorts]
+          .map(([key, posts]) => {
+            const group = posts[0]!.shortsGroup;
+
+            return {
+              key,
+              shortsGroupId: group?.id ?? null,
+              name: group?.name ?? null,
+              title:
+                group?.title ||
+                posts.map((p) => p.title).find((title) => title) ||
+                null,
+              publishedAt: earliest(posts),
+              publishes: posts.map(entry).sort(byPlatform),
+            };
+          })
+          .sort(
+            (a, b) =>
+              byText(a.publishedAt ?? '9', b.publishedAt ?? '9') ||
+              byText(a.key, b.key),
+          ),
+        other: publishes
+          .filter(
+            (p) =>
+              !LONG_FAMILIES.has(familyOf(p)) &&
+              !SHORT_FAMILIES.has(familyOf(p)),
+          )
+          .map((p) => ({ ...entry(p), contentType: p.contentType }))
+          .sort(byPlatform),
+      };
+    })
+    .sort(
+      (a, b) =>
+        byText(b.publishedAt ?? '', a.publishedAt ?? '') ||
+        byText(a.episodeId, b.episodeId),
+    );
 }
 
 function trafficSection(inputs: DigestInputs) {
@@ -844,11 +1289,17 @@ export function assembleDigest(inputs: DigestInputs) {
         'A figure is a number or null; every null is listed in its row’s notMeasured with the reason. Platform figures are by the platform’s own data day.',
       descriptive:
         'Descriptive only: a difference between days or videos is not its cause. Test a cause with a channel experiment.',
+      engagementRate:
+        'A video’s engagementRate is the Content tab’s Engagement figure: its likes, comments and shares per 100 views over its stored days, on the day and through it. Each trend source’s engagementRate is the same function over that source’s own counts.',
+      retention: `Each video’s retention is its platform’s own figure, named by kind: avg_percent_viewed (${platformLabel('youtube')}’s average percentage viewed, with its average view duration, the steepest drop of its curve and the median of the channel’s other videos of the same format family), curve (${platformLabel('facebook')}: the share of 3-second views still playing) or skip_rate (${platformLabel('instagram')} Reels, as Meta reports it, with the average watch time). Kinds are not comparable with each other.`,
+      trend:
+        'Each video’s trend is the report day and the six before it: platform figures by the platform’s data day, comments by the day in the report’s zone. Comment tone and topic shares need 20 labelled comments that day; below that, counts only.',
     },
     freshness: [...inputs.freshness].sort((a, b) =>
       byText(a.connectionId, b.connectionId),
     ),
     channels: channelSection(inputs),
+    episodes: episodesSection(inputs),
     videos: videoSection(inputs),
     retention: retentionSection(inputs),
     traffic: trafficSection(inputs),

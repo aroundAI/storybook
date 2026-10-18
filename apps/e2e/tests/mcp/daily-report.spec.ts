@@ -64,6 +64,218 @@ const REPORT = [
   '<img src=x onerror="window.__injected = true"> <b>raw html</b>',
 ].join('\n');
 
+type DigestVideo = {
+  publishId: string;
+  day: Array<{
+    source: string;
+    figures: Record<string, number | null>;
+    notMeasured: Record<string, string>;
+  }>;
+  engagementRate: Record<
+    'day' | 'lifetime',
+    { percent: number | null; reason?: string }
+  >;
+  retention: Record<string, unknown>;
+  trend: Array<{
+    date: string;
+    sources: Array<{ source: string; figures: Record<string, number | null> }>;
+    comments: Record<string, unknown> | null;
+  }>;
+};
+
+/**
+ * FILM-1736. The Heist, released the day before: its long video on YouTube
+ * and Facebook, a YouTube Short (group "YT 1") and an Instagram Reel (group
+ * "IG/FB 1"), with figures to work out by hand; and the Pilot, an old long
+ * video on the same channel that only its median reads.
+ */
+async function seedHeist(
+  day: Awaited<ReturnType<typeof seedDay>>,
+  before: (n: number) => string,
+) {
+  const { team, project, connectionId } = day;
+  const facebook = await seedYouTubeConnection(team.accountId, 'Dante FB', {
+    platform: 'facebook',
+  });
+  const instagram = await seedYouTubeConnection(team.accountId, 'Dante IG', {
+    platform: 'instagram',
+  });
+  const groups = { yt: crypto.randomUUID(), ig: crypto.randomUUID() };
+  const service = serviceRoleAuth();
+  const episode = await insertRow<{ id: string }>(
+    'episodes',
+    {
+      project_id: project.id,
+      number: 2,
+      title: 'The Heist',
+      slug: `the-heist-${crypto.randomUUID().slice(0, 8)}`,
+      shorts_groups: [
+        { id: groups.yt, name: 'YT 1', title: 'Heist teaser', videos: {} },
+        { id: groups.ig, name: 'IG/FB 1', title: 'Heist reel', videos: {} },
+      ],
+    },
+    service,
+  );
+  const post = async (
+    platform: string,
+    connection: string,
+    contentType: 'full' | 'short',
+    at: string,
+    shortsGroupId?: string,
+    episodeId = episode.id,
+  ) =>
+    (
+      await insertRow<{ id: string }>(
+        'publishes',
+        {
+          episode_id: episodeId,
+          platform_connection_id: connection,
+          platform,
+          content_type: contentType,
+          status: 'published',
+          title: `The Heist (${platform} ${contentType})`,
+          published_at: at,
+          ...(shortsGroupId ? { metadata: { shortsGroupId } } : {}),
+        },
+        service,
+      )
+    ).id;
+
+  const heist = {
+    episodeId: episode.id,
+    longYt: await post('youtube', connectionId, 'full', ist('08:00', -1)),
+    longFb: await post('facebook', facebook, 'full', ist('08:30', -1)),
+    shortYt: await post(
+      'youtube',
+      connectionId,
+      'short',
+      ist('12:00', -1),
+      groups.yt,
+    ),
+    reelIg: await post(
+      'instagram',
+      instagram,
+      'short',
+      ist('14:00', -1),
+      groups.ig,
+    ),
+  };
+  const pilotEpisode = await insertRow<{ id: string }>(
+    'episodes',
+    {
+      project_id: project.id,
+      number: 3,
+      title: 'The Pilot',
+      slug: `the-pilot-${crypto.randomUUID().slice(0, 8)}`,
+    },
+    service,
+  );
+  const pilot = await post(
+    'youtube',
+    connectionId,
+    'full',
+    `${before(60)}T10:00:00.000Z`,
+    undefined,
+    pilotEpisode.id,
+  );
+
+  const metric = (
+    videoId: string,
+    platform: string,
+    date: string,
+    figures: Record<string, number | null>,
+  ) => ({
+    project_id: project.id,
+    video_id: videoId,
+    platform,
+    metric_date: date,
+    metric_source: 'analytics_api',
+    extra_metrics: '{}',
+    ...figures,
+  });
+  await insertClickHouse('video_metrics', [
+    metric(heist.longYt, 'youtube', DATE, {
+      views: 400,
+      likes: 30,
+      dislikes: 3,
+      comments: 6,
+      shares: 4,
+      watch_time_seconds: 12_000,
+      avg_view_percentage: 42.5,
+    }),
+    metric(heist.longYt, 'youtube', before(1), {
+      views: 100,
+      likes: 5,
+      comments: 1,
+      shares: 0,
+      watch_time_seconds: 2000,
+      avg_view_percentage: 50,
+    }),
+    metric(heist.longFb, 'facebook', DATE, {
+      views: null,
+      likes: 8,
+      comments: 2,
+      shares: 1,
+    }),
+    metric(heist.reelIg, 'instagram', DATE, {
+      views: 250,
+      likes: 20,
+      comments: 4,
+      shares: 1,
+    }),
+    metric(pilot, 'youtube', before(60), {
+      views: 100,
+      likes: 1,
+      comments: 0,
+      shares: 0,
+      watch_time_seconds: 900,
+      avg_view_percentage: 36,
+    }),
+  ]);
+  const curve = (
+    videoId: string,
+    platform: string,
+    points: Array<[number, number]>,
+  ) =>
+    points.map(([elapsed, watch]) => ({
+      project_id: project.id,
+      video_id: videoId,
+      platform,
+      elapsed_ratio: elapsed,
+      audience_watch_ratio: watch,
+    }));
+  await insertClickHouse('video_retention_curves', [
+    ...curve(heist.longYt, 'youtube', [
+      [0, 1],
+      [0.25, 0.7],
+      [1, 0.5],
+    ]),
+    ...curve(heist.longFb, 'facebook', [
+      [0, 1],
+      [0.5, 0.6],
+      [1, 0.3],
+    ]),
+  ]);
+  // Fetched in the day: a lifetime read is as of the day's end
+  await insertClickHouse('video_snapshots', [
+    {
+      project_id: project.id,
+      video_id: heist.reelIg,
+      platform: 'instagram',
+      snapshot_date: DATE,
+      fetched_at: ist('20:00').slice(0, 19).replace('T', ' '),
+      views: 250,
+      likes: 20,
+      comments: 4,
+      shares: 1,
+      ig_reels_skip_rate: 0.42,
+      ig_reels_avg_watch_time_ms: 6100,
+    },
+  ]);
+
+  return { ...heist, pilot };
+}
+
 async function seedDay(prefix: string) {
   const team = await seedTeamAccount({ emailPrefix: prefix });
   const connectionId = await seedYouTubeConnection(team.accountId);
@@ -452,7 +664,10 @@ test.describe('A morning report over MCP, saved and shown', () => {
   /**
    * Figures worked out by hand, through FILM-1734's readers, against the
    * local ClickHouse: the channel's day against the mean of the days it
-   * measured, and a video's day by its source.
+   * measured, and a video's day by its source. FILM-1736: an episode with
+   * a long video on YouTube and Facebook and two Shorts (a YouTube cut and
+   * an Instagram Reel), each video's engagement rate, retention in its
+   * platform's own kind, and seven days.
    */
   test('reads hand-computed ClickHouse figures into the digest and the saved report', async ({
     page,
@@ -511,6 +726,8 @@ test.describe('A morning report over MCP, saved and shown', () => {
       },
     ]);
 
+    const heist = await seedHeist(day, before);
+
     const token = await mintPersonalAccessToken(day.team, {
       scopes: ['studio:read', 'studio:write'],
     });
@@ -530,9 +747,15 @@ test.describe('A morning report over MCP, saved and shown', () => {
           vsPrior: Record<string, Record<string, number | null>>;
         }>;
       }>;
-      videos: Array<{
-        publishId: string;
-        day: Array<{ source: string; figures: Record<string, number | null> }>;
+      videos: Array<DigestVideo>;
+      episodes: Array<{
+        episodeId: string;
+        long: Array<{ platform: string; publishId: string }>;
+        shorts: Array<{
+          name: string | null;
+          title: string | null;
+          publishes: Array<{ platform: string; publishId: string }>;
+        }>;
       }>;
     };
 
@@ -572,6 +795,115 @@ test.describe('A morning report over MCP, saved and shown', () => {
       subscribersGained: 4,
       subscribersLost: 1,
     });
+
+    // FILM-1736. The episodes, newest first: the Vault's Short went out on
+    // the day, the Heist's long video the day before
+    expect(digest.episodes.map((e) => e.episodeId)).toEqual([
+      day.episode.episodeId,
+      heist.episodeId,
+    ]);
+    expect(digest.episodes[1]).toMatchObject({
+      long: [
+        { platform: 'facebook', publishId: heist.longFb },
+        { platform: 'youtube', publishId: heist.longYt },
+      ],
+      shorts: [
+        {
+          name: 'YT 1',
+          title: 'Heist teaser',
+          publishes: [{ platform: 'youtube', publishId: heist.shortYt }],
+        },
+        {
+          name: 'IG/FB 1',
+          title: 'Heist reel',
+          publishes: [{ platform: 'instagram', publishId: heist.reelIg }],
+        },
+      ],
+    });
+    // The quiet old episode is only compared with, not listed
+    expect(digest.videos.map((v) => v.publishId)).not.toContain(heist.pilot);
+
+    const of = (id: string) => digest.videos.find((v) => v.publishId === id)!;
+
+    // Engagement rate: likes, comments and shares per 100 views
+    // YouTube day (30 + 6 + 4) / 400 = 10; through it (35 + 7 + 4) / 500 = 9.2
+    expect(of(heist.longYt).engagementRate).toMatchObject({
+      day: { percent: 10 },
+      lifetime: { percent: 9.2 },
+    });
+    // Instagram (20 + 4 + 1) / 250 = 10
+    expect(of(heist.reelIg).engagementRate.day).toMatchObject({ percent: 10 });
+    // Facebook stores no single view: not measured, never 0
+    expect(of(heist.longFb).engagementRate.day).toEqual({
+      percent: null,
+      reason:
+        'Facebook reports no single view count, so there are no views to divide by.',
+    });
+    const fbDay = of(heist.longFb).day[0]!;
+    expect(fbDay.figures.dislikes).toBeNull();
+    expect(fbDay.notMeasured.dislikes).toBe('No dislikes on this platform.');
+
+    // Retention, each in its own kind
+    // YouTube: (42.5 × 400 + 50 × 100) / 500 = 44%; 14000 s / 500 views = 28 s;
+    // against the Pilot's 36%, the channel's only other long video
+    expect(of(heist.longYt).retention).toEqual({
+      kind: 'avg_percent_viewed',
+      asOf: DATE,
+      avgPercentViewed: 44,
+      avgViewDurationSeconds: 28,
+      channelMedianAvgPercentViewed: 36,
+      channelVideosCompared: 1,
+      dropOff: { from: 0, to: 0.25, drop: 0.3 },
+      notMeasured: {},
+    });
+    expect(of(heist.longFb).retention).toMatchObject({
+      kind: 'curve',
+      dropOff: { from: 0, to: 0.5, drop: 0.4 },
+      curve: expect.arrayContaining([
+        { position: 0.5, retention: 0.6, channelMedian: null },
+      ]),
+    });
+    expect(of(heist.reelIg).retention).toMatchObject({
+      kind: 'skip_rate',
+      reelsSkipRate: 0.42,
+      reelsAvgWatchTimeMs: 6100,
+      notMeasured: {},
+    });
+
+    // Seven days: the two the long video measured, five with nothing yet
+    const trend = of(heist.longYt).trend;
+    expect(trend.map((t) => t.date)).toEqual(
+      [6, 5, 4, 3, 2, 1, 0].map((n) => (n ? before(n) : DATE)),
+    );
+    expect(trend.at(-1)!.sources).toEqual([
+      expect.objectContaining({
+        source: 'analytics_api',
+        figures: {
+          views: 400,
+          likes: 30,
+          dislikes: 3,
+          comments: 6,
+          watchTimeSeconds: 12_000,
+          engagementRate: 10,
+        },
+      }),
+    ]);
+    // (5 + 1 + 0) / 100 = 6
+    expect(trend.at(-2)!.sources[0]!.figures).toMatchObject({
+      views: 100,
+      engagementRate: 6,
+    });
+    expect(trend[0]!.sources).toEqual([]);
+    // The Vault's comments by IST day: three on the day (two labelled, too
+    // few for shares), the one half an hour before it on the day before
+    const vault = of(day.episode.publishId).trend;
+    expect(vault.at(-1)!.comments).toMatchObject({
+      comments: 3,
+      labelled: 2,
+      topics: expect.objectContaining({ question: 2 }),
+      shares: { kind: 'too_few', labelled: 2, needed: 20 },
+    });
+    expect(vault.at(-2)!.comments).toMatchObject({ comments: 1, labelled: 1 });
 
     // The routine writes those figures; the page shows what was saved
     const body = [

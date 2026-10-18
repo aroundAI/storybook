@@ -80,6 +80,12 @@ describe('get_workflow_guide', () => {
     expect(WORKFLOW_GUIDE_TEXT).toMatch(/published/);
   });
 
+  it('lays the morning report out by episode, from the digest’s own figures (FILM-1736)', () => {
+    expect(WORKFLOW_GUIDE_TEXT).toContain('one block per entry of `episodes`');
+    expect(WORKFLOW_GUIDE_TEXT).toContain('`engagementRate` as given');
+    expect(WORKFLOW_GUIDE_TEXT).toContain('`retention` named by its kind');
+  });
+
   it('names only tools that exist, in backticks', () => {
     const named = [
       ...WORKFLOW_GUIDE_TEXT.matchAll(/`([a-z]+(?:_[a-z]+)+)(?:\(|`)/g),

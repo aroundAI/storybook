@@ -2,7 +2,10 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 
-import { queryRetentionCurves } from '@kit/clickhouse/server';
+import {
+  queryRetentionCurves,
+  queryTotalsByVideoIds,
+} from '@kit/clickhouse/server';
 import {
   readPublishCalendar,
   readScheduledThrough,
@@ -14,7 +17,9 @@ import {
   type DigestComment,
   type DigestInputs,
   type DigestPublish,
+  type DigestTrendComment,
   RECENT_VIDEO_DAYS,
+  TREND_DAYS,
   UPCOMING_DAYS,
   addDays,
   assembleDigest,
@@ -24,6 +29,7 @@ import {
 } from '../lib/daily-digest';
 import type { AnalyticsClient } from './analytics-client';
 import {
+  type StoredComment,
   getCommentReactions,
   labelOf,
   listAudienceComments,
@@ -46,7 +52,9 @@ import { getVideoLogService } from './video-log-service';
  * FILM-1735. `get_daily_digest`: everything a morning report says about a
  * project's day, read once and assembled by `assembleDigest`. The day runs
  * from local midnight to local midnight in `timezone`; platform figures are
- * by the platform's own data day, `date`.
+ * by the platform's own data day, `date`. FILM-1736 reads seven days of
+ * figures and comments for each video's trend, and lifetime figures for
+ * every video, which the retention medians compare with.
  *
  * The project is checked on the caller's client before anything is read,
  * and every ClickHouse read is keyed by publish or channel ids that client
@@ -78,7 +86,26 @@ interface PublishRow {
   platform_url: string | null;
   published_at: string | null;
   status: string;
-  episodes: { title: string | null };
+  shortsGroupId: string | null;
+  episodes: { title: string | null; shorts_groups: unknown };
+}
+
+/** The group a Short names, from its episode's shorts_groups */
+function shortsGroupOf(row: PublishRow): DigestPublish['shortsGroup'] {
+  if (!row.shortsGroupId) return null;
+
+  const groups = Array.isArray(row.episodes.shorts_groups)
+    ? (row.episodes.shorts_groups as Array<Record<string, unknown>>)
+    : [];
+  const group = groups.find((g) => g?.id === row.shortsGroupId);
+  const text = (value: unknown) =>
+    typeof value === 'string' && value ? value : null;
+
+  return {
+    id: row.shortsGroupId,
+    name: text(group?.name),
+    title: text(group?.title),
+  };
 }
 
 async function projectPublishes(
@@ -90,7 +117,7 @@ async function projectPublishes(
       client
         .from('publishes')
         .select(
-          'id, episode_id, title, platform, content_type, platform_connection_id, platform_url, published_at, status, episodes!inner(title, project_id)',
+          'id, episode_id, title, platform, content_type, platform_connection_id, platform_url, published_at, status, shortsGroupId:metadata->>shortsGroupId, episodes!inner(title, project_id, shorts_groups)',
         )
         .eq('episodes.project_id', projectId)
         .in('status', ['published', 'unlisted'])
@@ -109,6 +136,7 @@ async function projectPublishes(
     connectionId: row.platform_connection_id,
     url: row.platform_url,
     publishedAt: row.published_at,
+    shortsGroup: shortsGroupOf(row),
   }));
 }
 
@@ -147,6 +175,43 @@ async function dayComments(
   } while (after && comments.length < MAX_DIGEST_COMMENTS);
 
   return comments;
+}
+
+/** Every comment on the videos in the window, with its label: counted, so never capped */
+async function trendComments(
+  client: AnalyticsClient,
+  publishIds: string[],
+  window: { start: string; end: string },
+): Promise<DigestTrendComment[]> {
+  const rows = await fetchAllByIds<
+    Pick<StoredComment, 'id' | 'publish_id' | 'commented_at' | 'comment_labels'>
+  >(
+    publishIds,
+    (chunk, from, to) =>
+      client
+        .from('audience_comments')
+        .select(
+          'id, publish_id, commented_at, comment_labels(sentiment, topics, source, model)',
+        )
+        .in('publish_id', chunk)
+        .gte('commented_at', window.start)
+        .lt('commented_at', window.end)
+        .order('id')
+        .range(from, to),
+    'digest trend comments',
+  );
+
+  return rows.map((row) => {
+    const label = labelOf(row);
+
+    return {
+      publishId: row.publish_id,
+      commentedAt: row.commented_at,
+      label: label
+        ? { sentiment: label.sentiment, topics: label.topics }
+        : null,
+    };
+  });
 }
 
 async function dayRevenue(
@@ -208,7 +273,7 @@ export async function getDailyDigestService(
     publishIds.length
       ? getVideoDailyFigures(client, {
           publishIds,
-          from: input.date,
+          from: addDays(input.date, -(TREND_DAYS - 1)),
           to: input.date,
         })
       : [],
@@ -228,11 +293,13 @@ export async function getDailyDigestService(
     publishes,
     videoDay,
     videoLifetime: [],
+    engagementCounts: { day: new Map(), lifetime: new Map() },
     viewsAtAge: new Map(),
     retentionCurves: new Map(),
     traffic: [],
     audience: null,
     comments: [],
+    trendComments: [],
     reactions: [],
     commentsDisclosure: null,
     posts: [],
@@ -241,12 +308,18 @@ export async function getDailyDigestService(
   };
 
   const listedIds = listedVideos(base).map((v) => v.publish.id);
-  const youtubeIds = publishes
-    .filter((p) => p.platform === 'youtube')
+  const curveIds = publishes
+    .filter((p) => p.platform === 'youtube' || p.platform === 'facebook')
     .map((p) => p.id);
+  // The ids came from this project through RLS: the project bound changes
+  // what is scanned, never what is returned
+  const scope = { projectIds: [input.projectId] };
 
   const [
     videoLifetime,
+    engagementDay,
+    engagementLifetime,
+    weekComments,
     audience,
     videoLog,
     retentionCurves,
@@ -258,10 +331,23 @@ export async function getDailyDigestService(
     revenueRows,
     revenueAccess,
   ] = await Promise.all([
+    publishIds.length
+      ? getVideoLifetimeFigures(client, { publishIds, asOf: day.end })
+      : [],
+    // The Content tab's read (getContentList), on the day and through it
+    queryTotalsByVideoIds(listedIds, {
+      ...scope,
+      startDate: input.date,
+      endDate: input.date,
+    }),
+    queryTotalsByVideoIds(listedIds, { ...scope, endDate: input.date }),
     listedIds.length
-      ? getVideoLifetimeFigures(client, {
-          publishIds: listedIds,
-          asOf: day.end,
+      ? trendComments(client, listedIds, {
+          start: localDay(
+            addDays(input.date, -(TREND_DAYS - 1)),
+            input.timezone,
+          ).start,
+          end: day.end,
         })
       : [],
     listedIds.length
@@ -277,13 +363,8 @@ export async function getDailyDigestService(
       orderBy: 'published_at',
       orderDirection: 'desc',
     }),
-    youtubeIds.length
-      ? queryRetentionCurves({
-          videoIds: youtubeIds,
-          // The ids came from this project through RLS: the bound changes
-          // what is scanned, never what is returned
-          projectIds: [input.projectId],
-        })
+    curveIds.length
+      ? queryRetentionCurves({ videoIds: curveIds, ...scope })
       : new Map(),
     getTrafficBreakdownService(client, {
       scope: { projectId: input.projectId },
@@ -310,6 +391,8 @@ export async function getDailyDigestService(
   const digest = assembleDigest({
     ...base,
     videoLifetime,
+    engagementCounts: { day: engagementDay, lifetime: engagementLifetime },
+    trendComments: weekComments,
     audience,
     viewsAtAge: new Map(
       videoLog.map((row) => [row.videoId, row.viewsAtAge] as const),

@@ -153,7 +153,9 @@ export function ageBucketOf(ageMs: number): AgeBucketKey {
   return AGE_BUCKETS.find((bucket) => days <= bucket.untilDays)!.key;
 }
 
-function countComments(comments: readonly ReactionComment[]): ReactionCounts {
+export function countComments(
+  comments: readonly ReactionComment[],
+): ReactionCounts {
   const counts: ReactionCounts = {
     comments: comments.length,
     labelled: 0,

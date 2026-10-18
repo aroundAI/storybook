@@ -14,8 +14,8 @@
     {
       "name": "NM2 The publish row re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "    const engagementRate = recordedEngagementRatePercent(\n      stats,\n      recordViewsDenominator({\n        platforms: [publish.platform],\n        window: lifetimeWindow([publish.published_at]),",
-      "replace": "    const engagementRate = ((stats.likes + stats.comments + stats.shares) / stats.views) * 100 + 0 * Number(\n      stats,\n      recordViewsDenominator({\n        platforms: [publish.platform],\n        window: lifetimeWindow([publish.published_at]),",
+      "find": "    const engagementRate = publishEngagementRate(\n      stats,\n      publish.platform,\n      lifetimeWindow([publish.published_at]),",
+      "replace": "    const engagementRate = ((stats.likes + stats.comments + stats.shares) / stats.views) * 100 + 0 * Number(\n      stats,\n      publish.platform,\n      lifetimeWindow([publish.published_at]),",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",

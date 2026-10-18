@@ -1,0 +1,195 @@
+{
+  "feature": "FILM-1736 the morning digest by episode (each video's engagement rate, retention in its own kind and seven days; episodes with their long video and Shorts by platform)",
+  "mutations": [
+    {
+      "name": "DPE1 every Short is its own entry, its Shorts group ignored",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "        const key = p.shortsGroup\n          ? `group:${p.shortsGroup.id}`\n          : `post:${p.id}`;\n",
+      "replace": "        const key = `post:${p.id}`;\n",
+      "pattern": "groups each episode",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE2 episodes oldest first",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "        byText(b.publishedAt ?? '', a.publishedAt ?? '') ||\n",
+      "replace": "        byText(a.publishedAt ?? '', b.publishedAt ?? '') ||\n",
+      "pattern": "groups each episode",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE3 an episode is reported only in its listed videos",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "    .filter((v) => episodes.has(v.publish.episodeId))\n",
+      "replace": "    .filter((v) => v.listedBecause)\n",
+      "pattern": "lists an old, quiet long video",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE4 a platform with no dislikes reads as not reported",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "      ? 'No dislikes on this platform.'\n",
+      "replace": "      ? `${label} does not report this figure.`\n",
+      "pattern": "never 0, on the day",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE5 the lifetime engagement rate is the day's",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "      inputs.engagementCounts.lifetime.get(publish.id),\n",
+      "replace": "      inputs.engagementCounts.day.get(publish.id),\n",
+      "pattern": "on the day and through it",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE6 the digest's engagement rate leaves out shares, unlike the Content tab",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "    const recorded = publishEngagementRate(measured, publish.platform, window);\n",
+      "replace": "    const recorded = publishEngagementRate(\n      { ...measured, shares: 0 },\n      publish.platform,\n      window,\n    );\n",
+      "pattern": "for the same rows, to the figure",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-aggregation-reads.test.ts"
+    },
+    {
+      "name": "DPE7 an unmeasured engagement rate becomes 0",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "          percent: null,\n",
+      "replace": "          percent: 0,\n",
+      "pattern": "is null with its reason when views",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE8 a long video's median pools the channel's Shorts",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "      other.connectionId === publish.connectionId &&\n      familyOf(other) === familyOf(publish),\n",
+      "replace": "      other.connectionId === publish.connectionId,\n",
+      "pattern": "YouTube: average percentage viewed",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE9 an Instagram skip rate is labelled as YouTube's average percentage viewed",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "      kind: 'skip_rate' as const,\n",
+      "replace": "      kind: 'avg_percent_viewed' as const,\n",
+      "pattern": "Instagram: the Reels skip rate",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE10 the trend counts comments by UTC day",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "    const { start, end } = localDay(date, inputs.day.timezone);\n",
+      "replace": "    const { start, end } = localDay(date, 'UTC');\n",
+      "pattern": "counts the comments read in each day of the zone",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE11 unread comments are counted as none",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "      comments: unread === null ? { ...read, shares: sharesOf(read) } : null,\n",
+      "replace": "      comments: { ...read, shares: sharesOf(read) },\n",
+      "pattern": "says why a video",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE12 the trend runs backwards from the day",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "    addDays(inputs.day.date, i - (TREND_DAYS - 1)),\n",
+      "replace": "    addDays(inputs.day.date, -i),\n",
+      "pattern": "runs from six days before",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "DPE13 a Short's posts are listed by publish id, not by platform",
+      "file": "packages/features/content-analytics/src/lib/daily-digest.ts",
+      "find": "              publishes: posts.map(entry).sort(byPlatform),\n",
+      "replace": "              publishes: posts.map(entry),\n",
+      "pattern": "groups each episode",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/daily-digest-per-episode.test.ts"
+    },
+    {
+      "name": "E2E DPE14 Facebook curves are not read",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/daily-digest-service.ts",
+      "find": "    .filter((p) => p.platform === 'youtube' || p.platform === 'facebook')\n",
+      "replace": "    .filter((p) => p.platform === 'youtube')\n",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "reads hand-computed ClickHouse figures",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "E2E DPE15 a Short's group is not read",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/daily-digest-service.ts",
+      "find": "shortsGroupId:metadata->>shortsGroupId,",
+      "replace": "shortsGroupId:metadata->>shortsGroup,",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "reads hand-computed ClickHouse figures",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "E2E DPE16 the lifetime engagement rate counts only the day",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/daily-digest-service.ts",
+      "find": "    queryTotalsByVideoIds(listedIds, { ...scope, endDate: input.date }),\n",
+      "replace": "    queryTotalsByVideoIds(listedIds, {\n      ...scope,\n      startDate: input.date,\n      endDate: input.date,\n    }),\n",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "reads hand-computed ClickHouse figures",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "E2E DPE17 the trend reads only the report day",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/daily-digest-service.ts",
+      "find": "          from: addDays(input.date, -(TREND_DAYS - 1)),\n",
+      "replace": "          from: input.date,\n",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "reads hand-computed ClickHouse figures",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "E2E DPE18 lifetime figures are read for the listed videos only",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/daily-digest-service.ts",
+      "find": "      ? getVideoLifetimeFigures(client, { publishIds, asOf: day.end })\n",
+      "replace": "      ? getVideoLifetimeFigures(client, { publishIds: listedIds, asOf: day.end })\n",
+      "spec": "tests/mcp/daily-report.spec.ts",
+      "grep": "reads hand-computed ClickHouse figures",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    }
+  ]
+}

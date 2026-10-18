@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordViewsDenominator } from '@kit/clickhouse';
 import type { PerVideoTotals } from '@kit/clickhouse';
 
+import { assembleDigest, localDay } from '../src/lib/daily-digest';
+import { NO_VIDEO_FIGURES } from '../src/lib/daily-figures';
 import {
   getContentList,
   getEpisodeAnalytics,
@@ -248,5 +250,68 @@ describe('the content list records each row (FILM-1732)', () => {
     });
     // No views to divide by: no rate, so no record (KB-153).
     expect(facebook?.engagementRate).toBeNull();
+  });
+});
+
+describe('the morning digest’s engagement rate is the content list’s (FILM-1736)', () => {
+  it('for the same rows, to the figure', async () => {
+    state.totals = new Map([
+      ['yt', totals({ views: 1003, likes: 51, comments: 30, shares: 20 })],
+      ['fb', totals({ views: null, likes: 7, comments: 1, shares: 2 })],
+    ]);
+    const list = await getContentList('project-1');
+    const digest = assembleDigest({
+      projectId: 'project-1',
+      day: localDay(READ_ON, 'UTC'),
+      storeOff: null,
+      freshness: [],
+      channels: [],
+      channelFigures: [],
+      publishes: list.map((item) => ({
+        id: item.publishId,
+        episodeId: item.episodeId,
+        title: item.publishTitle,
+        episodeTitle: item.episodeTitle,
+        platform: item.platform,
+        contentType: 'full',
+        connectionId: null,
+        url: null,
+        publishedAt: item.publishedAt,
+        shortsGroup: null,
+      })),
+      // Both moved on the day, so both are listed
+      videoDay: list.map((item) => ({
+        publishId: item.publishId,
+        date: READ_ON,
+        platform: item.platform,
+        ...NO_VIDEO_FIGURES,
+        likes: 1,
+        source: 'analytics_api' as const,
+      })),
+      videoLifetime: [],
+      engagementCounts: { day: new Map(), lifetime: state.totals },
+      viewsAtAge: new Map(),
+      retentionCurves: new Map(),
+      traffic: [],
+      audience: null,
+      comments: [],
+      trendComments: [],
+      reactions: [],
+      commentsDisclosure: null,
+      posts: [],
+      scheduledThrough: [],
+      revenue: { rows: [], access: [] },
+    });
+    const digestRate = (id: string) =>
+      digest.videos.find((v) => v.publishId === id)!.engagementRate.lifetime
+        .percent;
+    const listRate = (id: string) =>
+      list.find((item) => item.publishId === id)!.engagementRate?.value ?? null;
+
+    // (51 + 30 + 20) / 1003 × 100 = 10.0698
+    expect(listRate('yt')).toBeCloseTo(10.0698, 4);
+    expect(digestRate('yt')).toBe(Math.round(listRate('yt')! * 100) / 100);
+    expect(listRate('fb')).toBeNull();
+    expect(digestRate('fb')).toBeNull();
   });
 });
