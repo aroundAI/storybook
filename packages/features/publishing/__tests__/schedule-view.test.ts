@@ -160,14 +160,17 @@ describe('cadenceSummary', () => {
 
   it('says each type’s times, spacing and zone in one line', () => {
     expect(
-      cadenceSummary([
-        own('full', { slotTimes: ['20:00'], minDaysBetween: 3 }),
-        own('short', {
-          slotTimes: ['11:00', '17:00'],
-          everyNDays: 1,
-          startAfterHours: 2,
-        }),
-      ]),
+      cadenceSummary(
+        [
+          own('full', { slotTimes: ['20:00'], minDaysBetween: 3 }),
+          own('short', {
+            slotTimes: ['11:00', '17:00'],
+            everyNDays: 1,
+            startAfterHours: 2,
+          }),
+        ],
+        'youtube',
+      ),
     ).toBe(
       'Long 20:00 every 3 days · Shorts 11:00, 17:00 daily, from 2 h after · Asia/Kolkata',
     );
@@ -175,10 +178,13 @@ describe('cadenceSummary', () => {
 
   it('names the days when not every day, and every N days for Shorts', () => {
     expect(
-      cadenceSummary([
-        own('full', { minDaysBetween: 1, daysOfWeek: [1, 3, 5] }),
-        own('short', { everyNDays: 2, startAfterHours: 0 }),
-      ]),
+      cadenceSummary(
+        [
+          own('full', { minDaysBetween: 1, daysOfWeek: [1, 3, 5] }),
+          own('short', { everyNDays: 2, startAfterHours: 0 }),
+        ],
+        'youtube',
+      ),
     ).toBe(
       'Long 17:00 daily on Mon, Wed, Fri · Shorts 18:00 every 2 days · Asia/Kolkata',
     );
@@ -186,15 +192,18 @@ describe('cadenceSummary', () => {
 
   it('says when a type posts on the defaults: none saved, or switched off', () => {
     expect(
-      cadenceSummary([
-        {
-          contentType: 'full',
-          own: false,
-          enabled: true,
-          cadence: { ...DEFAULT_CADENCE.full, timezone: null },
-        },
-        own('short', { slotTimes: ['09:00'] }, false),
-      ]),
+      cadenceSummary(
+        [
+          {
+            contentType: 'full',
+            own: false,
+            enabled: true,
+            cadence: { ...DEFAULT_CADENCE.full, timezone: null },
+          },
+          own('short', { slotTimes: ['09:00'] }, false),
+        ],
+        'youtube',
+      ),
     ).toBe(
       'Long 17:00 every 3 days (default) · Shorts 18:00 daily, from 2 h after (default)',
     );
@@ -202,12 +211,29 @@ describe('cadenceSummary', () => {
 
   it('gives each type its zone when the two differ', () => {
     expect(
-      cadenceSummary([
-        own('full', { timezone: 'UTC' }),
-        own('short', { timezone: 'Asia/Kolkata' }),
-      ]),
+      cadenceSummary(
+        [
+          own('full', { timezone: 'UTC' }),
+          own('short', { timezone: 'Asia/Kolkata' }),
+        ],
+        'youtube',
+      ),
     ).toBe(
       'Long 17:00 every 3 days (UTC) · Shorts 18:00 daily, from 2 h after (Asia/Kolkata)',
+    );
+  });
+
+  it('leaves out the long rule on a channel that takes no long videos', () => {
+    const both = [
+      own('full', { slotTimes: ['20:00'] }),
+      own('short', { slotTimes: ['11:00'], startAfterHours: 0 }),
+    ];
+
+    expect(cadenceSummary(both, 'instagram')).toBe(
+      'Shorts 11:00 daily · Asia/Kolkata',
+    );
+    expect(cadenceSummary(both, 'youtube')).toBe(
+      'Long 20:00 every 3 days · Shorts 11:00 daily · Asia/Kolkata',
     );
   });
 });

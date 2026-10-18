@@ -10,6 +10,7 @@ import {
   type ChannelCadence,
   DEFAULT_CADENCE,
 } from './cadence/cadence';
+import { takesVideo } from './constants';
 import { isOfferedPlatform } from './platforms';
 
 /** The longest span one calendar read covers (the MCP tool's cap too) */
@@ -131,12 +132,16 @@ function every(days: number) {
 /**
  * How a channel posts, in one line: "Long 20:00 every 3 days · Shorts
  * 11:00, 17:00 daily, from 2 h after · Asia/Kolkata". A type with no saved
- * rules, or with them switched off, posts on the defaults and says so.
+ * rules, or with them switched off, posts on the defaults and says so. A
+ * type the platform does not take (Instagram's long videos) is left out.
  */
-export function cadenceSummary(cadences: CadenceSummaryInput[]) {
+export function cadenceSummary(
+  cadences: CadenceSummaryInput[],
+  platform: string,
+) {
   const parts = (['full', 'short'] as const).flatMap((contentType) => {
     const state = cadences.find((c) => c.contentType === contentType);
-    if (!state) return [];
+    if (!state || !takesVideo(contentType, platform)) return [];
 
     // Saved rules switched off are kept, but the defaults are what apply
     const applies = state.own && state.enabled;

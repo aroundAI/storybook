@@ -520,7 +520,11 @@ function ConnectionRow({
 
       {showPostingRules && (
         <ChannelPostingRulesDialog
-          channel={{ id: connection.id, name: connection.accountName }}
+          channel={{
+            id: connection.id,
+            name: connection.accountName,
+            platform: connection.platform,
+          }}
           onSaved={() => toast.success('Posting rules saved.')}
           onClose={() => setShowPostingRules(false)}
         />

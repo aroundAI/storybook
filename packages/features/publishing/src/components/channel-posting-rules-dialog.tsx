@@ -24,7 +24,7 @@ function browserTimeZone() {
  * Platforms alike. The rules are the channel's, whichever opens them.
  */
 export function ChannelPostingRulesDialog(props: {
-  channel: { id: string; name: string };
+  channel: { id: string; name: string; platform: string };
   onSaved: () => void;
   onClose: () => void;
 }) {

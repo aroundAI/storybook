@@ -88,7 +88,7 @@ export function PostingRulesSection(props: {
                     className="text-sm text-muted-foreground"
                     data-test="posting-rules-summary"
                   >
-                    {cadenceSummary(channel.cadences)}
+                    {cadenceSummary(channel.cadences, channel.platform)}
                   </p>
                 </div>
                 <Button
@@ -109,7 +109,11 @@ export function PostingRulesSection(props: {
 
       {editing && (
         <ChannelPostingRulesDialog
-          channel={{ id: editing.id, name: editing.name }}
+          channel={{
+            id: editing.id,
+            name: editing.name,
+            platform: editing.platform,
+          }}
           onSaved={() => {
             toast.success('Posting rules saved.');
             router.refresh();

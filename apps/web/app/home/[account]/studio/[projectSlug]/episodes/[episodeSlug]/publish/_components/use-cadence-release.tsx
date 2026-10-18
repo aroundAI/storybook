@@ -65,7 +65,11 @@ function targetsOf(configs: ReleaseConfig[]) {
 export function useCadenceRelease(props: {
   episodeId: string;
   aiGenerated: boolean;
-  channels: ReadonlyArray<{ id: string; platformAccountName: string }>;
+  channels: ReadonlyArray<{
+    id: string;
+    platformAccountName: string;
+    platform: string;
+  }>;
   onChanged: () => void;
 }) {
   const timezone = useMemo(browserTimeZone, []);
@@ -204,7 +208,11 @@ export function useCadenceRelease(props: {
   const channel = props.channels.find((c) => c.id === editing);
   const dialog = channel ? (
     <ChannelPostingRulesDialog
-      channel={{ id: channel.id, name: channel.platformAccountName }}
+      channel={{
+        id: channel.id,
+        name: channel.platformAccountName,
+        platform: channel.platform,
+      }}
       onSaved={() =>
         toast.success('Posting rules saved. Check the calendars again.')
       }
