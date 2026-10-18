@@ -2,7 +2,6 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import { YOUTUBE_UPLOADS_PER_DAY } from '@kit/publishing/lib/cadence/plan-breaking-release';
 import {
   type BreakingMove,
   QUEUE_WARNING_DAYS,
@@ -170,7 +169,7 @@ function queueLines(queues: readonly ShortsQueueSummary[]) {
 /** FILM-2210: the posts a breaking release moves back, and the upload-budget warning */
 function breakingLines(
   moves: readonly BreakingMove[],
-  quota: ReadonlyArray<{ day: string; uploads: number }>,
+  quota: ReadonlyArray<{ day: string; uploads: number; limit: number }>,
 ) {
   const moved = moves.length
     ? `\nMoved back (${moves.length}):\n${moves
@@ -181,7 +180,7 @@ function breakingLines(
         .join('\n')}`
     : '\nNothing already scheduled moves.';
   const warned = quota.length
-    ? `\nYouTube upload budget (${YOUTUBE_UPLOADS_PER_DAY} a day across the team's channels) passed on ${quota
+    ? `\nYouTube upload budget (${quota[0]!.limit} a day across the team's channels) passed on ${quota
         .map((q) => `${q.day} (${q.uploads})`)
         .join(
           ', ',

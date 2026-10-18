@@ -1,0 +1,76 @@
+spec_id: "FILM-2212"
+title: "Videos up to 4.99 GB on every upload path, each platform's lower limit refused when a publish is prepared, and the YouTube upload warning set on the server"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DONE
+effort: M
+dependencies:
+  - spec_id: "FILM-2204"
+    note: "request_episode_video_upload and finalize_episode_video, the MCP upload path"
+  - spec_id: "FILM-2210"
+    note: "the YouTube daily-upload warning a breaking release gives"
+summary: >
+  The owner, 2026-10-18: a finished long episode is often more than 500 MB,
+  and StoryBook refused it in five places that each wrote 500 MB out (the
+  Publish screen's upload dialog, the shot uploader, the presign route,
+  MCP's request_episode_video_upload and request_render_upload). The limit
+  is now one constant, MAX_VIDEO_UPLOAD_BYTES in @kit/shared/upload-limits,
+  raised to what the whole path takes: one presigned PUT to R2, at most
+  5 GiB less 5 MiB (4.99 GB). Every link was checked for a large file, and
+  the two that could not take one were fixed: the browser's SHA-256 read
+  the whole file into memory, and the publish worker had 5 minutes.
+  Facebook and Instagram take less than StoryBook does (1 GB and 20
+  minutes by URL; 300 MB and 15 minutes for a Reel), so a publish over
+  their limit is refused when it is prepared, scheduled or published now,
+  in words saying why, not by the worker later. The YouTube daily-upload
+  warning FILM-2210 added is set by YOUTUBE_DAILY_UPLOAD_WARN on the
+  server (default 6) and still only warns.
+acceptance_criteria:
+  - text: "One constant, MAX_VIDEO_UPLOAD_BYTES (5,363,466,240 bytes, 4.99 GB), is the video limit of the Publish screen's upload dialog, the shot uploader, the presign route's video category, request_episode_video_upload and request_render_upload; a test fails if any source file writes 500 MB out again"
+    met: true
+    evidence: "Met (#676): packages/shared/src/upload-limits/index.ts; read by upload-video-dialog.tsx, use-video-upload.ts, video-uploader.tsx, upload-validation.ts, episode-production.ts and renders.ts. delivery-package.schema.ts writes the number out because the fork copies the file; delivery-schemas.test.ts 'caps a render at the one video upload limit' binds it. Tests: packages/shared/__tests__/video-upload-limit.test.ts (scans packages/ and apps/ for 500 * 1024 * 1024, 524288000, 500 MB), flexible-production-tools.test.ts 'request_episode_video_upload takes a video up to the upload limit, and a byte over is refused', presign route.test.ts 'videos may be at most 4.99 GB'. Guards F2212-U1..U3"
+  - text: "Each link of the path takes a 4.99 GB file: the PUT, finalize, the browser's checksum, the publish preflight and the publish worker"
+    met: true
+    evidence: "Met (#676). Presigned PUT to R2: R2 takes 5 GiB less 5 MiB in a single-part upload (developers.cloudflare.com/r2/platform/limits), the constant. finalize_episode_video and finalize_render only stat the object (episode-production.ts storage.stat, renders.ts storage.stat). Browser checksum: calculateFileHash (packages/shared/src/utils/file-hashing.ts) read file.arrayBuffer() into one buffer for crypto.subtle.digest; it now hashes file.stream() chunk by chunk with @noble/hashes, and the presigned upload's checksum and the Publish screen's master-asset deduplication both use it (upload-checksum-client.test.ts 'hashes a large body chunk by chunk, never reading it whole'; guard F2212-U4). Preflight: readMp4Facts reads range requests only, and now drops unread a 200 from a host that ignores Range instead of buffering the whole file (mp4-facts.test.ts; guard F2212-U5). Publish worker: YouTube streams the R2 body into videos.insert; measured locally against a stand-in endpoint, peak RSS 201 MB at 256 MB, 301 MB at 2 GiB, 280 MB at 4.99 GiB, flat, within the 512 MB Lambda. Facebook and Instagram fetch the file from its URL; nothing passes through the worker"
+  - text: "The publish worker has the time a 4.99 GB YouTube upload needs: 15 minutes (the Lambda maximum), with the publish queue's visibility timeout 15 minutes to match"
+    met: true
+    evidence: "Met (#676): sst.config.ts publishWorker timeout '15 minutes' (was 5, which needed 17 MB/s for 4.99 GB; 15 needs about 6 MB/s), StorybookPublishQueue visibilityTimeoutSeconds 900. Not deployed or measured on AWS here: the first large publish's worker log ('[YouTube] Uploading video (N MB)' and progress lines) is the check"
+  - text: "A video over Facebook's (1 GB, 20 minutes, by URL) or Instagram's (300 MB, 15 minutes, at least 3 seconds, a Reel) limit is refused when the publish is prepared, scheduled or published now, on the screen and over MCP, naming the platform and the way out; YouTube (256 GB) has no lower limit; a size or length the file does not give is left to the upload"
+    met: true
+    evidence: "Met (#676): packages/features/publishing/src/lib/platform-video-limits.ts (limits quoted from developers.facebook.com/docs/graph-api/reference/event/videos and .../instagram-graph-api/reference/ig-user/media, read as decimal so nothing Meta refuses passes), publish-preflight.ts assertPlatformsWillAccept. Tests: publish-platform-limits.test.ts (2.5 GB refused for Facebook and taken by YouTube, 400 MB Reel refused and 40 MB taken, 21 minutes refused for Facebook, unknown facts left to the upload, the exact limit taken and a byte over refused). E2E apps/e2e/tests/publishing/large-uploads.spec.ts: a 21-minute video refused on the Publish screen ('Facebook can't take this video: it is 21 minutes long, and Facebook takes at most 20 minutes. Leave Facebook out of this one.') and by MCP schedule_publish with nothing written, then a 19-minute cut scheduled. The Publish screen's staggered schedule now shows a refusal's words instead of 'Failed to schedule uploads'. Guards F2212-U6..U8, F2212-E1"
+  - text: "The YouTube daily-upload warning's threshold is YOUTUBE_DAILY_UPLOAD_WARN on the server (a positive whole number; unset or anything else is 6), documented, still a warning; each warning carries the threshold it used, which the Publish screen and the MCP result show"
+    met: true
+    evidence: "Met (#676): plan-breaking-release.ts youtubeDailyUploadWarnAt, QuotaDay.limit; schedule-release.service.ts quotaWarnings; breaking-release-form.tsx, use-cadence-release.tsx and the MCP release.ts text read quota[0].limit. Documented in deployment/README.md and passed through in sst.config.ts. Tests: plan-breaking-release.test.ts 'takes the threshold from the server setting, 6 when unset or not a positive whole number', schedule-release.service.test.ts (10 quiets the 7-upload day, 4 warns with limit 4). Guard F2212-U9"
+  - text: "Research: whether the YouTube Data API can link a Short to its related long video"
+    met: true
+    evidence: "It cannot. The videos resource (developers.google.com/youtube/v3/docs/videos, read 2026-10-18) has no property that names another video: snippet, contentDetails, status, statistics, player and the rest describe the video itself, and Shorts appear only in the statistics.viewCount note. The related-video link is set in YouTube Studio or the YouTube app, by hand, after upload. No code"
+open_questions: []
+notes: >
+  The project-assets bucket on Supabase storage keeps its 500 MB
+  file_size_limit (KB-28's migration, pinned by
+  project-assets-storage-rls.test.sql). Production stores on R2, where no
+  bucket limit applies, so production takes 4.99 GB. With
+  STORAGE_PROVIDER=supabase (local, or the documented alternative) the
+  presign route signs up to 4.99 GB and Supabase refuses a PUT over 500 MB;
+  raising it is a migration, not made here without the owner's word.
+  Local Supabase also caps every object at 50 MiB (config.toml), which is
+  why the E2E drives Facebook's refusal by length, with a header-only MP4
+  that says 21 minutes, rather than by size.
+
+  Found while verifying: (1) MCP list_channels listed no channel for a
+  project with nothing published (KB-199, fixed in the same PR). (2) The
+  Publish screen's Master Video uploader hashed the whole file in memory,
+  the same defect as the checksum; both use one streamed hasher now.
+  (3) readMp4Facts would have read a whole file from a host that ignored
+  Range.
+feature:
+  database: null
+  queries: []
+  actions:
+    - name: "preparePublish (assertPlatformsWillAccept)"
+      file: "packages/features/publishing/src/server/publish-preflight.ts"
+  ui:
+    - component: "UploadVideoDialog (the limit it states)"
+      file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/upload-video-dialog.tsx"
+  provider_integration: null

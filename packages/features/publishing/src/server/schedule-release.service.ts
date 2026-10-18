@@ -17,6 +17,7 @@ import {
   type BreakingPlan,
   type QuotaDay,
   planBreakingRelease,
+  youtubeDailyUploadWarnAt,
   youtubeQuotaWarnings,
 } from '../lib/cadence/plan-breaking-release';
 import {
@@ -638,14 +639,17 @@ async function quotaWarnings(
     context.plan.moves.map((m) => [m.publishId, m.scheduledAt]),
   );
 
-  return youtubeQuotaWarnings([
-    ...posts
-      .filter((p) => p.goesAt >= since)
-      .map((p) => moved.get(p.publishId) ?? p.goesAt),
-    ...context.plan.placed
-      .filter((p) => ids.includes(p.connectionId))
-      .map((p) => p.scheduledAt),
-  ]);
+  return youtubeQuotaWarnings(
+    [
+      ...posts
+        .filter((p) => p.goesAt >= since)
+        .map((p) => moved.get(p.publishId) ?? p.goesAt),
+      ...context.plan.placed
+        .filter((p) => ids.includes(p.connectionId))
+        .map((p) => p.scheduledAt),
+    ],
+    youtubeDailyUploadWarnAt(process.env.YOUTUBE_DAILY_UPLOAD_WARN),
+  );
 }
 
 async function breakingPreviewOf(

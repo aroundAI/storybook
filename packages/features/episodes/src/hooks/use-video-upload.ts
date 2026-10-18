@@ -12,12 +12,15 @@ import { useCallback, useRef, useState } from 'react';
 import { PROJECT_ASSETS_BUCKET } from '@kit/assets/lib';
 import { sanitizeFilename } from '@kit/assets/upload-validation';
 import {
+  MAX_VIDEO_UPLOAD_BYTES,
+  formatUploadSize,
+} from '@kit/shared/upload-limits';
+import {
   recordUploadChecksum,
   requestPresignedUpload,
 } from '@kit/storage/client';
 
 // Video constraints
-const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const ALLOWED_EXTENSIONS = ['.mp4', '.webm', '.mov'];
 
@@ -226,13 +229,13 @@ export function useVideoUpload(
       file: File,
     ): Promise<{ valid: boolean; error?: VideoUploadError }> => {
       // Check file size
-      if (file.size > MAX_VIDEO_SIZE) {
+      if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
         return {
           valid: false,
           error: {
             code: 'FILE_TOO_LARGE',
-            message: `File size exceeds ${MAX_VIDEO_SIZE / 1024 / 1024}MB limit`,
-            details: { size: file.size, maxSize: MAX_VIDEO_SIZE },
+            message: `File size exceeds ${formatUploadSize(MAX_VIDEO_UPLOAD_BYTES)} limit`,
+            details: { size: file.size, maxSize: MAX_VIDEO_UPLOAD_BYTES },
           },
         };
       }

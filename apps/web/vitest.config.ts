@@ -64,6 +64,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/vendors/index.ts',
       ),
+      '@kit/shared/upload-limits': path.resolve(
+        __dirname,
+        '../../packages/shared/src/upload-limits/index.ts',
+      ),
       '@kit/shared/crypto': path.resolve(
         __dirname,
         '../../packages/shared/src/crypto/index.ts',

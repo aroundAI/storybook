@@ -13,6 +13,10 @@ import { importScreenplay } from '@kit/episodes/server/screenplay-import-service
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
 import { MarkAsExternallyUploadedSchema } from '@kit/publishing/lib/schemas/upload-only';
 import { linkPublishedVideo } from '@kit/publishing/server/link-published-video';
+import {
+  MAX_VIDEO_UPLOAD_BYTES,
+  formatUploadSize,
+} from '@kit/shared/upload-limits';
 import { type StorageAdapter, getStorageAdapter } from '@kit/storage';
 import {
   PROJECT_ASSETS_BUCKET,
@@ -51,8 +55,6 @@ const VIDEO_TYPES = {
   'video/webm': 'webm',
   'video/quicktime': 'mov',
 } as const;
-
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 
 const language = z
   .enum(SUPPORTED_LANGUAGES)
@@ -133,14 +135,14 @@ export function createEpisodeVideoTools(
   const requestUpload = defineTool({
     name: 'request_episode_video_upload',
     title: 'Request an episode video upload',
-    description: `Starts attaching a finished video to an episode, with no StorybookStudio session and no earlier stage needed. Takes the language, the content type (video/mp4, video/webm or video/quicktime) and the exact size in bytes (at most ${MAX_VIDEO_BYTES / 1024 / 1024} MB). Returns {key, uploadUrl, method, headers}: PUT the file to uploadUrl within an hour with exactly those headers, then call finalize_episode_video with the key. Project owner, admin or member.`,
+    description: `Starts attaching a finished video to an episode, with no StorybookStudio session and no earlier stage needed. Takes the language, the content type (video/mp4, video/webm or video/quicktime) and the exact size in bytes (at most ${MAX_VIDEO_UPLOAD_BYTES} bytes, ${formatUploadSize(MAX_VIDEO_UPLOAD_BYTES)}; Facebook takes at most 1 GB and Instagram 300 MB, checked when the publish is scheduled). Returns {key, uploadUrl, method, headers}: PUT the file to uploadUrl within an hour with exactly those headers, then call finalize_episode_video with the key. Project owner, admin or member.`,
     inputSchema: {
       episodeId: z.string().uuid(),
       language,
       contentType: z.enum(
         Object.keys(VIDEO_TYPES) as [keyof typeof VIDEO_TYPES],
       ),
-      bytes: z.number().int().positive().max(MAX_VIDEO_BYTES),
+      bytes: z.number().int().positive().max(MAX_VIDEO_UPLOAD_BYTES),
     },
     scope: 'studio:write',
     annotations: WRITE,

@@ -737,6 +737,26 @@ describe('FILM-2210: a breaking release through the service', () => {
     });
     if (!busy.ok) throw new Error(busy.refusal);
 
-    expect(busy.data.quota).toEqual([{ day: '2026-11-02', uploads: 7 }]);
+    expect(busy.data.quota).toEqual([
+      { day: '2026-11-02', uploads: 7, limit: 6 },
+    ]);
+
+    // FILM-2212: the server's YOUTUBE_DAILY_UPLOAD_WARN moves the warning
+    vi.stubEnv('YOUTUBE_DAILY_UPLOAD_WARN', '10');
+    const granted = await previewBreakingRelease(db.client, breakingRelease(), {
+      now: NOW,
+    });
+    vi.stubEnv('YOUTUBE_DAILY_UPLOAD_WARN', '4');
+    const lower = await previewBreakingRelease(db.client, breakingRelease(), {
+      now: NOW,
+    });
+    vi.unstubAllEnvs();
+    if (!granted.ok) throw new Error(granted.refusal);
+    if (!lower.ok) throw new Error(lower.refusal);
+
+    expect(granted.data.quota).toEqual([]);
+    expect(lower.data.quota).toEqual([
+      { day: '2026-11-02', uploads: 7, limit: 4 },
+    ]);
   });
 });

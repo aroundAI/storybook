@@ -375,7 +375,7 @@ describe('POST /api/storage/presign — R2 provider', () => {
       'video',
       'video/mp4',
       UPLOAD_CONSTRAINTS.video.maxSize,
-      'videos may be at most 500 MB',
+      'videos may be at most 4.99 GB',
     ],
     [
       'audio',

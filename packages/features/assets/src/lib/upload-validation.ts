@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  MAX_VIDEO_UPLOAD_BYTES,
+  formatUploadSize,
+} from '@kit/shared/upload-limits';
+
 /**
  * Upload constraints per file category
  */
@@ -21,7 +26,7 @@ export const UPLOAD_CONSTRAINTS = {
     } as Record<string, number[]>,
   },
   video: {
-    maxSize: 500 * 1024 * 1024, // 500MB
+    maxSize: MAX_VIDEO_UPLOAD_BYTES,
     allowedTypes: ['video/mp4', 'video/webm', 'video/quicktime'] as const,
     allowedExtensions: ['.mp4', '.webm', '.mov'] as const,
     magicBytes: {
@@ -321,7 +326,7 @@ export function formatFileSize(bytes: number): string {
  * Gets the max file size for a category in human-readable format.
  */
 export function getMaxFileSizeForCategory(category: UploadCategory): string {
-  return formatFileSize(UPLOAD_CONSTRAINTS[category].maxSize);
+  return formatUploadSize(UPLOAD_CONSTRAINTS[category].maxSize);
 }
 
 /**

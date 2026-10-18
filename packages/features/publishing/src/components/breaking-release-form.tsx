@@ -29,7 +29,6 @@ import {
 import { Input } from '@kit/ui/input';
 import { RadioGroup, RadioGroupItem } from '@kit/ui/radio-group';
 
-import { YOUTUBE_UPLOADS_PER_DAY } from '../lib/cadence/plan-breaking-release';
 import {
   type BreakingPreview,
   itemKeyOfTarget,
@@ -320,7 +319,7 @@ function BreakingPreviewList(props: {
         >
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
           <p>
-            More than {YOUTUBE_UPLOADS_PER_DAY} YouTube uploads on{' '}
+            More than {preview.quota[0]!.limit} YouTube uploads on{' '}
             {preview.quota
               .map(
                 (q) =>

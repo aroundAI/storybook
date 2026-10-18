@@ -396,8 +396,8 @@ export default $config({
       fifo: false,
       transform: {
         queue: (args) => {
-          // Visibility timeout must be >= Lambda timeout (5 minutes)
-          args.visibilityTimeoutSeconds = 300; // 5 minutes
+          // Visibility timeout must be >= the worker's timeout (15 minutes)
+          args.visibilityTimeoutSeconds = 900; // 15 minutes
 
           // Configure Dead Letter Queue
           // After 3 failed attempts, move message to DLQ for investigation
@@ -406,7 +406,7 @@ export default $config({
       },
     });
 
-    console.log(`✓ Publish queue configured with 5-minute visibility timeout`);
+    console.log(`✓ Publish queue configured with 15-minute visibility timeout`);
 
     // Dead Letter Queue for failed voice generation jobs
     const voiceDLQ = new sst.aws.Queue('StorybookVoiceDLQ', {
@@ -751,7 +751,12 @@ export default $config({
     // Each message = one video upload to one platform
     const publishWorker = publishQueue.subscribe({
       handler: 'apps/web/lambda/publish-worker/index.handler',
-      timeout: '5 minutes',
+      // FILM-2212: a video may be 4.99 GB (MAX_VIDEO_UPLOAD_BYTES). YouTube
+      // streams it through this function (peak RSS measured flat, about
+      // 300 MB, from 256 MB to 4.99 GB), so the memory holds; at 5 minutes it
+      // needed 17 MB/s, at the Lambda maximum of 15 about 6 MB/s. Instagram
+      // also polls its container for up to 5 minutes.
+      timeout: '15 minutes',
       memory: '512 MB',
       architecture: 'arm64',
       link: [connectionsTable, websocket, publishQueue],
@@ -808,7 +813,7 @@ export default $config({
       },
     });
 
-    console.log(`✓ Publish Worker Lambda configured with 5-minute timeout`);
+    console.log(`✓ Publish Worker Lambda configured with 15-minute timeout`);
 
     // Voice Worker Lambda - Processes TTS voice generation jobs from SQS
     // Handles both batch (one message per dialogue line) and single-line generation
@@ -1009,6 +1014,14 @@ export default $config({
         // state until the owner holds a funded pay-per-use X account.
         ...(process.env.X_ANALYTICS_ENABLED && {
           X_ANALYTICS_ENABLED: process.env.X_ANALYTICS_ENABLED,
+        }),
+
+        // FILM-2212: how many YouTube uploads a Pacific day may hold, across
+        // the team's channels, before a breaking release warns. Unset is 6,
+        // YouTube's default budget; raise it when Google grants more quota.
+        // A warning only.
+        ...(process.env.YOUTUBE_DAILY_UPLOAD_WARN && {
+          YOUTUBE_DAILY_UPLOAD_WARN: process.env.YOUTUBE_DAILY_UPLOAD_WARN,
         }),
 
         // Infrastructure providers (use AWS for production)

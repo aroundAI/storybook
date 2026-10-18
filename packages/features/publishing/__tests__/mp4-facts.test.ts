@@ -61,4 +61,34 @@ describe('readMp4Facts', () => {
       height: null,
     });
   });
+
+  // FILM-2212: a video may be gigabytes. A host that ignores Range sends all
+  // of it with a 200; the body is cancelled, never read into memory.
+  it('drops, unread, a whole-file answer from a host that ignores Range', async () => {
+    let pulled = 0;
+    let cancelled = false;
+    const fetcher = async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull(controller) {
+            pulled += 1;
+            if (pulled > 64) controller.close();
+            else controller.enqueue(new Uint8Array(1024 * 1024));
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }),
+        { status: 200 },
+      );
+
+    expect(await readMp4Facts('https://storage/v.mp4', fetcher)).toEqual({
+      bytes: null,
+      durationSeconds: null,
+      width: null,
+      height: null,
+    });
+    expect(cancelled).toBe(true);
+    expect(pulled).toBeLessThan(4);
+  });
 });

@@ -24,7 +24,8 @@
     "./prompt-sanitiser": "./src/prompt-sanitiser/index.ts",
     "./duration-scaling": "./src/duration-scaling/index.ts",
     "./subscribers": "./src/subscribers/index.ts",
-    "./vendors": "./src/vendors/index.ts"
+    "./vendors": "./src/vendors/index.ts",
+    "./upload-limits": "./src/upload-limits/index.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
@@ -36,6 +37,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@noble/hashes": "1.8.0",
     "pino": "^9.9.5"
   },
   "typesVersions": {

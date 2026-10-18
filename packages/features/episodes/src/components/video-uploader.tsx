@@ -10,6 +10,10 @@ import { useCallback, useState } from 'react';
 
 import { AlertCircle, CheckCircle, Film, Loader2, Upload } from 'lucide-react';
 
+import {
+  MAX_VIDEO_UPLOAD_BYTES,
+  formatUploadSize,
+} from '@kit/shared/upload-limits';
 import { Button } from '@kit/ui/button';
 import { Progress } from '@kit/ui/progress';
 import { cn } from '@kit/ui/utils';
@@ -170,7 +174,7 @@ export function VideoUploader({
             compact ? 'text-xs' : 'text-sm',
           )}
         >
-          MP4, WebM, or MOV • Max 500MB
+          MP4, WebM, or MOV • Max {formatUploadSize(MAX_VIDEO_UPLOAD_BYTES)}
         </p>
       </div>
     </div>

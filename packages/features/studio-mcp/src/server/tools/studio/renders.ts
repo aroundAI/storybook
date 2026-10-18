@@ -15,6 +15,10 @@ import {
   deliverEdit,
 } from '@kit/desktop-integration/server';
 import {
+  MAX_VIDEO_UPLOAD_BYTES,
+  formatUploadSize,
+} from '@kit/shared/upload-limits';
+import {
   type StorageAdapter,
   canWriteProjectKey,
   getStorageAdapter,
@@ -171,8 +175,7 @@ export function createRequestRenderUploadTool(
   return defineTool({
     name: 'request_render_upload',
     title: 'Request a render upload',
-    description:
-      "Starts sending one finished render of an episode back from StorybookStudio. Takes the open edit session (from open_edit_session), the preset (youtube_16x9, shorts_9x16, tiktok_9x16, reels_9x16, square_1x1 or master), the language, the aspect (16:9, 9:16 or 1:1; each preset has its own, master any), the exact size in bytes and the content type (video/mp4, at most 500 MB). Records the render as uploading and returns {renderId, key, uploadUrl, method, headers}: PUT the file to uploadUrl within an hour with exactly those headers and that many bytes, then call finalize_render. Optionally signs a thumbnail (image/jpeg, png or webp, at most 10 MB) and captions (text/vtt, at most 2 MB) for the same render. Only the session's own user may call it.",
+    description: `Starts sending one finished render of an episode back from StorybookStudio. Takes the open edit session (from open_edit_session), the preset (youtube_16x9, shorts_9x16, tiktok_9x16, reels_9x16, square_1x1 or master), the language, the aspect (16:9, 9:16 or 1:1; each preset has its own, master any), the exact size in bytes and the content type (video/mp4, at most ${MAX_VIDEO_UPLOAD_BYTES} bytes, ${formatUploadSize(MAX_VIDEO_UPLOAD_BYTES)}). Records the render as uploading and returns {renderId, key, uploadUrl, method, headers}: PUT the file to uploadUrl within an hour with exactly those headers and that many bytes, then call finalize_render. Optionally signs a thumbnail (image/jpeg, png or webp, at most 10 MB) and captions (text/vtt, at most 2 MB) for the same render. Only the session's own user may call it.`,
     inputSchema: RequestRenderUploadSchema.shape,
     scope: 'studio:write',
     annotations: {

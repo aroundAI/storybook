@@ -29,7 +29,12 @@ async function readRange(
     headers: { Range: `bytes=${from}-${from + length - 1}` },
   });
 
-  if (!response.ok) return null;
+  // A host that ignores Range answers 200 with the whole file, which may be
+  // gigabytes (FILM-2212): its body is dropped unread, not buffered.
+  if (response.status !== 206) {
+    await response.body?.cancel();
+    return null;
+  }
 
   const total = /\/(\d+)$/.exec(
     response.headers.get('content-range') ?? '',
