@@ -8,6 +8,7 @@ import {
 } from '@kit/publishing/lib/cadence/release-types';
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
 import { ChannelCadenceSchema } from '@kit/publishing/lib/schemas/schedule-release';
+import { readPublishCalendar } from '@kit/publishing/server/publish-calendar';
 import {
   discardHeldShorts,
   previewCadenceRelease,
@@ -16,7 +17,6 @@ import {
   saveChannelCadence,
   scheduleCadenceRelease,
 } from '@kit/publishing/server/schedule-release';
-import { fetchAllRows } from '@kit/shared/pagination';
 
 import { McpToolError } from '../../../errors';
 import type { McpPrincipal } from '../../../principal';
@@ -521,37 +521,6 @@ export const discardHeldShortsTool = defineTool({
 
 const MAX_CALENDAR_DAYS = 62;
 
-const CALENDAR_COLUMNS =
-  'id, episode_id, platform, platform_connection_id, content_type, language, title, status, scheduled_at, slot_at, published_at, created_at, platform_url, metadata, episodes!inner(title, number, project_id)';
-
-type CalendarPage = PromiseLike<{
-  data: CalendarPublish[] | null;
-  error: { message: string } | null;
-}>;
-
-interface CalendarPublish {
-  id: string;
-  episode_id: string;
-  platform: string;
-  platform_connection_id: string | null;
-  content_type: string;
-  language: string | null;
-  title: string | null;
-  status: string;
-  scheduled_at: string | null;
-  slot_at: string | null;
-  published_at: string | null;
-  created_at: string;
-  platform_url: string | null;
-  metadata: unknown;
-  episodes: { title: string | null; number: number | null };
-}
-
-/** When a post goes, or went, out; else when it was made (a failed Publish Now, a held draft) */
-function postTime(row: CalendarPublish) {
-  return row.published_at ?? row.scheduled_at ?? row.slot_at ?? row.created_at;
-}
-
 export const getPublishCalendarTool = defineTool({
   name: 'get_publish_calendar',
   title: 'Read a project’s publishing calendar',
@@ -579,72 +548,11 @@ export const getPublishCalendarTool = defineTool({
       );
     }
 
-    const [f, t] = [from.toISOString(), to.toISOString()];
-    // Gone out in range; else due in range; else, with neither time, made in range
-    const range = [
-      `and(published_at.gte.${f},published_at.lte.${t})`,
-      `and(published_at.is.null,scheduled_at.gte.${f},scheduled_at.lte.${t})`,
-      `and(published_at.is.null,scheduled_at.is.null,created_at.gte.${f},created_at.lte.${t})`,
-    ].join(',');
-
-    const [dated, held] = await Promise.all([
-      fetchAllRows<CalendarPublish>(
-        (start, end) =>
-          client
-            .from('publishes')
-            .select(CALENDAR_COLUMNS)
-            .eq('episodes.project_id', input.projectId)
-            .neq('status', 'deleted')
-            .or(range)
-            .order('id')
-            .range(start, end) as unknown as CalendarPage,
-        'publish calendar',
-      ),
-      // Held Shorts have no time: listed whatever the range
-      fetchAllRows<CalendarPublish>(
-        (start, end) =>
-          client
-            .from('publishes')
-            .select(CALENDAR_COLUMNS)
-            .eq('episodes.project_id', input.projectId)
-            .eq('status', 'draft')
-            .not('metadata->heldReason', 'is', null)
-            .order('id')
-            .range(start, end) as unknown as CalendarPage,
-        'held shorts',
-      ),
-    ]);
-
-    // A held draft made in the range comes back from both reads
-    const byId = new Map([...dated, ...held].map((row) => [row.id, row]));
-
-    const posts = [...byId.values()].map((row) => {
-      const metadata = (row.metadata ?? {}) as {
-        heldReason?: string;
-        error?: string;
-      };
-      const isHeld = row.status === 'draft' && !!metadata.heldReason;
-
-      return {
-        publishId: row.id,
-        episodeId: row.episode_id,
-        episodeTitle: row.episodes.title,
-        episodeNumber: row.episodes.number,
-        platform: row.platform,
-        connectionId: row.platform_connection_id,
-        contentType: row.content_type,
-        language: row.language,
-        title: row.title,
-        status: isHeld ? 'held' : row.status,
-        // A held Short has no time until it is re-queued: listed last
-        at: isHeld ? null : postTime(row),
-        platformUrl: row.platform_url,
-        error: row.status === 'failed' ? (metadata.error ?? null) : null,
-        heldReason: isHeld ? metadata.heldReason : null,
-      };
+    const posts = await readPublishCalendar(client, {
+      projectId: input.projectId,
+      from,
+      to,
     });
-
-    posts.sort((a, b) => (a.at ?? '9').localeCompare(b.at ?? '9'));
 
     const count = (status: string) =>
       posts.filter((p) => p.status === status).length;

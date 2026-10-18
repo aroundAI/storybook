@@ -39,6 +39,7 @@
     "./server/link-published-video": "./src/server/link-published-video.service.ts",
     "./server/schedule-publishes": "./src/server/schedule-publishes.service.ts",
     "./server/schedule-release": "./src/server/schedule-release.service.ts",
+    "./server/publish-calendar": "./src/server/publish-calendar.service.ts",
     "./lib/export-package-types": "./src/lib/export-package-types.ts",
     "./lib/schemas/upload-only": "./src/lib/schemas/upload-only.schema.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
