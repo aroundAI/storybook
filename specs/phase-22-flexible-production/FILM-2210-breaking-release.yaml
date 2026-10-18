@@ -1,0 +1,95 @@
+spec_id: "FILM-2210"
+title: "Breaking-news release: the long video now, its Shorts at the front of each channel's queue with extra times, the queue moved back in order"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DONE
+effort: M
+dependencies:
+  - spec_id: "FILM-719"
+    note: "the channel posting cadence and the scheduled job's gate"
+  - spec_id: "FILM-2208"
+    note: "schedule_release over MCP, behind studio:publish"
+  - spec_id: "FILM-2209"
+    note: "one Shorts queue per channel, oldest first, and shiftQueue"
+summary: >
+  The owner, 2026-10-18: the next two weeks are already scheduled when a
+  big story breaks. The owner can make a video fast, and it does best near
+  the news, but every new episode went to the end of the queue. A breaking
+  release puts it out now, with its Shorts posting more for a few days.
+
+  The owner's choices: scheduled long videos keep their times, and the
+  breaking long video is squeezed in beside them, even if two long videos
+  then land on one day. It goes at the next scheduler run (about 5
+  minutes) or at a time the owner gives. Its Shorts jump to the front of
+  each channel's Shorts queue from about an hour after it, with extra
+  Short times for a few days (default 2 more a day for 3 days, both
+  settable) that only breaking Shorts use. The Shorts already queued shift
+  back in order, and the normal daily limit applies again after the
+  boost. It is available over MCP behind "Schedule publishes"
+  (studio:publish): it is still a schedule, not Publish now, so the
+  2026-10-10 rule holds. Preview first, then confirm. More than 6 YouTube
+  uploads in a day across the team's channels is warned about, not
+  refused.
+acceptance_criteria:
+  - text: "The breaking long video goes at the next scheduler run (now + 1 minute) or at a given time, on each of its channels, whatever the long-video spacing and daily limit; no scheduled long video moves"
+    met: true
+    evidence: "Met (#673): packages/features/publishing/src/lib/cadence/plan-breaking-release.ts planBreakingRelease (step 1; the long video holds no cadence slot). Tests: plan-breaking-release.test.ts 'sends the breaking long video at the next scheduler run', 'moves no scheduled long video', 'goes at 20:00 tonight beside the long video already there'; schedule-release.service.test.ts 'writes the breaking posts and the moves in one call, and no long video moves'; E2E apps/e2e/tests/publishing/breaking-release.spec.ts (every scheduled long video read back unchanged after both breaking releases; the MCP one at a scheduled long video's own 20:00)"
+  - text: "Its Shorts go to the front of each channel's Shorts queue, from startAfterHours (default 1) after their long video on that channel, using the channel's Short times plus boost.extraPerDay extra times a day (0–4, default 2) for boost.days days (1–7, default 3); Shorts left after the boost take normal times ahead of the queue"
+    met: true
+    evidence: "Met (#673): plan-breaking-release.ts boostDayTimes and step 3. Tests: 'puts the breaking Shorts first, from an hour after the long video, on the extra times', 'keeps a breaking Short off a time less than an hour after its long video', 'spreads the extra times into the widest gaps of the day', 'is settable: none extra means…', 'gives Shorts past the boost the normal times, ahead of the queue'. E2E: Ep 7's six Shorts at 19:00 the same day, four the next and one the day after. Guards B1, B2, B7"
+  - text: "The scheduled normal Shorts from the first breaking Short on are laid again in their old order on the normal times left, never earlier than they were; normal Shorts never use the extra times; after the boost no day passes the channel's Short times"
+    met: true
+    evidence: "Met (#673): plan-breaking-release.ts step 4 over dispatch.ts shiftQueue (new `from`, which also keeps each post at or after its old slot). Tests: 'keeps the queued Shorts in their old order, each no earlier than it was', 'lets only breaking Shorts pass 2 a day on the boost days…', 'gives the queue a normal time the breaking Shorts left free on a boost day', 'never pulls a queued Short forward into a gap'. E2E: normal Shorts in the same order before and after, at most 2 a day, and outside the boost days at most 2 Shorts in all. Guards B3, B6"
+  - text: "Posts already queued, publishing or published, and posts scheduled by hand (no slot), stay where they are"
+    met: true
+    evidence: "Met (#673): plan-breaking-release.ts movable(). Tests: 'leaves a queued Short at the front, and moves the rest around it', 'leaves a Short scheduled by hand where it is'. Guards B4, B5"
+  - text: "publishes.release_priority marks breaking posts; reschedule_publishes (security invoker) moves scheduled posts and inserts the new ones in one transaction, giving every moved slot up first, and refuses a post that is not scheduled or not the caller's, moving nothing"
+    met: true
+    evidence: "Met (#673): migration 20261018110230_film-2210-breaking-release.sql. pgTAP apps/web/supabase/tests/database/reschedule-publishes.test.sql (16): a member shifts 40 Shorts a slot each without tripping publishes_channel_slot_key; a move onto a held slot, a queued post and a post moved twice are refused with nothing moved; a breaking Short takes a freed slot in the same call; another team can neither move nor insert; anon cannot call it. Guards D1, D2 (pgTAP, seen RED on a throwaway database)"
+  - text: "The scheduled job neither counts a breaking post toward a day's limit nor moves it for that limit, so the normal posts of that day keep their times; a breaking Short still waits for its own channel's long video and fails, saying why, if that fails"
+    met: true
+    evidence: "Met (#673): gate.ts deferredForCap (release_priority read by the scheduled Lambda and the in-process job). Tests: cadence-gate.test.ts 'sends the scheduled long video on the day a breaking one went out', 'sends a breaking post although its channel has had its day', 'moves the normal queue past a breaking Short, which keeps its time', 'holds a breaking Short for its own channel’s long video, and fails it, saying why, if that fails'. Guards G1–G4"
+  - text: "previewBreakingRelease and scheduleBreakingRelease read the channels' calendars paged, plan, and write through reschedule_publishes; a calendar that changed meanwhile is planned again once, then refused; the preview writes nothing"
+    met: true
+    evidence: "Met (#673): schedule-release.service.ts, schedule-release-actions.ts (refusals returned as values). Tests: 'previews what would go and move, writing nothing', 'plans again once when the calendar changed, then refuses'. Guard S1"
+  - text: "The preview warns, without refusing, when a Pacific day would have more than 6 YouTube uploads (10,000 units ÷ 1,600 an upload) across the team's YouTube channels, the boost included"
+    met: true
+    evidence: "Met (#673): plan-breaking-release.ts youtubeQuotaWarnings, schedule-release.service.ts quotaWarnings. Tests: 'warns past 6 uploads in a Pacific day', 'says nothing at 6', 'warns, without refusing, past 6 YouTube uploads in a Pacific day across the team'. E2E: the warning on the Publish screen with a second busy channel. Guards B8, S2"
+  - text: "schedule_release takes `breaking` (at, boost, startAfterHours) behind studio:publish with the same preview flag; the result lists what moved and any quota warning; the workflow guide has the breaking-news recipe"
+    met: true
+    evidence: "Met (#673): packages/features/studio-mcp/src/server/tools/publish/release.ts, workflow-guide.ts. Tests: release-tools.test.ts 'previews through the breaking planner, writes nothing…', 'schedules as the person and says what moved', 'is refused on a connection without studio:publish, and nothing is planned' (through the real MCP server). E2E: an MCP preview leaves publishes unchanged, the schedule writes it. Guards M1, M2"
+  - text: "The Publish screen's Schedule Release card has a Breaking news tab: Now or a date and time, extra Shorts a day and for how many days, a preview of the breaking posts, every Short that moves (old time → new) and any quota warning; scheduling needs a fresh preview and spends it"
+    met: true
+    evidence: "Met (#673): packages/features/publishing/src/components/breaking-release-form.tsx (react-hook-form, BreakingFormSchema), schedule-release-panel.tsx, use-cadence-release.tsx. E2E breaking-release.spec.ts: defaults 2 and 3, a past time refused in the form, 7 breaking posts and the moved list in the preview, publishes unchanged by it, 7 rows after scheduling, the preview spent. Screenshots in the PR. Guard E2E U1"
+open_questions: []
+notes: >
+  Decisions the plan left open. The breaking long video holds no cadence
+  slot (slot_at null), so it can share an exact time with a scheduled long
+  video without the slot index refusing it. The extra times go one at a
+  time into the middle of the widest gap between 09:00 and 21:00 (or the
+  channel's first and last times, when wider) on a 5-minute grid: 11:00
+  and 17:00 with 2 extra give 11:00, 14:00, 17:00, 19:00. The boost days
+  start on the first day with a time after the floor, and every boost
+  time is used on each allowed weekday, without the every-N-days rule.
+  Breaking Shorts on boost days do not count toward the normal limit;
+  those placed after the boost do. reschedule_publishes also inserts the
+  new rows, so the moves and the release are one transaction rather than
+  two. The planner lives in its own file, plan-breaking-release.ts.
+
+  Verified 2026-10-18 on the local stack (dev server :3100): six episodes
+  scheduled over MCP, Ep 7 breaking now through the Breaking news tab
+  (8 queued Shorts moved back), Ep 8 breaking over MCP at Ep 3's 20:00;
+  the day x posts table is in the PR. Found while verifying: a scheduled
+  release's preview stayed live, so a second click would have scheduled it
+  twice; a schedule now spends the preview (guard E2E U1).
+feature:
+  database: "20261018110230_film-2210-breaking-release.sql"
+  queries: []
+  actions:
+    - name: "previewBreakingReleaseAction, scheduleBreakingReleaseAction"
+      file: "packages/features/publishing/src/server/schedule-release-actions.ts"
+  ui:
+    - component: "BreakingReleaseForm (the Breaking news tab of ScheduleReleasePanel)"
+      file: "packages/features/publishing/src/components/breaking-release-form.tsx"
+  provider_integration: null
