@@ -43,6 +43,20 @@ describe('the deployed web app receives the settings it reads (KB-203)', () => {
     expect(env).toMatch(new RegExp(`\\b${name}\\b`));
   });
 
+  // KB-208: Lambda caps a function's variables at 4 KB. `next build` inlines
+  // NEXT_PUBLIC_* from the deploy's environment, so the function doesn't
+  // need them; only these runtime-derived or fallback ones stay.
+  it('lists no NEXT_PUBLIC_* the build already inlines (KB-208)', () => {
+    const listed = [...env.matchAll(/^\s*(NEXT_PUBLIC_[A-Z_]+):/gm)].map(
+      (match) => match[1],
+    );
+    expect(listed.sort()).toEqual([
+      'NEXT_PUBLIC_SITE_URL',
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_WEBSOCKET_URL',
+    ]);
+  });
+
   it('reads the ClickHouse switch the way the app does', () => {
     const client = readFileSync(
       join(REPO, 'packages', 'clickhouse', 'src', 'client.ts'),

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
  * ran with them off, so a defect that only exists with them on was found and
  * "fixed" locally. These flags must resolve to the deployed value everywhere.
  *
- * The deployed value is the literal default in sst.config.ts, the code default
+ * The deployed value is the deploy environment's, else the code default
  * is what an unset variable gives, and the committed env files are what
  * `next dev`, `build:test` and CI's E2E build read.
  */
@@ -50,9 +50,11 @@ function envFileValues(variable: string) {
 
 describe('feature flags match the deployed build (KB-99)', () => {
   it('personal accounts are off in the deploy, the code default and every env file', () => {
+    // sst.config.ts no longer sets it (KB-208): the build inlines the deploy
+    // environment's value, else this code default.
     const variable = 'NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS';
 
-    expect(sstDefault(variable)).toBe('false');
+    expect(sstDefault(variable)).toBeUndefined();
     expect(codeDefault(variable)).toBe('false');
     expect(envFileValues(variable)).toEqual([{ file: '.env', value: 'false' }]);
   });
