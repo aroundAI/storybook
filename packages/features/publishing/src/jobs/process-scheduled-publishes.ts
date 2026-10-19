@@ -5,6 +5,7 @@ import { whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { cadenceGate, longVideoStates } from '../lib/cadence/gate';
+import { episodeLongVideoThumbnail } from '../lib/episode-thumbnail';
 import {
   SCHEDULED_JOB_PRECEDENCE,
   resolveEpisodeVideo,
@@ -388,6 +389,16 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         'Video URL resolved successfully',
       );
 
+      // KB-210: a long video takes the episode's thumbnail in its language
+      const longVideoThumbnail =
+        publish.content_type === 'short'
+          ? null
+          : await episodeLongVideoThumbnail(
+              client,
+              publish.episode_id,
+              publish.language,
+            ).catch(() => null);
+
       // Execute the platform upload
       const uploadResult = await uploadToPlatform(
         publish.platform as Platform,
@@ -402,7 +413,10 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           thumbnailUrl: publishThumbnail(
             publish.content_type,
             ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),
-            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
+            ownedEpisodeThumbnail(
+              longVideoThumbnail ?? episode.thumbnail_url,
+              publish.episode_id,
+            ),
           ),
           platformSpecific: publish.metadata ?? {},
           aiGenerated: publish.ai_generated,

@@ -196,10 +196,15 @@ export class FacebookProvider {
     }
 
     // `thumb` is a file, not a URL: download it and attach the bytes. A
-    // thumbnail that cannot be fetched does not stop the video.
+    // thumbnail that cannot be fetched does not stop the video; the result
+    // says so (KB-210).
+    let thumbnailError: string | undefined;
     if (input.thumbnailPath?.startsWith('http')) {
       const thumb = await this.downloadThumbnail(input.thumbnailPath);
       if (thumb) formData.append('thumb', thumb, 'thumbnail.jpg');
+      else
+        thumbnailError =
+          'The thumbnail could not be downloaded, so it was not sent to Facebook.';
     }
 
     // Add targeting if provided
@@ -246,6 +251,7 @@ export class FacebookProvider {
     return {
       videoId: data.id,
       status: input.published ? 'processing' : 'ready',
+      ...(thumbnailError && { thumbnailError }),
     };
   }
 

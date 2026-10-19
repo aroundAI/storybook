@@ -8,6 +8,10 @@ import {
   type ShortsQueueSummary,
 } from '@kit/publishing/lib/cadence/release-types';
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
+import {
+  pickEpisodeThumbnail,
+  readEpisodeThumbnails,
+} from '@kit/publishing/lib/episode-thumbnail';
 import { MAX_CALENDAR_DAYS } from '@kit/publishing/lib/schedule-view';
 import { ChannelCadenceSchema } from '@kit/publishing/lib/schemas/schedule-release';
 import { readPublishCalendar } from '@kit/publishing/server/publish-calendar';
@@ -100,16 +104,10 @@ const ReleaseTargetSchema = z.object({
 
 type ReleaseTarget = z.infer<typeof ReleaseTargetSchema>;
 
-interface ThumbnailRow {
-  language: string;
-  thumbnail_url: string;
-  is_default: boolean | null;
-}
-
 /**
  * A long video's thumbnail as the Publish screen picks it: the episode's
- * thumbnail in the video's language, else its default. A Short gets none
- * (KB-197), so it is never looked up for one.
+ * thumbnail in the video's language, else its default (KB-210's shared
+ * resolver). A Short gets none (KB-197), so it is never looked up for one.
  */
 async function longVideoThumbnails(
   client: Client,
@@ -119,23 +117,16 @@ async function longVideoThumbnails(
   const fulls = targets.filter((t) => t.contentType === 'full');
   if (!fulls.length) return new Map<number, string>();
 
-  const [{ data: thumbnails, error }, { data: channels }] = await Promise.all([
-    client
-      .from('episode_thumbnails')
-      .select('language, thumbnail_url, is_default')
-      .eq('episode_id', episodeId),
+  const [rows, { data: channels }] = await Promise.all([
+    readEpisodeThumbnails(client, episodeId).catch(() => {
+      throw new McpToolError('INTERNAL', 'Could not read the thumbnails.');
+    }),
     client
       .from('platform_connections')
       .select('id, language')
       .in('id', [...new Set(fulls.map((t) => t.connectionId))]),
   ]);
 
-  if (error) {
-    throw new McpToolError('INTERNAL', 'Could not read the thumbnails.');
-  }
-
-  const rows = (thumbnails ?? []) as ThumbnailRow[];
-  const fallback = rows.find((row) => row.is_default)?.thumbnail_url;
   const chosen = new Map<number, string>();
 
   targets.forEach((target, index) => {
@@ -145,8 +136,7 @@ async function longVideoThumbnails(
       target.language ??
       channels?.find((c) => c.id === target.connectionId)?.language ??
       'en';
-    const url =
-      rows.find((row) => row.language === language)?.thumbnail_url ?? fallback;
+    const url = pickEpisodeThumbnail(rows, language);
 
     if (url) chosen.set(index, url);
   });

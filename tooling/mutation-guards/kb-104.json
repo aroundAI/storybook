@@ -25,8 +25,8 @@
       "name": "C1 the scheduled-publish cron sends its stored thumbnail unchecked",
       "kind": "unit",
       "file": "packages/features/publishing/src/jobs/process-scheduled-publishes.ts",
-      "find": "            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          ),\n          platformSpecific: publish.metadata ?? {},",
-      "replace": "            publish.thumbnail_url,\n            episode.thumbnail_url,\n          ),\n          platformSpecific: publish.metadata ?? {},",
+      "find": "            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),\n            ownedEpisodeThumbnail(\n              longVideoThumbnail ?? episode.thumbnail_url,\n              publish.episode_id,\n            ),\n          ),\n          platformSpecific: publish.metadata ?? {},",
+      "replace": "            publish.thumbnail_url,\n            longVideoThumbnail ?? episode.thumbnail_url,\n          ),\n          platformSpecific: publish.metadata ?? {},",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-thumbnail-ownership.test.ts",
       "pattern": "process-scheduled-publishes.ts uses ownedEpisodeThumbnail"

@@ -53,6 +53,7 @@ import {
   deleteJobTarget,
   publishJobConnection,
 } from './job-guard';
+import { missingLongVideoThumbnail } from './job-thumbnail';
 import { checkConnectionToken } from './token';
 
 // Initialize DynamoDB client
@@ -156,7 +157,7 @@ async function sendToUser(
 async function uploadToPlatform(
   job: PublishJobMessage,
   accessToken: string,
-): Promise<{ contentId: string; url: string }> {
+): Promise<{ contentId: string; url: string; thumbnailError?: string }> {
   console.log(`[Publish Worker] Uploading to ${job.platform}...`);
 
   switch (job.platform) {
@@ -298,6 +299,30 @@ async function updatePublishStatus(
   await supabase.from('publishes').update(updateData).eq('id', publishId);
 }
 
+/** KB-210: a thumbnail the platform did not take, on a published row */
+async function recordThumbnailError(
+  publishId: string,
+  thumbnailError: string,
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from('publishes')
+    .select('metadata')
+    .eq('id', publishId)
+    .single();
+
+  const base =
+    existing?.metadata &&
+    typeof existing.metadata === 'object' &&
+    !Array.isArray(existing.metadata)
+      ? existing.metadata
+      : {};
+
+  await supabase
+    .from('publishes')
+    .update({ metadata: { ...base, thumbnailError } })
+    .eq('id', publishId);
+}
+
 /**
  * KB-206: the row says an upload is under way, and since when. An attempt cut
  * off without an answer stays 'publishing', and the scheduled job fails it
@@ -379,6 +404,12 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
     job.thumbnailUrl = thumbnailUrl ?? undefined;
   }
 
+  // KB-210: a long video with no thumbnail takes the episode's
+  if (!job.thumbnailUrl) {
+    job.thumbnailUrl =
+      (await missingLongVideoThumbnail(supabase, job)) ?? undefined;
+  }
+
   // KB-123: the handlers download the video or hand its URL to the platform,
   // and it comes from a row any project writer can update. Only a file of the
   // episode's own project goes; anything else fails the job before a fetch.
@@ -417,6 +448,11 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
     platform_url: result.url,
     published_at: new Date().toISOString(),
   });
+
+  // KB-210: the video is up without its thumbnail; the row says why
+  if (result.thumbnailError) {
+    await recordThumbnailError(job.publishId, result.thumbnailError);
+  }
 
   // FILM-1710: the length of the file just sent, for a platform that never
   // reports one back. Never throws.

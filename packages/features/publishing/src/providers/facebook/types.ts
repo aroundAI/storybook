@@ -50,6 +50,8 @@ export interface FacebookUploadResult {
   status: 'processing' | 'ready' | 'published' | 'error';
   /** URL to the video on Facebook */
   videoUrl?: string;
+  /** Why the thumbnail was not sent, when the video went without it (KB-210) */
+  thumbnailError?: string;
 }
 
 export interface FacebookPage {

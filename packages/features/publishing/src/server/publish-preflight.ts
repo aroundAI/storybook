@@ -14,6 +14,10 @@ import {
 import type { Database } from '@kit/supabase/database';
 
 import {
+  pickEpisodeThumbnail,
+  readEpisodeThumbnails,
+} from '../lib/episode-thumbnail';
+import {
   PUBLISH_NOW_PRECEDENCE,
   resolveEpisodeVideo,
 } from '../lib/episode-video';
@@ -449,11 +453,19 @@ export async function preparePublish(
     );
   }
 
-  // The episode's own thumbnail, when it is one of its uploads
-  const episodeThumbnail = ownedEpisodeThumbnail(
-    episode.thumbnail_url,
-    episodeId,
-  );
+  // KB-210: a long video's thumbnail when the caller names none: the
+  // episode's in the video's language, else its default, else the legacy
+  // episode column. Only one of the episode's own uploads (KB-104).
+  const thumbnails = platforms.some(
+    (platform) => platform.contentType !== 'short' && !platform.thumbnailUrl,
+  )
+    ? await readEpisodeThumbnails(client, episodeId)
+    : [];
+  const episodeThumbnail = (language: string | null | undefined) =>
+    ownedEpisodeThumbnail(
+      pickEpisodeThumbnail(thumbnails, language),
+      episodeId,
+    ) ?? ownedEpisodeThumbnail(episode.thumbnail_url, episodeId);
 
   // KB-30: every YouTube upload declares an audience and a category the
   // creator chose, resolved before anything is written
