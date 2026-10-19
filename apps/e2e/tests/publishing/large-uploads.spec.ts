@@ -25,7 +25,7 @@ import { byTest } from '../utils/visible';
  * FILM-2212. StoryBook takes a video up to 4.99 GB (one PUT to R2), and a
  * platform that takes less refuses it when the publish is prepared, saying
  * why, rather than in the worker after it is scheduled. Facebook takes at
- * most 20 minutes by URL: a header-only MP4 says 21 minutes in a few
+ * most 45 minutes (resumable): a header-only MP4 says 46 minutes in a few
  * hundred bytes, so the refusal is driven here without a gigabyte file
  * (the size refusals are unit-tested in publish-platform-limits.test.ts).
  */
@@ -38,7 +38,7 @@ test.skip(
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 const IN_A_DAY = () => new Date(Date.now() + 24 * 3600 * 1000).toISOString();
 const TOO_LONG =
-  "Facebook can't take this video: it is 21 minutes long, and Facebook takes at most 20 minutes. Leave Facebook out of this one.";
+  "Facebook can't take this video: it is 46 minutes long, and Facebook takes at most 45 minutes. Leave Facebook out of this one.";
 
 async function capture(page: Page, name: string) {
   if (!process.env.CAPTURE_EVIDENCE) return;
@@ -124,8 +124,8 @@ test.describe('Large uploads and each platform’s limit (FILM-2212)', () => {
     });
     const call: Call = callMcpTool.bind(null, token);
 
-    // --- A 21-minute episode video
-    await uploadVideo(call, episodeId, 21);
+    // --- A 46-minute episode video
+    await uploadVideo(call, episodeId, 46);
 
     // --- The upload dialog states the limit the whole path takes
     await signInAs(page, team);
@@ -167,8 +167,8 @@ test.describe('Large uploads and each platform’s limit (FILM-2212)', () => {
       await readRows('publishes', `episode_id=eq.${episodeId}&select=id`),
     ).toEqual([]);
 
-    // --- The second submission: a 19-minute cut is taken
-    await uploadVideo(call, episodeId, 19);
+    // --- The second submission: a 44-minute cut is taken
+    await uploadVideo(call, episodeId, 44);
     await ok(call, 'schedule_publish', { episodeId, targets: [target] });
     expect(
       await readRows<{ status: string; platform: string }>(

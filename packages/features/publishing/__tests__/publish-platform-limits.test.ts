@@ -6,8 +6,8 @@ import { platformVideoRefusal } from '../src/lib/platform-video-limits';
 import { preparePublish } from '../src/server/publish-preflight';
 
 /**
- * FILM-2212. StoryBook takes uploads up to 4.99 GB; Facebook takes 1 GB by
- * URL and Instagram 300 MB for a Reel. A video over a platform's limit is
+ * FILM-2212. StoryBook takes uploads up to 4.99 GB; Facebook takes 1.75 GB
+ * (resumably) and Instagram 300 MB for a Reel. A video over a platform's limit is
  * refused when the publish is prepared — scheduled or published now —
  * naming the platform and the way out, never found by the worker later.
  */
@@ -124,12 +124,18 @@ describe('a video over a platform’s limit is refused when the publish is prepa
     };
   });
 
-  it('refuses a 2.5 GB long video to Facebook, naming its 1 GB limit', async () => {
+  it('refuses a 2.5 GB long video to Facebook, naming its 1.75 GB limit', async () => {
     await expect(prepare([target('facebook', 'full')])).rejects.toEqual(
       new ActionRefusal(
-        "Facebook can't take this video: it is 2.5 GB, and Facebook takes at most 1 GB. Upload a smaller file for Facebook, or leave Facebook out.",
+        "Facebook can't take this video: it is 2.5 GB, and Facebook takes at most 1.75 GB. Upload a smaller file for Facebook, or leave Facebook out.",
       ),
     );
+  });
+
+  it('takes a 1.07 GB long video to Facebook, which sends it resumably (KB-209)', async () => {
+    facts.byUrl[LONG] = { bytes: 1_070_000_000, durationSeconds: 15 * 60 };
+
+    await expect(prepare([target('facebook', 'full')])).resolves.toBeTruthy();
   });
 
   it('lets the same 2.5 GB video go to YouTube', async () => {
@@ -149,10 +155,10 @@ describe('a video over a platform’s limit is refused when the publish is prepa
   });
 
   it('refuses a long video Facebook would refuse for its length', async () => {
-    facts.byUrl[LONG] = { bytes: 900_000_000, durationSeconds: 21 * 60 };
+    facts.byUrl[LONG] = { bytes: 900_000_000, durationSeconds: 46 * 60 };
 
     await expect(prepare([target('facebook', 'full')])).rejects.toThrow(
-      'it is 21 minutes long, and Facebook takes at most 20 minutes',
+      'it is 46 minutes long, and Facebook takes at most 45 minutes',
     );
   });
 

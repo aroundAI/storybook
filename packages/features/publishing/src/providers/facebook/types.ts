@@ -1,3 +1,8 @@
+import {
+  FACEBOOK_FILE_URL_MAX_BYTES,
+  PLATFORM_VIDEO_LIMITS,
+} from '../../lib/platform-video-limits';
+
 /**
  * Facebook Provider Types
  * Types for Facebook video upload and Page management
@@ -12,10 +17,9 @@ export interface FacebookUploadInput {
   /** Upload as Reel (true) or regular video (false) */
   isReel: boolean;
   /**
-   * `videoPath` is a public URL and Meta fetches it (`file_url`) in one
-   * non-resumable call, whatever its size: the publish lambda's path, which
-   * never holds the file. Without it, a URL is measured first and anything
-   * over 1GB is streamed through this process in chunks.
+   * `videoPath` is a public URL. Meta fetches it (`file_url`) in one call
+   * when it is within Meta's 1 GB limit for that call; a larger one is
+   * measured and streamed through this process in ranged chunks (KB-209).
    */
   fetchFromUrl?: boolean;
   /** Local file path or URL to custom thumbnail */
@@ -78,10 +82,10 @@ export type FacebookUploadProgress = (progress: number) => void;
  * Facebook Video Constraints
  */
 export const FACEBOOK_CONSTRAINTS = {
-  /** Maximum file size in bytes (10GB) */
-  maxFileSizeBytes: 10 * 1024 * 1024 * 1024,
-  /** Threshold for resumable upload in bytes (1GB) */
-  resumableThresholdBytes: 1 * 1024 * 1024 * 1024,
+  /** Maximum file size in bytes: the resumable limit, as preflight uses */
+  maxFileSizeBytes: PLATFORM_VIDEO_LIMITS.facebook.maxBytes,
+  /** Above this, `file_url` is refused (1 GB), so the upload is resumable */
+  resumableThresholdBytes: FACEBOOK_FILE_URL_MAX_BYTES,
   /** Minimum Reel duration in seconds */
   reelMinDurationSeconds: 3,
   /** Maximum Reel duration in seconds */

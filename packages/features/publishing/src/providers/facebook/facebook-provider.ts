@@ -14,7 +14,7 @@ import { FACEBOOK_CONSTRAINTS } from './types';
 /**
  * Facebook Provider
  * Handles video uploads to Facebook Pages using the Graph API
- * Supports both simple uploads (< 1GB) and resumable uploads (> 1GB)
+ * Supports both simple uploads (up to 1 GB) and resumable uploads (above 1 GB)
  */
 export class FacebookProvider {
   constructor(
@@ -36,19 +36,23 @@ export class FacebookProvider {
       return this.uploadReel(input, onProgress);
     }
 
-    if (input.fetchFromUrl) {
+    // Meta fetches a URL itself only up to 1 GB; a larger one, or one whose
+    // size a HEAD cannot give, is the resumable path's concern (KB-209)
+    const fileSize = input.fetchFromUrl
+      ? await this.headSize(input.videoPath)
+      : await this.getFileSize(input.videoPath);
+
+    if (fileSize === null) {
       return this.simpleUpload(input, onProgress);
     }
 
-    const fileSize = await this.getFileSize(input.videoPath);
-
     if (fileSize > FACEBOOK_CONSTRAINTS.maxFileSizeBytes) {
       throw new Error(
-        `Video size exceeds maximum of ${FACEBOOK_CONSTRAINTS.maxFileSizeBytes / (1024 * 1024 * 1024)}GB`,
+        `Video size exceeds maximum of ${FACEBOOK_CONSTRAINTS.maxFileSizeBytes / 1e9}GB`,
       );
     }
 
-    // Use resumable upload for files > 1GB
+    // Resumable upload above Meta's 1 GB limit for one call
     if (fileSize > FACEBOOK_CONSTRAINTS.resumableThresholdBytes) {
       return this.resumableUpload(input, fileSize, onProgress);
     }
@@ -160,8 +164,7 @@ export class FacebookProvider {
 
   /**
    * Non-resumable upload: one POST to graph-video with FormData. Used for a
-   * file under 1GB, and for any size when `fetchFromUrl` is set, since Meta
-   * then fetches the file itself and nothing passes through this process.
+   * file within 1 GB; with a URL Meta fetches the file itself.
    */
   private async simpleUpload(
     input: FacebookUploadInput,
@@ -246,7 +249,7 @@ export class FacebookProvider {
   }
 
   /**
-   * Resumable upload for large files (> 1GB)
+   * Resumable upload for large files (above 1 GB)
    * Uses Facebook's 3-phase resumable upload protocol
    */
   private async resumableUpload(
@@ -551,6 +554,17 @@ export class FacebookProvider {
       console.warn('[Facebook] Error downloading thumbnail:', error);
     }
     return null;
+  }
+
+  /** A URL's size from a HEAD alone, or null: never downloads the file */
+  private async headSize(url: string): Promise<number | null> {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const length = Number(response.headers.get('content-length'));
+      return response.ok && length > 0 ? length : null;
+    } catch {
+      return null;
+    }
   }
 
   /**
