@@ -115,11 +115,13 @@ describe('uploadToInstagram', () => {
 });
 
 describe('uploadToFacebook', () => {
-  it('makes one non-resumable upload to graph-video that Meta fetches from the URL', async () => {
-    answer = ({ url }) =>
-      url.pathname.endsWith('/1093/videos')
-        ? json({ id: 'video-9' })
-        : json({ error: { message: url.pathname } }, 404);
+  it('makes one non-resumable upload to graph-video that Meta fetches from the URL, for a file within 1 GB', async () => {
+    answer = ({ url, method }) =>
+      method === 'HEAD'
+        ? new Response(null, { headers: { 'content-length': '900000000' } })
+        : url.pathname.endsWith('/1093/videos')
+          ? json({ id: 'video-9' })
+          : json({ error: { message: url.pathname } }, 404);
 
     const result = await uploadToFacebook('page-token', job);
 
@@ -127,11 +129,12 @@ describe('uploadToFacebook', () => {
       contentId: 'video-9',
       url: 'https://www.facebook.com/1093/videos/video-9',
     });
-    expect(calls).toHaveLength(1);
-    expect(calls[0]!.url.href).toBe(`${META_GRAPH_VIDEO_BASE}/1093/videos`);
-    expect(calls[0]!.authorization).toBe('Bearer page-token');
+    const uploads = calls.filter((c) => c.method === 'POST');
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0]!.url.href).toBe(`${META_GRAPH_VIDEO_BASE}/1093/videos`);
+    expect(uploads[0]!.authorization).toBe('Bearer page-token');
 
-    const form = calls[0]!.body as FormData;
+    const form = uploads[0]!.body as FormData;
     expect(form.get('file_url')).toBe(job.videoUrl);
     expect(form.get('published')).toBe('true');
     expect(form.has('access_token')).toBe(false);
