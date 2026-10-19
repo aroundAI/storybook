@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 
 import { seedTeamAccount, seedYouTubeConnection } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 /**
  * KB-205. YouTube abandons a video over 15 minutes from an unverified
@@ -53,12 +53,16 @@ test.describe('YouTube long uploads on Platform Connections — evidence', () =>
 
     await expect(lines).toHaveCount(2);
     await expect(
-      page.locator(
+      visible(
+        page,
         '[data-test="youtube-long-uploads"][data-status="eligible"]',
       ),
     ).toHaveText('Long uploads: not verified (15-minute limit) Verify');
     await expect(
-      page.locator('[data-test="youtube-long-uploads"][data-status="unknown"]'),
+      visible(
+        page,
+        '[data-test="youtube-long-uploads"][data-status="unknown"]',
+      ),
     ).toHaveText('Long uploads: not checked yet. Press Refresh to check');
 
     await capture(page, '01-platform-connections');
