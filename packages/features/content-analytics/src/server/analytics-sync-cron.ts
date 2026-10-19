@@ -46,6 +46,7 @@ import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import { syncAssetDurations } from './asset-duration-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
 import { syncChannelDays } from './channel-totals';
+import { type ChannelProbes, markMetaPublishRemoved } from './content-removal';
 import { syncEditSessionFacts } from './edit-sessions-fact-sync';
 import {
   buildAudienceRows,
@@ -200,6 +201,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     // video the answer leaves out is gone from YouTube (KB-207): marked
     // removed there, and not read again below.
     const removed = new Set<string>();
+    const probes: ChannelProbes = new Map();
     result.liveCountSnapshots = await captureYouTubeLiveCounts(
       client,
       byPlatform.youtube,
@@ -230,6 +232,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
             platform as SyncPlatform,
             ctx,
             snapshotBaselines,
+            probes,
           ),
         );
       }
@@ -598,10 +601,12 @@ async function syncSinglePublish(
   platform: SyncPlatform,
   ctx: { name: string },
   snapshotBaselines?: Map<string, SnapshotTotals>,
+  probes: ChannelProbes = new Map(),
 ): Promise<SyncResult> {
   const logger = await getLogger();
   const client = getSupabaseServerAdminClient();
   const rateLimiter = getRateLimiter();
+  let accessToken: string | undefined;
 
   try {
     // 1. Validate and refresh token
@@ -638,6 +643,8 @@ async function syncSinglePublish(
         x_read_at: new Date().toISOString(),
       });
     }
+
+    accessToken = tokenResult.accessToken;
 
     // 3. Fetch analytics from platform
     const analytics = await fetchPlatformAnalytics(
@@ -725,11 +732,21 @@ async function syncSinglePublish(
       metricsUpdated: true,
     };
   } catch (error) {
-    // KB-207: the platform says the video does not exist. Marked removed,
-    // which takes it out of the sync and the cadence; not a failure to retry.
-    if (error instanceof PublishedContentMissingError) {
-      await recordPublishRemoved(client, publish.id, notFoundOn(platform));
-
+    // KB-207: the platform says the video does not exist, and a probe with
+    // the same token confirms it still reads the channel (Meta's not-found
+    // also covers lost permissions). Marked removed, which takes it out of
+    // the sync and the cadence. Unconfirmed, it is an ordinary failure.
+    if (
+      error instanceof PublishedContentMissingError &&
+      accessToken &&
+      (await markMetaPublishRemoved(
+        client,
+        publish,
+        platform,
+        accessToken,
+        probes,
+      ))
+    ) {
       logger.info(
         { ...ctx, publishId: publish.id, platform },
         'Not found on the platform: marked removed',
