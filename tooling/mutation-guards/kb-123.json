@@ -72,11 +72,11 @@
       "pattern": "publish-worker"
     },
     {
-      "name": "KB-123 retry uploads the stored video unchecked",
+      "name": "KB-123 retry queues the stored video unchecked",
       "kind": "unit",
       "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "          videoUrl,\n          title: publish.title ?? '',",
-      "replace": "          videoUrl: episode.final_video_url,\n          title: publish.title ?? '',",
+      "find": "        videoUrl,\n        title: publish.title ?? '',",
+      "replace": "        videoUrl: episode.final_video_url,\n        title: publish.title ?? '',",
       "cwd": "packages/features/publishing",
       "test": "__tests__/episode-video-paths.test.ts",
       "pattern": "retry sends"
