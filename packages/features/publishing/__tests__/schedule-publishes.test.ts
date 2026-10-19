@@ -8,6 +8,12 @@ import type { ScheduleTarget } from '../src/server/schedule-publishes.service';
  * is cancelled only while it is still scheduled, by an owner or admin.
  */
 
+// The channels' posting rules (KB-204): cadence-guard.test.ts's subject;
+// here, only that a refusal stops the write
+const cadence = vi.hoisted(() => ({ refusal: null as string | null }));
+vi.mock('../src/server/cadence-guard.service', () => ({
+  cadenceRefusal: async () => cadence.refusal,
+}));
 vi.mock('server-only', () => ({}));
 vi.mock('../src/lib/x-switch', () => ({ X_ENABLED: false }));
 // The team's and the project's channels: their own tests' subject
@@ -189,6 +195,22 @@ beforeEach(() => {
 });
 
 describe('scheduling a publish over MCP', () => {
+  it('schedules nothing past the channel’s posting rules (KB-204)', async () => {
+    cadence.refusal = 'Story YT has a long video on 2026-10-10.';
+
+    try {
+      const result = await schedule([target()]);
+
+      expect(result).toEqual({
+        ok: false,
+        refusal: 'Story YT has a long video on 2026-10-10.',
+      });
+      expect(inserted).toEqual([]);
+    } finally {
+      cadence.refusal = null;
+    }
+  });
+
   it('gives the long video the episode thumbnail and a Short none (KB-197)', async () => {
     // The ownership check (KB-104) reads the storage host from the env
     vi.stubEnv(

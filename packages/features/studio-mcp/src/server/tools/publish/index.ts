@@ -79,7 +79,7 @@ export const schedulePublishTool = defineTool({
   name: 'schedule_publish',
   title: 'Schedule a publish',
   description:
-    "Schedules an episode's video, or one of its Shorts groups, to post on channels of its project at an exact future time: one target per channel. To post on each channel's cadence instead, with Shorts waiting for their long video, use schedule_release. Every target is checked first, as the Publish screen checks a publish (the channel is the project's and still connected, the video exists in that language, a Shorts group goes to that platform, YouTube's audience is declared), and a refused target schedules nothing. Nothing reaches a platform until the scheduled time; cancel_scheduled_publish undoes one before then. Publishing immediately is done on the Publish screen.",
+    "Schedules an episode's video, or one of its Shorts groups, to post on channels of its project at an exact future time: one target per channel. For an episode's release use schedule_release instead: it posts on each channel's cadence, with Shorts in the channel's queue waiting for their long video. A time that breaks a channel's posting rules is refused (more Shorts on that channel-local day than its Short times, or a long video closer than its minDaysBetween to another long video on the channel) unless ignoreCadence is true. Every target is checked first, as the Publish screen checks a publish (the channel is the project's and still connected, the video exists in that language, a Shorts group goes to that platform, YouTube's audience is declared), and a refused target schedules nothing. Nothing reaches a platform until the scheduled time; cancel_scheduled_publish undoes one before then. Publishing immediately is done on the Publish screen.",
   inputSchema: {
     episodeId: z.string().uuid(),
     targets: z.array(TargetSchema).min(1).max(20),
@@ -88,6 +88,12 @@ export const schedulePublishTool = defineTool({
       .default(false)
       .describe(
         'Label the video as AI-generated on the platforms that have such a label.',
+      ),
+    ignoreCadence: z
+      .boolean()
+      .default(false)
+      .describe(
+        "Post at these times even past the channels' posting rules (Shorts a day, days between long videos). Only when the person asked for it.",
       ),
   },
   scope: 'studio:publish',
@@ -105,6 +111,7 @@ export const schedulePublishTool = defineTool({
     const result = await schedulePublishes(client, context.principal.userId, {
       episodeId: input.episodeId,
       aiGenerated: input.aiGenerated,
+      ignoreCadence: input.ignoreCadence,
       targets: input.targets.map(({ youtube, ...target }) => ({
         ...target,
         platformSpecific: youtube ?? {},

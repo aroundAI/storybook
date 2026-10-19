@@ -42,6 +42,8 @@ export const ScheduleReleaseSchema = z.object({
   timezone: TimeZoneSchema,
   aiGenerated: z.boolean().optional(),
   breaking: BreakingSchema.optional(),
+  /** KB-204, previews only: the long video goes out now */
+  longGoesAt: z.string().datetime().optional(),
 });
 
 export const BreakingReleaseSchema = ScheduleReleaseSchema.extend({
