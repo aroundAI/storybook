@@ -928,9 +928,12 @@ export default $config({
         DEPLOY_TARGET: 'lambda',
 
         // Supabase configuration
+        // Other NEXT_PUBLIC_* values are not listed here. `next build` inlines
+        // them into the bundle from the deploy's environment (deploy.sh loads
+        // production.env), so the function never reads them at runtime, and
+        // Lambda caps a function's variables at 4 KB: listing them as well
+        // pushed StorybookWeb to 4156 bytes and failed the deploy (KB-208).
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        NEXT_PUBLIC_SUPABASE_ANON_KEY:
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
         ...(process.env.SUPABASE_DB_WEBHOOK_SECRET && {
           SUPABASE_DB_WEBHOOK_SECRET: process.env.SUPABASE_DB_WEBHOOK_SECRET,
@@ -978,37 +981,6 @@ export default $config({
         NEXT_PUBLIC_SITE_URL:
           process.env.NEXT_PUBLIC_SITE_URL ||
           `https://${domainName || `${stage}.example.com`}`,
-        NEXT_PUBLIC_PRODUCT_NAME:
-          process.env.NEXT_PUBLIC_PRODUCT_NAME || 'SaaS',
-        NEXT_PUBLIC_SITE_TITLE: process.env.NEXT_PUBLIC_SITE_TITLE || '',
-        NEXT_PUBLIC_SITE_DESCRIPTION:
-          process.env.NEXT_PUBLIC_SITE_DESCRIPTION || 'SaaS Application',
-
-        // Authentication settings
-        NEXT_PUBLIC_AUTH_PASSWORD:
-          process.env.NEXT_PUBLIC_AUTH_PASSWORD || 'true',
-        NEXT_PUBLIC_AUTH_MAGIC_LINK:
-          process.env.NEXT_PUBLIC_AUTH_MAGIC_LINK || 'true',
-        NEXT_PUBLIC_AUTH_OAUTH: process.env.NEXT_PUBLIC_AUTH_OAUTH || 'true',
-        NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS:
-          process.env.NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS || 'false',
-        NEXT_PUBLIC_ENABLE_TEAM_ACCOUNTS:
-          process.env.NEXT_PUBLIC_ENABLE_TEAM_ACCOUNTS || 'true',
-
-        // Branding (pass through all branding vars)
-        ...(process.env.NEXT_PUBLIC_BRAND_PRIMARY && {
-          NEXT_PUBLIC_BRAND_PRIMARY: process.env.NEXT_PUBLIC_BRAND_PRIMARY,
-        }),
-        ...(process.env.NEXT_PUBLIC_BRAND_PRIMARY_DARK && {
-          NEXT_PUBLIC_BRAND_PRIMARY_DARK:
-            process.env.NEXT_PUBLIC_BRAND_PRIMARY_DARK,
-        }),
-        ...(process.env.NEXT_PUBLIC_FONT_HEADING && {
-          NEXT_PUBLIC_FONT_HEADING: process.env.NEXT_PUBLIC_FONT_HEADING,
-        }),
-        ...(process.env.NEXT_PUBLIC_FONT_BODY && {
-          NEXT_PUBLIC_FONT_BODY: process.env.NEXT_PUBLIC_FONT_BODY,
-        }),
 
         // Email configuration
         EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || 'ses',
@@ -1127,14 +1099,6 @@ export default $config({
         }),
 
         // Billing (Stripe)
-        ...(process.env.NEXT_PUBLIC_BILLING_PROVIDER && {
-          NEXT_PUBLIC_BILLING_PROVIDER:
-            process.env.NEXT_PUBLIC_BILLING_PROVIDER,
-        }),
-        ...(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && {
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
-            process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-        }),
         ...(process.env.STRIPE_SECRET_KEY && {
           STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
         }),
@@ -1144,16 +1108,9 @@ export default $config({
 
         // CMS
         ...(process.env.CMS_CLIENT && { CMS_CLIENT: process.env.CMS_CLIENT }),
-        ...(process.env.NEXT_PUBLIC_KEYSTATIC_CONTENT_PATH && {
-          NEXT_PUBLIC_KEYSTATIC_CONTENT_PATH:
-            process.env.NEXT_PUBLIC_KEYSTATIC_CONTENT_PATH,
-        }),
 
         // Monitoring
         ...(process.env.SENTRY_DSN && { SENTRY_DSN: process.env.SENTRY_DSN }),
-        ...(process.env.NEXT_PUBLIC_SENTRY_DSN && {
-          NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-        }),
 
         // WebSocket URL (from SST deployment)
         NEXT_PUBLIC_WEBSOCKET_URL: websocket.url,
