@@ -34,6 +34,7 @@ import { PLATFORM_CONFIG } from './publish-types';
 import type {
   PlatformUploadStatus,
   PublishStage,
+  QueuedShortRow,
   TranslationResult,
 } from './publish-types';
 
@@ -51,8 +52,114 @@ interface PublishProgressDialogProps {
   translationResults: TranslationResult[];
   platformStatuses: PlatformUploadStatus[];
   publishError: string | null;
+  /** KB-204: the long videos that post when confirmed */
+  postsNow: Array<{
+    key: string;
+    connectionName: string;
+    platform: string;
+    language: string;
+  }>;
+  /** KB-204: the Shorts that go into their channels' queues instead */
+  queuedShorts: QueuedShortRow[];
+  queuedShortsNote: string | null;
   onCancel: () => void;
   onConfirmUpload: () => void;
+}
+
+function formatQueueTime(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/** KB-204: what posts now, and when each Short goes from its channel's queue */
+function ReleaseSummary({
+  stage,
+  postsNow,
+  queuedShorts,
+  note,
+}: {
+  stage: PublishStage;
+  postsNow: PublishProgressDialogProps['postsNow'];
+  queuedShorts: QueuedShortRow[];
+  note: string | null;
+}) {
+  const confirming = stage === 'confirm-translation';
+
+  return (
+    <div className="space-y-3 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700">
+      {confirming && (
+        <div className="space-y-1" data-test="confirm-posts-now">
+          <p className="font-medium">Posts now</p>
+          {postsNow.length === 0 ? (
+            <p className="text-gray-500">
+              No long video: it is already published or queued.
+            </p>
+          ) : (
+            postsNow.map((post) => (
+              <p
+                key={post.key}
+                data-test="confirm-posts-now-row"
+                className="flex items-center gap-2 text-gray-600 dark:text-gray-400"
+              >
+                <PlatformIcon platform={post.platform} />
+                {post.connectionName} · Long video ·{' '}
+                {LANG_INFO[post.language as SupportedLanguage]?.name ??
+                  post.language}
+              </p>
+            ))
+          )}
+        </div>
+      )}
+
+      {queuedShorts.length > 0 && (
+        <div className="space-y-1" data-test="queued-shorts">
+          <p className="font-medium">
+            {confirming
+              ? 'Shorts go into each channel’s Shorts queue'
+              : 'Shorts queued'}
+          </p>
+          {queuedShorts.map((row) => (
+            <p
+              key={row.key}
+              data-test="queued-short-row"
+              data-scheduled-at={row.scheduledAt ?? ''}
+              className="flex items-center gap-2 text-gray-600 dark:text-gray-400"
+            >
+              <PlatformIcon platform={row.platform} />
+              <span className="min-w-0 flex-1 truncate">
+                {row.connectionName} · {row.groupName} ·{' '}
+                {LANG_INFO[row.language as SupportedLanguage]?.name ??
+                  row.language}
+              </span>
+              <span className="shrink-0 text-xs">
+                {row.scheduledAt
+                  ? formatQueueTime(row.scheduledAt)
+                  : 'Not queued'}
+              </span>
+            </p>
+          ))}
+          <p className="text-xs text-gray-500">
+            The channel’s posting rules pick each time: never more Shorts a day
+            than its Short times, and none before its long video.
+          </p>
+        </div>
+      )}
+
+      {note && (
+        <p
+          className="text-xs text-amber-700 dark:text-amber-400"
+          data-test="queued-shorts-note"
+        >
+          {note}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function PublishProgressDialog({
@@ -61,9 +168,19 @@ export function PublishProgressDialog({
   translationResults,
   platformStatuses,
   publishError,
+  postsNow,
+  queuedShorts,
+  queuedShortsNote,
   onCancel,
   onConfirmUpload,
 }: PublishProgressDialogProps) {
+  const confirmLabel =
+    postsNow.length === 0
+      ? 'Queue Shorts'
+      : queuedShorts.length > 0
+        ? 'Publish now & queue Shorts'
+        : 'Publish now';
+
   return (
     <Dialog
       open={publishStage !== 'idle'}
@@ -167,6 +284,18 @@ export function PublishProgressDialog({
             </div>
           )}
 
+          {(publishStage === 'confirm-translation' ||
+            publishStage === 'complete' ||
+            publishStage === 'error') &&
+            (postsNow.length > 0 || queuedShorts.length > 0) && (
+              <ReleaseSummary
+                stage={publishStage}
+                postsNow={postsNow}
+                queuedShorts={queuedShorts}
+                note={queuedShortsNote}
+              />
+            )}
+
           {publishStage === 'confirm-translation' &&
             youtubeDeclarations.length > 0 && (
               <div
@@ -199,8 +328,8 @@ export function PublishProgressDialog({
           {/* Uploading Stage */}
           {/* The rows stay on the error stage: each says why it failed. */}
           {(publishStage === 'uploading' ||
-            publishStage === 'complete' ||
-            (publishStage === 'error' && platformStatuses.length > 0)) && (
+            ((publishStage === 'complete' || publishStage === 'error') &&
+              platformStatuses.length > 0)) && (
             <div className="space-y-3">
               <p className="text-sm text-gray-500">
                 {publishStage === 'uploading'
@@ -309,7 +438,7 @@ export function PublishProgressDialog({
                   data-test="confirm-publish"
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  Confirm & Publish
+                  {confirmLabel}
                 </Button>
               </>
             )}

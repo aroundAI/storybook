@@ -30,6 +30,7 @@ import {
   ScheduleReleasePanel,
   scheduleItemKey,
 } from '@kit/publishing/components';
+import { releaseTargetKey } from '@kit/publishing/lib/cadence/release-types';
 // Import shared constants from @kit/publishing
 import {
   LANG_INFO,
@@ -80,6 +81,7 @@ import type {
   PlatformConnection,
   PlatformUploadStatus,
   PublishStage,
+  QueuedShortRow,
   TranslationResult,
   VideoType,
 } from './publish-types';
@@ -99,6 +101,18 @@ import { useYouTubeAudienceGate } from './use-youtube-audience-gate';
 
 const NO_PROJECT_CHANNELS =
   'This project has no channels yet. Choose its channels first.';
+
+const NOTHING_LEFT_TO_PUBLISH =
+  'Everything in this episode is already published or queued on its channels.';
+
+/** KB-204: the Shorts Publish video now queues, and where they go */
+interface ShortsRelease {
+  configs: ReleaseConfig[];
+  rows: QueuedShortRow[];
+  note: string | null;
+}
+
+const NO_SHORTS: ShortsRelease = { configs: [], rows: [], note: null };
 
 interface PublishScreenProps {
   episode: EpisodeWithShots;
@@ -135,6 +149,7 @@ export function PublishScreen({
   const [pendingPlatformConfigs, setPendingPlatformConfigs] = useState<
     Array<PlatformConfig>
   >([]);
+  const [shortsRelease, setShortsRelease] = useState<ShortsRelease>(NO_SHORTS);
 
   // Delete progress state
   const [deleteStage, setDeleteStage] = useState<DeleteStage>('idle');
@@ -1054,6 +1069,7 @@ export function PublishScreen({
           episodeId: episode.id,
           platforms: platformConfigs,
           aiGenerated,
+          timezone: cadence.timezone,
         }),
       );
       toast.success(`Scheduled ${platformConfigs.length} uploads`);
@@ -1212,6 +1228,24 @@ export function PublishScreen({
   ) => {
     const platformConfigs: PlatformConfig[] = [];
 
+    // KB-204: read again, not the list on screen, which a press right after
+    // the last one has not refreshed yet: it would offer the same Shorts
+    const onChannels = (await refetchPublishes()).data ?? publishes ?? [];
+    const alreadyOnChannel = (
+      contentType: 'full' | 'short',
+      connectionId: string,
+      language: string,
+      shortsGroupId?: string,
+    ) =>
+      onChannels.some(
+        (publish) =>
+          publish.status !== 'failed' &&
+          publish.connectionId === connectionId &&
+          publish.contentType === contentType &&
+          (!publish.language || publish.language === language) &&
+          (contentType === 'full' || publish.shortsGroupId === shortsGroupId),
+      );
+
     // Build a lookup map for translations
     const translationMap = new Map(
       translations.map((t) => [
@@ -1236,6 +1270,8 @@ export function PublishScreen({
       };
 
       for (const channel of channelsForLang) {
+        if (alreadyOnChannel('full', channel.id, lang)) continue;
+
         platformConfigs.push({
           platform: channel.platform,
           connectionId: channel.id,
@@ -1255,19 +1291,41 @@ export function PublishScreen({
       }
     }
 
-    // Process Shorts Groups -> YouTube Shorts, Instagram Reels, Facebook Reels,
-    // TikTok: each group to the platforms its cut is for
+    // KB-204: Shorts are never posted now. Each group goes to the platforms
+    // its cut is for, at the end of each channel's Shorts queue, as Schedule
+    // Release puts it; one already on the channel is not posted again.
+    const shortConfigs: ReleaseConfig[] = [];
+    const shortRows: QueuedShortRow[] = [];
+
     for (const { group, language, channel } of shortsTargets(
       shortsGroups,
       conns,
     )) {
       const lang = language as SupportedLanguage;
+      if (alreadyOnChannel('short', channel.id, lang, group.id)) continue;
+
       const groupMeta = translationMap.get(`group-${group.id}-${lang}`) || {
         title: group.title || baseTitle,
         description: group.description || baseDescription,
       };
 
-      platformConfigs.push({
+      const itemKey = scheduleItemKey({
+        type: 'shorts',
+        language: lang,
+        groupId: group.id,
+        platforms: [],
+      });
+
+      shortRows.push({
+        key: releaseTargetKey(itemKey, channel.id),
+        connectionName: channel.platformAccountName || channel.platform,
+        platform: channel.platform,
+        groupName: group.name || 'Shorts group',
+        language: lang,
+        scheduledAt: null,
+      });
+      shortConfigs.push({
+        itemKey,
         platform: channel.platform,
         connectionId: channel.id,
         contentType: 'short',
@@ -1283,7 +1341,6 @@ export function PublishScreen({
                   .map((t) => t.trim())
                   .filter(Boolean)
               : [],
-        thumbnailUrl: getThumbnailForLanguage(lang),
         language: lang,
         platformSpecific: audienceGate.platformSpecificFor(
           channel,
@@ -1292,18 +1349,58 @@ export function PublishScreen({
       });
     }
 
-    if (platformConfigs.length === 0) {
+    if (platformConfigs.length === 0 && shortConfigs.length === 0) {
       setPublishError(
-        'No matching channels for uploaded videos. Check language settings.',
+        targetsAny(conns)
+          ? NOTHING_LEFT_TO_PUBLISH
+          : 'No matching channels for uploaded videos. Check language settings.',
       );
       setPublishStage('error');
       return;
     }
 
+    // Where each Short would go in its channel's queue, the long video
+    // going now: shown on the confirm step before anything is sent
+    let release: ShortsRelease = {
+      configs: shortConfigs,
+      rows: shortRows,
+      note: null,
+    };
+
+    if (shortConfigs.length > 0) {
+      const now = new Date();
+      const preview = await cadence.preview(
+        shortConfigs,
+        now,
+        platformConfigs.length > 0 ? now : undefined,
+      );
+
+      release = preview.ok
+        ? {
+            ...release,
+            rows: shortRows.map((row) => ({
+              ...row,
+              scheduledAt:
+                preview.data.placed.find((item) => item.key === row.key)
+                  ?.scheduledAt ?? null,
+            })),
+          }
+        : { ...release, note: preview.error };
+    }
+
     // Store configs and show confirmation
     setPendingPlatformConfigs(platformConfigs);
+    setShortsRelease(release);
     setPublishStage('confirm-translation');
   };
+
+  /** Some channel takes one of the episode's videos, posted or not */
+  const targetsAny = (conns: PlatformConnection[]) =>
+    uploadedFullLanguages.some((lang) =>
+      conns.some(
+        (c) => (c.language || 'en') === lang && takesVideo('full', c.platform),
+      ),
+    ) || shortsTargets(shortsGroups, conns).length > 0;
 
   // Stage 2: Confirm and upload to platforms - with sequential progress updates
   const confirmAndUpload = async () => {
@@ -1346,6 +1443,7 @@ export function PublishScreen({
             episodeId: episode.id,
             platforms: [config],
             aiGenerated,
+            timezone: cadence.timezone,
           }),
         );
 
@@ -1385,21 +1483,72 @@ export function PublishScreen({
       }
     }
 
-    // Final state - show complete if any succeeded, or partial success message
-    if (failureCount === 0) {
+    // KB-204: the Shorts go into each channel's queue, after the long video
+    // that went out now; none is queued for a long video that failed
+    const queued = await queueShorts(
+      pendingPlatformConfigs.length > 0 && successCount === 0,
+    );
+
+    if (failureCount === 0 && queued) {
       setPublishStage('complete');
-    } else if (successCount > 0) {
+    } else if (successCount > 0 || (queued && shortsRelease.configs.length)) {
       // Partial success - still show complete but with warning info in statuses
       setPublishStage('complete');
     } else {
-      // All failed
       setPublishError(
-        `All ${pendingPlatformConfigs.length} platform(s) failed to publish.`,
+        pendingPlatformConfigs.length > 0
+          ? `All ${pendingPlatformConfigs.length} platform(s) failed to publish.`
+          : 'The Shorts could not be queued.',
       );
       setPublishStage('error');
     }
 
     refetchPublishes();
+  };
+
+  /** True when there were no Shorts, or they are queued */
+  const queueShorts = async (longVideoFailed: boolean) => {
+    const { configs } = shortsRelease;
+    if (configs.length === 0) return true;
+
+    if (longVideoFailed) {
+      setShortsRelease((prev) => ({
+        ...prev,
+        rows: prev.rows.map((row) => ({ ...row, scheduledAt: null })),
+        note: 'The Shorts were not queued: the long video did not go out.',
+      }));
+      return false;
+    }
+
+    const scheduled = await cadence.schedule(configs, new Date());
+
+    if (!scheduled) {
+      setShortsRelease((prev) => ({
+        ...prev,
+        rows: prev.rows.map((row) => ({ ...row, scheduledAt: null })),
+        note: 'The Shorts were not queued.',
+      }));
+      return false;
+    }
+
+    setShortsRelease((prev) => ({
+      ...prev,
+      note: null,
+      rows: prev.rows.map((row) => {
+        const config = configs.find(
+          (c) => releaseTargetKey(c.itemKey, c.connectionId) === row.key,
+        );
+        const post = scheduled.find(
+          (p) =>
+            p.connectionId === config?.connectionId &&
+            p.shortsGroupId === config?.shortsGroupId &&
+            p.language === config?.language,
+        );
+
+        return { ...row, scheduledAt: post?.scheduledAt ?? null };
+      }),
+    }));
+    return true;
   };
 
   // Cancel publishing
@@ -1409,6 +1558,7 @@ export function PublishScreen({
     setPlatformStatuses([]);
     setPublishError(null);
     setPendingPlatformConfigs([]);
+    setShortsRelease(NO_SHORTS);
   };
 
   // Initiate unpublish - show confirmation dialog
@@ -1482,6 +1632,16 @@ export function PublishScreen({
         translationResults={translationResults}
         platformStatuses={platformStatuses}
         publishError={publishError}
+        postsNow={pendingPlatformConfigs.map((config) => ({
+          key: `${config.connectionId}-${config.language}`,
+          connectionName:
+            (connections ?? []).find((c) => c.id === config.connectionId)
+              ?.platformAccountName ?? config.platform,
+          platform: config.platform,
+          language: config.language ?? '',
+        }))}
+        queuedShorts={shortsRelease.rows}
+        queuedShortsNote={shortsRelease.note}
         onCancel={cancelPublish}
         onConfirmUpload={confirmAndUpload}
       />
@@ -1525,7 +1685,7 @@ export function PublishScreen({
             className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
           >
             <Share2 className="mr-2 h-4 w-4" />
-            Publish All
+            Publish video now
           </Button>
         </div>
 

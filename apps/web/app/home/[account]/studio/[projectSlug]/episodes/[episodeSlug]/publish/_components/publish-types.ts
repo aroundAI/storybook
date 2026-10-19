@@ -131,3 +131,14 @@ export interface ScheduledPlatformConfig extends PlatformConfig {
 }
 
 export { AlertCircle, Facebook, Instagram, Youtube };
+
+/** KB-204: a Short Publish video now puts in its channel's Shorts queue */
+export type QueuedShortRow = {
+  key: string;
+  connectionName: string;
+  platform: string;
+  groupName: string;
+  language: string;
+  /** When it goes out; null until the queue has been read */
+  scheduledAt: string | null;
+};
