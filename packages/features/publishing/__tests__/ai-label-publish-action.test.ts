@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetQueue, sentJobs } from './publish-queue-fixture';
+
 /**
  * FILM-1731. The publish screen's declaration travels with the publish: the
  * row stores it (so the scheduled paths and a retry send what was declared),
- * and the upload made now sends it. Here through YouTube, whose provider
- * turns it into status.containsSyntheticMedia.
+ * and the job queued for the publish worker carries it (KB-206); the
+ * worker's handlers send it, tested in the worker's ai-label.test.ts.
  */
 
 // Every channel is the project's here; that check is
@@ -17,6 +19,14 @@ vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+vi.hoisted(() => {
+  process.env.PUBLISH_QUEUE_URL =
+    'https://sqs.us-east-1.amazonaws.com/000000000000/publish';
+});
+
+// KB-206: a publish made now is sent to the publish worker's queue
+vi.mock('@aws-sdk/client-sqs', () => import('./publish-queue-fixture'));
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -138,6 +148,7 @@ function publish(aiGenerated?: boolean) {
 }
 
 beforeEach(() => {
+  resetQueue();
   inserted.length = 0;
   uploadVideo.mockReset();
   uploadVideo.mockResolvedValue({
@@ -154,7 +165,7 @@ describe('the AI declaration travels with the publish (FILM-1731)', () => {
     [false, false],
     [undefined, false],
   ])(
-    'declared %s: the row stores %s and the upload sends it',
+    'declared %s: the row stores %s and the queued job carries it',
     async (declared, stored) => {
       const { publishToAllAction } = await import(
         '../src/server/publish-actions'
@@ -165,9 +176,10 @@ describe('the AI declaration travels with the publish (FILM-1731)', () => {
       expect(result).toMatchObject({ ok: true });
       expect(inserted).toHaveLength(1);
       expect(inserted[0]!.ai_generated).toBe(stored);
-      expect(uploadVideo).toHaveBeenCalledWith(
-        expect.objectContaining({ containsSyntheticMedia: stored }),
-      );
+      expect(sentJobs).toEqual([
+        expect.objectContaining({ aiGenerated: stored }),
+      ]);
+      expect(uploadVideo).not.toHaveBeenCalled();
     },
   );
 });

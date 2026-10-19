@@ -35,3 +35,15 @@ describe('publishedUploadStatus (KB-160)', () => {
     });
   });
 });
+
+describe('publishedUploadStatus (KB-206)', () => {
+  it('shows a publish the worker will upload as queued, not as done', () => {
+    expect(
+      publishedUploadStatus(uploading, {
+        platform: 'instagram',
+        status: 'queued',
+        publishId: 'publish-2',
+      }),
+    ).toEqual({ ...uploading, status: 'queued' });
+  });
+});

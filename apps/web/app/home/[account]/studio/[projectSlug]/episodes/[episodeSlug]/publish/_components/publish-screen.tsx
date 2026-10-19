@@ -637,6 +637,13 @@ export function PublishScreen({
   } = useQuery({
     queryKey: ['episode-publishes', episode.id],
     queryFn: () => getEpisodePublishesAction({ episodeId: episode.id }),
+    // KB-206: a publish runs in the worker, so the list follows it there
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        (p) => p.status === 'queued' || p.status === 'publishing',
+      )
+        ? 10_000
+        : false,
   });
 
   // FILM-719: a release scheduled on its channels' posting cadence
@@ -696,6 +703,7 @@ export function PublishScreen({
 
       // Handle publish events
       if (msg.type === 'publish-success' || msg.type === 'publish-error') {
+        refetchPublishes();
         const platform = msg.platform;
         setPlatformStatuses((prev) =>
           prev.map((s) => {
@@ -1447,8 +1455,9 @@ export function PublishScreen({
           }),
         );
 
-        // API returns 'completed' for success, 'failed' for failure
-        if (result?.status === 'completed') {
+        // 'queued': the publish worker uploads it (KB-206); the socket and
+        // the publishes list report how it ends
+        if (result?.status === 'completed' || result?.status === 'queued') {
           successCount++;
           setPlatformStatuses((prev) =>
             prev.map((s, idx) =>

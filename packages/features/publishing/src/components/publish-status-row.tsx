@@ -21,6 +21,7 @@ interface PublishStatusRowProps {
 export function PublishStatusRow({ result, onRetry }: PublishStatusRowProps) {
   const icons = {
     pending: <Clock className="h-4 w-4 text-muted-foreground" />,
+    queued: <Clock className="h-4 w-4 text-blue-500" />,
     publishing: <Loader2 className="h-4 w-4 animate-spin text-blue-500" />,
     completed: <CheckCircle className="h-4 w-4 text-green-500" />,
     failed: <XCircle className="h-4 w-4 text-red-500" />,
@@ -29,6 +30,7 @@ export function PublishStatusRow({ result, onRetry }: PublishStatusRowProps) {
 
   const badgeVariants = {
     pending: 'secondary' as const,
+    queued: 'secondary' as const,
     publishing: 'secondary' as const,
     completed: 'default' as const,
     failed: 'destructive' as const,

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetQueue, sentJobs } from './publish-queue-fixture';
+
 /**
  * KB-133. Publish Now sends each Shorts group of a language as its own
  * publish, naming the group, but uploaded the first group holding that
@@ -18,6 +20,14 @@ vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+vi.hoisted(() => {
+  process.env.PUBLISH_QUEUE_URL =
+    'https://sqs.us-east-1.amazonaws.com/000000000000/publish';
+});
+
+// KB-206: a publish made now is sent to the publish worker's queue
+vi.mock('@aws-sdk/client-sqs', () => import('./publish-queue-fixture'));
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -159,6 +169,7 @@ function publishShort(shortsGroupId: string) {
 const savedEnv = { ...process.env };
 
 beforeEach(() => {
+  resetQueue();
   inserted.length = 0;
   episodeThumbnail = null;
   uploadVideo.mockReset();
@@ -178,7 +189,7 @@ describe('Publish Now sends the Shorts group it names (KB-133)', () => {
   it.each([
     ['group-a', GROUP_A],
     ['group-b', GROUP_B],
-  ])('%s: its own short is uploaded', async (groupId, video) => {
+  ])('%s: its own short is the one queued', async (groupId, video) => {
     const { publishToAllAction } = await import(
       '../src/server/publish-actions'
     );
@@ -186,14 +197,12 @@ describe('Publish Now sends the Shorts group it names (KB-133)', () => {
     const result = await publishToAllAction(publishShort(groupId));
 
     expect(result).toMatchObject({ ok: true });
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ videoPath: video }),
-    );
+    expect(sentJobs).toEqual([expect.objectContaining({ videoUrl: video })]);
   });
 });
 
 describe('Publish Now sends a Short no thumbnail (KB-197)', () => {
-  it('writes and uploads the short without the episode thumbnail', async () => {
+  it('writes and queues the short without the episode thumbnail', async () => {
     episodeThumbnail = `${BASE}/episodes/${EPISODE}/thumbnails/en-1.png`;
     const { publishToAllAction } = await import(
       '../src/server/publish-actions'
@@ -203,9 +212,8 @@ describe('Publish Now sends a Short no thumbnail (KB-197)', () => {
 
     expect(result).toMatchObject({ ok: true });
     expect(inserted[0]?.thumbnail_url).toBeNull();
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ videoPath: GROUP_A, thumbnailPath: undefined }),
-    );
+    expect(sentJobs).toEqual([expect.objectContaining({ videoUrl: GROUP_A })]);
+    expect(sentJobs[0]?.thumbnailUrl).toBeUndefined();
   });
 });
 
@@ -223,6 +231,6 @@ describe('a Shorts group goes only to the platforms it names', () => {
         'The Shorts group "IG cut" isn\'t set to go to YouTube. Tick YouTube on the group first.',
     });
     expect(inserted).toHaveLength(0);
-    expect(uploadVideo).not.toHaveBeenCalled();
+    expect(sentJobs).toEqual([]);
   });
 });

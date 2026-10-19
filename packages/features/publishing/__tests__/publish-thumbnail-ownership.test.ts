@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetQueue, sentJobs } from './publish-queue-fixture';
+
 /**
  * KB-104. A publish took its thumbnail from the request (or the stored row)
  * and the upload downloaded it after a check that only looked at the host's
@@ -20,6 +22,14 @@ vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+vi.hoisted(() => {
+  process.env.PUBLISH_QUEUE_URL =
+    'https://sqs.us-east-1.amazonaws.com/000000000000/publish';
+});
+
+// KB-206: a publish made now is sent to the publish worker's queue
+vi.mock('@aws-sdk/client-sqs', () => import('./publish-queue-fixture'));
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -158,6 +168,7 @@ function publishWith(thumbnailUrl: string) {
 const savedEnv = { ...process.env };
 
 beforeEach(() => {
+  resetQueue();
   inserted.length = 0;
   uploadVideo.mockReset();
   uploadVideo.mockResolvedValue({
@@ -188,6 +199,7 @@ describe('publishToAllAction and the thumbnail it is handed (KB-104)', () => {
       });
       expect(inserted).toEqual([]);
       expect(uploadVideo).not.toHaveBeenCalled();
+      expect(sentJobs).toEqual([]);
     },
   );
 
@@ -200,9 +212,7 @@ describe('publishToAllAction and the thumbnail it is handed (KB-104)', () => {
 
     expect(result).toMatchObject({ ok: true });
     expect(inserted[0]?.thumbnail_url).toBe(OWN);
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ thumbnailPath: OWN }),
-    );
+    expect(sentJobs).toEqual([expect.objectContaining({ thumbnailUrl: OWN })]);
   });
 });
 

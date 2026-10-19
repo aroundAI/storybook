@@ -298,6 +298,35 @@ async function updatePublishStatus(
   await supabase.from('publishes').update(updateData).eq('id', publishId);
 }
 
+/**
+ * KB-206: the row says an upload is under way, and since when. An attempt cut
+ * off without an answer stays 'publishing', and the scheduled job fails it
+ * once it is older than any upload runs. A row being taken down is left alone.
+ */
+async function markPublishing(publishId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('publishes')
+    .select('metadata')
+    .eq('id', publishId)
+    .single();
+
+  const base =
+    existing?.metadata &&
+    typeof existing.metadata === 'object' &&
+    !Array.isArray(existing.metadata)
+      ? existing.metadata
+      : {};
+
+  await supabase
+    .from('publishes')
+    .update({
+      status: 'publishing',
+      metadata: { ...base, publishingStartedAt: new Date().toISOString() },
+    })
+    .eq('id', publishId)
+    .in('status', ['queued', 'publishing', 'failed']);
+}
+
 /** The job's video when it is a file of the episode's own project (KB-123) */
 async function ownedJobVideo(job: PublishJobMessage): Promise<string> {
   const projectOfEpisode = async (episodeId: string) => {
@@ -354,6 +383,8 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
   // and it comes from a row any project writer can update. Only a file of the
   // episode's own project goes; anything else fails the job before a fetch.
   job.videoUrl = await ownedJobVideo(job);
+
+  await markPublishing(job.publishId);
 
   // 2. Get valid access token
   const tokenResult = await checkConnectionToken(

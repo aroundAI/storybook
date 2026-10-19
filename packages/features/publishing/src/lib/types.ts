@@ -12,6 +12,7 @@ export type { ConnectionStatus };
 
 export type PublishStatus =
   | 'pending'
+  | 'queued'
   | 'publishing'
   | 'completed'
   | 'failed'

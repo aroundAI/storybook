@@ -46,13 +46,13 @@ const sites = SEARCHED.flatMap((dir) => sourceFiles(join(ROOT, dir)))
   .filter((site) => site.uploads > 0);
 
 describe('every upload path records the uploaded file’s duration', () => {
-  it('finds the four upload paths (positive control)', () => {
+  // KB-206: publish-now and retry no longer upload; they queue the worker
+  it('finds the two upload paths (positive control)', () => {
     expect(sites.map((site) => site.file).sort()).toEqual([
       'apps/web/lambda/publish-worker/index.ts',
       'packages/features/publishing/src/jobs/process-scheduled-publishes.ts',
-      'packages/features/publishing/src/server/publish-actions.ts',
     ]);
-    expect(sites.reduce((n, site) => n + site.uploads, 0)).toBe(4);
+    expect(sites.reduce((n, site) => n + site.uploads, 0)).toBe(2);
   });
 
   it.each(sites.map((site) => [site.file, site]))(

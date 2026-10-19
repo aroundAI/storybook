@@ -12,10 +12,15 @@ export type PublishOutcome = Extract<
   { ok: true }
 >['data'][number];
 
-/** A platform's upload row once its upload went out, linking to the post. */
+/**
+ * A platform's upload row once the action answered: queued for the publish
+ * worker (KB-206), or, for an answer that names the post, linking to it.
+ */
 export function publishedUploadStatus(
   row: PlatformUploadStatus,
   result: PublishOutcome,
 ): PlatformUploadStatus {
+  if (result.status === 'queued') return { ...row, status: 'queued' };
+
   return { ...row, status: 'success', url: result.platformUrl };
 }
