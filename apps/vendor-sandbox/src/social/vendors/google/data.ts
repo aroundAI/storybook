@@ -121,6 +121,13 @@ function channelResource(
       ),
     };
   }
+  if (parts.includes('status')) {
+    // KB-205: a sandbox channel is verified, so long uploads go through
+    resource.status = {
+      privacyStatus: 'public',
+      longUploadsStatus: 'allowed',
+    };
+  }
   return resource;
 }
 
@@ -178,6 +185,9 @@ function videoResource(
       madeForKids: d.madeForKids === true,
       selfDeclaredMadeForKids: d.madeForKids === true,
     };
+  }
+  if (parts.includes('processingDetails')) {
+    resource.processingDetails = { processingStatus: 'succeeded' };
   }
   if (parts.includes('statistics')) {
     resource.statistics = {

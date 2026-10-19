@@ -13,6 +13,7 @@ import {
   xClientAuthorization,
 } from '../oauth/twitter/config';
 import { YOUTUBE_OAUTH_CONFIG } from '../oauth/youtube/config';
+import { YouTubeProvider } from '../providers/youtube/youtube-provider';
 import {
   AppNotConfiguredError,
   type OAuthAppCredentials,
@@ -28,6 +29,10 @@ import {
 } from './platforms';
 import type { TokenErrorCode } from './token-errors';
 import { EXPIRY_BUFFER_MS, isWithinRefreshWindow } from './token-expiry';
+import {
+  LONG_UPLOADS_CHECKED_AT_KEY,
+  longUploadsMetadata,
+} from './youtube-long-uploads';
 
 export type { Platform };
 
@@ -259,6 +264,20 @@ async function doEnsureValidToken(
     delete cleanMetadata.refresh_started_at;
     delete cleanMetadata.last_error; // Fix: Clear stale errors
 
+    // KB-205: the channel's long-upload status, read again with the new token
+    if (connection.platform === 'youtube') {
+      Object.assign(
+        cleanMetadata,
+        await refreshedLongUploads(
+          refreshed.accessToken,
+          connection.platform_account_id ?? '',
+          metadata,
+          force,
+          connectionId,
+        ),
+      );
+    }
+
     const updateData: Record<string, string | boolean | object> = {
       access_token_encrypted: await encrypt(refreshed.accessToken),
       token_expires_at: refreshed.expiresAt.toISOString(),
@@ -352,6 +371,42 @@ async function doEnsureValidToken(
       error: 'REFRESH_FAILED',
       requiresReauth: true,
     };
+  }
+}
+
+/** A read status is trusted this long before the cron reads it again */
+const LONG_UPLOADS_RECHECK_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * KB-205. The metadata fields recording the channel's long-upload status:
+ * read again when the refresh was asked for (Refresh in Settings) or the
+ * last read is old, else none. Never throws: a failed read keeps what was
+ * stored, and the refresh still succeeds.
+ */
+async function refreshedLongUploads(
+  accessToken: string,
+  channelId: string,
+  metadata: Record<string, unknown>,
+  force: boolean,
+  connectionId: string,
+): Promise<Record<string, unknown>> {
+  const checkedAt = Date.parse(
+    String(metadata[LONG_UPLOADS_CHECKED_AT_KEY] ?? ''),
+  );
+
+  if (!force && Date.now() - checkedAt < LONG_UPLOADS_RECHECK_MS) return {};
+
+  try {
+    return longUploadsMetadata(
+      await new YouTubeProvider(accessToken).getLongUploadsStatus(channelId),
+    );
+  } catch (error) {
+    const logger = await getLogger();
+    logger.warn(
+      { name: 'token-refresh', connectionId, error },
+      "Could not read the YouTube channel's long-upload status",
+    );
+    return {};
   }
 }
 

@@ -30,12 +30,24 @@ export async function GET(request: Request) {
 
   try {
     // Import dynamically to avoid issues
-    const { refreshExpiringTokens } = await import('@kit/publishing/jobs');
+    const { checkYouTubeProcessing, refreshExpiringTokens } = await import(
+      '@kit/publishing/jobs'
+    );
     const result = await refreshExpiringTokens();
+
+    // KB-205: a YouTube upload abandoned in processing is not left published
+    let youtubeProcessing: unknown;
+    try {
+      youtubeProcessing = await checkYouTubeProcessing();
+    } catch (error) {
+      console.error('[Cron] Failed to check YouTube processing:', error);
+      youtubeProcessing = { error: 'failed' };
+    }
 
     return NextResponse.json({
       success: true,
       ...result,
+      youtubeProcessing,
     });
   } catch (error) {
     console.error('[Cron] Failed to refresh tokens:', error);

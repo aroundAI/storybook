@@ -41,6 +41,11 @@ const folder = `${STORAGE}/storage/v1/object/public/project-assets/episodes/${EP
 const LONG = `${folder}/en-1.mp4`;
 const SHORT = `${folder}/en-short-1.mp4`;
 
+/** KB-205: the YouTube connection's metadata, as connect and refresh store it */
+const youtube: { metadata: Record<string, unknown> } = {
+  metadata: { long_uploads_status: 'allowed' },
+};
+
 vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', STORAGE);
 vi.stubEnv('STORAGE_PROVIDER', '');
 
@@ -53,7 +58,12 @@ const client = {
         data: [
           { id: 'fb', language: 'en' },
           { id: 'ig', language: 'en' },
-          { id: 'yt', language: 'en' },
+          {
+            id: 'yo',
+            language: 'en',
+            platform_account_name: 'Fault & Frontier',
+            metadata: youtube.metadata,
+          },
         ],
         error: null,
       }),
@@ -173,5 +183,66 @@ describe('platformVideoRefusal', () => {
     expect(
       platformVideoRefusal('instagram', { bytes: 1_000, durationSeconds: 2 }),
     ).toContain('needs at least 3 seconds');
+  });
+});
+
+/**
+ * KB-205. An unverified YouTube channel takes at most 15 minutes: YouTube
+ * accepted a 15:12 upload and then abandoned it as "too long", and StoryBook
+ * marked it published. The publish is refused when it is prepared, for
+ * publish now, schedule, schedule_release and MCP alike.
+ */
+describe('a long video to a YouTube channel that may not take one is refused (KB-205)', () => {
+  beforeEach(() => {
+    youtube.metadata = { long_uploads_status: 'eligible' };
+    facts.byUrl = {
+      [LONG]: { bytes: 900_000_000, durationSeconds: 912 },
+      [SHORT]: { bytes: 40_000_000, durationSeconds: 50 },
+    };
+  });
+
+  it('refuses the 15:12 video to an unverified channel, saying where to verify it', async () => {
+    await expect(prepare([target('youtube', 'full')])).rejects.toEqual(
+      new ActionRefusal(
+        "YouTube can't take this video on “Fault & Frontier”: it is 15:12 long, and an unverified channel can upload at most 15 minutes. Verify the channel at https://www.youtube.com/verify, then press Refresh on it in Settings → Platforms.",
+      ),
+    );
+  });
+
+  it.each(['disallowed', 'longUploadsUnspecified'])(
+    'refuses it for a channel whose status is %s',
+    async (status) => {
+      youtube.metadata = { long_uploads_status: status };
+
+      await expect(prepare([target('youtube', 'full')])).rejects.toThrow(
+        'an unverified channel can upload at most 15 minutes',
+      );
+    },
+  );
+
+  it('lets it go to a verified channel', async () => {
+    youtube.metadata = { long_uploads_status: 'allowed' };
+
+    await expect(prepare([target('youtube', 'full')])).resolves.toBeTruthy();
+  });
+
+  it('lets a video of exactly 15:00 go to an unverified channel', async () => {
+    facts.byUrl[LONG] = { bytes: 900_000_000, durationSeconds: 900 };
+
+    await expect(prepare([target('youtube', 'full')])).resolves.toBeTruthy();
+  });
+
+  it('refuses it when the status was never read, saying how to check', async () => {
+    youtube.metadata = {};
+
+    await expect(prepare([target('youtube', 'full')])).rejects.toThrow(
+      "YouTube may refuse this video: it is 15:12 long, and StoryBook doesn't know yet whether “Fault & Frontier” can upload videos longer than 15 minutes. Press Refresh on the channel in Settings → Platforms to check, or leave YouTube out.",
+    );
+  });
+
+  it('leaves to the upload a video whose length it cannot read', async () => {
+    facts.byUrl[LONG] = { bytes: null, durationSeconds: null };
+
+    await expect(prepare([target('youtube', 'full')])).resolves.toBeTruthy();
   });
 });

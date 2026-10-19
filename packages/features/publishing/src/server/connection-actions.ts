@@ -20,6 +20,7 @@ import { UpdateYouTubeChannelSettingsSchema } from '../lib/schemas/youtube-decla
 import { TokenRefusal, readableTokenError } from '../lib/token-errors';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
+import { longUploadsStatusOf } from '../lib/youtube-long-uploads';
 import { resolveAnalyticsAccess } from '../oauth/analytics-scopes';
 import { isRevokeConfirmed } from '../oauth/revoke-request';
 import { revokeAtVendor } from '../oauth/revokers';
@@ -111,6 +112,10 @@ export const getConnectionsAction = enhanceAction(
           language: connWithLanguage.language ?? 'en',
           youtubeMadeForKids: conn.youtube_made_for_kids ?? null,
           youtubeCategoryId: conn.youtube_category_id ?? null,
+          youtubeLongUploads:
+            conn.platform === 'youtube'
+              ? longUploadsStatusOf(conn.metadata)
+              : undefined,
           // Unified fields for Publish Page compatibility
           isActive: conn.is_active,
           tokenValid: status === 'active',

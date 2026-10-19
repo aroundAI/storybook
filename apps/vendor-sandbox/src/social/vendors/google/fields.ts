@@ -98,9 +98,13 @@ export const GOOGLE_SERVED: readonly ServedEndpoint[] = [
       'statistics',
       'subscriberCount',
       'hiddenSubscriberCount',
+      // KB-205
+      'status',
+      'longUploadsStatus',
     ],
     envelope: cite(
       CHANNELS_PAGE,
+      'privacyStatus',
       'kind',
       'etag',
       'pageInfo',
@@ -133,6 +137,14 @@ export const GOOGLE_SERVED: readonly ServedEndpoint[] = [
       'publishedAt',
       'contentDetails',
       'duration',
+      // KB-205: what YouTube did with an upload
+      'status',
+      'uploadStatus',
+      'rejectionReason',
+      'failureReason',
+      'processingDetails',
+      'processingStatus',
+      'processingFailureReason',
     ],
     envelope: cite(VIDEOS_PAGE, ...VIDEO_FIELDS_NOT_READ),
   },
