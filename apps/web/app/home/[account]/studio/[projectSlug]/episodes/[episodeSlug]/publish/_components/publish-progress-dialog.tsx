@@ -333,10 +333,12 @@ export function PublishProgressDialog({
             <div className="space-y-3">
               <p className="text-sm text-gray-500">
                 {publishStage === 'uploading'
-                  ? 'Uploading videos to each platform...'
+                  ? 'Sending videos to each platform...'
                   : publishStage === 'error'
                     ? 'Nothing was published:'
-                    : 'All uploads completed:'}
+                    : platformStatuses.some((s) => s.status === 'queued')
+                      ? 'Publishing in the background. Each row updates when its platform finishes; you can close this.'
+                      : 'All uploads completed:'}
               </p>
               <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                 {platformStatuses.map((s, i) => (
@@ -365,7 +367,7 @@ export function PublishProgressDialog({
                       {s.status === 'pending' && (
                         <Clock className="h-4 w-4 text-gray-400" />
                       )}
-                      {s.status === 'uploading' && (
+                      {(s.status === 'uploading' || s.status === 'queued') && (
                         <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
                       )}
                       {s.status === 'success' && (

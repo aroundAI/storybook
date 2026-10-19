@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetQueue, sentJobs } from './publish-queue-fixture';
+
 /**
  * KB-30, the server half of "publishing asks rather than defaulting". The
  * publish screen asks before it sends; this is what holds when a request
@@ -16,6 +18,14 @@ vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+vi.hoisted(() => {
+  process.env.PUBLISH_QUEUE_URL =
+    'https://sqs.us-east-1.amazonaws.com/000000000000/publish';
+});
+
+// KB-206: a publish made now is sent to the publish worker's queue
+vi.mock('@aws-sdk/client-sqs', () => import('./publish-queue-fixture'));
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -132,6 +142,7 @@ function youtube(platformSpecific: Record<string, unknown>) {
 
 describe('publishToAllAction and a YouTube channel nobody has declared', () => {
   beforeEach(() => {
+    resetQueue();
     inserted.length = 0;
     uploadVideo.mockReset();
     uploadVideo.mockResolvedValue({
@@ -159,7 +170,7 @@ describe('publishToAllAction and a YouTube channel nobody has declared', () => {
       error: expect.stringContaining('“Acme Kids”'),
     });
     expect(inserted).toEqual([]);
-    expect(uploadVideo).not.toHaveBeenCalled();
+    expect(sentJobs).toEqual([]);
   });
 
   it("snapshots the channel's answer onto the publish row when the request carries none", async () => {
@@ -176,9 +187,14 @@ describe('publishToAllAction and a YouTube channel nobody has declared', () => {
       madeForKids: true,
       categoryId: '1',
     });
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ madeForKids: true, categoryId: '1' }),
-    );
+    expect(sentJobs).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          madeForKids: true,
+          categoryId: '1',
+        }),
+      }),
+    ]);
   });
 
   it('sends and snapshots what the request chose', async () => {
@@ -192,8 +208,13 @@ describe('publishToAllAction and a YouTube channel nobody has declared', () => {
       madeForKids: false,
       categoryId: '27',
     });
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ madeForKids: false, categoryId: '27' }),
-    );
+    expect(sentJobs).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          madeForKids: false,
+          categoryId: '27',
+        }),
+      }),
+    ]);
   });
 });

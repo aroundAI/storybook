@@ -27,6 +27,8 @@ import { publishThumbnail } from '@kit/publishing/lib/publish-thumbnail';
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database, Json } from '@kit/supabase/database';
 
+import { failStalePublishing } from './stale-publishing';
+
 const sqsClient = new SQSClient(awsClientOptions('sqs'));
 
 const PUBLISH_QUEUE_URL = queueUrlFromEnv(process.env.PUBLISH_QUEUE_URL)!;
@@ -156,6 +158,15 @@ export async function handler(): Promise<ScheduledPublishResult> {
   console.log(`[Cron] Starting scheduled publish check...`);
 
   const now = new Date();
+
+  // KB-206: an upload that stopped without an answer is failed, not left
+  // 'publishing' for good. Never stops the run.
+  try {
+    const failed = await failStalePublishing(supabase, now);
+    if (failed) console.log(`[Cron] Failed ${failed} stale publishing rows`);
+  } catch (sweepError) {
+    console.error(`[Cron] Stale publishing sweep failed:`, sweepError);
+  }
 
   // Query for due publishes - join with episodes and projects to get account_id
   const { data: duePublishes, error } = await supabase

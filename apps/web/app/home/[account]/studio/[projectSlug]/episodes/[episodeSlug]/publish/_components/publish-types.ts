@@ -72,7 +72,8 @@ export type PlatformUploadStatus = {
   connectionName: string;
   language: string;
   contentType: 'full' | 'short';
-  status: 'pending' | 'uploading' | 'success' | 'error';
+  /** queued: handed to the publish worker, which uploads it (KB-206) */
+  status: 'pending' | 'uploading' | 'queued' | 'success' | 'error';
   url?: string;
   error?: string;
   /** The token code behind `error`, for support (KB-157). */

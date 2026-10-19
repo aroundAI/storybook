@@ -9,7 +9,7 @@
       "replace": "",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-now-shorts-group.test.ts",
-      "pattern": "its own short is uploaded"
+      "pattern": "its own short is the one queued"
     }
   ]
 }

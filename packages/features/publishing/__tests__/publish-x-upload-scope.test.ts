@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetQueue, sentJobs } from './publish-queue-fixture';
+
 /**
  * FILM-1729 §4.3. An X connection made before media.write was requested
  * cannot upload video, and refresh cannot add the scope. The publish is
@@ -18,6 +20,14 @@ vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+vi.hoisted(() => {
+  process.env.PUBLISH_QUEUE_URL =
+    'https://sqs.us-east-1.amazonaws.com/000000000000/publish';
+});
+
+// KB-206: a publish made now is sent to the publish worker's queue
+vi.mock('@aws-sdk/client-sqs', () => import('./publish-queue-fixture'));
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -172,6 +182,7 @@ describe('publishing to an X connection without media.write (FILM-1729)', () => 
   beforeEach(() => {
     inserted.length = 0;
     updated.length = 0;
+    resetQueue();
     videoFacts.current = {
       bytes: 5_000_000,
       durationSeconds: 45,
@@ -232,7 +243,7 @@ describe('publishing to an X connection without media.write (FILM-1729)', () => 
     const result = await publishToAllAction(publishToX);
 
     expect(result.ok).toBe(true);
-    expect(uploadVideo).toHaveBeenCalledTimes(1);
+    expect(sentJobs).toHaveLength(1);
   });
 
   it('refuses a retry the same way, before the row is marked publishing', async () => {
@@ -251,6 +262,7 @@ describe('publishing to an X connection without media.write (FILM-1729)', () => 
 describe('publishing a video X would refuse (FILM-1729, owner 2026-10-01)', () => {
   beforeEach(() => {
     inserted.length = 0;
+    resetQueue();
     uploadVideo.mockReset();
     uploadVideo.mockResolvedValue({ tweetId: 't1', tweetUrl: '' });
     connection = {
@@ -295,7 +307,7 @@ describe('publishing a video X would refuse (FILM-1729, owner 2026-10-01)', () =
 
       expect(result.ok === false && result.error).toContain(says);
       expect(inserted).toEqual([]);
-      expect(uploadVideo).not.toHaveBeenCalled();
+      expect(sentJobs).toEqual([]);
     },
   );
 
@@ -327,6 +339,6 @@ describe('publishing a video X would refuse (FILM-1729, owner 2026-10-01)', () =
     );
 
     expect((await publishToAllAction(publishToX)).ok).toBe(true);
-    expect(uploadVideo).toHaveBeenCalledTimes(1);
+    expect(sentJobs).toHaveLength(1);
   });
 });

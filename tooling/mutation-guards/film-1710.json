@@ -182,36 +182,6 @@
       "pattern": "own writer"
     },
     {
-      "name": "Instagram U5 publish-now does not record the file's duration",
-      "kind": "unit",
-      "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "          await recordUploadedFileDuration(\n            getSupabaseServerAdminClient,\n            { id: publish.id, platform: platform.platform },\n            videoUrl,\n          );",
-      "replace": "",
-      "cwd": "packages/features/publishing",
-      "test": "__tests__/publish-actions.test.ts",
-      "pattern": "records the duration of the file it sent"
-    },
-    {
-      "name": "Instagram U6 publish-now writes as the session the trigger ignores",
-      "kind": "unit",
-      "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "            getSupabaseServerAdminClient,\n            { id: publish.id, platform: platform.platform },",
-      "replace": "            getSupabaseServerClient,\n            { id: publish.id, platform: platform.platform },",
-      "cwd": "packages/features/publishing",
-      "test": "__tests__/publish-actions.test.ts",
-      "pattern": "as the service role"
-    },
-    {
-      "name": "Instagram U7 a retried publish does not record the file's duration",
-      "kind": "unit",
-      "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "      await recordUploadedFileDuration(\n        getSupabaseServerAdminClient,\n        { id: publishId, platform: publish.platform },\n        videoUrl,\n      );",
-      "replace": "",
-      "cwd": "packages/features/publishing",
-      "test": "__tests__/uploaded-file-duration-sites.test.ts",
-      "pattern": "publish-actions.ts records it once per upload"
-    },
-    {
       "name": "Instagram U8 the publish worker does not record the file's duration",
       "kind": "unit",
       "file": "apps/web/lambda/publish-worker/index.ts",

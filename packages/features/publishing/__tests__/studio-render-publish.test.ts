@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetQueue, sentJobs } from './publish-queue-fixture';
+
 /**
  * FILM-2003: a StorybookStudio delivery reaches the platform. deliver_edit
  * makes the primary render the episode's final video and its language's
@@ -20,6 +22,14 @@ vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+vi.hoisted(() => {
+  process.env.PUBLISH_QUEUE_URL =
+    'https://sqs.us-east-1.amazonaws.com/000000000000/publish';
+});
+
+// KB-206: a publish made now is sent to the publish worker's queue
+vi.mock('@aws-sdk/client-sqs', () => import('./publish-queue-fixture'));
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -151,6 +161,7 @@ function publish(contentType: 'full' | 'short') {
 const savedEnv = { ...process.env };
 
 beforeEach(() => {
+  resetQueue();
   inserted.length = 0;
   localized = { en: PRIMARY };
   uploadVideo.mockReset();
@@ -175,9 +186,7 @@ describe('a delivered Studio render reaches the platform', () => {
     expect(await publishToAllAction(publish('full'))).toMatchObject({
       ok: true,
     });
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ videoPath: PRIMARY }),
-    );
+    expect(sentJobs).toEqual([expect.objectContaining({ videoUrl: PRIMARY })]);
   });
 
   // Why deliver_edit fills the primary's language slot: with it empty,
@@ -191,9 +200,7 @@ describe('a delivered Studio render reaches the platform', () => {
 
     await publishToAllAction(publish('full'));
 
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ videoPath: VERTICAL }),
-    );
+    expect(sentJobs).toEqual([expect.objectContaining({ videoUrl: VERTICAL })]);
   });
 
   it('a 9:16 render added as a Short is the short that is uploaded', async () => {
@@ -203,8 +210,6 @@ describe('a delivered Studio render reaches the platform', () => {
 
     await publishToAllAction(publish('short'));
 
-    expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ videoPath: VERTICAL }),
-    );
+    expect(sentJobs).toEqual([expect.objectContaining({ videoUrl: VERTICAL })]);
   });
 });

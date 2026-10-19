@@ -26,7 +26,6 @@ import {
   xUploadScopeRefusal,
 } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { PUBLISH_CADENCE_HINT } from '../lib/cadence/cadence-guard';
@@ -34,7 +33,7 @@ import {
   PUBLISH_NOW_PRECEDENCE,
   resolveEpisodeVideo,
 } from '../lib/episode-video';
-import type { DeleteJobMessage } from '../lib/job-types';
+import type { DeleteJobMessage, PublishJobMessage } from '../lib/job-types';
 import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   ownedEpisodeVideo,
@@ -55,16 +54,10 @@ import {
   tokenErrorCodeOf,
 } from '../lib/token-errors';
 import type { Platform, PublishResult } from '../lib/types';
-import { recordUploadedFileDuration } from '../lib/uploaded-file-duration';
 import {
-  type YouTubeChannelDeclaration,
   YouTubeDeclarationMissing,
   resolveYouTubeDeclaration,
 } from '../lib/youtube-declaration';
-import { FacebookProvider } from '../providers/facebook';
-import { InstagramProvider } from '../providers/instagram';
-import { TikTokProvider } from '../providers/tiktok';
-import { TwitterProvider } from '../providers/twitter';
 import { cadenceRefusal } from './cadence-guard.service';
 import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
@@ -74,7 +67,6 @@ import {
   projectOfEpisodeVia,
   refusalFor,
 } from './publish-preflight';
-import { uploadToYouTube } from './youtube-upload';
 
 // Initialize SQS client
 const sqsClient = new SQSClient({
@@ -84,34 +76,20 @@ const sqsClient = new SQSClient({
 const PUBLISH_QUEUE_URL = queueUrlFromEnv(process.env.PUBLISH_QUEUE_URL);
 
 /**
- * Replace localhost URLs with tunnel URL for external platform uploads.
- * Platforms like Instagram, Facebook, and TikTok cannot fetch from localhost.
- * Set TUNNEL_URL in .env.localprod (e.g., from ngrok or cloudflare tunnel).
+ * Hands one publish to the publish worker, the path scheduled publishes take
+ * (KB-206). Throws when the queue is not configured or refuses the message.
  */
-function getTunnelUrl(url: string): string {
-  const tunnelUrl = process.env.TUNNEL_URL;
-
-  if (!tunnelUrl) {
-    // No tunnel configured, return original URL
-    return url;
+async function sendPublishJob(message: PublishJobMessage) {
+  if (!PUBLISH_QUEUE_URL) {
+    throw new Error('System configuration error: Queue URL missing');
   }
 
-  // Replace localhost URLs with tunnel URL
-  const localhostPatterns = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://0.0.0.0:3000',
-  ];
-
-  for (const pattern of localhostPatterns) {
-    if (url.startsWith(pattern)) {
-      const newUrl = url.replace(pattern, tunnelUrl);
-      console.log(`[Tunnel] Replaced ${pattern} with ${tunnelUrl}`);
-      return newUrl;
-    }
-  }
-
-  return url;
+  await sqsClient.send(
+    new SendMessageCommand({
+      QueueUrl: PUBLISH_QUEUE_URL,
+      MessageBody: JSON.stringify(message),
+    }),
+  );
 }
 
 /**
@@ -164,6 +142,7 @@ const publishToAllHandler = enhanceAction(
           ...declared.get(index),
         };
         const platformCtx = { ...ctx, platform: platform.platform };
+        let publishId: string | undefined;
 
         try {
           // Validate token
@@ -171,7 +150,6 @@ const publishToAllHandler = enhanceAction(
           if (tokenResult.error !== undefined) {
             throw new TokenRefusal(tokenResult.error, platform.platform);
           }
-          const accessToken = tokenResult.accessToken;
 
           // Get connection details
           const connection = requireRow(
@@ -197,6 +175,12 @@ const publishToAllHandler = enhanceAction(
           const isScheduled = !!platform.scheduledAt;
           const useServerScheduling = isScheduled;
 
+          const publishMetadata = {
+            ...JSON.parse(JSON.stringify(platformSpecific)),
+            shortsGroupId: platform.shortsGroupId,
+            createdBy: _user.id,
+          };
+
           const { data: publish, error: publishError } = await client
             .from('publishes')
             .insert({
@@ -215,13 +199,9 @@ const publishToAllHandler = enhanceAction(
                 platform.thumbnailUrl,
                 episodeThumbnail,
               ),
-              status: useServerScheduling ? 'scheduled' : 'publishing',
+              status: useServerScheduling ? 'scheduled' : 'queued',
               scheduled_at: platform.scheduledAt ?? null,
-              metadata: {
-                ...JSON.parse(JSON.stringify(platformSpecific)),
-                shortsGroupId: platform.shortsGroupId,
-                createdBy: _user.id,
-              },
+              metadata: publishMetadata,
               // Language from explicit request or connection fallback
               language: publishLanguage,
               // FILM-1731: what every later attempt sends as the AI label
@@ -233,6 +213,8 @@ const publishToAllHandler = enhanceAction(
           if (publishError || !publish) {
             throw new Error('Failed to create publish record');
           }
+
+          publishId = publish.id;
 
           // For server-side scheduling, don't upload now - the cron job will handle it
           if (useServerScheduling) {
@@ -254,7 +236,7 @@ const publishToAllHandler = enhanceAction(
 
           logger.info(
             { ...platformCtx, publishId: publish.id },
-            'Created publish record, starting upload',
+            'Created publish record, queueing it',
           );
 
           // Determine which video URL to use based on contentType from client
@@ -296,58 +278,30 @@ const publishToAllHandler = enhanceAction(
             .update({ content_type: actualContentType })
             .eq('id', publish.id);
 
-          // Apply tunnel URL for external platforms (Instagram, Facebook, TikTok)
-          // YouTube uses direct byte upload so doesn't need tunneling
-          const needsTunnel = ['instagram', 'facebook', 'tiktok'].includes(
-            platform.platform,
-          );
-          const finalVideoUrl = needsTunnel ? getTunnelUrl(videoUrl) : videoUrl;
-
-          const thumbnailUrl = publishThumbnail(
-            actualContentType,
-            platform.thumbnailUrl,
-            episodeThumbnail,
-          );
-
-          // Upload to platform (immediately or with native scheduling)
-          const uploadResult = await uploadToPlatform(
-            platform.platform,
-            accessToken,
-            connection.platform_account_id ?? '',
-            {
-              videoUrl: finalVideoUrl,
-              title: platform.title,
-              description: platform.description,
-              tags: platform.tags,
-              thumbnailUrl,
-              scheduledAt: platform.scheduledAt
-                ? new Date(platform.scheduledAt)
-                : undefined,
-              isShort: isShortsPreferred,
-              platformSpecific,
-              aiGenerated,
-            },
-            null,
-          );
-
-          // Update publish record with success
-          await client
-            .from('publishes')
-            .update({
-              status: 'published',
-              platform_content_id: uploadResult.contentId,
-              platform_url: uploadResult.url,
-              published_at: new Date().toISOString(),
-            })
-            .eq('id', publish.id);
-
-          // FILM-1710: the length of the file just sent, for a platform that
-          // never reports one back
-          await recordUploadedFileDuration(
-            getSupabaseServerAdminClient,
-            { id: publish.id, platform: platform.platform },
+          // KB-206: the upload runs in the publish worker, not in this
+          // request. Instagram and Facebook take longer to process a video
+          // than a web request lives, and a request that ended mid-upload
+          // left the row 'publishing' for good.
+          await sendPublishJob({
+            type: 'publish',
+            publishId: publish.id,
+            userId: _user.id,
+            platform: platform.platform,
+            platformConnectionId: platform.connectionId,
+            episodeId,
             videoUrl,
-          );
+            title: platform.title,
+            description: platform.description ?? '',
+            tags: platform.tags ?? [],
+            thumbnailUrl:
+              publishThumbnail(
+                actualContentType,
+                platform.thumbnailUrl,
+                episodeThumbnail,
+              ) ?? undefined,
+            metadata: publishMetadata,
+            aiGenerated,
+          });
 
           // Auto-generate and set public_slug on episode if not already set
           // This enables the episode to appear on public share pages
@@ -371,15 +325,13 @@ const publishToAllHandler = enhanceAction(
           }
 
           logger.info(
-            { ...platformCtx, publishId: publish.id, url: uploadResult.url },
-            'Publish completed successfully',
+            { ...platformCtx, publishId: publish.id },
+            'Publish queued for the publish worker',
           );
 
           return {
             platform: platform.platform,
-            status: 'completed' as const,
-            platformContentId: uploadResult.contentId,
-            platformUrl: uploadResult.url,
+            status: 'queued' as const,
             publishId: publish.id,
           };
         } catch (error) {
@@ -394,21 +346,22 @@ const publishToAllHandler = enhanceAction(
 
           // Try to update publish record with failure
           try {
-            await client
-              .from('publishes')
-              .update({
-                status: 'failed',
-                metadata: JSON.parse(
-                  JSON.stringify({
-                    ...platformSpecific,
-                    error: errorMessage,
-                    errorCode,
-                  }),
-                ),
-              })
-              .eq('episode_id', episodeId)
-              .eq('platform_connection_id', platform.connectionId)
-              .eq('status', 'publishing');
+            if (publishId) {
+              await client
+                .from('publishes')
+                .update({
+                  status: 'failed',
+                  metadata: JSON.parse(
+                    JSON.stringify({
+                      ...platformSpecific,
+                      error: errorMessage,
+                      errorCode,
+                    }),
+                  ),
+                })
+                .eq('id', publishId)
+                .eq('status', 'queued');
+            }
           } catch {
             // Ignore update errors
           }
@@ -597,7 +550,6 @@ const retryPublish = enhanceAction(
     if (tokenResult.error !== undefined) {
       throw new TokenRefusal(tokenResult.error, publish.platform);
     }
-    const accessToken = tokenResult.accessToken;
 
     // Get connection
     const { data: connection } = await client
@@ -646,11 +598,14 @@ const retryPublish = enhanceAction(
       }
     }
 
-    // Update status to publishing. A retry RLS refuses changes no row: it
-    // stops here, before the upload, rather than publishing anyway (KB-105).
+    // Queued for the publish worker (KB-206). A retry RLS refuses changes
+    // no row: it stops here, before anything is sent (KB-105).
     const { data: marked, error: markError } = await client
       .from('publishes')
-      .update({ status: 'publishing' })
+      .update({
+        status: 'queued',
+        metadata: JSON.parse(JSON.stringify(platformSpecific)),
+      })
       .eq('id', publishId)
       .select('id');
 
@@ -661,49 +616,30 @@ const retryPublish = enhanceAction(
     requireAffectedRows(marked, "You can't retry this publish.");
 
     try {
-      const uploadResult = await uploadToPlatform(
-        publish.platform as Platform,
-        accessToken,
-        connection.platform_account_id ?? '',
-        {
-          videoUrl,
-          title: publish.title ?? '',
-          description: publish.description ?? '',
-          tags: publish.tags ?? [],
-          thumbnailUrl: publishThumbnail(
+      await sendPublishJob({
+        type: 'publish',
+        publishId,
+        userId: _user.id,
+        platform: publish.platform as Platform,
+        platformConnectionId: publish.platform_connection_id,
+        episodeId: publish.episode_id,
+        videoUrl,
+        title: publish.title ?? '',
+        description: publish.description ?? '',
+        tags: publish.tags ?? [],
+        thumbnailUrl:
+          publishThumbnail(
             publish.content_type,
             ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),
             ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
-          ),
-          platformSpecific,
-          aiGenerated: publish.ai_generated,
-        },
-        connection,
-      );
-
-      await client
-        .from('publishes')
-        .update({
-          status: 'published',
-          metadata: JSON.parse(JSON.stringify(platformSpecific)),
-          platform_content_id: uploadResult.contentId,
-          platform_url: uploadResult.url,
-          published_at: new Date().toISOString(),
-        })
-        .eq('id', publishId);
-
-      // FILM-1710
-      await recordUploadedFileDuration(
-        getSupabaseServerAdminClient,
-        { id: publishId, platform: publish.platform },
-        videoUrl,
-      );
+          ) ?? undefined,
+        metadata: platformSpecific,
+        aiGenerated: publish.ai_generated,
+      });
 
       return {
         platform: publish.platform as Platform,
-        status: 'completed' as const,
-        platformContentId: uploadResult.contentId,
-        platformUrl: uploadResult.url,
+        status: 'queued' as const,
         publishId,
       };
     } catch (error) {
@@ -757,150 +693,6 @@ function mapDbStatus(
     default:
       return 'pending';
   }
-}
-
-/**
- * Upload video to a specific platform
- */
-async function uploadToPlatform(
-  platform: Platform,
-  accessToken: string,
-  accountId: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-    tags: string[];
-    thumbnailUrl?: string | null;
-    scheduledAt?: Date;
-    isShort?: boolean;
-    platformSpecific: Record<string, unknown>;
-    /** The publish's AI declaration, sent where the platform has a field (FILM-1731) */
-    aiGenerated: boolean;
-  },
-  channel: YouTubeChannelDeclaration | null,
-): Promise<{ contentId: string; url: string }> {
-  switch (platform) {
-    case 'youtube':
-      // Always public: scheduling is handled server-side by the cron job.
-      return uploadToYouTube(
-        accessToken,
-        { ...options, privacy: 'public' },
-        channel,
-      );
-    case 'tiktok':
-      return uploadToTikTok(accessToken, options);
-    case 'instagram':
-      return uploadToInstagram(accessToken, accountId, options);
-    case 'facebook':
-      return uploadToFacebook(accessToken, accountId, options);
-    case 'twitter':
-      return uploadToTwitter(accessToken, options);
-    default:
-      throw new Error(`Unsupported platform: ${platform}`);
-  }
-}
-
-async function uploadToTikTok(
-  accessToken: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-    platformSpecific: Record<string, unknown>;
-    aiGenerated: boolean;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new TikTokProvider(accessToken);
-  const result = await provider.uploadVideo({
-    videoPath: options.videoUrl,
-    caption: options.title,
-    privacy: 'PUBLIC',
-    disableDuet: (options.platformSpecific.disableDuet as boolean) ?? false,
-    disableStitch: (options.platformSpecific.disableStitch as boolean) ?? false,
-    disableComment:
-      (options.platformSpecific.disableComment as boolean) ?? false,
-    isAigc: options.aiGenerated,
-  });
-
-  return { contentId: result.publishId, url: result.videoUrl ?? '' };
-}
-
-async function uploadToInstagram(
-  accessToken: string,
-  accountId: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-    platformSpecific: Record<string, unknown>;
-    aiGenerated: boolean;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new InstagramProvider(accessToken, accountId);
-  const result = await provider.uploadReel({
-    videoUrl: options.videoUrl,
-    caption: `${options.title}\n\n${options.description}`,
-    shareToFeed: (options.platformSpecific.shareToFeed as boolean) ?? true,
-    locationId: options.platformSpecific.locationId as string | undefined,
-    aiGenerated: options.aiGenerated,
-  });
-
-  return { contentId: result.mediaId, url: result.permalink ?? '' };
-}
-
-async function uploadToFacebook(
-  accessToken: string,
-  pageId: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-    scheduledAt?: Date;
-    platformSpecific: Record<string, unknown>;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new FacebookProvider(accessToken, pageId);
-  const result = await provider.uploadVideo({
-    videoPath: options.videoUrl,
-    title: options.title,
-    description: options.description,
-    isReel: (options.platformSpecific.isReel as boolean) ?? false,
-    published: !options.scheduledAt,
-    scheduledPublishTime: options.scheduledAt,
-  });
-
-  // Fetch the video URL from Facebook after upload
-  let videoUrl = '';
-  try {
-    const status = await provider.getVideoStatus(result.videoId);
-    videoUrl =
-      status.videoUrl ?? `https://www.facebook.com/watch/?v=${result.videoId}`;
-  } catch {
-    // Fallback to constructed URL if status fetch fails
-    videoUrl = `https://www.facebook.com/watch/?v=${result.videoId}`;
-  }
-
-  return { contentId: result.videoId, url: videoUrl };
-}
-
-async function uploadToTwitter(
-  accessToken: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-    aiGenerated: boolean;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new TwitterProvider(accessToken);
-  const result = await provider.uploadVideo({
-    videoPath: options.videoUrl,
-    text: options.title,
-    madeWithAi: options.aiGenerated,
-  });
-
-  return { contentId: result.tweetId, url: result.tweetUrl ?? '' };
 }
 
 /** A draft the cadence held (FILM-719): it did not fit before `before` */
@@ -987,6 +779,7 @@ export const getEpisodePublishesAction = enhanceAction(
         status: p.status as
           | 'draft'
           | 'scheduled'
+          | 'queued'
           | 'publishing'
           | 'published'
           | 'failed',

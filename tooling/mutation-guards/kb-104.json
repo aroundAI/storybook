@@ -15,8 +15,8 @@
       "name": "A2 a retried publish sends its stored thumbnail unchecked",
       "kind": "unit",
       "file": "packages/features/publishing/src/server/publish-actions.ts",
-      "find": "            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          ),\n          platformSpecific,",
-      "replace": "            publish.thumbnail_url,\n            episode.thumbnail_url,\n          ),\n          platformSpecific,",
+      "find": "            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id),\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          ) ?? undefined,\n        metadata: platformSpecific,",
+      "replace": "            publish.thumbnail_url,\n            episode.thumbnail_url,\n          ) ?? undefined,\n        metadata: platformSpecific,",
       "cwd": "packages/features/publishing",
       "test": "__tests__/publish-thumbnail-ownership.test.ts",
       "pattern": "publish-actions.ts uses ownedEpisodeThumbnail"

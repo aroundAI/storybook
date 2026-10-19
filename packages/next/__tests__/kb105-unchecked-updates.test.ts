@@ -51,7 +51,7 @@ const KNOWN: Record<string, [number, string]> = {
     [3, ADMIN],
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | external_api_keys | update':
     [1, LAST_USED],
-  'apps/web/lambda/publish-worker/index.ts | publishes | update': [1, ADMIN],
+  'apps/web/lambda/publish-worker/index.ts | publishes | update': [2, ADMIN],
   'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [2, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
@@ -124,7 +124,7 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/publishing/src/server/publish-actions.ts | episodes | update':
     [1, BOOKKEEPING],
   'packages/features/publishing/src/server/publish-actions.ts | publishes | update':
-    [6, `${FAILURE_MARK} + ${JUST_INSERTED} + ${RECORDS_RESULT}`],
+    [4, `${FAILURE_MARK} + ${JUST_INSERTED} + ${RECORDS_RESULT}`],
   // FILM-1904: withMcpAuth stamps the connection after a verified call; the
   // revoke in personal-access-tokens.ts selects its rows and is not listed.
   'packages/features/studio-mcp/src/server/route-handler.ts | mcp_connections | update':

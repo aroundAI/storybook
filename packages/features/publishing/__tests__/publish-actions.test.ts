@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Platform, PublishResult } from '../src/lib/types';
+import { queue, resetQueue, sentJobs } from './publish-queue-fixture';
 
 // Mock server-only
 // The channels' posting rules (KB-204): cadence-guard.test.ts's subject;
@@ -10,6 +11,14 @@ vi.mock('../src/server/cadence-guard.service', () => ({
   cadenceRefusal: async () => cadence.refusal,
 }));
 vi.mock('server-only', () => ({}));
+
+vi.hoisted(() => {
+  process.env.PUBLISH_QUEUE_URL =
+    'https://sqs.us-east-1.amazonaws.com/000000000000/publish';
+});
+
+// KB-206: a publish made now is sent to the publish worker's queue
+vi.mock('@aws-sdk/client-sqs', () => import('./publish-queue-fixture'));
 
 // Mock next/cache
 // Every channel is the project's here; that check is
@@ -354,9 +363,10 @@ describe('Publish Actions', () => {
       providers.recordUploadedFileDuration
         .mockReset()
         .mockResolvedValue({ recorded: true, seconds: 45 });
+      resetQueue();
     });
 
-    it('records the duration of the file it sent to Instagram, as the service role (FILM-1710)', async () => {
+    it('queues an Instagram publish for the worker instead of uploading it in the request (KB-206)', async () => {
       const { publishToAllAction } = await import(
         '../src/server/publish-actions'
       );
@@ -366,18 +376,26 @@ describe('Publish Actions', () => {
         platforms: [input('instagram')],
       });
 
-      expect(result).toMatchObject({
+      expect(result).toEqual({
         ok: true,
-        data: [{ platform: 'instagram', status: 'completed' }],
+        data: [
+          { platform: 'instagram', status: 'queued', publishId: 'publish-1' },
+        ],
       });
-      expect(providers.recordUploadedFileDuration).toHaveBeenCalledTimes(1);
-
-      const [serviceClient, publish, videoUrl] =
-        providers.recordUploadedFileDuration.mock.calls[0]!;
-
-      expect(publish).toEqual({ id: 'publish-1', platform: 'instagram' });
-      expect(videoUrl).toBe(VIDEO);
-      expect(serviceClient()).toBe(adminClient);
+      expect(sentJobs).toEqual([
+        expect.objectContaining({
+          type: 'publish',
+          publishId: 'publish-1',
+          userId: 'test-user-id',
+          platform: 'instagram',
+          platformConnectionId: CONNECTIONS.instagram,
+          episodeId: EPISODE,
+          videoUrl: VIDEO,
+          title: 'instagram title',
+        }),
+      ]);
+      // FILM-1710: the worker measures the file when it uploads it
+      expect(providers.recordUploadedFileDuration).not.toHaveBeenCalled();
     });
 
     it('measures nothing for a scheduled publish: the worker does, when it uploads', async () => {
@@ -391,27 +409,6 @@ describe('Publish Actions', () => {
       });
 
       expect(providers.recordUploadedFileDuration).not.toHaveBeenCalled();
-    });
-
-    it('a failed measurement does not fail the publish', async () => {
-      const { publishToAllAction } = await import(
-        '../src/server/publish-actions'
-      );
-
-      providers.recordUploadedFileDuration.mockResolvedValue({
-        recorded: false,
-        reason: 'duration_unknown',
-      });
-
-      expect(
-        await publishToAllAction({
-          episodeId: EPISODE,
-          platforms: [input('instagram')],
-        }),
-      ).toMatchObject({
-        ok: true,
-        data: [{ platform: 'instagram', status: 'completed' }],
-      });
     });
 
     it('posts nothing past the channel’s posting rules, and says why (KB-204)', async () => {
@@ -440,13 +437,15 @@ describe('Publish Actions', () => {
           ignoreCadence: true,
         });
         expect(chosen.ok).toBe(true);
-        expect(providers.twitterUpload).toHaveBeenCalledTimes(1);
+        // KB-206: posted through the publish worker, not in the request
+        expect(sentJobs).toHaveLength(1);
+        expect(providers.twitterUpload).not.toHaveBeenCalled();
       } finally {
         cadence.refusal = null;
       }
     });
 
-    it('publishes an immediate request now and reports where it went', async () => {
+    it('queues an immediate request and calls no platform in the request (KB-206)', async () => {
       const { publishToAllAction } = await import(
         '../src/server/publish-actions'
       );
@@ -459,25 +458,17 @@ describe('Publish Actions', () => {
       expect(result).toEqual({
         ok: true,
         data: [
-          {
-            platform: 'twitter',
-            status: 'completed',
-            platformContentId: 'tw-1',
-            platformUrl: 'https://x.com/i/web/status/tw-1',
-            publishId: 'publish-1',
-          },
+          { platform: 'twitter', status: 'queued', publishId: 'publish-1' },
         ],
       });
       expect(db.inserted[0]).toMatchObject({
-        status: 'publishing',
+        status: 'queued',
         scheduled_at: null,
       });
-      expect(db.updates).toContainEqual(
-        expect.objectContaining({
-          status: 'published',
-          platform_content_id: 'tw-1',
-          platform_url: 'https://x.com/i/web/status/tw-1',
-        }),
+      expect(sentJobs.map((job) => job.publishId)).toEqual(['publish-1']);
+      expect(providers.twitterUpload).not.toHaveBeenCalled();
+      expect(db.updates).not.toContainEqual(
+        expect.objectContaining({ status: 'published' }),
       );
     });
 
@@ -503,14 +494,16 @@ describe('Publish Actions', () => {
         scheduled_at: at,
       });
       expect(providers.twitterUpload).not.toHaveBeenCalled();
+      expect(sentJobs).toEqual([]);
     });
 
-    it('takes each platform on its own: one scheduled, one live, one failing', async () => {
+    it('takes each platform on its own: one scheduled, one queued, one the queue refuses', async () => {
       const { publishToAllAction } = await import(
         '../src/server/publish-actions'
       );
 
-      providers.tiktokUpload.mockRejectedValue(new Error('TikTok is down'));
+      queue.refuse = (job) =>
+        job.platform === 'tiktok' ? new Error('The queue is down') : undefined;
 
       const result = await publishToAllAction({
         episodeId: EPISODE,
@@ -525,30 +518,25 @@ describe('Publish Actions', () => {
         ok: true,
         data: [
           { platform: 'twitter', status: 'scheduled', publishId: 'publish-1' },
-          {
-            platform: 'instagram',
-            status: 'completed',
-            platformContentId: 'ig-reel-123',
-            platformUrl: 'https://instagram.com/reel/ig-reel-123',
-            publishId: 'publish-2',
-          },
+          { platform: 'instagram', status: 'queued', publishId: 'publish-2' },
           {
             platform: 'tiktok',
             status: 'failed',
-            error: 'TikTok is down',
+            error: 'The queue is down',
           },
         ],
       });
       expect(db.inserted.map((row) => [row.platform, row.status])).toEqual([
         ['twitter', 'scheduled'],
-        ['instagram', 'publishing'],
-        ['tiktok', 'publishing'],
+        ['instagram', 'queued'],
+        ['tiktok', 'queued'],
       ]);
-      expect(providers.twitterUpload).not.toHaveBeenCalled();
+      expect(sentJobs.map((job) => job.platform)).toEqual(['instagram']);
+      expect(providers.tiktokUpload).not.toHaveBeenCalled();
       expect(db.updates).toContainEqual(
         expect.objectContaining({
           status: 'failed',
-          metadata: expect.objectContaining({ error: 'TikTok is down' }),
+          metadata: expect.objectContaining({ error: 'The queue is down' }),
         }),
       );
     });

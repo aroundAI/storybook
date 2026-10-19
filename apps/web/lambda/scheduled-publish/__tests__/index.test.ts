@@ -29,6 +29,7 @@ const gateOutcomes = new Map<string, string>();
 function from(table: string) {
   const filters: Array<[string, unknown]> = [];
   let update: Record<string, unknown> | null = null;
+  let window: [number, number] | null = null;
 
   const matching = () =>
     [...rows.values()].filter((row) =>
@@ -47,7 +48,11 @@ function from(table: string) {
       return { data: hit.map((row) => ({ id: row.id })), error: null };
     }
 
-    return { data: matching().map((row) => ({ ...row })), error: null };
+    const found = matching().map((row) => ({ ...row }));
+    return {
+      data: window ? found.slice(window[0], window[1] + 1) : found,
+      error: null,
+    };
   };
 
   const q = {
@@ -63,6 +68,10 @@ function from(table: string) {
     lte: () => q,
     order: () => q,
     limit: () => q,
+    range: (from: number, to: number) => {
+      window = [from, to];
+      return q;
+    },
     overrideTypes: () => q,
     maybeSingle: async () => ({ data: { project_id: 'p1' }, error: null }),
     then: (resolve: (value: unknown) => unknown) => run().then(resolve),
@@ -144,6 +153,35 @@ beforeEach(() => {
 });
 
 describe('the scheduled job', () => {
+  // KB-206: a publish-now upload cut off mid-request stayed 'publishing'
+  it('fails a publish left publishing for over 30 minutes', async () => {
+    rows.set('stuck', {
+      id: 'stuck',
+      status: 'publishing',
+      created_at: new Date(Date.now() - 45 * 60_000).toISOString(),
+      metadata: null,
+    });
+    rows.set('running', {
+      id: 'running',
+      status: 'publishing',
+      created_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+      metadata: null,
+    });
+
+    await handler();
+
+    expect(rows.get('stuck')).toMatchObject({
+      status: 'failed',
+      metadata: {
+        error: expect.stringMatching(
+          /^Timed out while publishing; check the platform before retrying/,
+        ),
+      },
+    });
+    expect(rows.get('running')!.status).toBe('publishing');
+    expect(sent).toEqual([]);
+  });
+
   it('sends a post once when two runs overlap', async () => {
     rows.set('p1', due('p1'));
 
