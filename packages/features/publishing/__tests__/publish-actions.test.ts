@@ -3,6 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Platform, PublishResult } from '../src/lib/types';
 
 // Mock server-only
+// The channels' posting rules (KB-204): cadence-guard.test.ts's subject;
+// here, only that a refusal stops the write
+const cadence = vi.hoisted(() => ({ refusal: null as string | null }));
+vi.mock('../src/server/cadence-guard.service', () => ({
+  cadenceRefusal: async () => cadence.refusal,
+}));
 vi.mock('server-only', () => ({}));
 
 // Mock next/cache
@@ -406,6 +412,38 @@ describe('Publish Actions', () => {
         ok: true,
         data: [{ platform: 'instagram', status: 'completed' }],
       });
+    });
+
+    it('posts nothing past the channel’s posting rules, and says why (KB-204)', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+      cadence.refusal = 'Story X already has 1 Short on 2026-10-19.';
+
+      try {
+        const result = await publishToAllAction({
+          episodeId: EPISODE,
+          platforms: [input('twitter')],
+        });
+
+        expect(result).toEqual({
+          ok: false,
+          error: 'Story X already has 1 Short on 2026-10-19.',
+        });
+        expect(db.inserted).toEqual([]);
+        expect(providers.twitterUpload).not.toHaveBeenCalled();
+
+        // Only the explicit choice posts past them
+        const chosen = await publishToAllAction({
+          episodeId: EPISODE,
+          platforms: [input('twitter')],
+          ignoreCadence: true,
+        });
+        expect(chosen.ok).toBe(true);
+        expect(providers.twitterUpload).toHaveBeenCalledTimes(1);
+      } finally {
+        cadence.refusal = null;
+      }
     });
 
     it('publishes an immediate request now and reports where it went', async () => {

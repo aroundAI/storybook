@@ -74,12 +74,17 @@ export function useCadenceRelease(props: {
   const timezone = useMemo(browserTimeZone, []);
   const [editing, setEditing] = useState<string | null>(null);
 
-  const release = (configs: ReleaseConfig[], notBefore: Date) => ({
+  const release = (
+    configs: ReleaseConfig[],
+    notBefore: Date,
+    longGoesAt?: Date,
+  ) => ({
     episodeId: props.episodeId,
     targets: targetsOf(configs),
     notBefore: notBefore.toISOString(),
     timezone,
     aiGenerated: props.aiGenerated,
+    ...(longGoesAt ? { longGoesAt: longGoesAt.toISOString() } : {}),
   });
 
   /** A preview of a release's configs: cadence or breaking */
@@ -105,14 +110,19 @@ export function useCadenceRelease(props: {
     }
   };
 
+  /** KB-204: `longGoesAt`, the long video goes then (Publish video now) */
   const preview = (
     configs: ReleaseConfig[],
     notBefore: Date,
+    longGoesAt?: Date,
   ): Promise<ActionResult<ReleasePreview>> =>
     previewWith(configs, () =>
-      unwrap(previewCadenceReleaseAction(release(configs, notBefore))),
+      unwrap(
+        previewCadenceReleaseAction(release(configs, notBefore, longGoesAt)),
+      ),
     );
 
+  /** The scheduled posts, or null when it was refused (the toast says why) */
   const schedule = async (configs: ReleaseConfig[], notBefore: Date) => {
     try {
       const result = await unwrap(
@@ -127,8 +137,10 @@ export function useCadenceRelease(props: {
         );
       }
       props.onChanged();
+      return result.scheduled;
     } catch (error) {
       toast.error(refusalMessage(error, 'Could not schedule the release.'));
+      return null;
     }
   };
 
@@ -220,6 +232,7 @@ export function useCadenceRelease(props: {
   ) : null;
 
   return {
+    timezone,
     preview,
     schedule,
     previewBreaking,

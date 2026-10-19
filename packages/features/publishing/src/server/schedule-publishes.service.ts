@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { ActionRefusal } from '@kit/next/action-result';
 import type { Database } from '@kit/supabase/database';
 
+import { MCP_CADENCE_HINT } from '../lib/cadence/cadence-guard';
 import {
   SCHEDULED_LAMBDA_PRECEDENCE,
   resolveEpisodeVideo,
@@ -13,6 +14,7 @@ import { PLATFORM_NAMES, isOfferedPlatform } from '../lib/platforms';
 import { publishThumbnail } from '../lib/publish-thumbnail';
 import { canTakeDown, projectRoleOf } from '../lib/takedown';
 import { TokenRefusal } from '../lib/token-errors';
+import { cadenceRefusal } from './cadence-guard.service';
 import { getAccessToken } from './connection-tokens';
 import { type PublishPlatformInput, preparePublish } from './publish-preflight';
 
@@ -79,6 +81,10 @@ export async function schedulePublishes(
     targets: ScheduleTarget[];
     aiGenerated: boolean;
     now?: Date;
+    /** KB-204: post past the channels' posting rules, on purpose */
+    ignoreCadence?: boolean;
+    /** The zone a channel with no posting rules of its own counts days in */
+    timezone?: string;
   },
 ): Promise<Result<ScheduledPublish[]>> {
   try {
@@ -95,17 +101,29 @@ export async function schedulePublishes(
 async function schedule(
   client: Client,
   userId: string,
-  input: {
-    episodeId: string;
-    targets: ScheduleTarget[];
-    aiGenerated: boolean;
-    now?: Date;
-  },
+  input: Parameters<typeof schedulePublishes>[2],
 ) {
-  return insertScheduledRows(
-    client,
-    await prepareScheduledRows(client, userId, { ...input, via: 'mcp' }),
-  );
+  const rows = await prepareScheduledRows(client, userId, {
+    ...input,
+    via: 'mcp',
+  });
+
+  // KB-204: a time the caller chose keeps the channels' posting rules
+  if (!input.ignoreCadence) {
+    const refusal = await cadenceRefusal(
+      client,
+      input.targets.map((target) => ({
+        connectionId: target.connectionId,
+        contentType: target.contentType,
+        at: new Date(target.scheduledAt),
+      })),
+      { timezone: input.timezone, now: input.now, hint: MCP_CADENCE_HINT },
+    );
+
+    if (refusal) throw new ActionRefusal(refusal);
+  }
+
+  return insertScheduledRows(client, rows);
 }
 
 /**

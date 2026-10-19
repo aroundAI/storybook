@@ -63,6 +63,10 @@ const state = vi.hoisted(() => ({
   tokensRequested: [] as string[],
 }));
 
+// The channels' posting rules (KB-204): cadence-guard.test.ts's subject
+vi.mock('../src/server/cadence-guard.service', () => ({
+  cadenceRefusal: async () => null,
+}));
 vi.mock('server-only', () => ({}));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@kit/shared/logger', () => ({

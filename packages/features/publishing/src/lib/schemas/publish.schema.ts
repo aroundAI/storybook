@@ -77,6 +77,10 @@ export const PublishToAllSchema = z.object({
   // FILM-1731: the creator's AI declaration, one for the whole publish.
   // Absent is "not declared": off, as the publish screen's option starts.
   aiGenerated: AiLabelDeclarationSchema.shape.aiGenerated.optional(),
+  // KB-204: the zone a channel with no posting rules of its own counts its
+  // days in, and the explicit choice to post past those rules
+  timezone: z.string().min(1).max(64).optional(),
+  ignoreCadence: z.boolean().optional(),
 });
 
 /**

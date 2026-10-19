@@ -113,7 +113,7 @@ interface ScheduleReleasePanelProps {
   };
   /** Callback when user clicks "Schedule All" */
   onSchedule: (config: ScheduleConfig) => void;
-  /** Callback when user clicks "Publish Now" */
+  /** "Publish video now": the long video now, its Shorts queued (KB-204) */
   onPublishNow: () => void;
   /** Callback to trigger translations for languages */
   onTranslate?: (languages: string[]) => void;
@@ -999,7 +999,7 @@ export function ScheduleReleasePanel({
                   Publishing...
                 </>
               ) : (
-                'Publish Now'
+                'Publish video now'
               )}
             </Button>
           </div>

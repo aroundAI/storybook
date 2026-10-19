@@ -9,6 +9,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Every channel is the project's here; that check is
 // publish-queue-authorization.test.ts's subject
+// The channels' posting rules (KB-204): cadence-guard.test.ts's subject
+vi.mock('../src/server/cadence-guard.service', () => ({
+  cadenceRefusal: async () => null,
+}));
 vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));

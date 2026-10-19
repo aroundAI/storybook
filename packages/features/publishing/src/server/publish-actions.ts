@@ -29,6 +29,7 @@ import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { PUBLISH_CADENCE_HINT } from '../lib/cadence/cadence-guard';
 import {
   PUBLISH_NOW_PRECEDENCE,
   resolveEpisodeVideo,
@@ -64,6 +65,7 @@ import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
+import { cadenceRefusal } from './cadence-guard.service';
 import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
 import { assertConnectionOfProject } from './project-channels';
@@ -116,7 +118,10 @@ function getTunnelUrl(url: string): string {
  * Publish video to all selected platforms
  */
 const publishToAllHandler = enhanceAction(
-  async ({ episodeId, platforms, aiGenerated = false }, _user) => {
+  async (
+    { episodeId, platforms, aiGenerated = false, timezone, ignoreCadence },
+    _user,
+  ) => {
     const logger = await getLogger();
     const ctx = {
       name: 'publishing.publishToAll',
@@ -134,6 +139,22 @@ const publishToAllHandler = enhanceAction(
       episodeId,
       platforms,
     );
+
+    // KB-204: a post at a chosen time keeps its channel's posting rules
+    if (!ignoreCadence) {
+      const now = new Date();
+      const refusal = await cadenceRefusal(
+        client,
+        platforms.map((platform) => ({
+          connectionId: platform.connectionId,
+          contentType: platform.contentType === 'short' ? 'short' : 'full',
+          at: platform.scheduledAt ? new Date(platform.scheduledAt) : now,
+        })),
+        { timezone, now, hint: PUBLISH_CADENCE_HINT },
+      );
+
+      if (refusal) throw new ActionRefusal(refusal);
+    }
 
     // Publish to all platforms in parallel
     const results = await Promise.allSettled(
@@ -904,6 +925,7 @@ export const getEpisodePublishesAction = enhanceAction(
         `
         id,
         platform,
+        platform_connection_id,
         content_type,
         status,
         title,
@@ -956,6 +978,11 @@ export const getEpisodePublishesAction = enhanceAction(
       return {
         id: p.id,
         platform: p.platform as Platform,
+        connectionId: p.platform_connection_id,
+        // KB-204: which Shorts group a Short posts, so it is not posted twice
+        shortsGroupId:
+          (p.metadata as { shortsGroupId?: string | null } | null)
+            ?.shortsGroupId ?? null,
         contentType: p.content_type as 'full' | 'short' | 'teaser' | 'trailer',
         status: p.status as
           | 'draft'
