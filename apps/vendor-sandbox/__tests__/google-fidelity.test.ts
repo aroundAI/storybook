@@ -208,7 +208,11 @@ describe('what the Google origin serves is what the reference documents', () => 
         query({
           startDate: start,
           endDate: end,
-          metrics: 'views,estimatedMinutesWatched',
+          // The demographics report serves viewerPercentage alone (KB-211).
+          metrics:
+            dimensions === 'ageGroup'
+              ? 'viewerPercentage'
+              : 'views,estimatedMinutesWatched',
           ...(dimensions ? { dimensions } : {}),
         }),
       );
@@ -412,6 +416,59 @@ describe('§3: YouTube behaviour the sandbox must reproduce', () => {
         )
       ).status,
     ).toBe(400);
+  });
+
+  // KB-211: production refused the per-video geography query, which asked
+  // for viewerPercentage beside country; the sandbox answered it.
+  it('each report serves only its own metrics: "The query is not supported."', async () => {
+    const window = { startDate: pacificDate(T0), endDate: pacificDate(now) };
+    const status = async (params: Record<string, string>) =>
+      (await call(query({ ...window, ...params }))).status;
+    const refusal = await call(
+      query({
+        ...window,
+        metrics: 'views,estimatedMinutesWatched,viewerPercentage',
+        dimensions: 'country',
+        sort: '-views',
+        maxResults: '25',
+      }),
+    );
+
+    expect(refusal.status).toBe(400);
+    expect(JSON.stringify(refusal.body)).toContain(
+      'The query is not supported',
+    );
+    expect(
+      await status({
+        metrics: 'views,estimatedMinutesWatched',
+        dimensions: 'country',
+        sort: '-views',
+      }),
+    ).toBe(200);
+    expect(
+      await status({ metrics: 'viewerPercentage', dimensions: 'ageGroup' }),
+    ).toBe(200);
+    expect(await status({ metrics: 'views', dimensions: 'ageGroup' })).toBe(
+      400,
+    );
+    expect(
+      await status({
+        metrics: 'views,averageViewPercentage',
+        dimensions: 'day,insightTrafficSourceType',
+      }),
+    ).toBe(400);
+    expect(
+      await status({ metrics: 'subscribersGained', dimensions: 'deviceType' }),
+    ).toBe(400);
+    expect(await status({ metrics: 'views', dimensions: 'city' })).toBe(400);
+    expect(
+      await status({
+        metrics: 'views',
+        dimensions: 'city',
+        sort: '-views',
+        maxResults: '50',
+      }),
+    ).toBe(200);
   });
 
   it('no data is no rows at all, not zeros', async () => {

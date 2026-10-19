@@ -101,6 +101,48 @@ interface RevenueRead {
   daily: YouTubeDailyRevenue[];
 }
 
+type ReportsQueryParams = {
+  ids: string;
+  startDate: string;
+  endDate: string;
+  metrics: string;
+  dimensions?: string;
+  filters?: string;
+  sort?: string;
+  maxResults?: number;
+};
+
+/**
+ * A query's shape, for a log line or an error: never the token, which travels
+ * in the client, not in these params.
+ */
+export function describeQuery(name: string, params: ReportsQueryParams) {
+  const { ids: _ids, ...shape } = params;
+  return { query: name, ...shape };
+}
+
+/**
+ * A reports.query failure that says which query failed and how it was asked
+ * (KB-211): "The query is not supported." alone named none of the ten.
+ */
+export class YouTubeAnalyticsQueryError extends Error {
+  constructor(
+    readonly query: ReturnType<typeof describeQuery>,
+    cause: unknown,
+  ) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    const shape = Object.entries(query)
+      .filter(([key, value]) => key !== 'query' && value !== undefined)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(' ');
+    super(
+      `YouTube Analytics query ${query.query} (${shape}) failed: ${reason}`,
+      { cause },
+    );
+    this.name = 'YouTubeAnalyticsQueryError';
+  }
+}
+
 function noRevenue(
   access: Exclude<YouTubeRevenueAccess, 'authorised'>,
 ): RevenueRead {
@@ -140,6 +182,44 @@ export class YouTubeAnalyticsProvider {
     });
   }
 
+  /** One reports.query, whose failure names the query (KB-211). */
+  private async runQuery(name: string, params: ReportsQueryParams) {
+    try {
+      return await this.youtubeAnalytics.reports.query(params);
+    } catch (error) {
+      throw new YouTubeAnalyticsQueryError(describeQuery(name, params), error);
+    }
+  }
+
+  /**
+   * A query whose refusal must cost only its own figures (KB-211): on any
+   * failure but a missing scope or quota it logs a warning naming the query
+   * and returns undefined — not reported — so the day's views, likes and
+   * watch time still store, and the next hourly sync asks again.
+   */
+  private async optionalQuery<T>(
+    name: string,
+    read: () => Promise<T>,
+  ): Promise<T | undefined> {
+    try {
+      return await read();
+    } catch (error) {
+      if (isQuotaError(error) || isScopeMissingError(error)) throw error;
+      const logger = await getLogger();
+      logger.warn(
+        {
+          name: 'youtube-analytics.query-refused',
+          ...(error instanceof YouTubeAnalyticsQueryError
+            ? error.query
+            : { query: name }),
+          error: error instanceof Error ? error.message : String(error),
+        },
+        `YouTube Analytics ${name} query failed; stored as not reported`,
+      );
+      return undefined;
+    }
+  }
+
   /**
    * Fetches comprehensive analytics for a video
    *
@@ -174,8 +254,12 @@ export class YouTubeAnalyticsProvider {
         this.fetchDailyMetrics(videoId, startDateStr, endDateStr),
         this.fetchRetention(videoId),
         this.fetchDemographics(videoId, startDateStr, endDateStr),
-        this.fetchDailyTrafficSources(videoId, startDateStr, endDateStr),
-        this.fetchGeography(videoId, startDateStr, endDateStr),
+        this.optionalQuery('traffic-sources', () =>
+          this.fetchDailyTrafficSources(videoId, startDateStr, endDateStr),
+        ),
+        this.optionalQuery('geography', () =>
+          this.fetchGeography(videoId, startDateStr, endDateStr),
+        ),
         this.fetchDeviceBreakdown(videoId, startDateStr, endDateStr),
         this.fetchOperatingSystemBreakdown(videoId, startDateStr, endDateStr),
         this.fetchCityGeography(videoId, startDateStr, endDateStr),
@@ -191,7 +275,9 @@ export class YouTubeAnalyticsProvider {
         dailyData,
         retention,
         demographics,
-        trafficSources: totalTrafficSources(dailyTrafficSources),
+        trafficSources: dailyTrafficSources
+          ? totalTrafficSources(dailyTrafficSources)
+          : undefined,
         dailyTrafficSources,
         geography,
         deviceBreakdown:
@@ -313,7 +399,7 @@ export class YouTubeAnalyticsProvider {
     endDate: string,
   ): Promise<YouTubeDailyMetrics[]> {
     const [response, engaged] = await Promise.all([
-      this.youtubeAnalytics.reports.query({
+      this.runQuery('daily-metrics', {
         ids: 'channel==MINE',
         startDate,
         endDate,
@@ -507,7 +593,7 @@ export class YouTubeAnalyticsProvider {
     startDate: string,
     endDate: string,
   ): Promise<YouTubeDailyTrafficSource[]> {
-    const response = await this.youtubeAnalytics.reports.query({
+    const response = await this.runQuery('traffic-sources', {
       ids: 'channel==MINE',
       startDate,
       endDate,
@@ -528,32 +614,33 @@ export class YouTubeAnalyticsProvider {
   }
 
   /**
-   * Fetches geographic breakdown by country
+   * Views and watch time by country, the top 25 by views.
+   *
+   * `viewerPercentage` is a demographics metric, served only beside
+   * `ageGroup` or `gender`: asked for beside `country` YouTube answers "The
+   * query is not supported." and, before KB-211, that failed every
+   * video's sync. A country's share is its views over all countries' views,
+   * so every country is asked for (there are fewer than 250) and the top 25
+   * kept after.
    */
   private async fetchGeography(
     videoId: string,
     startDate: string,
     endDate: string,
   ): Promise<GeographyData[]> {
-    const response = await this.youtubeAnalytics.reports.query({
+    const response = await this.runQuery('geography', {
       ids: 'channel==MINE',
       startDate,
       endDate,
-      metrics: 'views,estimatedMinutesWatched,viewerPercentage',
+      metrics: 'views,estimatedMinutesWatched',
       dimensions: 'country',
       filters: `video==${videoId}`,
       sort: '-views',
-      maxResults: 25,
     });
 
-    return (
-      (response.data.rows as [string, number, number, number][]) ?? []
-    ).map((row) => ({
-      country: row[0],
-      views: row[1] ?? 0,
-      watchTimeMinutes: row[2] ?? 0,
-      viewPercentage: row[3] ?? 0,
-    }));
+    return countryShares(
+      (response.data.rows as [string, number, number][] | undefined) ?? [],
+    ).slice(0, GEOGRAPHY_TOP_COUNTRIES);
   }
 
   /**
@@ -856,6 +943,25 @@ export class YouTubeAnalyticsProvider {
       throw error;
     }
   }
+}
+
+const GEOGRAPHY_TOP_COUNTRIES = 25;
+
+/** Each country's views, watch time and share of all countries' views, by views. */
+export function countryShares(
+  rows: ReadonlyArray<readonly [string, number, number]>,
+): GeographyData[] {
+  const total = rows.reduce((sum, [, views]) => sum + (views ?? 0), 0);
+
+  return rows
+    .map(([country, views, minutes]) => ({
+      country,
+      views: views ?? 0,
+      watchTimeMinutes: minutes ?? 0,
+      viewPercentage:
+        total > 0 ? Math.round(((views ?? 0) / total) * 10_000) / 100 : 0,
+    }))
+    .sort((a, b) => b.views - a.views);
 }
 
 /** `videos.list` accepts at most 50 comma-separated ids. */

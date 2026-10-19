@@ -16,7 +16,9 @@ import { ANALYTICS_SCOPES, SCOPE, authorize, googleError } from './errors';
  * reference documents is reproduced: the 48–72 hour processing delay (in
  * simulated time), revenue only with yt-analytics-monetary.readonly,
  * elapsedVideoTimeRatio only for one video, averageViewPercentage refused
- * beside liveOrOnDemand, and no `rows` at all when there is no data.
+ * beside liveOrOnDemand, each report's own metric list (`reportServes`:
+ * viewerPercentage only beside ageGroup or gender), and no `rows` at all
+ * when there is no data.
  */
 
 const HOUR_MS = 3_600_000;
@@ -195,6 +197,69 @@ type Dimension = keyof typeof ANALYTICS_DIMENSIONS;
  * refused as before.
  */
 const WITH_DAY = new Set<Dimension>(['insightTrafficSourceType']);
+
+/** viewerPercentage is the demographics report's only metric, and its only one. */
+const DEMOGRAPHIC = new Set<Dimension>(['ageGroup', 'gender']);
+
+/**
+ * Reports whose metric list is short (channel reports reference): any other
+ * metric beside these dimensions is "The query is not supported."
+ */
+const NARROW_METRICS: Partial<Record<Dimension, ReadonlySet<string>>> = {
+  insightTrafficSourceType: new Set([
+    'engagedViews',
+    'views',
+    'estimatedMinutesWatched',
+  ]),
+  deviceType: new Set(['engagedViews', 'views', 'estimatedMinutesWatched']),
+  operatingSystem: new Set([
+    'engagedViews',
+    'views',
+    'estimatedMinutesWatched',
+  ]),
+  city: new Set([
+    'engagedViews',
+    'views',
+    'estimatedMinutesWatched',
+    'averageViewDuration',
+    'averageViewPercentage',
+  ]),
+};
+
+/**
+ * Whether the report for this dimension serves these metrics (KB-211).
+ * YouTube refused `viewerPercentage` beside `country` in production while
+ * the sandbox answered it, so CI never saw the query that failed every sync.
+ * The city report also needs a sort by views or watch time and at most 250
+ * results.
+ */
+function reportServes(
+  dimension: Dimension | undefined,
+  metrics: readonly string[],
+  sort: string | null,
+  maxResults: string | null,
+) {
+  const demographic = dimension !== undefined && DEMOGRAPHIC.has(dimension);
+  if (metrics.includes('viewerPercentage') !== demographic) return false;
+  if (demographic && metrics.some((m) => m !== 'viewerPercentage'))
+    return false;
+
+  const allowed = dimension ? NARROW_METRICS[dimension] : undefined;
+  if (allowed && metrics.some((m) => !allowed.has(m))) return false;
+
+  if (dimension === 'city') {
+    const limit = Number(maxResults);
+    return (
+      ['views', 'estimatedMinutesWatched'].includes(
+        (sort ?? '').replace(/^-/, ''),
+      ) &&
+      Number.isInteger(limit) &&
+      limit > 0 &&
+      limit <= 250
+    );
+  }
+  return true;
+}
 
 function isDimension(name: string): name is Dimension {
   return Object.hasOwn(ANALYTICS_DIMENSIONS, name);
@@ -504,7 +569,8 @@ const reportsQuery: SocialRoute = ({
     (dimension === 'elapsedVideoTimeRatio') !== retentionAsked ||
     (dimension === 'elapsedVideoTimeRatio' && !videoFilter) ||
     (dimension === 'liveOrOnDemand' &&
-      metrics.includes('averageViewPercentage'))
+      metrics.includes('averageViewPercentage')) ||
+    !reportServes(dimension, metrics, q.get('sort'), q.get('maxResults'))
   ) {
     sendJson(res, 400, badRequest('The query is not supported.'));
     return true;
