@@ -51,7 +51,7 @@ const KNOWN: Record<string, [number, string]> = {
     [3, ADMIN],
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | external_api_keys | update':
     [1, LAST_USED],
-  'apps/web/lambda/publish-worker/index.ts | publishes | update': [2, ADMIN],
+  'apps/web/lambda/publish-worker/index.ts | publishes | update': [3, ADMIN],
   'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [2, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
