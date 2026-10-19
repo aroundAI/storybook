@@ -3,14 +3,18 @@ import 'server-only';
 import { z } from 'zod';
 
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
+import { markPublishRemoved } from '@kit/publishing/lib/publish-removal';
 import {
   cancelScheduledPublish,
   schedulePublishes,
 } from '@kit/publishing/server/schedule-publishes';
 
-import { McpToolError } from '../../../errors';
 import { type McpToolDefinition, defineTool } from '../../../registry';
-import { type EpisodeRef, requireEpisodeInAccount } from '../read/scope';
+import {
+  type EpisodeRef,
+  requireEpisodeInAccount,
+  requirePublishInAccount,
+} from '../read/scope';
 import { refused } from '../validation';
 import { releaseTools } from './release';
 import { shortsGroupTools } from './shorts';
@@ -141,7 +145,7 @@ export const cancelScheduledPublishTool = defineTool({
   name: 'cancel_scheduled_publish',
   title: 'Cancel a scheduled publish',
   description:
-    'Cancels a scheduled publish before it goes out, removing it. One that has started or gone out is refused: take a published video down on the Publish screen. Project owners and admins.',
+    'Cancels a scheduled publish before it goes out, removing it, including one of a deleted episode. One that has started or gone out is refused: take a published video down on the Publish screen. Project owners and admins.',
   inputSchema: {
     publishId: z
       .string()
@@ -153,22 +157,8 @@ export const cancelScheduledPublishTool = defineTool({
   async handler(input, context) {
     const client = context.principal.supabase;
 
-    const { data: publish } = await client
-      .from('publishes')
-      .select('episode_id')
-      .eq('id', input.publishId)
-      .maybeSingle();
-
-    if (!publish) {
-      throw new McpToolError('NOT_FOUND', 'Publish record not found');
-    }
-
-    await requireEpisodeInAccount(
-      client,
-      context.accountId,
-      publish.episode_id,
-      'id',
-    );
+    // KB-207: a deleted episode's publish is still the team's to cancel
+    await requirePublishInAccount(client, context.accountId, input.publishId);
 
     const result = await cancelScheduledPublish(
       client,
@@ -183,6 +173,47 @@ export const cancelScheduledPublishTool = defineTool({
     return {
       text: `Cancelled the scheduled publish ${input.publishId}; nothing was posted.`,
       structuredContent: { ...result.data, cancelled: true },
+    };
+  },
+});
+
+export const markPublishRemovedTool = defineTool({
+  name: 'mark_publish_removed',
+  title: 'Mark a published video as removed',
+  description:
+    'Marks a published video as removed when it was taken down on its platform outside StoryBook: it stops counting toward its channel’s posting rules and analytics stop reading it. Nothing is deleted on the platform. Only a publish with status published; the hourly analytics sync does the same by itself when the platform says the video does not exist. Project owners and admins, the same as the Schedule page’s Mark as removed.',
+  inputSchema: {
+    publishId: z
+      .string()
+      .uuid()
+      .describe('From list_episode_publishes or get_publish_calendar.'),
+  },
+  scope: 'studio:publish',
+  annotations: {
+    ...PUBLISH,
+    destructiveHint: true,
+    idempotentHint: true,
+    // Only StoryBook's record changes: the platform is not asked
+    openWorldHint: false,
+  },
+  async handler(input, context) {
+    const client = context.principal.supabase;
+
+    await requirePublishInAccount(client, context.accountId, input.publishId);
+
+    const result = await markPublishRemoved(
+      client,
+      context.principal.userId,
+      input.publishId,
+    );
+
+    if (!result.ok) {
+      throw refused(result.refusal, 'publishId');
+    }
+
+    return {
+      text: `Marked the publish ${input.publishId} as removed; nothing was deleted on the platform.`,
+      structuredContent: { ...result.data, removed: true },
     };
   },
 });
@@ -285,5 +316,6 @@ export const publishTools = [
   ...shortsGroupTools,
   schedulePublishTool,
   cancelScheduledPublishTool,
+  markPublishRemovedTool,
   ...releaseTools,
 ] as unknown as McpToolDefinition[];

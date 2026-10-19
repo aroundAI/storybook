@@ -55,6 +55,7 @@ describe('get_workflow_guide', () => {
       'list_episode_publishes',
       'schedule_publish',
       'cancel_scheduled_publish',
+      'mark_publish_removed',
       // FILM-2208
       'schedule_release',
       'get_channel_cadence',
@@ -176,6 +177,8 @@ describe('the default tool list', () => {
         'delete_shorts_group',
         'schedule_publish',
         'cancel_scheduled_publish',
+        // KB-207: a video taken down on its platform
+        'mark_publish_removed',
         // FILM-2208: cadence releases, thumbnails and the calendar
         'schedule_release',
         'get_channel_cadence',

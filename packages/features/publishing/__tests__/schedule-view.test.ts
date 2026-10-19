@@ -59,7 +59,8 @@ describe('parseScheduleFilters', () => {
         {
           type: 'reel',
           platform: 'myspace',
-          status: 'deleted',
+          // Taking down is not a filter; Removed (KB-207) is
+          status: 'deleting',
           from: '2026-13-40',
           to: 'soon',
         },

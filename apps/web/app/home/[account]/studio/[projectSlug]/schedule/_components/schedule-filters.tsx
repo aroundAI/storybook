@@ -19,6 +19,7 @@ import {
   scheduleStatusOf,
 } from '@kit/publishing/lib/schedule-view';
 import { Button } from '@kit/ui/button';
+import { Checkbox } from '@kit/ui/checkbox';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import {
@@ -44,6 +45,8 @@ const TYPES: Array<{ value: ScheduleType; label: string }> = [
 export function ScheduleFilters(props: {
   filters: Pick<Filters, 'from' | 'to'>;
   clamped: boolean;
+  /** KB-207: posts of deleted episodes the table leaves out */
+  hiddenDeleted: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -171,6 +174,27 @@ export function ScheduleFilters(props: {
             event.target.value && set('to', event.target.value)
           }
         />
+      </div>
+
+      <div className="flex items-center gap-2 pb-2">
+        <Checkbox
+          id="schedule-deleted"
+          checked={shown.deletedEpisodes}
+          onCheckedChange={(checked) => set('deleted', checked ? '1' : null)}
+          data-test="schedule-show-deleted"
+        />
+        <Label htmlFor="schedule-deleted" className="font-normal">
+          Deleted episodes
+          {props.hiddenDeleted > 0 && (
+            <span
+              className="text-muted-foreground"
+              data-test="schedule-hidden-deleted"
+            >
+              {' '}
+              ({props.hiddenDeleted} hidden)
+            </span>
+          )}
+        </Label>
       </div>
 
       {pending && (

@@ -81,7 +81,11 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
   const [connections, channelIds, posts] = await Promise.all([
     getAccountPlatformConnections(workspace.account.id),
     getProjectChannelSelection(project.id),
-    readPublishCalendar(client, { projectId: project.id, ...filters.range }),
+    readPublishCalendar(client, {
+      projectId: project.id,
+      ...filters.range,
+      includeRemoved: true,
+    }),
   ]);
 
   const channels = connections.filter((c) => channelIds.includes(c.id));
@@ -101,6 +105,15 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
         ? (names.get(post.connectionId) ?? null)
         : null,
     }));
+
+  // KB-207: the deleted episodes' posts the other filters would show
+  const hiddenDeleted = filters.deletedEpisodes
+    ? 0
+    : posts.filter(
+        (post) =>
+          post.episodeDeleted &&
+          matchesScheduleFilters({ ...post, episodeDeleted: false }, filters),
+      ).length;
 
   const basePath = `/home/${account}/studio/${project.slug ?? project.id}`;
 
@@ -122,6 +135,7 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
 
           <ScheduleFilters
             filters={{ from: filters.from, to: filters.to }}
+            hiddenDeleted={hiddenDeleted}
             clamped={filters.clamped}
           />
 

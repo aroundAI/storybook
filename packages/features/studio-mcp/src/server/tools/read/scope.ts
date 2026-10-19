@@ -99,3 +99,36 @@ export async function requireEpisodeInAccount<
 
   return data as unknown as T;
 }
+
+/**
+ * One publish of the bound team, whether or not its episode was deleted
+ * (KB-207): a deleted episode's posts can still be cancelled or marked
+ * removed, where `requireEpisodeInAccount` would hide them. Another team's
+ * publish is NOT_FOUND.
+ */
+export async function requirePublishInAccount(
+  client: Client,
+  accountId: string,
+  publishId: string,
+): Promise<{ id: string; episode_id: string }> {
+  const { data, error } = await client
+    .from('publishes')
+    .select(
+      'id, episode_id, episode:episodes!inner(project:projects!inner(account_id))',
+    )
+    .eq('id', publishId)
+    .eq('episode.project.account_id', accountId)
+    .maybeSingle();
+
+  if (error) {
+    throw new McpToolError('INTERNAL', 'Could not read the publish.');
+  }
+
+  if (!data) {
+    throw new McpToolError('NOT_FOUND', 'Publish record not found', {
+      details: { publishId },
+    });
+  }
+
+  return { id: data.id, episode_id: data.episode_id };
+}

@@ -14,6 +14,21 @@ const calls = vi.hoisted(() => ({
   statistics: [] as string[][],
   inserted: [] as unknown[],
   failToken: new Set<string>(),
+  failCall: false,
+  missing: new Set<string>(),
+  removed: [] as Array<[string, string]>,
+}));
+
+vi.mock('@kit/publishing/lib/publish-removal', () => ({
+  notFoundOn: (platform: string) => `not found on ${platform}`,
+  recordPublishRemoved: async (
+    _client: unknown,
+    id: string,
+    reason: string,
+  ) => {
+    calls.removed.push([id, reason]);
+    return true;
+  },
 }));
 
 vi.mock('@kit/clickhouse/server', () => ({
@@ -37,11 +52,14 @@ vi.mock('../src/providers/youtube', () => ({
   createYouTubeAnalyticsProvider: () => ({
     fetchVideoStatistics: async (ids: string[]) => {
       calls.statistics.push(ids);
+      if (calls.failCall) throw new Error('quotaExceeded');
       return new Map(
-        ids.map((id) => [
-          id,
-          { videoId: id, views: 100, likes: 5, dislikes: 1, comments: 2 },
-        ]),
+        ids
+          .filter((id) => !calls.missing.has(id))
+          .map((id) => [
+            id,
+            { videoId: id, views: 100, likes: 5, dislikes: 1, comments: 2 },
+          ]),
       );
     },
   }),
@@ -73,6 +91,9 @@ beforeEach(() => {
   calls.statistics = [];
   calls.inserted = [];
   calls.failToken = new Set();
+  calls.failCall = false;
+  calls.missing = new Set();
+  calls.removed = [];
 });
 
 describe('captureYouTubeLiveCounts', () => {
@@ -108,5 +129,37 @@ describe('captureYouTubeLiveCounts', () => {
 
     expect(written).toBe(1);
     expect(calls.statistics).toEqual([['yt-c']]);
+  });
+
+  // KB-207: a video deleted on YouTube stayed 'published' for good
+  it('marks a publish removed when YouTube answers without its video', async () => {
+    calls.missing.add('yt-b');
+    const removed = new Set<string>();
+
+    const written = await captureYouTubeLiveCounts(
+      client,
+      [publish('a', 'c1'), publish('b', 'c1')],
+      { name: 'test' },
+      removed,
+    );
+
+    expect(calls.removed).toEqual([['b', 'not found on youtube']]);
+    expect([...removed]).toEqual(['b']);
+    expect(written).toBe(1);
+  });
+
+  it('marks nothing removed when the call itself fails', async () => {
+    calls.failCall = true;
+    const removed = new Set<string>();
+
+    await captureYouTubeLiveCounts(
+      client,
+      [publish('a', 'c1')],
+      { name: 'test' },
+      removed,
+    );
+
+    expect(calls.removed).toEqual([]);
+    expect(removed.size).toBe(0);
   });
 });

@@ -7,6 +7,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { markPublishRemoved } from '../lib/publish-removal';
 import {
   BreakingReleaseSchema,
   CancelScheduledPublishSchema,
@@ -137,6 +138,17 @@ export const cancelScheduledPublishAction = returnRefusals(
           user.id,
           publishId,
         ),
+      ),
+    { schema: CancelScheduledPublishSchema, auth: true },
+  ),
+);
+
+/** KB-207: the Schedule page marks a video taken down on its platform removed */
+export const markPublishRemovedAction = returnRefusals(
+  enhanceAction(
+    async ({ publishId }, user) =>
+      unwrapResult(
+        await markPublishRemoved(getSupabaseServerClient(), user.id, publishId),
       ),
     { schema: CancelScheduledPublishSchema, auth: true },
   ),

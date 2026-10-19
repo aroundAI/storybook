@@ -4,6 +4,10 @@ import type { SubscriberCountResult } from '@kit/shared/subscribers';
 import { metaFetch } from '@kit/shared/vendors';
 
 import {
+  PublishedContentMissingError,
+  isGraphObjectMissing,
+} from '../../lib/content-removed';
+import {
   MetaRateLimitError,
   isMetaThrottle,
   metaUsagePercent,
@@ -112,7 +116,7 @@ function lifetime(metrics: readonly string[]) {
 }
 
 interface GraphBody {
-  error?: { message?: string; code?: number };
+  error?: { message?: string; code?: number; error_subcode?: number };
 }
 
 /** The connection does not hold what Meta needs for this read. */
@@ -154,6 +158,8 @@ export class FacebookInsightsProvider {
         `/${videoId}?fields=post_id,comments.limit(0).summary(true)`,
         { token },
       ),
+      // KB-207: the video itself gone is the one answer that says so
+      { missing: videoId },
     );
 
     const [video, reels, audience] = await Promise.all([
@@ -378,7 +384,10 @@ export class FacebookInsightsProvider {
     }
   }
 
-  private async parse<T>(response: Response): Promise<T> {
+  private async parse<T>(
+    response: Response,
+    { missing }: { missing?: string } = {},
+  ): Promise<T> {
     const usage = metaUsagePercent(response.headers);
     if (usage !== null) {
       this.usagePercent = Math.max(this.usagePercent ?? 0, usage);
@@ -390,6 +399,9 @@ export class FacebookInsightsProvider {
 
     if (isMetaThrottle(code)) {
       throw new MetaRateLimitError(code, message);
+    }
+    if (missing && isGraphObjectMissing(response.status, body.error)) {
+      throw new PublishedContentMissingError('facebook', missing);
     }
     if (
       response.status === 401 ||

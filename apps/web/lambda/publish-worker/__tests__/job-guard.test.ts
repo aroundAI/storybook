@@ -29,6 +29,7 @@ interface Row {
   platform_content_id: string | null;
   platform_connection_id: string | null;
   connectionAccount: string | null;
+  episodeDeletedAt?: string | null;
 }
 
 function client(row: Row | null): SupabaseClient<Database> {
@@ -61,6 +62,7 @@ function client(row: Row | null): SupabaseClient<Database> {
               platform_connection_id: row.platform_connection_id,
               episode: {
                 project_id: PROJECT,
+                deleted_at: row.episodeDeletedAt ?? null,
                 project: { account_id: ACCOUNT },
               },
               connection: row.connectionAccount
@@ -148,6 +150,16 @@ describe('publishJobConnection', () => {
         { publishId: PUBLISH, platformConnectionId: CONNECTION },
       ),
     ).rejects.toThrow(/connection of another account/);
+  });
+
+  // KB-207: a job queued before its episode was deleted
+  it('refuses to upload a publish of a deleted episode', async () => {
+    await expect(
+      publishJobConnection(
+        client({ ...published, episodeDeletedAt: '2026-10-19T08:00:00Z' }),
+        { publishId: PUBLISH, platformConnectionId: CONNECTION },
+      ),
+    ).rejects.toThrow('Its episode was deleted, so it was not posted.');
   });
 
   it("refuses a message naming a connection the publish doesn't", async () => {

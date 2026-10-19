@@ -26,6 +26,7 @@ export const SCHEDULE_STATUSES = [
   'published',
   'failed',
   'held',
+  'deleted',
 ] as const;
 export type ScheduleStatus = (typeof SCHEDULE_STATUSES)[number];
 
@@ -42,6 +43,8 @@ export interface ScheduleFilters {
   to: string;
   /** The asked range was longer than MAX_CALENDAR_DAYS and was cut */
   clamped: boolean;
+  /** KB-207: posts of deleted episodes are shown too (`deleted=1`) */
+  deletedEpisodes: boolean;
   range: { from: Date; to: Date };
 }
 
@@ -97,17 +100,29 @@ export function parseScheduleFilters(
     from: dayOf(from),
     to: dayOf(to),
     clamped,
+    deletedEpisodes: first(params.deleted) === '1',
     range: { from, to: new Date(to.getTime() + DAY_MS - 1) },
   };
 }
 
-/** A post the filters keep: by type (long is anything not a Short), platform and status */
+/**
+ * A post the filters keep: by type (long is anything not a Short), platform
+ * and status. A deleted episode's post only when asked for (KB-207).
+ */
 export function matchesScheduleFilters(
-  post: { contentType: string; platform: string; status: string },
-  filters: Pick<ScheduleFilters, 'type' | 'platform' | 'status'>,
+  post: {
+    contentType: string;
+    platform: string;
+    status: string;
+    episodeDeleted?: boolean;
+  },
+  filters: Pick<ScheduleFilters, 'type' | 'platform' | 'status'> & {
+    deletedEpisodes?: boolean;
+  },
 ) {
   const short = post.contentType === 'short';
 
+  if (post.episodeDeleted && !filters.deletedEpisodes) return false;
   if (filters.type === 'short' && !short) return false;
   if (filters.type === 'long' && short) return false;
   if (filters.platform && post.platform !== filters.platform) return false;
@@ -195,6 +210,7 @@ const STATUS_LABELS: Record<string, { label: string; tone: StatusTone }> = {
   failed: { label: 'Failed', tone: 'danger' },
   held: { label: 'Held', tone: 'warning' },
   deleting: { label: 'Taking down', tone: 'neutral' },
+  deleted: { label: 'Removed', tone: 'neutral' },
 };
 
 /** How a calendar post's status reads on the page */

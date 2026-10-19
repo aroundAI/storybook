@@ -74,8 +74,8 @@
     {
       "name": "R5 the calendar reads one unpaged page",
       "file": "packages/features/publishing/src/server/publish-calendar.service.ts",
-      "find": "          .order('id')\n          .range(start, end) as unknown as CalendarPage,\n      'publish calendar',",
-      "replace": "          .order('id') as unknown as CalendarPage,\n      'publish calendar',",
+      "find": "        .order('id')\n        .range(start, end) as unknown as CalendarPage;\n    }, 'publish calendar'),",
+      "replace": "        .order('id') as unknown as CalendarPage;\n    }, 'publish calendar'),",
       "pattern": "reads past the 1000-row cap",
       "kind": "unit",
       "cwd": "packages/features/studio-mcp",

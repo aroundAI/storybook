@@ -14,11 +14,16 @@ import {
 } from '@kit/clickhouse/server';
 import type { SnapshotTotals } from '@kit/clickhouse/server';
 import { isOfferedPlatform } from '@kit/publishing/lib/platforms';
+import {
+  notFoundOn,
+  recordPublishRemoved,
+} from '@kit/publishing/lib/publish-removal';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { PublishedContentMissingError } from '../lib/content-removed';
 import { planRevenueRowWrites } from '../lib/revenue-mix';
 import { MAX_CONSECUTIVE_FAILURES } from '../lib/sync-status';
 import {
@@ -41,6 +46,7 @@ import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import { syncAssetDurations } from './asset-duration-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
 import { syncChannelDays } from './channel-totals';
+import { type ChannelProbes, markMetaPublishRemoved } from './content-removal';
 import { syncEditSessionFacts } from './edit-sessions-fact-sync';
 import {
   buildAudienceRows,
@@ -191,11 +197,16 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     const snapshotBaselines = await fetchSnapshotBaselines(publishesToSync);
 
     // YouTube's live counts for this run's YouTube publishes, 50 a call
-    // (FILM-1734): on the same timetable as their Analytics-API days.
+    // (FILM-1734): on the same timetable as their Analytics-API days. A
+    // video the answer leaves out is gone from YouTube (KB-207): marked
+    // removed there, and not read again below.
+    const removed = new Set<string>();
+    const probes: ChannelProbes = new Map();
     result.liveCountSnapshots = await captureYouTubeLiveCounts(
       client,
       byPlatform.youtube,
       ctx,
+      removed,
     );
 
     // 3. Process each platform with rate limiting
@@ -203,6 +214,8 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 
     for (const [platform, publishes] of Object.entries(byPlatform)) {
       for (const publish of publishes) {
+        if (removed.has(publish.id)) continue;
+
         // Check rate limits before queuing
         if (!rateLimiter.canRequest(platform as SyncPlatform)) {
           logger.warn(
@@ -219,6 +232,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
             platform as SyncPlatform,
             ctx,
             snapshotBaselines,
+            probes,
           ),
         );
       }
@@ -587,10 +601,12 @@ async function syncSinglePublish(
   platform: SyncPlatform,
   ctx: { name: string },
   snapshotBaselines?: Map<string, SnapshotTotals>,
+  probes: ChannelProbes = new Map(),
 ): Promise<SyncResult> {
   const logger = await getLogger();
   const client = getSupabaseServerAdminClient();
   const rateLimiter = getRateLimiter();
+  let accessToken: string | undefined;
 
   try {
     // 1. Validate and refresh token
@@ -627,6 +643,8 @@ async function syncSinglePublish(
         x_read_at: new Date().toISOString(),
       });
     }
+
+    accessToken = tokenResult.accessToken;
 
     // 3. Fetch analytics from platform
     const analytics = await fetchPlatformAnalytics(
@@ -714,6 +732,34 @@ async function syncSinglePublish(
       metricsUpdated: true,
     };
   } catch (error) {
+    // KB-207: the platform says the video does not exist, and a probe with
+    // the same token confirms it still reads the channel (Meta's not-found
+    // also covers lost permissions). Marked removed, which takes it out of
+    // the sync and the cadence. Unconfirmed, it is an ordinary failure.
+    if (
+      error instanceof PublishedContentMissingError &&
+      accessToken &&
+      (await markMetaPublishRemoved(
+        client,
+        publish,
+        platform,
+        accessToken,
+        probes,
+      ))
+    ) {
+      logger.info(
+        { ...ctx, publishId: publish.id, platform },
+        'Not found on the platform: marked removed',
+      );
+
+      return {
+        publishId: publish.id,
+        success: false,
+        error: error.message,
+        errorType: 'not_found',
+      };
+    }
+
     const failure = classifySyncFailure(error);
     const errorMessage = failure.message;
     const errorType = failure.errorType;
@@ -1491,7 +1537,17 @@ export async function syncSinglePublishById(
   };
 
   if (platform === 'youtube') {
-    await captureYouTubeLiveCounts(client, [forSync], ctx);
+    const removed = new Set<string>();
+    await captureYouTubeLiveCounts(client, [forSync], ctx, removed);
+
+    if (removed.has(forSync.id)) {
+      return {
+        publishId,
+        success: false,
+        error: 'This video is no longer on YouTube, so it was marked removed.',
+        errorType: 'not_found',
+      };
+    }
   }
 
   return syncSinglePublish(forSync, platform, ctx);
@@ -1505,11 +1561,16 @@ export async function syncSinglePublishById(
  * Never throws: a live count is a supplement to the Analytics API's days,
  * and losing one is not a reason to lose the run. A channel whose token or
  * call fails is logged and asked again on its videos' next visit.
+ *
+ * A video a successful answer leaves out does not exist on the channel any
+ * more (KB-207): its publish is marked removed, and its id added to
+ * `removed`. Only a successful answer says so; a failed call marks nothing.
  */
 export async function captureYouTubeLiveCounts(
   client: Client,
   publishes: PublishForSync[],
   ctx: { name: string },
+  removed = new Set<string>(),
 ): Promise<number> {
   const logger = await getLogger();
   const byConnection = new Map<string, PublishForSync[]>();
@@ -1532,6 +1593,20 @@ export async function captureYouTubeLiveCounts(
       const statistics = await createYouTubeAnalyticsProvider(
         token.accessToken,
       ).fetchVideoStatistics(group.map((p) => p.platform_content_id));
+
+      for (const publish of group) {
+        if (statistics.has(publish.platform_content_id)) continue;
+
+        if (
+          await recordPublishRemoved(client, publish.id, notFoundOn('youtube'))
+        ) {
+          logger.info(
+            { ...ctx, publishId: publish.id },
+            'Not found on YouTube: marked removed',
+          );
+        }
+        removed.add(publish.id);
+      }
 
       const byProject = new Map<string, Map<string, string>>();
 
