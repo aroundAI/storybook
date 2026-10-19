@@ -76,6 +76,7 @@ export class FacebookProvider {
     const startResponse = await metaFetch(endpoint, {
       method: 'POST',
       token: this.accessToken,
+      host: 'video',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         upload_phase: 'start',
@@ -262,13 +263,15 @@ export class FacebookProvider {
 
     // Phase 2: Upload chunks
     let currentOffset = session.startOffset;
-    const chunkSize = session.endOffset - session.startOffset;
+    let chunkEnd = session.endOffset;
 
+    // One chunk is in memory at a time, of the size Meta names between
+    // start_offset and end_offset
     while (currentOffset < fileSize) {
       const chunk = await this.readChunk(
         input.videoPath,
         currentOffset,
-        Math.min(chunkSize, fileSize - currentOffset),
+        Math.min(chunkEnd, fileSize) - currentOffset,
       );
 
       const transferResult = await this.transferChunk(
@@ -284,6 +287,7 @@ export class FacebookProvider {
         );
       }
       currentOffset = transferResult.startOffset;
+      chunkEnd = transferResult.endOffset;
 
       // Report progress
       const progress = Math.round((currentOffset / fileSize) * 100);
@@ -311,6 +315,7 @@ export class FacebookProvider {
     const response = await metaFetch(`/${this.pageId}/videos`, {
       method: 'POST',
       token: this.accessToken,
+      host: 'video',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         upload_phase: 'start',
@@ -347,16 +352,24 @@ export class FacebookProvider {
     chunk: Buffer,
     startOffset: number,
   ): Promise<{ startOffset: number; endOffset: number }> {
+    // Meta takes `video_file_chunk` as a binary file in multipart/form-data
+    // (https://developers.facebook.com/docs/graph-api/reference/page/videos/,
+    // upload_phase "transfer"), never as base64 text.
+    const form = new FormData();
+    form.append('upload_phase', 'transfer');
+    form.append('upload_session_id', uploadSessionId);
+    form.append('start_offset', String(startOffset));
+    form.append(
+      'video_file_chunk',
+      new Blob([new Uint8Array(chunk)]),
+      'chunk.mp4',
+    );
+
     const response = await metaFetch(`/${this.pageId}/videos`, {
       method: 'POST',
       token: this.accessToken,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        upload_phase: 'transfer',
-        upload_session_id: uploadSessionId,
-        start_offset: startOffset,
-        video_file_chunk: chunk.toString('base64'),
-      }),
+      host: 'video',
+      body: form,
     });
 
     if (!response.ok) {
@@ -386,30 +399,32 @@ export class FacebookProvider {
     videoId: string,
     input: FacebookUploadInput,
   ): Promise<FacebookUploadResult> {
-    const finishData: Record<string, unknown> = {
-      upload_phase: 'finish',
-      upload_session_id: uploadSessionId,
-      title: input.title,
-      description: input.description,
-      published: input.published,
-    };
+    // Multipart, as `thumb` is a file: title, description and the thumbnail
+    // (https://developers.facebook.com/docs/graph-api/reference/page/videos/)
+    const form = new FormData();
+    form.append('upload_phase', 'finish');
+    form.append('upload_session_id', uploadSessionId);
+    form.append('title', input.title);
+    form.append('description', input.description);
+    form.append('published', String(input.published));
 
     if (input.scheduledPublishTime) {
-      finishData.scheduled_publish_time = Math.floor(
-        input.scheduledPublishTime.getTime() / 1000,
+      form.append(
+        'scheduled_publish_time',
+        String(Math.floor(input.scheduledPublishTime.getTime() / 1000)),
       );
     }
 
-    // Add thumbnail if provided
     if (input.thumbnailPath?.startsWith('http')) {
-      finishData.thumb = input.thumbnailPath;
+      const thumb = await this.downloadThumbnail(input.thumbnailPath);
+      if (thumb) form.append('thumb', thumb, 'thumbnail.jpg');
     }
 
     const response = await metaFetch(`/${this.pageId}/videos`, {
       method: 'POST',
       token: this.accessToken,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(finishData),
+      host: 'video',
+      body: form,
     });
 
     if (!response.ok) {
