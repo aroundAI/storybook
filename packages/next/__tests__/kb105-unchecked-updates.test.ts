@@ -108,6 +108,9 @@ const KNOWN: Record<string, [number, string]> = {
   // FILM-2208: the save the Publish screen and MCP share
   'packages/features/episodes/src/server/episode-thumbnail.service.ts | episode_thumbnails | update':
     [1, SET_BEFORE],
+  // KB-205: the token-refresh cron records what YouTube did with an upload
+  'packages/features/publishing/src/jobs/check-youtube-processing.ts | publishes | update':
+    [1, ADMIN],
   'packages/features/publishing/src/jobs/process-scheduled-publishes.ts | publishes | update':
     [2, ADMIN],
   // FILM-719: the scheduled job marks a Short whose long video never went
