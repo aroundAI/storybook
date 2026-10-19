@@ -36,6 +36,10 @@ import {
   YouTubeDeclarationMissing,
   resolveYouTubeDeclaration,
 } from '../lib/youtube-declaration';
+import {
+  longUploadsStatusOf,
+  youtubeLengthRefusal,
+} from '../lib/youtube-long-uploads';
 import { TWITTER_CONSTRAINTS } from '../providers/twitter/types';
 import { assertConnectionOfAccount } from './connection-account';
 import { assertConnectionOfProject } from './project-channels';
@@ -267,6 +271,60 @@ async function assertPlatformsWillAccept(
   }
 }
 
+/**
+ * KB-205. Refuses, before anything is written, a video over 15 minutes to a
+ * YouTube channel not known to be verified for long uploads: YouTube takes
+ * the bytes, then abandons it as "too long". A channel whose status was
+ * never read (connected before KB-205) is refused too, saying how to check.
+ * The file is read only for such a channel.
+ */
+async function assertYouTubeWillAccept(
+  client: Client,
+  platforms: PublishPlatformInput[],
+  episode: PreflightEpisode,
+  episodeId: string,
+) {
+  const toYouTube = platforms.filter(
+    (platform) => platform.platform === 'youtube',
+  );
+
+  if (toYouTube.length === 0) return;
+
+  const { data: channels, error } = await client
+    .from('platform_connections')
+    .select('id, platform_account_name, language, metadata')
+    .in('id', [...new Set(toYouTube.map((platform) => platform.connectionId))]);
+
+  if (error) {
+    throw new Error('Could not read the YouTube channels being published to');
+  }
+
+  for (const platform of toYouTube) {
+    const channel = channels?.find((row) => row.id === platform.connectionId);
+    const status = longUploadsStatusOf(channel?.metadata);
+
+    if (status === 'allowed') continue;
+
+    const videoUrl = await videoOfTarget(
+      client,
+      platform,
+      platform.language ?? channel?.language,
+      episode,
+      episodeId,
+    );
+
+    if (!videoUrl) continue;
+
+    const refusal = youtubeLengthRefusal(
+      channel?.platform_account_name ?? 'this YouTube channel',
+      status,
+      (await readMp4Facts(videoUrl)).durationSeconds,
+    );
+
+    if (refusal) throw new ActionRefusal(refusal);
+  }
+}
+
 /** Refuses every X account that cannot upload video; returns the accounts. */
 async function assertXUploadScope(
   client: Client,
@@ -305,8 +363,8 @@ async function assertXUploadScope(
  * Every refusal a publish gets before a row is written: the episode has a
  * video, each channel is the team's and the project's, each Shorts group
  * goes to the platform it is sent to, each thumbnail is the episode's own,
- * each YouTube upload declares its audience (KB-30), and X, Facebook and
- * Instagram would accept it (FILM-1729, FILM-2212).
+ * each YouTube upload declares its audience (KB-30), and X, Facebook,
+ * Instagram and YouTube would accept it (FILM-1729, FILM-2212, KB-205).
  */
 export async function preparePublish(
   client: Client,
@@ -406,6 +464,9 @@ export async function preparePublish(
 
   // FILM-2212: nor to Facebook or Instagram, whose limits are below ours
   await assertPlatformsWillAccept(client, platforms, episode, episodeId);
+
+  // KB-205: nor a long video to a YouTube channel that may not take one
+  await assertYouTubeWillAccept(client, platforms, episode, episodeId);
 
   return { episode, episodeThumbnail, declared };
 }

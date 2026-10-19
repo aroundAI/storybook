@@ -130,7 +130,7 @@ describe('what the Google origin serves is what the reference documents', () => 
 
   it('channels, videos, the upload, a thumbnail and a playlist item', async () => {
     const channels = await call(
-      '/youtube/v3/channels?part=snippet,statistics&mine=true',
+      '/youtube/v3/channels?part=snippet,statistics,status&mine=true',
     );
     expect(
       undeclaredKeys(entry('GET', '/youtube/v3/channels'), channels.body),
@@ -138,7 +138,7 @@ describe('what the Google origin serves is what the reference documents', () => 
 
     const video = await upload('Salt on the Window');
     const listed = await call(
-      `/youtube/v3/videos?part=snippet,contentDetails,status,statistics&id=${video.videoId}`,
+      `/youtube/v3/videos?part=snippet,contentDetails,status,statistics,processingDetails&id=${video.videoId}`,
     );
     expect(
       undeclaredKeys(entry('GET', '/youtube/v3/videos'), listed.body),

@@ -54,6 +54,10 @@ import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 
 import { isHiddenPlatform } from '../lib/platforms';
+import {
+  YOUTUBE_VERIFY_URL,
+  type YouTubeLongUploadsStatus,
+} from '../lib/youtube-long-uploads';
 import type {
   AnalyticsAccess,
   AnalyticsAccessEntry,
@@ -416,6 +420,12 @@ function ConnectionRow({
                 <Trans i18nKey="platforms:connected" defaults="Connected" />
               )}
             </p>
+            {connection.platform === 'youtube' &&
+              connection.youtubeLongUploads !== 'allowed' && (
+                <YouTubeLongUploadsLine
+                  status={connection.youtubeLongUploads ?? null}
+                />
+              )}
           </div>
         </div>
 
@@ -546,6 +556,46 @@ function ConnectionRow({
  * A channel the creator disconnected (KB-22). Its history is still attached
  * to it; reconnecting the same account re-attaches the connection itself.
  */
+/**
+ * KB-205. YouTube abandons a video over 15 minutes from an unverified
+ * channel, so a channel not known to be verified says so on its row.
+ */
+function YouTubeLongUploadsLine({
+  status,
+}: {
+  status: YouTubeLongUploadsStatus | null;
+}) {
+  return (
+    <p
+      className="text-xs text-amber-700 dark:text-amber-400"
+      data-test="youtube-long-uploads"
+      data-status={status ?? 'unknown'}
+    >
+      {status === null ? (
+        <Trans
+          i18nKey="platforms:longUploadsUnknown"
+          defaults="Long uploads: not checked yet. Press Refresh to check"
+        />
+      ) : (
+        <>
+          <Trans
+            i18nKey="platforms:longUploadsNotVerified"
+            defaults="Long uploads: not verified (15-minute limit)"
+          />{' '}
+          <a
+            href={YOUTUBE_VERIFY_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            <Trans i18nKey="platforms:verifyChannel" defaults="Verify" />
+          </a>
+        </>
+      )}
+    </p>
+  );
+}
+
 function DisconnectedConnectionRow({
   connection,
   platform,

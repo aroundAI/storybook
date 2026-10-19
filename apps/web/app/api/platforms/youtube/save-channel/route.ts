@@ -1,6 +1,10 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
+import {
+  longUploadsMetadata,
+  parseLongUploadsStatus,
+} from '@kit/publishing/lib/youtube-long-uploads';
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -19,6 +23,8 @@ interface PendingConnection {
     title: string;
     thumbnailUrl?: string;
     subscriberCount?: string;
+    /** KB-205; absent on a cookie written before it */
+    longUploadsStatus?: string | null;
   }>;
   returnUrl: string;
   nonce: string;
@@ -107,6 +113,9 @@ export async function POST(request: NextRequest) {
       metadata: {
         scopes_granted_at: new Date().toISOString(),
         thumbnail_url: selectedChannel.thumbnailUrl,
+        ...longUploadsMetadata(
+          parseLongUploadsStatus(selectedChannel.longUploadsStatus),
+        ),
         // No subscriber_count. It was written here and read nowhere — a
         // level captured once, at a date nobody recorded, then left to
         // rot. FILM-1607 stores the dated series in ClickHouse instead.

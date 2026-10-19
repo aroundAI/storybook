@@ -217,6 +217,13 @@ let origin: string;
 /** X's token endpoint issues a new refresh token on every call. */
 const x = { issued: 0, omitRefreshToken: false };
 
+/** KB-205: what `channels.list part=status` says of the connected channel */
+const youtubeChannel = { longUploadsStatus: 'eligible' };
+
+/** The token requests, without the status read a YouTube refresh adds */
+const tokenRequestPaths = () =>
+  requests.map((r) => r.path).filter((p) => p !== '/youtube/v3/channels');
+
 function vendorResponse(path: string) {
   if (vendorStatus !== 200) {
     return { error: 'invalid_grant', error_description: 'Token revoked' };
@@ -232,6 +239,18 @@ function vendorResponse(path: string) {
       }),
       expires_in: 7200,
       scope: 'tweet.read tweet.write users.read offline.access',
+    };
+  }
+
+  if (path === '/youtube/v3/channels') {
+    return {
+      items: [
+        { id: 'other-channel', status: { longUploadsStatus: 'allowed' } },
+        {
+          id: 'youtube-account',
+          status: { longUploadsStatus: youtubeChannel.longUploadsStatus },
+        },
+      ],
     };
   }
 
@@ -301,6 +320,7 @@ beforeEach(async () => {
     'META_GRAPH',
     'X_API',
     'X_OAUTH',
+    'YOUTUBE_DATA',
   ]) {
     vi.stubEnv(`VENDOR_URL_${vendor}`, origin);
   }
@@ -480,7 +500,11 @@ describe('refresh uses the credentials connect uses (KB-29)', () => {
     const result = await tokenRefresh.ensureValidToken('conn-youtube');
 
     expect(result).toEqual({ valid: true, accessToken: 'new-access-token' });
-    expect(requests).toHaveLength(1);
+    // The refresh, then the channel's long-upload status (KB-205)
+    expect(requests.map((r) => r.path)).toEqual([
+      '/token',
+      '/youtube/v3/channels',
+    ]);
     expect(requests[0]!.method).toBe('POST');
     expect(requests[0]!.path).toBe('/token');
     expect(Object.fromEntries(requests[0]!.form)).toEqual({
@@ -587,7 +611,7 @@ describe('while X is hidden', () => {
     const result = await refreshExpiringTokens();
 
     expect(result).toEqual({ checked: 1, refreshed: 1, failed: 0 });
-    expect(requests.map((r) => r.path)).toEqual(['/token']);
+    expect(tokenRequestPaths()).toEqual(['/token']);
     expect(await decrypted('refresh_token_encrypted', twitter)).toBe(
       'old-refresh-token',
     );
@@ -917,10 +941,7 @@ describe('refreshExpiringTokens', () => {
     );
     const result = await refreshExpiringTokens();
 
-    expect(requests.map((r) => r.path).sort()).toEqual([
-      '/2/oauth2/token',
-      '/token',
-    ]);
+    expect(tokenRequestPaths().sort()).toEqual(['/2/oauth2/token', '/token']);
     expect(result).toEqual({ checked: 2, refreshed: 2, failed: 0 });
 
     for (const row of [youtube, twitter]) {
@@ -945,7 +966,7 @@ describe('refreshExpiringTokens', () => {
     const result = await refreshExpiringTokens();
 
     expect(result).toEqual({ checked: 1, refreshed: 1, failed: 0 });
-    expect(requests.map((r) => r.path)).toEqual(['/token']);
+    expect(tokenRequestPaths()).toEqual(['/token']);
     expect(linkedin.is_active).toBe(true);
   });
 
@@ -964,7 +985,7 @@ describe('refreshExpiringTokens', () => {
     const result = await refreshExpiringTokens();
 
     expect(result).toEqual({ checked: 2, refreshed: 1, failed: 1 });
-    expect(requests.map((r) => r.path)).toEqual(['/token']);
+    expect(tokenRequestPaths()).toEqual(['/token']);
     expect(Date.parse(youtube.token_expires_at)).toBeGreaterThan(
       Date.now() + 55 * 60_000,
     );
@@ -1067,5 +1088,68 @@ describe('a connection that needs reconnecting', () => {
       'Refreshed tiktok token',
     ]);
     expect(notifications()).toEqual([]);
+  });
+});
+
+/**
+ * KB-205. YouTube abandons a video over 15 minutes from an unverified
+ * channel. A refresh reads `status.longUploadsStatus` for the connection's
+ * own channel and stores it, so the preflight can refuse such a video.
+ */
+describe("a YouTube refresh records the channel's long-upload status (KB-205)", () => {
+  beforeEach(async () => {
+    youtubeChannel.longUploadsStatus = 'eligible';
+    await seedGlobalCredentials('youtube');
+  });
+
+  it('stores the status of the connected channel, not of another the account owns', async () => {
+    await seedExpiredConnection('youtube', { thumbnail_url: 'kept' });
+
+    await tokenRefresh.ensureValidToken('conn-youtube');
+
+    const channels = requests.find((r) => r.path === '/youtube/v3/channels')!;
+    expect(channels.query.get('part')).toBe('status');
+    expect(channels.authorization).toBe('Bearer new-access-token');
+    expect(storedConnection().metadata).toMatchObject({
+      thumbnail_url: 'kept',
+      long_uploads_status: 'eligible',
+    });
+  });
+
+  it('does not ask again within six hours, unless Refresh asked', async () => {
+    await seedExpiredConnection('youtube', {
+      long_uploads_status: 'disallowed',
+      long_uploads_checked_at: new Date().toISOString(),
+    });
+
+    await tokenRefresh.ensureValidToken('conn-youtube');
+
+    expect(requests.map((r) => r.path)).toEqual(['/token']);
+    expect(storedConnection().metadata).toMatchObject({
+      long_uploads_status: 'disallowed',
+    });
+
+    youtubeChannel.longUploadsStatus = 'allowed';
+    storedConnection().updated_at = '2026-09-02T00:00:00.000Z';
+    await tokenRefresh.ensureValidToken('conn-youtube', true);
+
+    expect(storedConnection().metadata).toMatchObject({
+      long_uploads_status: 'allowed',
+    });
+  });
+
+  it('stores an unrecognised status as unknown, and the refresh still succeeds', async () => {
+    await seedExpiredConnection('youtube', {
+      long_uploads_status: 'eligible',
+    });
+    youtubeChannel.longUploadsStatus = 'not-a-status';
+
+    expect(await tokenRefresh.ensureValidToken('conn-youtube')).toEqual({
+      valid: true,
+      accessToken: 'new-access-token',
+    });
+    expect(storedConnection().metadata).toMatchObject({
+      long_uploads_status: null,
+    });
   });
 });

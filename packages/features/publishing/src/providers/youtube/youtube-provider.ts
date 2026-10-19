@@ -8,6 +8,11 @@ import { Readable } from 'stream';
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
 import { vendorUrl } from '@kit/shared/vendors';
 
+import {
+  type YouTubeLongUploadsStatus,
+  parseLongUploadsStatus,
+} from '../../lib/youtube-long-uploads';
+import type { YouTubeVideoState } from '../../lib/youtube-processing';
 import type {
   YouTubeCategory,
   YouTubeChannel,
@@ -230,6 +235,48 @@ export class YouTubeProvider {
     return Number.isFinite(count)
       ? { ok: true, count }
       : { ok: false, reason: 'unavailable' };
+  }
+
+  /**
+   * KB-205. Whether the channel may upload videos longer than 15 minutes.
+   * `mine` and then the channel by id, as at connect: one Google account can
+   * own several channels. 1 quota unit.
+   */
+  async getLongUploadsStatus(
+    channelId: string,
+  ): Promise<YouTubeLongUploadsStatus | null> {
+    const response = await this.youtube.channels.list({
+      part: ['status'],
+      mine: true,
+    });
+
+    const channel = response.data.items?.find((item) => item.id === channelId);
+
+    return parseLongUploadsStatus(channel?.status?.longUploadsStatus);
+  }
+
+  /**
+   * KB-205. What YouTube did with each upload after accepting it, by video
+   * id; a video YouTube no longer lists is absent. 1 quota unit per 50.
+   */
+  async getProcessingStates(
+    videoIds: string[],
+  ): Promise<Map<string, YouTubeVideoState>> {
+    const states = new Map<string, YouTubeVideoState>();
+
+    for (let at = 0; at < videoIds.length; at += 50) {
+      const response = await this.youtube.videos.list({
+        part: ['processingDetails', 'status'],
+        id: videoIds.slice(at, at + 50),
+        maxResults: 50,
+      });
+
+      for (const item of response.data.items ?? []) {
+        if (item.id) states.set(item.id, item);
+      }
+    }
+
+    return states;
   }
 
   /**

@@ -9,6 +9,9 @@
   "noAccountsConnected": "No {{platform}} accounts connected",
   "connectToStart": "Connect an account to start publishing",
   "connectedTimeAgo": "Connected {{time}}",
+  "longUploadsNotVerified": "Long uploads: not verified (15-minute limit)",
+  "longUploadsUnknown": "Long uploads: not checked yet. Press Refresh to check",
+  "verifyChannel": "Verify",
   "permissionsRequested": "Permissions requested:",
   "disconnectTitle": "Disconnect {{accountName}}?",
   "disconnectDialog": {

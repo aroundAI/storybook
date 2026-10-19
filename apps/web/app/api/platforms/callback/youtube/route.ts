@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { youtube as youtubeApi } from '@googleapis/youtube';
 import { OAuth2Client } from 'google-auth-library';
 
+import {
+  type YouTubeLongUploadsStatus,
+  longUploadsMetadata,
+  parseLongUploadsStatus,
+} from '@kit/publishing/lib/youtube-long-uploads';
 import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   YOUTUBE_OAUTH_CONFIG,
@@ -155,6 +160,8 @@ async function handleCallback(request: NextRequest) {
     title: string;
     thumbnailUrl?: string;
     subscriberCount?: string;
+    /** KB-205: whether it may upload videos over 15 minutes */
+    longUploadsStatus: YouTubeLongUploadsStatus | null;
   }
 
   let channels: ChannelInfo[] = [];
@@ -163,7 +170,7 @@ async function handleCallback(request: NextRequest) {
     // Fetch ALL channels (personal + brand) with mine=true
     // This returns all channels the authenticated user owns, including brand channels
     const channelResponse = await youtube.channels.list({
-      part: ['snippet', 'statistics'],
+      part: ['snippet', 'statistics', 'status'],
       mine: true,
     });
 
@@ -172,6 +179,7 @@ async function handleCallback(request: NextRequest) {
       title: ch.snippet?.title || 'Unknown Channel',
       thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
       subscriberCount: ch.statistics?.subscriberCount || undefined,
+      longUploadsStatus: parseLongUploadsStatus(ch.status?.longUploadsStatus),
     }));
 
     logger.info(
@@ -256,6 +264,7 @@ async function handleCallback(request: NextRequest) {
       metadata: {
         scopes_granted_at: new Date().toISOString(),
         thumbnail_url: channel.thumbnailUrl,
+        ...longUploadsMetadata(channel.longUploadsStatus),
         // No subscriber_count. It was written here and read nowhere — a
         // level captured once, at a date nobody recorded, then left to
         // rot. FILM-1607 stores the dated series in ClickHouse instead.

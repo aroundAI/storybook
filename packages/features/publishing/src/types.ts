@@ -2,6 +2,7 @@
  * Platform connection types for managing OAuth connections to publishing platforms
  */
 import type { Platform } from './lib/platforms';
+import type { YouTubeLongUploadsStatus } from './lib/youtube-long-uploads';
 import type { AnalyticsAccess } from './oauth/analytics-scopes';
 
 export type PlatformType = Platform;
@@ -34,6 +35,8 @@ export interface PlatformConnection {
   /** KB-30: the channel's YouTube audience and category; null = not declared yet. */
   youtubeMadeForKids?: boolean | null;
   youtubeCategoryId?: string | null;
+  /** KB-205: whether the channel may upload over 15 minutes; null = not read yet. */
+  youtubeLongUploads?: YouTubeLongUploadsStatus | null;
   /** Null for a platform with no analytics requirement. */
   analyticsAccess?: AnalyticsAccess | null;
 }

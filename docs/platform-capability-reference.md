@@ -1054,6 +1054,9 @@ viewCount
 subscriberCount
 hiddenSubscriberCount
 videoCount
+status
+privacyStatus
+longUploadsStatus          # allowed | eligible | disallowed | longUploadsUnspecified (KB-205)
 items                      # the list response (channels.list)
 pageInfo
 totalResults
@@ -1093,6 +1096,11 @@ uploadStatus
 privacyStatus
 madeForKids
 selfDeclaredMadeForKids
+rejectionReason            # set when uploadStatus is rejected: length, duplicate, … (KB-205)
+failureReason              # set when uploadStatus is failed: codec, conversion, …
+processingDetails
+processingStatus           # failed | processing | succeeded | terminated
+processingFailureReason    # other | streamingFailed | transcodeFailed | uploadFailed
 statistics
 viewCount
 likeCount

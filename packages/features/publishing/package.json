@@ -56,6 +56,7 @@
     "./lib/owned-thumbnail": "./src/lib/owned-thumbnail.ts",
     "./lib/publish-thumbnail": "./src/lib/publish-thumbnail.ts",
     "./lib/youtube-declaration": "./src/lib/youtube-declaration.ts",
+    "./lib/youtube-long-uploads": "./src/lib/youtube-long-uploads.ts",
     "./lib/schemas/youtube-declaration": "./src/lib/schemas/youtube-declaration.schema.ts",
     "./lib/platforms": "./src/lib/platforms.ts",
     "./lib/schedule-view": "./src/lib/schedule-view.ts",
