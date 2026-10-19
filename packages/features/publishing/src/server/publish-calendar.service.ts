@@ -15,7 +15,7 @@ import type { Database } from '@kit/supabase/database';
 type Client = SupabaseClient<Database>;
 
 const CALENDAR_COLUMNS =
-  'id, episode_id, platform, platform_connection_id, content_type, language, title, status, scheduled_at, slot_at, published_at, created_at, platform_url, metadata, release_priority, episodes!inner(title, number, slug, project_id)';
+  'id, episode_id, platform, platform_connection_id, content_type, language, title, status, scheduled_at, slot_at, published_at, created_at, platform_url, metadata, release_priority, episodes!inner(title, number, slug, project_id, deleted_at)';
 
 interface CalendarPublish {
   id: string;
@@ -37,6 +37,7 @@ interface CalendarPublish {
     title: string | null;
     number: number | null;
     slug: string | null;
+    deleted_at: string | null;
   };
 }
 
@@ -65,6 +66,10 @@ export interface CalendarPost {
   heldReason: string | null;
   /** FILM-2210: part of a breaking-news release */
   breaking: boolean;
+  /** KB-207: the post's episode was deleted */
+  episodeDeleted: boolean;
+  /** KB-207: why a `deleted` post was marked removed */
+  removedReason: string | null;
 }
 
 /** When a post goes, or went, out; else when it was made (a failed Publish Now, a held draft) */
@@ -74,11 +79,13 @@ function postTime(row: CalendarPublish) {
 
 /**
  * Every post of one project between `from` and `to` (ISO instants), in
- * time order, with the held Shorts last whatever the range.
+ * time order, with the held Shorts last whatever the range. A post marked
+ * removed (`deleted`, KB-207) only with `includeRemoved`: the Schedule page
+ * shows it, the digest and MCP calendar do not.
  */
 export async function readPublishCalendar(
   client: Client,
-  input: { projectId: string; from: Date; to: Date },
+  input: { projectId: string; from: Date; to: Date; includeRemoved?: boolean },
 ): Promise<CalendarPost[]> {
   const [f, t] = [input.from.toISOString(), input.to.toISOString()];
   // Gone out in range; else due in range; else, with neither time, made in range
@@ -89,18 +96,17 @@ export async function readPublishCalendar(
   ].join(',');
 
   const [dated, held] = await Promise.all([
-    fetchAllRows<CalendarPublish>(
-      (start, end) =>
-        client
-          .from('publishes')
-          .select(CALENDAR_COLUMNS)
-          .eq('episodes.project_id', input.projectId)
-          .neq('status', 'deleted')
-          .or(range)
-          .order('id')
-          .range(start, end) as unknown as CalendarPage,
-      'publish calendar',
-    ),
+    fetchAllRows<CalendarPublish>((start, end) => {
+      const query = client
+        .from('publishes')
+        .select(CALENDAR_COLUMNS)
+        .eq('episodes.project_id', input.projectId);
+
+      return (input.includeRemoved ? query : query.neq('status', 'deleted'))
+        .or(range)
+        .order('id')
+        .range(start, end) as unknown as CalendarPage;
+    }, 'publish calendar'),
     // Held Shorts have no time: listed whatever the range
     fetchAllRows<CalendarPublish>(
       (start, end) =>
@@ -123,6 +129,7 @@ export async function readPublishCalendar(
     const metadata = (row.metadata ?? {}) as {
       heldReason?: string;
       error?: string;
+      removedReason?: string;
     };
     const isHeld = row.status === 'draft' && !!metadata.heldReason;
 
@@ -144,6 +151,9 @@ export async function readPublishCalendar(
       error: row.status === 'failed' ? (metadata.error ?? null) : null,
       heldReason: isHeld ? (metadata.heldReason ?? null) : null,
       breaking: row.release_priority === 'breaking',
+      episodeDeleted: row.episodes.deleted_at !== null,
+      removedReason:
+        row.status === 'deleted' ? (metadata.removedReason ?? null) : null,
     };
   });
 

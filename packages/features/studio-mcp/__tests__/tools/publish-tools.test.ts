@@ -43,6 +43,7 @@ describe('the publish tools', () => {
     ).toEqual([
       'cancel_scheduled_publish',
       'discard_held_shorts',
+      'mark_publish_removed',
       'requeue_held_shorts',
       'schedule_publish',
       'schedule_release',

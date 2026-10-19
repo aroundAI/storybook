@@ -73,6 +73,7 @@
     "./lib/token-expiry": "./src/lib/token-expiry.ts",
     "./lib/token-errors": "./src/lib/token-errors.ts",
     "./lib/takedown": "./src/lib/takedown.ts",
+    "./lib/publish-removal": "./src/lib/publish-removal.ts",
     "./lib/uploaded-file-duration": "./src/lib/uploaded-file-duration.ts"
   },
   "dependencies": {

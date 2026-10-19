@@ -36,6 +36,7 @@ export {
   getChannelCadencesAction,
   saveChannelCadenceAction,
   cancelScheduledPublishAction,
+  markPublishRemovedAction,
 } from './schedule-release-actions';
 
 export {

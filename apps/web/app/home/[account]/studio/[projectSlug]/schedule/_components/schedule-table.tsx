@@ -14,6 +14,7 @@ import { timeZoneLabel } from '@kit/publishing/lib/time-zone-label';
 import {
   cancelScheduledPublishAction,
   discardHeldShortsAction,
+  markPublishRemovedAction,
   requeueHeldShortsAction,
 } from '@kit/publishing/server';
 import {
@@ -53,6 +54,8 @@ export interface ScheduleRow {
   error: string | null;
   heldReason: string | null;
   breaking: boolean;
+  episodeDeleted: boolean;
+  removedReason: string | null;
 }
 
 const TONES = {
@@ -88,7 +91,9 @@ function formatAt(at: string, timeZone: string) {
 /**
  * FILM-2211. Every post of the project in the range, in time order, in the
  * viewer's timezone. A scheduled post can be cancelled, and a held Short
- * re-queued or discarded, through the actions the Publish screen uses.
+ * re-queued or discarded, through the actions the Publish screen uses. A
+ * published video taken down on its platform can be marked removed
+ * (KB-207), which frees its place in the channel's posting rules.
  */
 export function ScheduleTable(props: {
   rows: ScheduleRow[];
@@ -140,6 +145,7 @@ export function ScheduleTable(props: {
               data-type={row.contentType === 'short' ? 'short' : 'long'}
               data-platform={row.platform}
               data-at={row.at ?? ''}
+              data-episode-deleted={row.episodeDeleted}
             >
               <TableCell className="whitespace-nowrap tabular-nums">
                 {row.at ? (
@@ -166,6 +172,15 @@ export function ScheduleTable(props: {
                   {row.episodeNumber !== null && row.episodeTitle ? ' · ' : ''}
                   {row.episodeTitle}
                 </Link>
+                {row.episodeDeleted && (
+                  <Badge
+                    variant="outline"
+                    className="ml-1"
+                    data-test="schedule-row-episode-deleted"
+                  >
+                    Deleted
+                  </Badge>
+                )}
               </TableCell>
               <TableCell>
                 {row.contentType === 'short' ? 'Short' : 'Long video'}
@@ -215,19 +230,19 @@ function StatusCell({ row }: { row: ScheduleRow }) {
           </a>
         )}
       </div>
-      {(row.error ?? row.heldReason) && (
+      {(row.error ?? row.heldReason ?? row.removedReason) && (
         <p
           className="max-w-64 text-xs text-muted-foreground"
           data-test="schedule-row-reason"
         >
-          {row.error ?? row.heldReason}
+          {row.error ?? row.heldReason ?? `Removed: ${row.removedReason}`}
         </p>
       )}
     </div>
   );
 }
 
-type Pending = 'cancel' | 'requeue' | 'discard';
+type Pending = 'cancel' | 'requeue' | 'discard' | 'remove';
 
 const CONFIRM: Record<
   Pending,
@@ -251,6 +266,19 @@ const CONFIRM: Record<
     action: 'Discard',
     done: 'Short discarded.',
   },
+  remove: {
+    title: 'Mark this video as removed?',
+    body: 'For a video already taken down on the platform. It no longer counts toward the channel’s posting rules, and analytics stop reading it. Nothing is deleted on the platform.',
+    action: 'Mark as removed',
+    done: 'Marked as removed.',
+  },
+};
+
+const LABELS: Record<Pending, string> = {
+  cancel: 'Cancel',
+  requeue: 'Re-queue',
+  discard: 'Discard',
+  remove: 'Mark as removed',
 };
 
 function RowActions({ row }: { row: ScheduleRow }) {
@@ -263,7 +291,9 @@ function RowActions({ row }: { row: ScheduleRow }) {
       ? ['cancel']
       : row.status === 'held'
         ? ['requeue', 'discard']
-        : [];
+        : row.status === 'published'
+          ? ['remove']
+          : [];
 
   if (actions.length === 0) return null;
 
@@ -277,6 +307,8 @@ function RowActions({ row }: { row: ScheduleRow }) {
           await unwrap(
             cancelScheduledPublishAction({ publishId: row.publishId }),
           );
+        } else if (action === 'remove') {
+          await unwrap(markPublishRemovedAction({ publishId: row.publishId }));
         } else if (action === 'requeue') {
           await unwrap(requeueHeldShortsAction({ publishIds, timezone }));
         } else {
@@ -306,11 +338,7 @@ function RowActions({ row }: { row: ScheduleRow }) {
           onClick={() => setConfirming(action)}
           data-test={`schedule-row-${action}`}
         >
-          {action === 'cancel'
-            ? 'Cancel'
-            : action === 'requeue'
-              ? 'Re-queue'
-              : 'Discard'}
+          {LABELS[action]}
         </Button>
       ))}
 

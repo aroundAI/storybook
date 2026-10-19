@@ -28,12 +28,20 @@ const gateOutcomes = new Map<string, string>();
 /** An in-memory `publishes`: selects see what updates left behind */
 function from(table: string) {
   const filters: Array<[string, unknown]> = [];
+  const nulls: string[] = [];
   let update: Record<string, unknown> | null = null;
   let window: [number, number] | null = null;
 
   const matching = () =>
-    [...rows.values()].filter((row) =>
-      filters.every(([column, value]) => row[column] === value),
+    [...rows.values()].filter(
+      (row) =>
+        filters.every(([column, value]) => row[column] === value) &&
+        // `.is('episodes.deleted_at', null)` on the embedded episode
+        nulls.every((path) => {
+          const [embed, column] = path.split('.') as [string, string];
+          const parent = row[embed] as Record<string, unknown> | undefined;
+          return (parent?.[column] ?? null) === null;
+        }),
     );
 
   const run = async () => {
@@ -63,6 +71,10 @@ function from(table: string) {
     },
     eq: (column: string, value: unknown) => {
       filters.push([column, value]);
+      return q;
+    },
+    is: (path: string, value: null) => {
+      if (value === null) nulls.push(path);
       return q;
     },
     lte: () => q,
@@ -180,6 +192,25 @@ describe('the scheduled job', () => {
     });
     expect(rows.get('running')!.status).toBe('publishing');
     expect(sent).toEqual([]);
+  });
+
+  // KB-207: a deleted episode's scheduled long video was still posted
+  it('does not send a post of a deleted episode', async () => {
+    const row = due('gone');
+    rows.set('gone', {
+      ...row,
+      content_type: 'full',
+      episodes: {
+        ...(row.episodes as object),
+        deleted_at: '2026-10-19T08:00:00Z',
+      },
+    });
+    rows.set('live', due('live'));
+
+    await handler();
+
+    expect(sent).toEqual(['live']);
+    expect(rows.get('gone')!.status).toBe('scheduled');
   });
 
   it('sends a post once when two runs overlap', async () => {

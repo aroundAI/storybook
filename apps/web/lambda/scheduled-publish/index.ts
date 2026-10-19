@@ -189,7 +189,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
       slot_at,
       after_episode_full,
       release_priority,
-      episodes(
+      episodes!inner(
         project_id,
         final_video_url,
         thumbnail_url,
@@ -200,6 +200,8 @@ export async function handler(): Promise<ScheduledPublishResult> {
     `,
     )
     .eq('status', 'scheduled')
+    // KB-207: a deleted episode's post is never sent
+    .is('episodes.deleted_at', null)
     .lte('scheduled_at', now.toISOString())
     .order('scheduled_at', { ascending: true })
     .limit(50)

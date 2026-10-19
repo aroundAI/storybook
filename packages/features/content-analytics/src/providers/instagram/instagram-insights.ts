@@ -5,6 +5,10 @@ import type { SubscriberCountResult } from '@kit/shared/subscribers';
 import { metaFetch } from '@kit/shared/vendors';
 
 import {
+  PublishedContentMissingError,
+  isGraphObjectMissing,
+} from '../../lib/content-removed';
+import {
   MetaRateLimitError,
   isMetaThrottle,
   metaUsagePercent,
@@ -64,6 +68,7 @@ interface GraphAPIError {
     message?: string;
     type?: string;
     code?: number;
+    error_subcode?: number;
   };
 }
 
@@ -115,13 +120,7 @@ export class InstagramInsightsProvider {
         { token: this.accessToken },
       );
 
-      if (!mediaInfoResponse.ok) {
-        throw new Error(
-          `Failed to fetch media info: HTTP ${mediaInfoResponse.status}`,
-        );
-      }
-
-      const mediaInfo = (await mediaInfoResponse.json()) as {
+      const mediaInfo = (await mediaInfoResponse.json().catch(() => ({}))) as {
         media_type?: InstagramMediaType;
         media_product_type?: InstagramMediaProductType;
         reposts_count?: number;
@@ -129,6 +128,17 @@ export class InstagramInsightsProvider {
         total_like_count?: number;
         total_comments_count?: number;
       } & GraphAPIError;
+
+      // KB-207: the media itself gone is the one answer that says so
+      if (isGraphObjectMissing(mediaInfoResponse.status, mediaInfo.error)) {
+        throw new PublishedContentMissingError('instagram', mediaId);
+      }
+
+      if (!mediaInfoResponse.ok) {
+        throw new Error(
+          `Failed to fetch media info: HTTP ${mediaInfoResponse.status}`,
+        );
+      }
 
       if (mediaInfo.error) {
         throw new Error(

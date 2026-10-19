@@ -7,6 +7,8 @@
  *
  * - the connection belongs to the account that owns the publish's episode
  *   (KB-109: a publish row could name another account's connection);
+ * - an upload's episode has not been deleted (KB-207: deleting an episode
+ *   cancels its posts, and a job already on the queue is failed here);
  * - a delete runs only on a row in 'deleting' — set by an unpublish action
  *   whose update passed `publishes_update` — and only for a user who may
  *   still take the project's videos down (`TAKEDOWN_ROLES`).
@@ -20,6 +22,9 @@ import {
 } from '@kit/publishing/lib/takedown';
 import type { Database } from '@kit/supabase/database';
 
+export const EPISODE_DELETED_REFUSAL =
+  'Its episode was deleted, so it was not posted.';
+
 /** A job that must not run. Acknowledged, not retried: retrying asks again. */
 export class PublishJobRefused extends Error {
   override readonly name = 'PublishJobRefused';
@@ -27,7 +32,7 @@ export class PublishJobRefused extends Error {
 
 const PUBLISH_COLUMNS = `
   id, status, platform, platform_content_id, platform_connection_id,
-  episode:episodes!inner(project_id, project:projects!inner(account_id)),
+  episode:episodes!inner(project_id, deleted_at, project:projects!inner(account_id)),
   connection:platform_connections(account_id)
 `;
 
@@ -38,6 +43,7 @@ interface PublishRow {
   platform_content_id: string | null;
   platform_connection_id: string | null;
   projectId: string;
+  episodeDeleted: boolean;
 }
 
 async function readPublish(
@@ -72,6 +78,7 @@ async function readPublish(
     platform_content_id: data.platform_content_id,
     platform_connection_id: data.platform_connection_id,
     projectId: data.episode.project_id,
+    episodeDeleted: data.episode.deleted_at !== null,
   };
 }
 
@@ -86,6 +93,8 @@ export async function publishJobConnection(
   const row = await readPublish(supabase, job.publishId);
 
   if (!row) throw new PublishJobRefused('The publish no longer exists');
+
+  if (row.episodeDeleted) throw new PublishJobRefused(EPISODE_DELETED_REFUSAL);
 
   if (row.platform_connection_id !== job.platformConnectionId) {
     throw new PublishJobRefused(

@@ -11,6 +11,7 @@ import {
   cadenceGate,
   longVideoStates,
 } from '../src/lib/cadence/gate';
+import { ON_CALENDAR } from '../src/server/channel-calendar';
 
 /**
  * FILM-719, FILM-2209. What the scheduled job does with a due post: a Short
@@ -542,6 +543,21 @@ describe('the rules, read alone', () => {
         TZ,
       ),
     ).toBe(2);
+  });
+
+  // KB-207: a video taken down on its platform no longer holds the day
+  it('does not count a removed video', () => {
+    expect(
+      postsToday(
+        [
+          { status: 'deleted', published_at: '2026-11-05T05:00:00Z' },
+          { status: 'published', published_at: '2026-11-05T06:00:00Z' },
+        ],
+        NOW,
+        TZ,
+      ),
+    ).toBe(1);
+    expect(ON_CALENDAR).not.toContain('deleted');
   });
 
   it('holds a channel with no rules to one a day, at the post’s own time', () => {
