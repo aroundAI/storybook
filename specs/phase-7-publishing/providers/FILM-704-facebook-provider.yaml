@@ -38,7 +38,7 @@ acceptance_criteria:
     reason: "unverified — simple, resumable and Reel paths built (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:30`); no test or sandbox run"
   - text: "Resumable upload works for large files"
     met: false
-    reason: "unverified — three-phase session above 1 GB (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:252`, `packages/features/publishing/src/providers/facebook/types.ts:84`); no test"
+    reason: "unverified — three-phase session above 1 GB (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:255`, `packages/features/publishing/src/providers/facebook/types.ts:88`); no test"
   - text: "Progress reporting works"
     met: true
     evidence: "`packages/features/publishing/src/providers/facebook/facebook-provider.ts:96`, `packages/features/publishing/src/providers/facebook/facebook-provider.ts:240`"

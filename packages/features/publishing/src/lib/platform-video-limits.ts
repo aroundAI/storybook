@@ -7,10 +7,16 @@ import type { VideoFacts } from '@kit/shared/vendors';
  * writes "1 GB" and "300MB" without saying which; the smaller, decimal
  * reading is used, so nothing Meta would refuse is let through.
  *
- * - Facebook, a Page video by `file_url`: "If you upload a video with a
- *   multi-part HTTP request or by providing a URL to a video, the video
- *   cannot exceed 1 GB in size and 20 minutes in duration"
+ * - Facebook, a Page video: StoryBook sends anything over
+ *   `FACEBOOK_FILE_URL_MAX_BYTES` (1 GB) through the resumable protocol
+ *   (KB-209), where "Resumable video uploads can be up to 1.75GB and 45
+ *   minutes in duration"; only a multi-part or `file_url` upload "cannot
+ *   exceed 1 GB in size and 20 minutes in duration"
  *   (https://developers.facebook.com/docs/graph-api/reference/event/videos/).
+ *   Meta's pages state no larger figure (10 GB / 240 minutes could not be
+ *   found), so the documented one is used. StoryBook posts every Facebook
+ *   video as a regular Page video, Shorts included, never as a Reel, so
+ *   the Reels limits do not apply here.
  * - Instagram Reels: "File size: 300MB maximum", "Duration: 15 mins
  *   maximum, 3 seconds minimum"
  *   (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media).
@@ -18,8 +24,10 @@ import type { VideoFacts } from '@kit/shared/vendors';
  * YouTube takes 256 GB (videos.insert), more than StoryBook uploads, so it
  * has no entry. X has its own (`xVideoRefusal`).
  */
+export const FACEBOOK_FILE_URL_MAX_BYTES = 1e9;
+
 export const PLATFORM_VIDEO_LIMITS = {
-  facebook: { name: 'Facebook', maxBytes: 1e9, maxSeconds: 20 * 60 },
+  facebook: { name: 'Facebook', maxBytes: 1.75e9, maxSeconds: 45 * 60 },
   instagram: {
     name: 'Instagram',
     maxBytes: 300e6,

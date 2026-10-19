@@ -14,7 +14,7 @@ import { FACEBOOK_CONSTRAINTS } from './types';
 /**
  * Facebook Provider
  * Handles video uploads to Facebook Pages using the Graph API
- * Supports both simple uploads (< 1GB) and resumable uploads (> 1GB)
+ * Supports both simple uploads (up to 1 GB) and resumable uploads (above 1 GB)
  */
 export class FacebookProvider {
   constructor(
@@ -36,19 +36,23 @@ export class FacebookProvider {
       return this.uploadReel(input, onProgress);
     }
 
-    if (input.fetchFromUrl) {
+    // Meta fetches a URL itself only up to 1 GB; a larger one, or one whose
+    // size a HEAD cannot give, is the resumable path's concern (KB-209)
+    const fileSize = input.fetchFromUrl
+      ? await this.headSize(input.videoPath)
+      : await this.getFileSize(input.videoPath);
+
+    if (fileSize === null) {
       return this.simpleUpload(input, onProgress);
     }
 
-    const fileSize = await this.getFileSize(input.videoPath);
-
     if (fileSize > FACEBOOK_CONSTRAINTS.maxFileSizeBytes) {
       throw new Error(
-        `Video size exceeds maximum of ${FACEBOOK_CONSTRAINTS.maxFileSizeBytes / (1024 * 1024 * 1024)}GB`,
+        `Video size exceeds maximum of ${FACEBOOK_CONSTRAINTS.maxFileSizeBytes / 1e9}GB`,
       );
     }
 
-    // Use resumable upload for files > 1GB
+    // Resumable upload above Meta's 1 GB limit for one call
     if (fileSize > FACEBOOK_CONSTRAINTS.resumableThresholdBytes) {
       return this.resumableUpload(input, fileSize, onProgress);
     }
@@ -72,6 +76,7 @@ export class FacebookProvider {
     const startResponse = await metaFetch(endpoint, {
       method: 'POST',
       token: this.accessToken,
+      host: 'video',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         upload_phase: 'start',
@@ -160,8 +165,7 @@ export class FacebookProvider {
 
   /**
    * Non-resumable upload: one POST to graph-video with FormData. Used for a
-   * file under 1GB, and for any size when `fetchFromUrl` is set, since Meta
-   * then fetches the file itself and nothing passes through this process.
+   * file within 1 GB; with a URL Meta fetches the file itself.
    */
   private async simpleUpload(
     input: FacebookUploadInput,
@@ -246,7 +250,7 @@ export class FacebookProvider {
   }
 
   /**
-   * Resumable upload for large files (> 1GB)
+   * Resumable upload for large files (above 1 GB)
    * Uses Facebook's 3-phase resumable upload protocol
    */
   private async resumableUpload(
@@ -259,13 +263,15 @@ export class FacebookProvider {
 
     // Phase 2: Upload chunks
     let currentOffset = session.startOffset;
-    const chunkSize = session.endOffset - session.startOffset;
+    let chunkEnd = session.endOffset;
 
+    // One chunk is in memory at a time, of the size Meta names between
+    // start_offset and end_offset
     while (currentOffset < fileSize) {
       const chunk = await this.readChunk(
         input.videoPath,
         currentOffset,
-        Math.min(chunkSize, fileSize - currentOffset),
+        Math.min(chunkEnd, fileSize) - currentOffset,
       );
 
       const transferResult = await this.transferChunk(
@@ -281,6 +287,7 @@ export class FacebookProvider {
         );
       }
       currentOffset = transferResult.startOffset;
+      chunkEnd = transferResult.endOffset;
 
       // Report progress
       const progress = Math.round((currentOffset / fileSize) * 100);
@@ -308,6 +315,7 @@ export class FacebookProvider {
     const response = await metaFetch(`/${this.pageId}/videos`, {
       method: 'POST',
       token: this.accessToken,
+      host: 'video',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         upload_phase: 'start',
@@ -344,16 +352,24 @@ export class FacebookProvider {
     chunk: Buffer,
     startOffset: number,
   ): Promise<{ startOffset: number; endOffset: number }> {
+    // Meta takes `video_file_chunk` as a binary file in multipart/form-data
+    // (https://developers.facebook.com/docs/graph-api/reference/page/videos/,
+    // upload_phase "transfer"), never as base64 text.
+    const form = new FormData();
+    form.append('upload_phase', 'transfer');
+    form.append('upload_session_id', uploadSessionId);
+    form.append('start_offset', String(startOffset));
+    form.append(
+      'video_file_chunk',
+      new Blob([new Uint8Array(chunk)]),
+      'chunk.mp4',
+    );
+
     const response = await metaFetch(`/${this.pageId}/videos`, {
       method: 'POST',
       token: this.accessToken,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        upload_phase: 'transfer',
-        upload_session_id: uploadSessionId,
-        start_offset: startOffset,
-        video_file_chunk: chunk.toString('base64'),
-      }),
+      host: 'video',
+      body: form,
     });
 
     if (!response.ok) {
@@ -383,30 +399,32 @@ export class FacebookProvider {
     videoId: string,
     input: FacebookUploadInput,
   ): Promise<FacebookUploadResult> {
-    const finishData: Record<string, unknown> = {
-      upload_phase: 'finish',
-      upload_session_id: uploadSessionId,
-      title: input.title,
-      description: input.description,
-      published: input.published,
-    };
+    // Multipart, as `thumb` is a file: title, description and the thumbnail
+    // (https://developers.facebook.com/docs/graph-api/reference/page/videos/)
+    const form = new FormData();
+    form.append('upload_phase', 'finish');
+    form.append('upload_session_id', uploadSessionId);
+    form.append('title', input.title);
+    form.append('description', input.description);
+    form.append('published', String(input.published));
 
     if (input.scheduledPublishTime) {
-      finishData.scheduled_publish_time = Math.floor(
-        input.scheduledPublishTime.getTime() / 1000,
+      form.append(
+        'scheduled_publish_time',
+        String(Math.floor(input.scheduledPublishTime.getTime() / 1000)),
       );
     }
 
-    // Add thumbnail if provided
     if (input.thumbnailPath?.startsWith('http')) {
-      finishData.thumb = input.thumbnailPath;
+      const thumb = await this.downloadThumbnail(input.thumbnailPath);
+      if (thumb) form.append('thumb', thumb, 'thumbnail.jpg');
     }
 
     const response = await metaFetch(`/${this.pageId}/videos`, {
       method: 'POST',
       token: this.accessToken,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(finishData),
+      host: 'video',
+      body: form,
     });
 
     if (!response.ok) {
@@ -551,6 +569,17 @@ export class FacebookProvider {
       console.warn('[Facebook] Error downloading thumbnail:', error);
     }
     return null;
+  }
+
+  /** A URL's size from a HEAD alone, or null: never downloads the file */
+  private async headSize(url: string): Promise<number | null> {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const length = Number(response.headers.get('content-length'));
+      return response.ok && length > 0 ? length : null;
+    } catch {
+      return null;
+    }
   }
 
   /**
