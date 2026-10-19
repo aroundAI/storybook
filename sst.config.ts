@@ -935,6 +935,21 @@ export default $config({
         ...(process.env.SUPABASE_DB_WEBHOOK_SECRET && {
           SUPABASE_DB_WEBHOOK_SECRET: process.env.SUPABASE_DB_WEBHOOK_SECRET,
         }),
+        // Analytics: the app stores and reads figures in ClickHouse only when
+        // CLICKHOUSE_ENABLED is 'true' (packages/clickhouse/src/client.ts).
+        // deploy.sh read these to run the migrations, but they never reached
+        // the app, so production never synced or served analytics (KB-203).
+        ...Object.fromEntries(
+          [
+            'CLICKHOUSE_ENABLED',
+            'CLICKHOUSE_HOST',
+            'CLICKHOUSE_USER',
+            'CLICKHOUSE_PASSWORD',
+            'CLICKHOUSE_DB',
+          ].flatMap((key) =>
+            process.env[key] ? [[key, process.env[key]!]] : [],
+          ),
+        ),
         // /api/mcp signs each caller's Supabase token with this (FILM-1904);
         // without it every MCP request is a 500.
         ...(process.env.SUPABASE_JWT_SECRET && {
