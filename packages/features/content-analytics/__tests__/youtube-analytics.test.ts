@@ -592,6 +592,121 @@ describe('YouTubeAnalyticsProvider', () => {
     });
   });
 
+  // KB-211. YouTube refused the geography query ("The query is not
+  // supported.") because it asked for viewerPercentage beside country, and
+  // that one refusal failed every published video's whole sync.
+  describe('a refused query (KB-211)', () => {
+    type Params = {
+      metrics: string;
+      dimensions?: string;
+      filters?: string;
+      sort?: string;
+      maxResults?: number;
+    };
+    const NOT_SUPPORTED = new Error(
+      'The query is not supported. Check the documentation at https://developers.google.com/youtube/analytics/v2/available_reports for a list of supported queries.',
+    );
+    const input = {
+      videoId: 'vid',
+      startDate: new Date('2026-10-18'),
+      endDate: new Date('2026-10-19'),
+    };
+
+    function answer(refuse: (params: Params) => boolean) {
+      mockReportsQuery.mockImplementation((params: Params) => {
+        if (refuse(params)) return Promise.reject(NOT_SUPPORTED);
+        if (params.dimensions === 'day' && params.metrics !== 'engagedViews') {
+          return Promise.resolve(dailyAnswer([['2026-10-18', ...CORE_DAY]]));
+        }
+        if (params.dimensions === 'country') {
+          return Promise.resolve({
+            data: {
+              rows: [
+                ['US', 300, 200],
+                ['GB', 100, 100],
+              ],
+            },
+          });
+        }
+        return Promise.resolve({ data: { rows: [] } });
+      });
+    }
+
+    const asked = () =>
+      mockReportsQuery.mock.calls.map(([params]) => params as Params);
+
+    it('asks for no demographics metric beside country, and derives each share from views', async () => {
+      answer(() => false);
+
+      const result = await provider.getVideoAnalytics(input);
+
+      const geography = asked().find((p) => p.dimensions === 'country');
+      expect(geography?.metrics).toBe('views,estimatedMinutesWatched');
+      expect(result.geography).toEqual([
+        {
+          country: 'US',
+          views: 300,
+          watchTimeMinutes: 200,
+          viewPercentage: 75,
+        },
+        {
+          country: 'GB',
+          views: 100,
+          watchTimeMinutes: 100,
+          viewPercentage: 25,
+        },
+      ]);
+    });
+
+    it('asks viewerPercentage only beside ageGroup or gender', async () => {
+      answer(() => false);
+
+      await provider.getVideoAnalytics(input);
+
+      const withViewerPercentage = asked().filter((p) =>
+        p.metrics.split(',').includes('viewerPercentage'),
+      );
+      expect(withViewerPercentage.map((p) => p.dimensions).sort()).toEqual([
+        'ageGroup',
+        'gender',
+      ]);
+    });
+
+    it('keeps the views, likes and watch time when the geography query is refused', async () => {
+      answer((p) => p.dimensions === 'country');
+
+      const result = await provider.getVideoAnalytics(input);
+
+      expect(result.geography).toBeUndefined();
+      expect(result.totals).toMatchObject({
+        views: 400,
+        likes: 20,
+        estimatedMinutesWatched: 300,
+      });
+    });
+
+    it('keeps the sync when the traffic-source query is refused, with the sources not reported', async () => {
+      answer((p) => p.dimensions === 'day,insightTrafficSourceType');
+
+      const result = await provider.getVideoAnalytics(input);
+
+      expect(result.dailyData.map((d) => d.views)).toEqual([400]);
+      expect(result.trafficSources).toBeUndefined();
+      expect(result.dailyTrafficSources).toBeUndefined();
+    });
+
+    it('names the failing query and its shape when the core daily query is refused', async () => {
+      answer((p) => p.dimensions === 'day' && p.metrics.includes('likes'));
+
+      const failure = provider.getVideoAnalytics(input);
+
+      await expect(failure).rejects.toThrow(
+        /query daily-metrics \(startDate=2026-10-18 endDate=2026-10-19 metrics=views,likes,.* dimensions=day filters=video==vid sort=day\) failed: The query is not supported/,
+      );
+      await expect(failure).rejects.not.toThrow(/test-access-token/);
+    });
+  });
+
   describe('error handling', () => {
     it('should handle API errors gracefully for retention data', async () => {
       // Only the retention query fails. Answered by what is asked, not by

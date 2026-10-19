@@ -203,6 +203,12 @@ export function nullReason(
   const label = platformLabel(platform);
   const only = ONLY_ON[figure];
 
+  // KB-153: a Facebook row's views are NULL by design, and "not reported
+  // yet" read as Meta's delay (KB-211). Its kinds of view are their own.
+  if (figure === 'views' && platform === 'facebook') {
+    return `${label} has no single views figure: see fbViews3s (3-second views) and fbViewsComplete.`;
+  }
+
   if (only && !only.includes(platform)) {
     return figure === 'dislikes'
       ? 'No dislikes on this platform.'

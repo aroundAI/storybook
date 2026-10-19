@@ -6,6 +6,7 @@ import {
   assembleDigest,
   canonicalJson,
   localDay,
+  nullReason,
 } from '../src/lib/daily-digest';
 import {
   NO_CHANNEL_FIGURES,
@@ -360,6 +361,19 @@ describe('an unmeasured figure', () => {
     expect(day.figures.reach).toBeNull();
     expect(day.notMeasured.reach).toBe('YouTube does not report this figure.');
     expect(day.figures.reelsAvgWatchTimeMs).toBeNull();
+  });
+
+  // KB-211: the producer read "Not reported by Facebook … yet" as Meta's
+  // delay, but a Facebook row never has `views` (KB-153).
+  it('a Facebook video’s views point at its 3-second views, not at a delay', () => {
+    const reason = nullReason('views', 'facebook', {
+      storeOff: null,
+      daily: false,
+    });
+
+    expect(reason).toMatch(/no single views figure/);
+    expect(reason).toMatch(/fbViews3s/);
+    expect(reason).not.toMatch(/yet/);
   });
 
   it('is null with the store’s reason when the analytics store was not read, never 0', () => {
