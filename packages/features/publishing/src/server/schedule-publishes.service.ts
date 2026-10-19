@@ -260,7 +260,7 @@ export async function prepareScheduledRows(
       thumbnail_url: publishThumbnail(
         platform.contentType,
         platform.thumbnailUrl,
-        episodeThumbnail,
+        episodeThumbnail(platform.language),
       ),
       status: 'scheduled',
       scheduled_at: platform.scheduledAt,

@@ -75,6 +75,8 @@ const FOREIGN = {
 };
 
 const inserted: Array<Record<string, unknown>> = [];
+/** The episode's thumbnails, as the thumbnail uploads save them (KB-210) */
+let thumbnailRows: Array<Record<string, unknown>> = [];
 
 function table(name: string) {
   const query = {
@@ -137,7 +139,10 @@ function table(name: string) {
         error: null,
       }),
     then: (resolve: (value: unknown) => void) =>
-      resolve({ data: null, error: null }),
+      resolve({
+        data: name === 'episode_thumbnails' ? thumbnailRows : null,
+        error: null,
+      }),
   };
   return query;
 }
@@ -146,7 +151,7 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({ from: (name: string) => table(name) }),
 }));
 
-function publishWith(thumbnailUrl: string) {
+function publishWith(thumbnailUrl?: string) {
   return {
     episodeId: EPISODE,
     platforms: [
@@ -170,6 +175,7 @@ const savedEnv = { ...process.env };
 beforeEach(() => {
   resetQueue();
   inserted.length = 0;
+  thumbnailRows = [];
   uploadVideo.mockReset();
   uploadVideo.mockResolvedValue({
     videoId: 'v1',
@@ -209,6 +215,19 @@ describe('publishToAllAction and the thumbnail it is handed (KB-104)', () => {
     );
 
     const result = await publishToAllAction(publishWith(OWN));
+
+    expect(result).toMatchObject({ ok: true });
+    expect(inserted[0]?.thumbnail_url).toBe(OWN);
+    expect(sentJobs).toEqual([expect.objectContaining({ thumbnailUrl: OWN })]);
+  });
+
+  it("gives a long video sent with no thumbnail the episode's in its language (KB-210)", async () => {
+    thumbnailRows = [{ language: 'en', thumbnail_url: OWN, is_default: true }];
+    const { publishToAllAction } = await import(
+      '../src/server/publish-actions'
+    );
+
+    const result = await publishToAllAction(publishWith());
 
     expect(result).toMatchObject({ ok: true });
     expect(inserted[0]?.thumbnail_url).toBe(OWN);

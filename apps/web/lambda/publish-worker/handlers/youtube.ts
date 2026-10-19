@@ -17,7 +17,7 @@ export async function uploadToYouTube(
   accessToken: string,
   job: PublishJobMessage,
   channel: YouTubeChannelDeclaration | null,
-): Promise<{ contentId: string; url: string }> {
+): Promise<{ contentId: string; url: string; thumbnailError?: string }> {
   // KB-30: before anything is fetched or sent. With no declaration from the
   // publish row or the channel, nothing uploads.
   const declaration = resolveYouTubeDeclaration(job.metadata, channel);
@@ -86,7 +86,9 @@ export async function uploadToYouTube(
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   console.log(`[YouTube] Video uploaded: ${videoUrl}`);
 
-  // 4. Upload thumbnail if provided (non-fatal)
+  // 4. Upload thumbnail if provided. Non-fatal: the video is up, and the
+  // failure is recorded on the publish (KB-210)
+  let thumbnailError: string | undefined;
   if (job.thumbnailUrl) {
     try {
       const thumbnailStream = await getVideoStream(job.thumbnailUrl);
@@ -100,15 +102,17 @@ export async function uploadToYouTube(
         { rootUrl: vendorUrl('youtube-data') },
       );
       console.log(`[YouTube] Thumbnail uploaded`);
-    } catch (thumbnailError) {
-      // Don't fail the upload if thumbnail fails
-      console.warn(
-        `[YouTube] Thumbnail upload failed: ${thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError)}`,
-      );
+    } catch (error) {
+      thumbnailError = `YouTube refused the thumbnail: ${error instanceof Error ? error.message : String(error)}`;
+      console.warn(`[YouTube] ${thumbnailError}`);
     }
   }
 
-  return { contentId: videoId, url: videoUrl };
+  return {
+    contentId: videoId,
+    url: videoUrl,
+    ...(thumbnailError && { thumbnailError }),
+  };
 }
 
 export async function deleteFromYouTube(

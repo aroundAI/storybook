@@ -137,6 +137,50 @@ describe('uploadToFacebook', () => {
     expect(form.has('access_token')).toBe(false);
   });
 
+  const THUMB = 'https://cdn.example.com/thumbnails/en-1.png';
+
+  it('sends a long video’s thumbnail as the thumb file (KB-210)', async () => {
+    answer = ({ url }) =>
+      url.href === THUMB
+        ? new Response(new Uint8Array([0xff, 0xd8, 0xff]))
+        : url.pathname.endsWith('/1093/videos')
+          ? json({ id: 'video-9' })
+          : json({ error: { message: url.pathname } }, 404);
+
+    const result = await uploadToFacebook('page-token', {
+      ...job,
+      thumbnailUrl: THUMB,
+    });
+
+    expect(result).toEqual({
+      contentId: 'video-9',
+      url: 'https://www.facebook.com/1093/videos/video-9',
+    });
+    const upload = calls.find((c) => c.url.pathname.endsWith('/1093/videos'));
+    const thumb = (upload!.body as FormData).get('thumb') as Blob;
+    expect(thumb.size).toBe(3);
+  });
+
+  it('posts the video without a thumbnail it cannot fetch, and says so (KB-210)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    answer = ({ url }) =>
+      url.href === THUMB
+        ? new Response('gone', { status: 404 })
+        : url.pathname.endsWith('/1093/videos')
+          ? json({ id: 'video-9' })
+          : json({ error: { message: url.pathname } }, 404);
+
+    const result = await uploadToFacebook('page-token', {
+      ...job,
+      thumbnailUrl: THUMB,
+    });
+
+    expect(result.contentId).toBe('video-9');
+    expect(result.thumbnailError).toMatch(/thumbnail could not be downloaded/);
+    const upload = calls.find((c) => c.url.pathname.endsWith('/1093/videos'));
+    expect((upload!.body as FormData).has('thumb')).toBe(false);
+  });
+
   it('deletes by video id with the token in the header', async () => {
     answer = () => json({ success: true });
 

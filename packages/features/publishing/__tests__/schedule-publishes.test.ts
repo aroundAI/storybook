@@ -43,6 +43,12 @@ let publishRow: { status: string } | null;
 let statusAtDelete: string;
 let role: string | null;
 let episodeThumbnail: string | null;
+/** The episode's thumbnails, one per language (KB-210) */
+let thumbnailRows: Array<{
+  language: string;
+  thumbnail_url: string;
+  is_default: boolean;
+}>;
 
 function query(name: string) {
   let filters: Record<string, unknown> = {};
@@ -142,6 +148,9 @@ function query(name: string) {
           error: null,
         });
       }
+      if (name === 'episode_thumbnails') {
+        return resolve({ data: thumbnailRows, error: null });
+      }
       if (deleting) {
         const hit =
           !!publishRow &&
@@ -189,6 +198,7 @@ beforeEach(() => {
   statusAtDelete = 'scheduled';
   role = 'owner';
   episodeThumbnail = null;
+  thumbnailRows = [];
   vi.unstubAllEnvs();
   getAccessToken.mockReset();
   getAccessToken.mockResolvedValue({ accessToken: 'token' });
@@ -238,6 +248,63 @@ describe('scheduling a publish over MCP', () => {
       ['short', null],
       ['short', null],
     ]);
+  });
+
+  it('gives a long video with no thumbnail the episode’s, in its language, and a Short none (KB-210)', async () => {
+    vi.stubEnv(
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'https://abcdefghijklmnop.supabase.co',
+    );
+    vi.stubEnv('STORAGE_PROVIDER', '');
+    const own = (file: string) =>
+      `https://abcdefghijklmnop.supabase.co/storage/v1/object/public/project-assets/episodes/${EPISODE}/thumbnails/${file}`;
+    // As MCP finalize_episode_thumbnail saves them: the episode row has none
+    thumbnailRows = [
+      { language: 'hi', thumbnail_url: own('hi-1.png'), is_default: true },
+      { language: 'en', thumbnail_url: own('en-1.png'), is_default: false },
+    ];
+
+    const result = await schedule([
+      target(),
+      target({ contentType: 'short', shortsGroupId: 'yt-cut' }),
+    ]);
+
+    expect(result.ok).toBe(true);
+    expect(
+      inserted.map((row) => [row.content_type, row.thumbnail_url]),
+    ).toEqual([
+      ['full', own('en-1.png')],
+      ['short', null],
+    ]);
+
+    // None in the video's language: the default
+    inserted.length = 0;
+    thumbnailRows = [thumbnailRows[0]!];
+
+    await schedule([target()]);
+
+    expect(inserted[0]!.thumbnail_url).toBe(own('hi-1.png'));
+  });
+
+  it('stores no thumbnail that is not one of the episode’s own (KB-104, KB-210)', async () => {
+    vi.stubEnv(
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'https://abcdefghijklmnop.supabase.co',
+    );
+    vi.stubEnv('STORAGE_PROVIDER', '');
+    thumbnailRows = [
+      {
+        language: 'en',
+        thumbnail_url:
+          'https://abcdefghijklmnop.supabase.co/storage/v1/object/public/project-assets/episodes/another/thumbnails/en-1.png',
+        is_default: true,
+      },
+    ];
+
+    const result = await schedule([target()]);
+
+    expect(result.ok).toBe(true);
+    expect(inserted[0]!.thumbnail_url).toBeNull();
   });
 
   it('writes one scheduled row per target, on the channel’s own platform', async () => {

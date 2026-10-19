@@ -197,7 +197,7 @@ const publishToAllHandler = enhanceAction(
               thumbnail_url: publishThumbnail(
                 platform.contentType || 'full',
                 platform.thumbnailUrl,
-                episodeThumbnail,
+                episodeThumbnail(publishLanguage),
               ),
               status: useServerScheduling ? 'scheduled' : 'queued',
               scheduled_at: platform.scheduledAt ?? null,
@@ -297,7 +297,7 @@ const publishToAllHandler = enhanceAction(
               publishThumbnail(
                 actualContentType,
                 platform.thumbnailUrl,
-                episodeThumbnail,
+                episodeThumbnail(publishLanguage),
               ) ?? undefined,
             metadata: publishMetadata,
             aiGenerated,

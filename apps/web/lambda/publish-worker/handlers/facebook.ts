@@ -9,7 +9,7 @@ import { FacebookProvider } from '@kit/publishing/providers/facebook';
 export async function uploadToFacebook(
   accessToken: string,
   job: PublishJobMessage,
-): Promise<{ contentId: string; url: string }> {
+): Promise<{ contentId: string; url: string; thumbnailError?: string }> {
   const pageId = job.metadata.pageId as string;
   if (!pageId) {
     throw new Error('Facebook page ID not provided in metadata');
@@ -19,7 +19,7 @@ export async function uploadToFacebook(
 
   // Meta fetches the video from its URL in one call; nothing passes
   // through the lambda.
-  const { videoId } = await new FacebookProvider(
+  const { videoId, thumbnailError } = await new FacebookProvider(
     accessToken,
     pageId,
   ).uploadVideo({
@@ -41,6 +41,7 @@ export async function uploadToFacebook(
   return {
     contentId: videoId,
     url: `https://www.facebook.com/${pageId}/videos/${videoId}`,
+    ...(thumbnailError && { thumbnailError }),
   };
 }
 

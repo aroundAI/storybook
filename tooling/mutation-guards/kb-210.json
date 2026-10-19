@@ -1,0 +1,65 @@
+{
+  "feature": "KB-210 (a long video posts with the episode's thumbnail; a Short with none)",
+  "mutations": [
+    {
+      "name": "S1 a scheduled long video reads only the episode row's thumbnail again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-preflight.ts",
+      "find": "      pickEpisodeThumbnail(thumbnails, language),\n",
+      "replace": "      null,\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts",
+      "pattern": "KB-210"
+    },
+    {
+      "name": "S2 the resolver ignores the default thumbnail",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/episode-thumbnail.ts",
+      "find": "    rows.find((row) => row.is_default)?.thumbnail_url ??\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/schedule-publishes.test.ts",
+      "pattern": "KB-210"
+    },
+    {
+      "name": "W1 the worker sends a long video with no thumbnail bare again",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "  if (!job.thumbnailUrl) {\n    job.thumbnailUrl =",
+      "replace": "  if (false) {\n    job.thumbnailUrl =",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/kb210-thumbnail.test.ts",
+      "pattern": "in its language"
+    },
+    {
+      "name": "W2 the worker gives a Short the episode thumbnail",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/job-thumbnail.ts",
+      "find": "    if (!row || row.content_type === 'short') return null;\n",
+      "replace": "    if (!row) return null;\n",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/kb210-thumbnail.test.ts",
+      "pattern": "a Short none"
+    },
+    {
+      "name": "W3 the worker sends a thumbnail that is not the episode's own",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/job-thumbnail.ts",
+      "find": "      ownedEpisodeThumbnail(url, job.episodeId),\n",
+      "replace": "      url,\n",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/kb210-thumbnail.test.ts",
+      "pattern": "KB-104"
+    },
+    {
+      "name": "Y1 a thumbnail YouTube refuses is forgotten",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/youtube.ts",
+      "find": "    ...(thumbnailError && { thumbnailError }),\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/kb210-youtube-thumbnail.test.ts",
+      "pattern": "says why"
+    }
+  ]
+}
