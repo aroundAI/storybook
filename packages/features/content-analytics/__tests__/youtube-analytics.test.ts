@@ -126,6 +126,7 @@ describe('YouTubeAnalyticsProvider', () => {
         videoId: 'test-video-id',
         startDate: new Date('2025-01-01'),
         endDate: new Date('2025-01-31'),
+        publishedAt: new Date('2024-06-01'),
       });
 
       expect(result.videoId).toBe('test-video-id');
@@ -161,6 +162,7 @@ describe('YouTubeAnalyticsProvider', () => {
       videoId: 'test-video-id',
       startDate: new Date('2025-01-01'),
       endDate: new Date('2025-01-31'),
+      publishedAt: new Date('2024-06-01'),
     };
 
     // The two days summed; the averages from their definitions:
@@ -304,6 +306,7 @@ describe('YouTubeAnalyticsProvider', () => {
         videoId: 'test-video-id',
         startDate: new Date('2025-01-01'),
         endDate: new Date('2025-01-31'),
+        publishedAt: new Date('2024-06-01'),
       });
 
       expect(result.totals.views).toBe(0);
@@ -377,6 +380,7 @@ describe('YouTubeAnalyticsProvider', () => {
         videoId: 'vid',
         startDate: from,
         endDate: to,
+        publishedAt: from,
       });
 
       expect(result.dailyData).toHaveLength(2);
@@ -610,6 +614,7 @@ describe('YouTubeAnalyticsProvider', () => {
       videoId: 'vid',
       startDate: new Date('2026-10-18'),
       endDate: new Date('2026-10-19'),
+      publishedAt: new Date('2024-06-01'),
     };
 
     function answer(refuse: (params: Params) => boolean) {
@@ -721,6 +726,7 @@ describe('YouTubeAnalyticsProvider', () => {
         videoId: 'test-video-id',
         startDate: new Date('2025-01-01'),
         endDate: new Date('2025-01-31'),
+        publishedAt: new Date('2024-06-01'),
       });
 
       // Retention should be undefined on error
@@ -743,6 +749,7 @@ describe('YouTubeAnalyticsProvider', () => {
         videoId: 'test-video-id',
         startDate: new Date('2025-01-01'),
         endDate: new Date('2025-01-31'),
+        publishedAt: new Date('2024-06-01'),
       });
 
       expect(result.demographics).toBeUndefined();
@@ -758,6 +765,7 @@ describe('YouTubeAnalyticsProvider', () => {
           videoId: 'test-video-id',
           startDate: new Date('2025-01-01'),
           endDate: new Date('2025-01-31'),
+          publishedAt: new Date('2024-06-01'),
         }),
       ).rejects.toThrow(YouTubeAnalyticsScopeError);
     });
@@ -770,6 +778,7 @@ describe('YouTubeAnalyticsProvider', () => {
           videoId: 'test-video-id',
           startDate: new Date('2025-01-01'),
           endDate: new Date('2025-01-31'),
+          publishedAt: new Date('2024-06-01'),
         }),
       ).rejects.toThrow(YouTubeAnalyticsScopeError);
     });
@@ -782,6 +791,7 @@ describe('YouTubeAnalyticsProvider', () => {
           videoId: 'test-video-id',
           startDate: new Date('2025-01-01'),
           endDate: new Date('2025-01-31'),
+          publishedAt: new Date('2024-06-01'),
         }),
       ).rejects.toThrow('Network error');
     });

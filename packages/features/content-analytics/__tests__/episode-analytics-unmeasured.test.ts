@@ -97,7 +97,8 @@ describe('episode analytics, for figures a platform does not measure (KB-149)', 
 
     const analytics = await getEpisodeAnalytics('episode-1');
 
-    expect(analytics?.avgWatchTimeSeconds).toBeNull();
+    expect(analytics?.totalWatchTimeSeconds).toBeNull();
+    expect(analytics?.watchTimeByPlatform).toEqual([]);
     expect(analytics?.subscribersGained).toBeNull();
     expect(analytics?.totalSaves).toBeNull();
     expect(analytics?.platformBreakdown[0]?.saves).toBeNull();
@@ -114,11 +115,11 @@ describe('episode analytics, for figures a platform does not measure (KB-149)', 
 
     const analytics = await getEpisodeAnalytics('episode-1');
 
-    expect(analytics?.avgWatchTimeSeconds).toBe(600);
+    expect(analytics?.totalWatchTimeSeconds).toBe(600);
     expect(analytics?.subscribersGained).toBe(4);
   });
 
-  it('averages watch time over the publishes that measured it, not every publish', async () => {
+  it('totals watch time over the publishes that measured it, not every publish', async () => {
     // Dividing by both publishes would halve YouTube's figure: the TikTok
     // publish would count as a video nobody watched.
     state.publishes = [
@@ -136,9 +137,58 @@ describe('episode analytics, for figures a platform does not measure (KB-149)', 
 
     const analytics = await getEpisodeAnalytics('episode-1');
 
-    expect(analytics?.avgWatchTimeSeconds).toBe(600);
+    expect(analytics?.totalWatchTimeSeconds).toBe(600);
     expect(analytics?.subscribersGained).toBe(4);
     expect(analytics?.totalSaves).toBe(7);
+  });
+});
+
+/**
+ * KB-212: the card is labelled "Total time viewers spent watching", and it
+ * showed the total divided by the number of publishes that measured it:
+ * 1h 37m over a YouTube long and a Facebook Reel read 48m.
+ */
+describe('episode analytics, watch time is the total (KB-212)', () => {
+  function measuredWatch(watch: number): PerVideoTotals {
+    return stats('youtube', { watch, subscribers: 0, saves: 0 });
+  }
+
+  it('adds a YouTube long and a Facebook Reel, and says how much is each', async () => {
+    state.publishes = [
+      { id: 'yt', platform: 'youtube' },
+      { id: 'fb', platform: 'facebook' },
+    ];
+    state.totals.set('yt', measuredWatch(2_460));
+    state.totals.set('fb', { ...measuredWatch(3_360), views: null });
+
+    const analytics = await getEpisodeAnalytics('episode-1');
+
+    expect(analytics?.totalWatchTimeSeconds).toBe(5_820);
+    expect(analytics?.watchTimeByPlatform).toEqual([
+      { platform: 'youtube', seconds: 2_460 },
+      { platform: 'facebook', seconds: 3_360 },
+    ]);
+  });
+
+  it('adds two publishes on one platform into that platform’s figure', async () => {
+    state.publishes = [
+      { id: 'long', platform: 'youtube' },
+      { id: 'short', platform: 'youtube' },
+      { id: 'tt', platform: 'tiktok' },
+    ];
+    state.totals.set('long', measuredWatch(600));
+    state.totals.set('short', measuredWatch(60));
+    state.totals.set(
+      'tt',
+      stats('tiktok', { watch: 0, subscribers: 0, saves: 0 }),
+    );
+
+    const analytics = await getEpisodeAnalytics('episode-1');
+
+    expect(analytics?.totalWatchTimeSeconds).toBe(660);
+    expect(analytics?.watchTimeByPlatform).toEqual([
+      { platform: 'youtube', seconds: 660 },
+    ]);
   });
 });
 

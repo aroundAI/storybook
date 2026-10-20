@@ -404,6 +404,7 @@ export async function fetchPublishesForSync(
       platform_content_id,
       published_at,
       duration_seconds,
+      content_type,
       metadata
     `,
     )
@@ -467,6 +468,7 @@ export async function fetchPublishesForSync(
       platform_content_id: row.platform_content_id!,
       published_at: row.published_at!,
       duration_seconds: row.duration_seconds ?? null,
+      content_type: row.content_type,
       metadata,
       connection: grant,
     });
@@ -793,8 +795,10 @@ async function syncSinglePublish(
 /**
  * Fetches analytics from the appropriate platform provider.
  *
- * YouTube is fetched over [last ingested data date − 3d, now] so recent
- * restatements are absorbed; the per-day breakdown is what gets stored.
+ * YouTube's days are fetched over [last ingested data date − 3d, now] so
+ * recent restatements are absorbed; the per-day breakdown is what gets
+ * stored. Its audience breakdowns are the video's lifetime, from the publish
+ * date (KB-212).
  * TikTok and Instagram return lifetime cumulative counters regardless of
  * any date parameters — those are turned into daily deltas at ingest time.
  */
@@ -821,6 +825,7 @@ async function fetchPlatformAnalytics(
         videoId: publish.platform_content_id,
         startDate,
         endDate,
+        publishedAt: new Date(publish.published_at),
         includeRevenue: mayFetchRevenue(publish.connection),
       });
     }
@@ -853,6 +858,8 @@ async function fetchPlatformAnalytics(
       const provider = createFacebookInsightsProvider(accessToken);
       return provider.getVideoInsights({
         videoId: publish.platform_content_id,
+        // Which metric its watch time comes from (KB-212).
+        reel: publish.content_type === 'short',
       });
     }
     case 'twitter': {
@@ -1391,6 +1398,7 @@ export async function syncSinglePublishById(
       platform_content_id,
       published_at,
       duration_seconds,
+      content_type,
       metadata
     `,
     )
@@ -1532,6 +1540,7 @@ export async function syncSinglePublishById(
     platform_content_id: publish.platform_content_id,
     published_at: publish.published_at!,
     duration_seconds: publish.duration_seconds ?? null,
+    content_type: publish.content_type,
     metadata: publish.metadata as PublishMetadata | null,
     connection: grant,
   };

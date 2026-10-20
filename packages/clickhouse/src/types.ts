@@ -312,6 +312,14 @@ export interface VideoSnapshot
   accounts_reached: number | null;
   /** Lifetime reposts (Instagram FEED and REELS); null when not measured. */
   reposts: number | null;
+  /**
+   * Facebook's own average watch time per view, milliseconds (KB-212,
+   * migration 026): `post_video_avg_time_watched` for a Reel, replays
+   * included, `total_video_avg_time_watched` for any other video. Meta's
+   * lifetime quotient, so it is never a delta nor derived from watch time
+   * over views. Null on every other platform and when Meta sent none.
+   */
+  fb_avg_watch_time_ms?: number | null;
 }
 
 /**

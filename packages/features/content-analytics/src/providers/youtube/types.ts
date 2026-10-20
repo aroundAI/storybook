@@ -12,6 +12,12 @@ export interface YouTubeAnalyticsInput {
   videoId: string;
   startDate: Date;
   endDate: Date;
+  /**
+   * The day the video was published. The audience breakdowns (demographics,
+   * geography, devices, OS, cities, subscribed status) run from it to
+   * `endDate`, the video's lifetime, not the days window (KB-212).
+   */
+  publishedAt: Date;
   metrics?: YouTubeMetric[];
   /**
    * Ask for the revenue metrics. Only true when the connection's recorded

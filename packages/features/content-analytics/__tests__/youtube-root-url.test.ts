@@ -101,6 +101,7 @@ describe('the YouTube analytics clients send requests to the resolved hosts', ()
         videoId: 'video-1',
         startDate: new Date('2026-01-01T00:00:00Z'),
         endDate: new Date('2026-01-07T00:00:00Z'),
+        publishedAt: new Date('2024-06-01'),
       })
       .catch(() => undefined);
     await provider.getVideoInfo('video-1').catch(() => undefined);

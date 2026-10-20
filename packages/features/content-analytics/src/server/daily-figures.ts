@@ -254,6 +254,10 @@ function snapshotFigures(row: VideoSnapshotRow): VideoFigures {
     profileVisits: row.profileVisits,
     reelsAvgWatchTimeMs: row.reelsAvgWatchTimeMs,
     reelsSkipRate: row.reelsSkipRate,
+    // Meta's own per-view average, stored as reported (KB-212); Facebook
+    // has no views to divide watch time by.
+    avgViewDurationSeconds:
+      row.fbAvgWatchTimeMs === null ? null : row.fbAvgWatchTimeMs / 1000,
     fbViews3s: row.views3s,
     fbViewsOrganic: row.views3sOrganic,
     fbViewsComplete: row.completeViews,

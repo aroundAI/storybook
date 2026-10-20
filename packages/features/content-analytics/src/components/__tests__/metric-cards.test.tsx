@@ -9,6 +9,7 @@ import {
   CompactMetric,
   MetricCardSkeleton,
   MetricCards,
+  watchTimeSplit,
 } from '../metric-cards';
 
 // Mock lucide-react icons
@@ -431,5 +432,65 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
     expect(screen.getAllByText('Not measured')).toHaveLength(1);
     expect(screen.getByText('10m')).toBeDefined();
     expect(screen.getByText('4')).toBeDefined();
+  });
+});
+
+/**
+ * KB-212: the episode's watch-time card shows the total, and under it what
+ * each platform contributed, so a total over a long and a Reel reads as one.
+ */
+describe('MetricCards watch time split (KB-212)', () => {
+  const totals: AnalyticsTotals = {
+    views: 100,
+    likes: 1,
+    comments: 1,
+    shares: 1,
+    watchTimeSeconds: 6_000,
+    subscribersGained: 1,
+    revenueCents: null,
+    contentCount: 1,
+  };
+
+  it('names each platform’s share of the total', () => {
+    expect(
+      watchTimeSplit([
+        { platform: 'youtube', seconds: 2_460 },
+        { platform: 'facebook', seconds: 3_360 },
+        { platform: 'instagram', seconds: 180 },
+      ]),
+    ).toBe('YouTube 41m · Facebook 56m · Instagram 3m');
+    expect(watchTimeSplit([])).toBeUndefined();
+  });
+
+  it('shows the total and the split on the watch-time card', () => {
+    render(
+      <MetricCards
+        data={totals}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+        watchTimeDetail="YouTube 41m · Facebook 56m · Instagram 3m"
+      />,
+    );
+
+    expect(screen.getByText('1h 40m')).toBeDefined();
+    expect(
+      screen.getByText('YouTube 41m · Facebook 56m · Instagram 3m').dataset
+        .test,
+    ).toBe('metric-detail');
+  });
+
+  it('shows no split when watch time was not measured', () => {
+    const { container } = render(
+      <MetricCards
+        data={{ ...totals, watchTimeSeconds: null }}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+        watchTimeDetail="YouTube 41m"
+      />,
+    );
+
+    expect(container.querySelector('[data-test="metric-detail"]')).toBeNull();
   });
 });

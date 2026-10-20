@@ -77,6 +77,7 @@ describe('Facebook: a video gone from the Page (KB-207)', () => {
     await expect(
       new FacebookInsightsProvider('token').getVideoInsights({
         videoId: '123',
+        reel: false,
       }),
     ).rejects.toBeInstanceOf(PublishedContentMissingError);
   });
@@ -88,6 +89,7 @@ describe('Facebook: a video gone from the Page (KB-207)', () => {
 
       const read = new FacebookInsightsProvider('token').getVideoInsights({
         videoId: '123',
+        reel: false,
       });
 
       await expect(read).rejects.toThrow();

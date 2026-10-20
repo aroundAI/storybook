@@ -248,6 +248,8 @@ export interface VideoSnapshotRow {
   profileVisits: number | null;
   reelsAvgWatchTimeMs: number | null;
   reelsSkipRate: number | null;
+  /** Facebook's own average watch time per view, ms (KB-212). */
+  fbAvgWatchTimeMs: number | null;
   views3s: number | null;
   views3sOrganic: number | null;
   completeViews: number | null;
@@ -272,6 +274,7 @@ const SNAPSHOT_COLUMNS = `
   profile_visits,
   ig_reels_avg_watch_time_ms,
   ig_reels_skip_rate,
+  fb_avg_watch_time_ms,
   views_3s,
   views_3s_organic,
   complete_views`;
@@ -296,6 +299,7 @@ function toSnapshot(row: RawMetricRow): VideoSnapshotRow {
     profileVisits: figure(row.profile_visits),
     reelsAvgWatchTimeMs: figure(row.ig_reels_avg_watch_time_ms),
     reelsSkipRate: figure(row.ig_reels_skip_rate),
+    fbAvgWatchTimeMs: figure(row.fb_avg_watch_time_ms),
     views3s: figure(row.views_3s),
     views3sOrganic: figure(row.views_3s_organic),
     completeViews: figure(row.complete_views),

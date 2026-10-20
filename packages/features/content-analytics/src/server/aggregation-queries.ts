@@ -66,10 +66,13 @@ export interface EpisodeAnalytics {
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
   /**
-   * Per publish that measured it; null when none did — TikTok reports no
-   * watch time, nor does an Instagram post that is not a Reel (KB-149).
+   * The total over the publishes that measured it; null when none did —
+   * TikTok reports no watch time, nor does an Instagram post that is not a
+   * Reel (KB-149). A total, never divided by the number of posts (KB-212).
    */
-  avgWatchTimeSeconds: number | null;
+  totalWatchTimeSeconds: number | null;
+  /** Each platform's total, for the platforms that measured one (KB-212). */
+  watchTimeByPlatform: { platform: string; seconds: number }[];
   /** With the views definitions it divided by (FILM-1732). */
   engagementRate: RecordedRate | null;
   platformBreakdown: {
@@ -189,7 +192,8 @@ function emptyEpisodeAnalytics(
     totalShares: null,
     totalSaves: null,
     totalRevenueCents: null,
-    avgWatchTimeSeconds: null,
+    totalWatchTimeSeconds: null,
+    watchTimeByPlatform: [],
     engagementRate: null,
     platformBreakdown: [],
     dailyTrend: [],
@@ -308,7 +312,7 @@ export async function getEpisodeAnalytics(
   let totalSaves: number | null = null;
   let totalRevenue: EstimatedRevenue = null;
   let totalWatchTime: number | null = null;
-  let watchTimePublishes = 0;
+  const watchTimeByPlatform = new Map<string, number>();
   let subscribersGained: number | null = null;
 
   const platformMap = new Map<
@@ -332,11 +336,14 @@ export async function getEpisodeAnalytics(
     totalShares = addMeasured(totalShares, measuredFigure(stats, 'shares'));
     totalSaves = addMeasured(totalSaves, measuredFigure(stats, 'saves'));
     totalRevenue = addRevenue(totalRevenue, stats.revenue_cents);
-    totalWatchTime = addMeasured(
-      totalWatchTime,
-      measuredFigure(stats, 'watch_time_seconds'),
-    );
-    if (stats.measured.watch_time_seconds) watchTimePublishes += 1;
+    const watchTime = measuredFigure(stats, 'watch_time_seconds');
+    totalWatchTime = addMeasured(totalWatchTime, watchTime);
+    if (watchTime !== null) {
+      watchTimeByPlatform.set(
+        publish.platform,
+        (watchTimeByPlatform.get(publish.platform) ?? 0) + watchTime,
+      );
+    }
     subscribersGained = addMeasured(
       subscribersGained,
       measuredFigure(stats, 'subscribers_gained'),
@@ -402,10 +409,17 @@ export async function getEpisodeAnalytics(
     totalShares,
     totalSaves,
     totalRevenueCents: totalRevenue,
-    // Over the publishes that measured it: a TikTok publish in the
-    // denominator would read as a video nobody watched (KB-149).
-    avgWatchTimeSeconds:
-      totalWatchTime === null ? null : totalWatchTime / watchTimePublishes,
+    // The sum over the publishes that measured it: an unmeasured TikTok
+    // publish adds nothing rather than 0 (KB-149), and the total is not
+    // divided by the number of posts (KB-212).
+    totalWatchTimeSeconds: totalWatchTime,
+    watchTimeByPlatform: Array.from(
+      watchTimeByPlatform,
+      ([platform, seconds]) => ({
+        platform,
+        seconds,
+      }),
+    ),
     engagementRate,
     platformBreakdown: Array.from(platformMap.entries()).map(
       ([platform, data]) => ({

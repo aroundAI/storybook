@@ -13,6 +13,11 @@
 export interface FacebookInsightsInput {
   /** The Page video's id: what publishing stores as the platform post id. */
   videoId: string;
+  /**
+   * Whether the publish is a Reel (a Short, `content_type` 'short'): which
+   * metric its watch time and average come from (KB-212).
+   */
+  reel: boolean;
 }
 
 export interface FacebookVideoTotals {
@@ -42,10 +47,18 @@ export interface FacebookVideoTotals {
   /** `total_video_complete_views`: 97% or more of the video. */
   completeViews: number | null;
   /**
-   * Milliseconds watched: `post_video_view_time` for a reel (replays
-   * included), else `total_video_view_total_time`.
+   * Milliseconds watched: `post_video_view_time` for a Reel (replays
+   * included), `total_video_view_total_time` for any other video. Null when
+   * that metric is missing; never the other one (KB-212).
    */
   viewTimeMs: number | null;
+  /**
+   * Meta's own average watch time per view, milliseconds:
+   * `post_video_avg_time_watched` for a Reel (replay time over first plays,
+   * so it can exceed the video's length), `total_video_avg_time_watched`
+   * for any other video. Null when that metric is missing (KB-212).
+   */
+  avgWatchTimeMs: number | null;
   /** `post_video_followers`: follows Meta credits to the reel. Reels only. */
   follows: number | null;
 }

@@ -139,6 +139,7 @@ describe('YouTube, end to end through the app’s own clients', () => {
       videoId,
       startDate: new Date(T0 - DAY),
       endDate: new Date(now),
+      publishedAt: new Date(T0),
       includeRevenue: true,
     });
 
@@ -226,6 +227,7 @@ describe('YouTube, end to end through the app’s own clients', () => {
         videoId,
         startDate: new Date(T0),
         endDate: new Date(now),
+        publishedAt: new Date(T0),
       }),
     ).rejects.toBeInstanceOf(YouTubeAnalyticsScopeError);
   });
