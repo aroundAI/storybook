@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { contentTypesFor } from '@kit/clickhouse';
 import {
   formatDateStr,
   insertRetentionCurves,
@@ -792,6 +793,9 @@ async function syncSinglePublish(
   }
 }
 
+/** The content types Facebook shows as Reels (FILM-1716's family table). */
+const FACEBOOK_REEL_TYPES = contentTypesFor('short_vertical', 'facebook');
+
 /**
  * Fetches analytics from the appropriate platform provider.
  *
@@ -858,8 +862,11 @@ async function fetchPlatformAnalytics(
       const provider = createFacebookInsightsProvider(accessToken);
       return provider.getVideoInsights({
         videoId: publish.platform_content_id,
-        // Which metric its watch time comes from (KB-212).
-        reel: publish.content_type === 'short',
+        // Which metric its watch time comes from (KB-212): a Facebook
+        // Reel is the content types the family table files as one.
+        reel: FACEBOOK_REEL_TYPES.some(
+          (contentType) => contentType === publish.content_type,
+        ),
       });
     }
     case 'twitter': {
