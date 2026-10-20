@@ -23,6 +23,7 @@ import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
+import { pausedConnectionIds } from '@kit/publishing/lib/publish-block';
 import { publishThumbnail } from '@kit/publishing/lib/publish-thumbnail';
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database, Json } from '@kit/supabase/database';
@@ -65,6 +66,8 @@ interface ScheduledPublishResult {
   waiting?: number;
   /** FILM-719: posts moved a day on because their channel had its day's */
   deferred?: number;
+  /** KB-213: posts of a connection Meta has paused, left scheduled */
+  paused?: number;
   error?: string;
 }
 
@@ -225,10 +228,22 @@ export async function handler(): Promise<ScheduledPublishResult> {
   let skipped = 0;
   let waiting = 0;
   let deferred = 0;
+  let paused = 0;
 
   const longVideos = await longVideoStates(supabase, duePublishes);
 
+  // KB-213: a connection Meta has paused sends nothing until it is cleared
+  const pausedConnections = await pausedConnectionIds(
+    supabase,
+    duePublishes.map((publish) => publish.platform_connection_id),
+  );
+
   for (const publish of duePublishes) {
+    if (pausedConnections.has(publish.platform_connection_id)) {
+      paused++;
+      continue;
+    }
+
     // FILM-719: a Short goes after its episode's long video is live, and a
     // cadence post waits for a day its channel has room
     const gate = await cadenceGate(supabase, publish, longVideos, now);
@@ -376,8 +391,8 @@ export async function handler(): Promise<ScheduledPublishResult> {
   }
 
   console.log(
-    `[Cron] Complete: ${queued} queued, ${skipped} skipped, ${waiting} waiting, ${deferred} deferred`,
+    `[Cron] Complete: ${queued} queued, ${skipped} skipped, ${waiting} waiting, ${deferred} deferred, ${paused} paused`,
   );
 
-  return { success: true, queued, skipped, waiting, deferred };
+  return { success: true, queued, skipped, waiting, deferred, paused };
 }

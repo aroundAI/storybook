@@ -42,6 +42,8 @@ const sent = vi.hoisted(() => ({
 vi.mock('../job-guard', () => ({
   PublishJobRefused: class extends Error {},
   deleteJobTarget: vi.fn(),
+  duplicateJobRefusal: vi.fn(async () => null),
+  holdPausedJob: vi.fn(async () => false),
   publishJobConnection: vi.fn(async () => 'conn-fb'),
 }));
 vi.mock('../token', () => ({

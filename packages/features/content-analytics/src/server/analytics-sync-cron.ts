@@ -69,6 +69,7 @@ import {
 } from './ingest';
 import type { CumulativeTotals } from './ingest';
 import { getRateLimiter } from './rate-limiter';
+import { reprobeRemovedPublishes } from './removed-reprobe';
 import { getSyncPriority, shouldSyncNow } from './schedule';
 import {
   mayFetchRevenue,
@@ -148,6 +149,28 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     // 0. Delivered StorybookStudio edits into edit_sessions_fact (FILM-2006),
     // first, so a run with no publishes due still rolls them up.
     result.editSessionFacts = await rollUpEditSessions(client, ctx);
+
+    // KB-213: a video marked removed by hand that is still live is
+    // published again, before this run picks what to sync. Never throws.
+    const restored = await reprobeRemovedPublishes(client, {
+      ensureValidToken: async (connectionId) =>
+        (await getEnsureValidToken())(connectionId),
+      youtubeVideoIds: async (accessToken, ids) =>
+        new Set(
+          (
+            await createYouTubeAnalyticsProvider(
+              accessToken,
+            ).fetchVideoStatistics(ids)
+          ).keys(),
+        ),
+    });
+
+    if (restored.length > 0) {
+      logger.info(
+        { ...ctx, restored },
+        'Marked removed, but still live: published again',
+      );
+    }
 
     // 1. Fetch publishes that need syncing
     const { publishes: publishesToSync, notAuthorised } =

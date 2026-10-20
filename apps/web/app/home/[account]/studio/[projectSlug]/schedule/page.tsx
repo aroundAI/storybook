@@ -115,6 +115,11 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
           matchesScheduleFilters({ ...post, episodeDeleted: false }, filters),
       ).length;
 
+  // KB-213: deleted episodes' videos still up on their platforms
+  const liveDeleted = posts.filter(
+    (post) => post.episodeDeleted && post.status === 'published',
+  ).length;
+
   const basePath = `/home/${account}/studio/${project.slug ?? project.id}`;
 
   return (
@@ -136,6 +141,7 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
           <ScheduleFilters
             filters={{ from: filters.from, to: filters.to }}
             hiddenDeleted={hiddenDeleted}
+            liveDeleted={liveDeleted}
             clamped={filters.clamped}
           />
 

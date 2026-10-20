@@ -5,6 +5,7 @@ import { whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { cadenceGate, longVideoStates } from '../lib/cadence/gate';
+import { duplicatePostRefusal } from '../lib/duplicate-post';
 import { episodeLongVideoThumbnail } from '../lib/episode-thumbnail';
 import {
   SCHEDULED_JOB_PRECEDENCE,
@@ -15,6 +16,12 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
+import {
+  metaBlockOf,
+  pausedConnectionIds,
+  publishBlockFailure,
+  recordPublishBlock,
+} from '../lib/publish-block';
 import { publishThumbnail } from '../lib/publish-thumbnail';
 import { TokenRefusal, tokenErrorCodeOf } from '../lib/token-errors';
 import { ensureValidToken } from '../lib/token-refresh';
@@ -229,6 +236,12 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
 
   const longVideos = await longVideoStates(client, duePublishes);
 
+  // KB-213: a connection Meta has paused sends nothing until it is cleared
+  const pausedConnections = await pausedConnectionIds(
+    client,
+    duePublishes.map((publish) => publish.platform_connection_id),
+  );
+
   // Process each publish
   for (const publish of duePublishes as unknown as ScheduledPublish[]) {
     const publishCtx = {
@@ -236,6 +249,14 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       publishId: publish.id,
       platform: publish.platform,
     };
+
+    if (pausedConnections.has(publish.platform_connection_id)) {
+      logger.info(
+        publishCtx,
+        'Connection paused by its platform; left scheduled',
+      );
+      continue;
+    }
 
     // FILM-719: the cadence rules the scheduled Lambda applies
     const gate = await cadenceGate(client, publish, longVideos, now);
@@ -399,6 +420,19 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
               publish.language,
             ).catch(() => null);
 
+      // KB-213: never a second post of a video the account already has
+      const duplicate = await duplicatePostRefusal(client, {
+        publishId: publish.id,
+        episodeId: publish.episode_id,
+        connectionId: publish.platform_connection_id,
+        contentType: publish.content_type ?? 'full',
+        title: publish.title,
+        language: publish.language,
+        shortsGroupId: shortsGroupId ?? null,
+      });
+
+      if (duplicate) throw new Error(duplicate);
+
       // Execute the platform upload
       const uploadResult = await uploadToPlatform(
         publish.platform as Platform,
@@ -421,7 +455,25 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           platformSpecific: publish.metadata ?? {},
           aiGenerated: publish.ai_generated,
         },
-      );
+      ).catch(async (uploadError: unknown) => {
+        // KB-213: Meta's code 368 pauses this connection only
+        const block =
+          publish.platform === 'facebook' || publish.platform === 'instagram'
+            ? metaBlockOf(uploadError)
+            : null;
+
+        if (!block) throw uploadError;
+
+        await recordPublishBlock(client, publish.platform_connection_id, {
+          platform: publish.platform,
+          ...block,
+        });
+        pausedConnections.add(publish.platform_connection_id);
+
+        throw new Error(
+          `${publishBlockFailure(publish.platform)} Meta said: "${block.message}"`,
+        );
+      });
 
       // Update with success
       await client

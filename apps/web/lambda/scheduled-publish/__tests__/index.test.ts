@@ -21,6 +21,8 @@ interface Row {
 }
 
 const rows = new Map<string, Row>();
+/** `platform_connections`, by id: only their metadata is read (KB-213) */
+const connections = new Map<string, { id: string; metadata: unknown }>();
 const sent: string[] = [];
 const messages: Array<{ publishId: string; thumbnailUrl?: string }> = [];
 const gateOutcomes = new Map<string, string>();
@@ -28,6 +30,7 @@ const gateOutcomes = new Map<string, string>();
 /** An in-memory `publishes`: selects see what updates left behind */
 function from(table: string) {
   const filters: Array<[string, unknown]> = [];
+  const lists: Array<[string, unknown[]]> = [];
   const nulls: string[] = [];
   let update: Record<string, unknown> | null = null;
   let window: [number, number] | null = null;
@@ -47,6 +50,17 @@ function from(table: string) {
   const run = async () => {
     // Let other runs interleave, as two Lambdas would
     await new Promise((resolve) => setTimeout(resolve, 0));
+
+    if (table === 'platform_connections') {
+      return {
+        data: [...connections.values()].filter((row) =>
+          lists.every(([column, values]) =>
+            values.includes((row as Record<string, unknown>)[column]),
+          ),
+        ),
+        error: null,
+      };
+    }
 
     if (table !== 'publishes') return { data: [], error: null };
 
@@ -71,6 +85,10 @@ function from(table: string) {
     },
     eq: (column: string, value: unknown) => {
       filters.push([column, value]);
+      return q;
+    },
+    in: (column: string, values: unknown[]) => {
+      lists.push([column, values]);
       return q;
     },
     is: (path: string, value: null) => {
@@ -159,6 +177,7 @@ function due(id: string): Row {
 
 beforeEach(() => {
   rows.clear();
+  connections.clear();
   sent.length = 0;
   messages.length = 0;
   gateOutcomes.clear();
@@ -265,5 +284,41 @@ describe('the scheduled job', () => {
 
     expect(sent).toEqual(['p1']);
     expect(result.deferred).toBe(1);
+  });
+
+  // KB-213: Meta's code 368 on the owner's Facebook Page; the job would
+  // have kept sending that Page's posts into the block
+  it('leaves a paused connection’s posts scheduled and sends the others', async () => {
+    connections.set('fb', {
+      id: 'fb',
+      metadata: {
+        publishBlock: {
+          platform: 'facebook',
+          code: 368,
+          subcode: 4854002,
+          message: 'Confirm your identity before you can publish as this Page.',
+          at: '2026-10-20T00:31:00Z',
+        },
+      },
+    });
+    connections.set('yt', { id: 'yt', metadata: {} });
+    rows.set('fb-short', {
+      ...due('fb-short'),
+      platform: 'facebook',
+      platform_connection_id: 'fb',
+    });
+    rows.set('yt-short', due('yt-short'));
+
+    const result = await handler();
+
+    expect(sent).toEqual(['yt-short']);
+    expect(rows.get('fb-short')!.status).toBe('scheduled');
+    expect(result.paused).toBe(1);
+
+    // Retry clears the block: the post goes at the next run
+    connections.set('fb', { id: 'fb', metadata: {} });
+    await handler();
+
+    expect(sent).toEqual(['yt-short', 'fb-short']);
   });
 });
