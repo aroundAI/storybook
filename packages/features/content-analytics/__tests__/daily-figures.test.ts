@@ -45,6 +45,7 @@ const NULL_FIGURES = {
   impressionCtr: null,
   reelsAvgWatchTimeMs: null,
   reelsSkipRate: null,
+  fbAvgWatchTimeMs: null,
   fbViews3s: null,
   fbViewsOrganic: null,
   fbViewsComplete: null,
@@ -439,8 +440,8 @@ describe('getVideoLifetimeFigures', () => {
     });
   });
 
-  // KB-212: Meta's own average, stored in ms on the snapshot, read in seconds.
-  it('a Facebook video’s average view duration is Meta’s, in seconds', async () => {
+  // KB-212: Meta’s own average, its own figure, not comparable (FILM-1720).
+  it('a Facebook video’s average is Meta’s own figure, never its average view duration', async () => {
     const FB = '77777777-7777-4777-8777-777777777777';
     state.tables.publishes!.push(publishRow(FB, 'facebook', IG_CHANNEL));
     state.latest = [
@@ -464,7 +465,8 @@ describe('getVideoLifetimeFigures', () => {
       platform: 'facebook',
       views: null,
       watchTimeSeconds: 7_000,
-      avgViewDurationSeconds: 7.78,
+      fbAvgWatchTimeMs: 7_780,
+      avgViewDurationSeconds: null,
     });
   });
 });

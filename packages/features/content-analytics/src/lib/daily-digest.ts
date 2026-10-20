@@ -185,13 +185,18 @@ const ONLY_ON: Partial<Record<string, readonly string[]>> = {
   lifetimeVideos: ['youtube'],
   reelsAvgWatchTimeMs: ['instagram'],
   reelsSkipRate: ['instagram'],
+  fbAvgWatchTimeMs: ['facebook'],
   fbViews3s: ['facebook'],
   fbViewsOrganic: ['facebook'],
   fbViewsComplete: ['facebook'],
 };
 
 /** Figures a platform gives for a video's lifetime only, never by day */
-const LIFETIME_ONLY = new Set(['reelsAvgWatchTimeMs', 'reelsSkipRate']);
+const LIFETIME_ONLY = new Set([
+  'reelsAvgWatchTimeMs',
+  'reelsSkipRate',
+  'fbAvgWatchTimeMs',
+]);
 
 export function nullReason(
   figure: string,
@@ -215,12 +220,7 @@ export function nullReason(
       : `${label} does not report this figure.`;
   }
 
-  // Meta's own average is a lifetime figure, stored on the snapshot (KB-212).
-  if (
-    context.daily &&
-    (LIFETIME_ONLY.has(figure) ||
-      (figure === 'avgViewDurationSeconds' && platform === 'facebook'))
-  ) {
+  if (context.daily && LIFETIME_ONLY.has(figure)) {
     return `${label} reports this for the video's lifetime only, not by day.`;
   }
 
@@ -802,7 +802,7 @@ function retentionOf(inputs: DigestInputs, publish: DigestPublish) {
       .filter((curve) => curve.length > 0);
     // Meta's own per-view average (KB-212), from the lifetime snapshot.
     const average = pick(lifetimeRow(inputs, publish.id, 'graph_api') ?? {}, [
-      'avgViewDurationSeconds',
+      'fbAvgWatchTimeMs',
     ]);
 
     return {
@@ -817,7 +817,7 @@ function retentionOf(inputs: DigestInputs, publish: DigestPublish) {
         ...(points.length ? {} : { curve: noCurve, dropOff: noCurve }),
         ...notMeasured(
           average,
-          ['avgViewDurationSeconds'],
+          ['fbAvgWatchTimeMs'],
           publish.platform,
           lifetime,
         ),
