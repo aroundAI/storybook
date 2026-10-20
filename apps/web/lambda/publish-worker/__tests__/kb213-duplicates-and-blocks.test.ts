@@ -235,11 +235,11 @@ describe('a video the account already has is not posted again (KB-213)', () => {
 
     expect(platform.uploads).toEqual([]);
     expect(publish('second').status).toBe('failed');
+    const date = new Date(Date.now() - 60 * 60_000).toISOString().slice(0, 10);
     expect(failure('second')).toMatch(
-      new RegExp(
-        `^Already posted to this account as ${FIRST_REEL} on \\d{4}-\\d{2}-\\d{2}; not posted again`,
-      ),
+      `Already posted to this account as ${FIRST_REEL} on ${date}; not posted again`,
     );
+    expect(failure('second')!.startsWith('Already posted')).toBe(true);
     // A refusal is an answer, not retried
     expect(result.batchItemFailures).toEqual([]);
   });
