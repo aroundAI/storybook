@@ -37,6 +37,8 @@ const NOW = new Date('2026-10-10T12:00:00Z');
 const LATER = '2026-10-11T12:00:00.000Z';
 
 const inserted: Array<Record<string, unknown>> = [];
+/** KB-213: the episode's posts already on its channels */
+let earlierPosts: Array<Record<string, unknown>>;
 const deleted: string[] = [];
 let publishRow: { status: string } | null;
 /** The row's status when the delete runs; the scheduled job may have moved it */
@@ -151,6 +153,16 @@ function query(name: string) {
       if (name === 'episode_thumbnails') {
         return resolve({ data: thumbnailRows, error: null });
       }
+      if (name === 'publishes' && filters.platform_connection_id) {
+        return resolve({
+          data: earlierPosts.filter(
+            (post) =>
+              post.platform_connection_id === filters.platform_connection_id &&
+              post.content_type === filters.content_type,
+          ),
+          error: null,
+        });
+      }
       if (deleting) {
         const hit =
           !!publishRow &&
@@ -199,12 +211,54 @@ beforeEach(() => {
   role = 'owner';
   episodeThumbnail = null;
   thumbnailRows = [];
+  earlierPosts = [];
   vi.unstubAllEnvs();
   getAccessToken.mockReset();
   getAccessToken.mockResolvedValue({ accessToken: 'token' });
 });
 
 describe('scheduling a publish over MCP', () => {
+  // KB-213: the same Short went to one Facebook Page twice
+  it('schedules nothing that is already posted to the same channel, and allows another channel', async () => {
+    earlierPosts = [
+      {
+        id: 'posted',
+        status: 'published',
+        platform_connection_id: YT,
+        content_type: 'short',
+        title: 'Would you send her through?',
+        language: 'en',
+        platform_url: 'https://youtube.com/shorts/abc',
+        published_at: '2026-10-09T21:04:00Z',
+        created_at: '2026-10-09T21:00:00Z',
+        metadata: { shortsGroupId: 'yt-cut' },
+      },
+    ];
+
+    const refused = await schedule([
+      target({ contentType: 'short', shortsGroupId: 'yt-cut' }),
+    ]);
+
+    expect(refused).toEqual({
+      ok: false,
+      refusal: expect.stringMatching(
+        /^Already posted to this account as https:\/\/youtube\.com\/shorts\/abc on 2026-10-09; not posted again/,
+      ),
+    });
+    expect(inserted).toEqual([]);
+
+    const elsewhere = await schedule([
+      target({
+        connectionId: IG,
+        contentType: 'short',
+        shortsGroupId: 'ig-cut',
+      }),
+    ]);
+
+    expect(elsewhere.ok).toBe(true);
+    expect(inserted).toHaveLength(1);
+  });
+
   it('schedules nothing past the channel’s posting rules (KB-204)', async () => {
     cadence.refusal = 'Story YT has a long video on 2026-10-10.';
 

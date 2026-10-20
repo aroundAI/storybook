@@ -37,6 +37,11 @@ import {
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
 import { isOfferedPlatform } from '@kit/publishing/lib/platforms';
 import {
+  metaBlockOf,
+  publishBlockFailure,
+  recordPublishBlock,
+} from '@kit/publishing/lib/publish-block';
+import {
   type TokenErrorCode,
   TokenRefusal,
   tokenErrorCodeOf,
@@ -51,6 +56,8 @@ import { mergeFailureMetadata } from './failure-metadata';
 import {
   PublishJobRefused,
   deleteJobTarget,
+  duplicateJobRefusal,
+  holdPausedJob,
   publishJobConnection,
 } from './job-guard';
 import { missingLongVideoThumbnail } from './job-thumbnail';
@@ -381,15 +388,52 @@ async function ownedJobVideo(job: PublishJobMessage): Promise<string> {
 }
 
 /**
+ * KB-213: Meta's code 368 on a Facebook or Instagram upload pauses that
+ * connection, and the row says what to do in plain words. Acknowledged,
+ * not retried: every retry is another post Meta refuses.
+ */
+async function uploadOrPause(job: PublishJobMessage, accessToken: string) {
+  try {
+    return await uploadToPlatform(job, accessToken);
+  } catch (error) {
+    const block =
+      job.platform === 'facebook' || job.platform === 'instagram'
+        ? metaBlockOf(error)
+        : null;
+
+    if (!block) throw error;
+
+    await recordPublishBlock(supabase, job.platformConnectionId, {
+      platform: job.platform,
+      ...block,
+    });
+
+    throw new PublishJobRefused(
+      `${publishBlockFailure(job.platform)} Meta said: "${block.message}"`,
+    );
+  }
+}
+
+/**
  * Process a single publish job
  */
-async function processPublish(job: PublishJobMessage): Promise<void> {
+async function processPublish(
+  job: PublishJobMessage,
+): Promise<'published' | 'held'> {
   console.log(
     `[Publish Worker] Processing publish ${job.publishId} to ${job.platform}`,
   );
 
   // 1. The publish row's own connection, of the episode's account (KB-109)
   await publishJobConnection(supabase, job);
+
+  // KB-213: a connection Meta paused keeps its posts scheduled, unsent
+  if (await holdPausedJob(supabase, job)) {
+    console.log(
+      `[Publish Worker] Held ${job.publishId}: its connection is paused by ${job.platform}`,
+    );
+    return 'held';
+  }
 
   // KB-104: the handlers download the thumbnail and send it to the channel,
   // and it comes from a row any project writer can update. Only one of the
@@ -417,6 +461,10 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
 
   await markPublishing(job.publishId);
 
+  // KB-213: never a second post of a video the account already has
+  const duplicate = await duplicateJobRefusal(supabase, job.publishId);
+  if (duplicate) throw new PublishJobRefused(duplicate);
+
   // 2. Get valid access token
   const tokenResult = await checkConnectionToken(
     job.platformConnectionId,
@@ -440,7 +488,7 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
   }
 
   // 2. Upload to platform
-  const result = await uploadToPlatform(job, tokenResult.accessToken!);
+  const result = await uploadOrPause(job, tokenResult.accessToken!);
 
   // 3. Update DB status to published
   await updatePublishStatus(job.publishId, 'published', {
@@ -473,6 +521,8 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
   });
 
   console.log(`[Publish Worker] SUCCESS: ${job.publishId} → ${result.url}`);
+
+  return 'published';
 }
 
 /**

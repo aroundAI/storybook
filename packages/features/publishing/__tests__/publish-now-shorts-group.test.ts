@@ -67,6 +67,8 @@ const GROUP_B = `${BASE}/episodes/${EPISODE}/videos/en-short-b.mp4`;
 const GROUP_IG = `${BASE}/episodes/${EPISODE}/videos/en-short-ig.mp4`;
 const inserted: Array<Record<string, unknown>> = [];
 let episodeThumbnail: string | null = null;
+/** KB-213: the episode's posts already on the channel */
+let earlierPosts: Array<Record<string, unknown>> = [];
 
 function table(name: string) {
   const query = {
@@ -74,15 +76,18 @@ function table(name: string) {
     eq: () => query,
     in: () =>
       Promise.resolve({
-        data: [
-          {
-            id: CONNECTION,
-            platform_account_name: 'Acme',
-            platform_account_id: 'UC-acme',
-            youtube_made_for_kids: false,
-            youtube_category_id: '22',
-          },
-        ],
+        data:
+          name === 'publishes'
+            ? earlierPosts
+            : [
+                {
+                  id: CONNECTION,
+                  platform_account_name: 'Acme',
+                  platform_account_id: 'UC-acme',
+                  youtube_made_for_kids: false,
+                  youtube_category_id: '22',
+                },
+              ],
         error: null,
       }),
     update: () => query,
@@ -172,6 +177,7 @@ beforeEach(() => {
   resetQueue();
   inserted.length = 0;
   episodeThumbnail = null;
+  earlierPosts = [];
   uploadVideo.mockReset();
   uploadVideo.mockResolvedValue({
     videoId: 'v1',
@@ -229,6 +235,38 @@ describe('a Shorts group goes only to the platforms it names', () => {
       ok: false,
       error:
         'The Shorts group "IG cut" isn\'t set to go to YouTube. Tick YouTube on the group first.',
+    });
+    expect(inserted).toHaveLength(0);
+    expect(sentJobs).toEqual([]);
+  });
+});
+
+// KB-213: "Publish All" ran twice and one Short went to a Page twice
+describe('Publish Now refuses a Short the channel already has', () => {
+  it('writes and queues nothing, and says where it is', async () => {
+    earlierPosts = [
+      {
+        id: 'posted',
+        status: 'published',
+        title: 'Episode',
+        language: 'en',
+        platform_url: 'https://youtube.com/shorts/abc',
+        published_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        metadata: { shortsGroupId: 'group-a' },
+      },
+    ];
+    const { publishToAllAction } = await import(
+      '../src/server/publish-actions'
+    );
+
+    const result = await publishToAllAction(publishShort('group-a'));
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.stringMatching(
+        /^Already posted to this account as https:\/\/youtube\.com\/shorts\/abc on /,
+      ),
     });
     expect(inserted).toHaveLength(0);
     expect(sentJobs).toEqual([]);

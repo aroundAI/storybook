@@ -6,6 +6,7 @@ import { ActionRefusal } from '@kit/next/action-result';
 import type { Database } from '@kit/supabase/database';
 
 import { MCP_CADENCE_HINT } from '../lib/cadence/cadence-guard';
+import { firstDuplicatePostRefusal } from '../lib/duplicate-post';
 import {
   SCHEDULED_LAMBDA_PRECEDENCE,
   resolveEpisodeVideo,
@@ -245,6 +246,22 @@ export async function prepareScheduledRows(
       throw new TokenRefusal(token.error, platform.platform);
     }
   }
+
+  // KB-213: never a second post of a video the account already has
+  const duplicate = await firstDuplicatePostRefusal(
+    client,
+    platforms.map((platform) => ({
+      episodeId: input.episodeId,
+      connectionId: platform.connectionId,
+      contentType: platform.contentType ?? 'full',
+      title: platform.title,
+      language: platform.language ?? null,
+      shortsGroupId: platform.shortsGroupId ?? null,
+    })),
+    now,
+  );
+
+  if (duplicate) throw new ActionRefusal(duplicate);
 
   return platforms.map((platform, index) => {
     const target = input.targets[index]!;

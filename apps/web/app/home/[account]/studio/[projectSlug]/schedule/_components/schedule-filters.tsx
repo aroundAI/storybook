@@ -47,6 +47,8 @@ export function ScheduleFilters(props: {
   clamped: boolean;
   /** KB-207: posts of deleted episodes the table leaves out */
   hiddenDeleted: number;
+  /** KB-213: of those, the ones still live on their platform */
+  liveDeleted: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -192,6 +194,15 @@ export function ScheduleFilters(props: {
             >
               {' '}
               ({props.hiddenDeleted} hidden)
+            </span>
+          )}
+          {props.liveDeleted > 0 && (
+            <span
+              className="text-destructive"
+              data-test="schedule-live-deleted"
+            >
+              {' '}
+              {props.liveDeleted} still live
             </span>
           )}
         </Label>

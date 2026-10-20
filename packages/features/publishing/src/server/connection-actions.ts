@@ -15,6 +15,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { PlatformConnection as DBPlatformConnection } from '../lib/database-types';
 import { isOfferedPlatform } from '../lib/platforms';
+import { clearPublishBlock, publishBlockOf } from '../lib/publish-block';
 import { GetConnectedPlatformsSchema } from '../lib/schemas/publish.schema';
 import { UpdateYouTubeChannelSettingsSchema } from '../lib/schemas/youtube-declaration.schema';
 import { TokenRefusal, readableTokenError } from '../lib/token-errors';
@@ -116,6 +117,7 @@ export const getConnectionsAction = enhanceAction(
             conn.platform === 'youtube'
               ? longUploadsStatusOf(conn.metadata)
               : undefined,
+          publishBlock: publishBlockOf(conn.metadata),
           // Unified fields for Publish Page compatibility
           isActive: conn.is_active,
           tokenValid: status === 'active',
@@ -323,6 +325,46 @@ export const refreshConnectionAction = returnRefusals(
           connection.platform,
         );
       }
+
+      // KB-213: a refresh asked for by hand is a retry as well
+      await clearPublishBlock(getSupabaseServerClient(), connection.id);
+
+      revalidatePath(`/home/[account]/settings`, 'page');
+
+      return { success: true };
+    },
+    {
+      schema: RefreshSchema,
+      auth: true,
+    },
+  ),
+);
+
+/**
+ * KB-213: Retry on a connection Meta paused. The person confirmed their
+ * identity in the Facebook or Instagram app; the block is cleared, and the
+ * connection's waiting posts go at the scheduled job's next run. Written
+ * through the user's client, so the account's own policy decides who may.
+ */
+export const retryPublishingAction = returnRefusals(
+  enhanceAction(
+    async ({ connectionId }) => {
+      const client = getSupabaseServerClient();
+      const { data: connection, error } = await client
+        .from('platform_connections')
+        .select('id')
+        .eq('id', connectionId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Failed to read connection: ${error.message}`);
+      }
+
+      if (!connection) {
+        throw new ActionRefusal(CONNECTION_NOT_FOUND);
+      }
+
+      await clearPublishBlock(client, connection.id);
 
       revalidatePath(`/home/[account]/settings`, 'page');
 

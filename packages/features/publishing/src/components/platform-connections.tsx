@@ -16,6 +16,7 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  ShieldAlert,
   Twitter,
   Unplug,
   Youtube,
@@ -54,6 +55,7 @@ import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 
 import { isHiddenPlatform } from '../lib/platforms';
+import { publishBlockBanner } from '../lib/publish-block';
 import {
   YOUTUBE_VERIFY_URL,
   type YouTubeLongUploadsStatus,
@@ -67,6 +69,7 @@ import {
   disconnectPlatformAction,
   getConnectionsAction,
   refreshConnectionAction,
+  retryPublishingAction,
   updateConnectionLanguageAction,
 } from '../server/connection-actions';
 import type {
@@ -519,6 +522,15 @@ function ConnectionRow({
         </Alert>
       )}
 
+      {connection.publishBlock && (
+        <PublishBlockNotice
+          connectionId={connection.id}
+          platform={connection.platform}
+          block={connection.publishBlock}
+          accountId={accountId}
+        />
+      )}
+
       {connection.analyticsAccess && (
         <AnalyticsAccessNotice
           connectionId={connection.id}
@@ -900,6 +912,75 @@ function DisconnectDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+/**
+ * KB-213. Meta stopped this connection posting (code 368) and asked the
+ * person to confirm who they are. Its posts wait, scheduled, until Retry.
+ */
+export function PublishBlockNotice({
+  connectionId,
+  platform,
+  block,
+  accountId,
+}: {
+  connectionId: string;
+  platform: string;
+  block: { message: string; at: string };
+  accountId: string;
+}) {
+  const queryClient = useQueryClient();
+  const retry = useMutation({
+    mutationFn: () => unwrap(retryPublishingAction({ connectionId })),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['platform-connections', accountId],
+      });
+      toast.success('Posting resumes at the next scheduled run.');
+    },
+    onError: (error) => {
+      toast.error(refusalMessage(error, 'Could not clear the block.'));
+    },
+  });
+
+  const since = new Date(block.at);
+
+  return (
+    <Alert
+      variant="destructive"
+      className="mt-2"
+      data-test="publish-block-notice"
+      data-connection-id={connectionId}
+    >
+      <ShieldAlert className="h-4 w-4" />
+      <AlertDescription>
+        <p className="font-medium" data-test="publish-block-banner">
+          {publishBlockBanner(platform)}
+        </p>
+        {block.message && (
+          <p className="mt-1 text-xs" data-test="publish-block-message">
+            {isNaN(since.getTime())
+              ? null
+              : `Since ${format(since, 'd MMM yyyy, HH:mm')}. `}
+            Meta said: “{block.message}”
+          </p>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          data-test="publish-block-retry"
+          disabled={retry.isPending}
+          onClick={() => retry.mutate()}
+        >
+          <RefreshCw
+            className={`mr-1 h-4 w-4 ${retry.isPending ? 'animate-spin' : ''}`}
+          />
+          Retry
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }
 

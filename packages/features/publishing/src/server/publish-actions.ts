@@ -29,6 +29,7 @@ import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { PUBLISH_CADENCE_HINT } from '../lib/cadence/cadence-guard';
+import { firstDuplicatePostRefusal } from '../lib/duplicate-post';
 import {
   PUBLISH_NOW_PRECEDENCE,
   resolveEpisodeVideo,
@@ -117,6 +118,21 @@ const publishToAllHandler = enhanceAction(
       episodeId,
       platforms,
     );
+
+    // KB-213: never a second post of a video the account already has
+    const duplicate = await firstDuplicatePostRefusal(
+      client,
+      platforms.map((platform) => ({
+        episodeId,
+        connectionId: platform.connectionId,
+        contentType: platform.contentType === 'short' ? 'short' : 'full',
+        title: platform.title,
+        language: platform.language ?? null,
+        shortsGroupId: platform.shortsGroupId ?? null,
+      })),
+    );
+
+    if (duplicate) throw new ActionRefusal(duplicate);
 
     // KB-204: a post at a chosen time keeps its channel's posting rules
     if (!ignoreCadence) {

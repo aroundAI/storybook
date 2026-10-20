@@ -52,6 +52,11 @@ const KNOWN: Record<string, [number, string]> = {
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | external_api_keys | update':
     [1, LAST_USED],
   'apps/web/lambda/publish-worker/index.ts | publishes | update': [3, ADMIN],
+  // KB-213: a paused connection's post goes back to scheduled
+  'apps/web/lambda/publish-worker/job-guard.ts | publishes | update': [
+    1,
+    ADMIN,
+  ],
   'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [2, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
@@ -87,6 +92,9 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
   'packages/features/content-analytics/src/server/backfill/youtube-backfill.ts | publishes | update':
     [1, ADMIN],
+  // KB-213: the hourly sync's re-probe of hand-marked removals
+  'packages/features/content-analytics/src/server/removed-reprobe.ts | publishes | update':
+    [2, ADMIN],
   'packages/features/content-analytics/src/server/reporting/report-ingest.ts | youtube_report_jobs | update':
     [1, ADMIN],
   'packages/features/content-analytics/src/server/vendor-data-purge.ts | vendor_data_purges | update':
@@ -119,6 +127,9 @@ const KNOWN: Record<string, [number, string]> = {
     1,
     ADMIN,
   ],
+  // KB-213: the publish worker pauses a connection Meta refused with 368
+  'packages/features/publishing/src/lib/publish-block.ts | platform_connections | update':
+    [1, ADMIN],
   'packages/features/publishing/src/lib/uploaded-file-duration.ts | publishes | update':
     [1, ADMIN],
   'packages/features/publishing/src/server/publish-actions.ts | episodes | update':

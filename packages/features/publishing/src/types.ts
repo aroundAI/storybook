@@ -37,6 +37,8 @@ export interface PlatformConnection {
   youtubeCategoryId?: string | null;
   /** KB-205: whether the channel may upload over 15 minutes; null = not read yet. */
   youtubeLongUploads?: YouTubeLongUploadsStatus | null;
+  /** KB-213: Meta has stopped this connection posting until it is cleared */
+  publishBlock?: { message: string; at: string } | null;
   /** Null for a platform with no analytics requirement. */
   analyticsAccess?: AnalyticsAccess | null;
 }
