@@ -36,6 +36,7 @@ function reel(
       fifteenSecondViews: 350,
       completeViews: 200,
       viewTimeMs: 125_400,
+      avgWatchTimeMs: 6_200,
       follows: 9,
       ...overrides,
     },

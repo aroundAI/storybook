@@ -30,6 +30,8 @@ export interface PublishForSync {
    * been asked — which the sync does, once, for any publish still missing it.
    */
   duration_seconds: number | null;
+  /** Its format (FILM-1716): which Facebook metric is read (KB-212). */
+  content_type: string | null;
   metadata: PublishMetadata | null;
   /** What the connection's OAuth callback recorded. Absent if the row is. */
   connection?: ConnectionGrant;

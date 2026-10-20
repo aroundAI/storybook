@@ -37,6 +37,7 @@ import { migration as m022 } from './022_video_revenue_daily';
 import { migration as m023 } from './023_reels_attention';
 import { migration as m024 } from './024_edit_sessions_fact';
 import { migration as m025 } from './025_complete_collection';
+import { migration as m026 } from './026_facebook_avg_watch_time';
 import type { ClickHouseMigration } from './migration-types';
 import { runMigrations } from './runner';
 
@@ -66,6 +67,7 @@ const MIGRATIONS: ClickHouseMigration[] = [
   m023,
   m024,
   m025,
+  m026,
 ];
 
 const baseline = process.argv.includes('--baseline');

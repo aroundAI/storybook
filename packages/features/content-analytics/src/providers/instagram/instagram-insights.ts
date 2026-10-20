@@ -76,7 +76,7 @@ interface GraphAPIError {
  * Instagram Insights Provider
  *
  * Fetches engagement and reach metrics for Reels and videos
- * on Professional Instagram accounts using Meta Graph API v23.0.
+ * on Professional Instagram accounts using Meta Graph API v26.0.
  */
 export class InstagramInsightsProvider {
   /**

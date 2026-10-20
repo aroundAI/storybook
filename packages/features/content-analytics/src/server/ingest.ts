@@ -215,8 +215,9 @@ const SNAPSHOT_SOURCE = {
 /**
  * Today's lifetime snapshot of a TikTok, Instagram, Facebook or X post: the
  * counters that become tomorrow's baseline, Facebook's denominators as their
- * own columns (FILM-1720), and Instagram's Reels attention figures, which are
- * stored but never subtracted (KB-151).
+ * own columns (FILM-1720), and Instagram's Reels attention figures and
+ * Facebook's average watch time, which are stored but never subtracted
+ * (KB-151, KB-212).
  */
 export function buildSnapshotRow(input: {
   projectId: string;
@@ -244,6 +245,10 @@ export function buildSnapshotRow(input: {
     dislikes: null,
     ...denominators,
     ...reelsAttention(input.platform, input.analytics),
+    fb_avg_watch_time_ms:
+      input.platform === 'facebook'
+        ? (input.analytics as FacebookInsightsResult).totals.avgWatchTimeMs
+        : null,
   };
 }
 
@@ -525,7 +530,10 @@ export type SnapshotDeltaMetric = VideoMetric &
         /** Four kinds of view and none of them this column's (FILM-1722). */
         views: null;
         saves: null;
-        /** Replays included on a reel. */
+        /**
+         * One metric per publish (KB-212): a Reel's, replays included, or
+         * any other video's; null when that one is missing.
+         */
         watch_time_seconds: number | null;
         /** Follows Meta credits to a reel; null for a video in the player. */
         subscribers_gained: number | null;
@@ -823,8 +831,9 @@ export function facebookCumulativeTotals(
 
 /**
  * Audience breakdown rows (demographics, geography, devices, OS,
- * subscribed status) from a platform analytics payload. These are
- * window/lifetime aggregates — latest fetch wins per key.
+ * subscribed status) from a platform analytics payload, each the video's
+ * lifetime as of the fetch — YouTube's are asked from the publish date
+ * (KB-212) — and the latest fetch wins per key.
  */
 export function buildAudienceRows(input: {
   projectId: string;

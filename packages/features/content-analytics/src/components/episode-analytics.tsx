@@ -17,7 +17,7 @@ import { formatRevenueCents } from '../lib/estimated-revenue';
 import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
 import type { EpisodeAnalytics as EpisodeAnalyticsData } from '../server/aggregation-queries';
 import { getProjectRevenueAccessAction } from '../server/dashboard-actions';
-import { MetricCards } from './metric-cards';
+import { MetricCards, watchTimeSplit } from './metric-cards';
 import { RateDenominator } from './rate-denominator';
 
 interface EpisodeAnalyticsProps {
@@ -39,7 +39,7 @@ export function EpisodeAnalytics({ data, projectId }: EpisodeAnalyticsProps) {
     likes: data.totalLikes,
     comments: data.totalComments,
     shares: data.totalShares,
-    watchTimeSeconds: data.avgWatchTimeSeconds,
+    watchTimeSeconds: data.totalWatchTimeSeconds,
     subscribersGained: data.subscribersGained,
     revenueCents: data.totalRevenueCents,
     contentCount: 1,
@@ -71,6 +71,7 @@ export function EpisodeAnalytics({ data, projectId }: EpisodeAnalyticsProps) {
         isLoading={false}
         viewsScope={data.viewsScope}
         revenueAccess={revenueAccess ?? []}
+        watchTimeDetail={watchTimeSplit(data.watchTimeByPlatform)}
       />
 
       {/* Platform Breakdown */}

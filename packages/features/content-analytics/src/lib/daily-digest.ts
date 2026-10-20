@@ -185,13 +185,18 @@ const ONLY_ON: Partial<Record<string, readonly string[]>> = {
   lifetimeVideos: ['youtube'],
   reelsAvgWatchTimeMs: ['instagram'],
   reelsSkipRate: ['instagram'],
+  fbAvgWatchTimeMs: ['facebook'],
   fbViews3s: ['facebook'],
   fbViewsOrganic: ['facebook'],
   fbViewsComplete: ['facebook'],
 };
 
 /** Figures a platform gives for a video's lifetime only, never by day */
-const LIFETIME_ONLY = new Set(['reelsAvgWatchTimeMs', 'reelsSkipRate']);
+const LIFETIME_ONLY = new Set([
+  'reelsAvgWatchTimeMs',
+  'reelsSkipRate',
+  'fbAvgWatchTimeMs',
+]);
 
 export function nullReason(
   figure: string,
@@ -795,6 +800,10 @@ function retentionOf(inputs: DigestInputs, publish: DigestPublish) {
     const peers = peersOf(inputs, publish)
       .map((other) => inputs.retentionCurves.get(other.id) ?? [])
       .filter((curve) => curve.length > 0);
+    // Meta's own per-view average (KB-212), from the lifetime snapshot.
+    const average = pick(lifetimeRow(inputs, publish.id, 'graph_api') ?? {}, [
+      'fbAvgWatchTimeMs',
+    ]);
 
     return {
       kind: 'curve' as const,
@@ -802,8 +811,17 @@ function retentionOf(inputs: DigestInputs, publish: DigestPublish) {
         'The share of the video’s 3-second views still playing at each point.',
       curve: points.length ? curveAgainst(points, peers) : null,
       dropOff: points.length ? steepestDrop(points) : null,
+      ...average,
       channelVideosCompared: peers.length,
-      notMeasured: points.length ? {} : { curve: noCurve, dropOff: noCurve },
+      notMeasured: {
+        ...(points.length ? {} : { curve: noCurve, dropOff: noCurve }),
+        ...notMeasured(
+          average,
+          ['fbAvgWatchTimeMs'],
+          publish.platform,
+          lifetime,
+        ),
+      },
     };
   }
 
@@ -1297,7 +1315,7 @@ export function assembleDigest(inputs: DigestInputs) {
         'Descriptive only: a difference between days or videos is not its cause. Test a cause with a channel experiment.',
       engagementRate:
         'A video’s engagementRate is the Content tab’s Engagement figure: its likes, comments and shares per 100 views over its stored days, on the day and through it. Each trend source’s engagementRate is the same function over that source’s own counts.',
-      retention: `Each video’s retention is its platform’s own figure, named by kind: avg_percent_viewed (${platformLabel('youtube')}’s average percentage viewed, with its average view duration, the steepest drop of its curve and the median of the channel’s other videos of the same format family), curve (${platformLabel('facebook')}: the share of 3-second views still playing) or skip_rate (${platformLabel('instagram')} Reels, as Meta reports it, with the average watch time). Kinds are not comparable with each other.`,
+      retention: `Each video’s retention is its platform’s own figure, named by kind: avg_percent_viewed (${platformLabel('youtube')}’s average percentage viewed, with its average view duration, the steepest drop of its curve and the median of the channel’s other videos of the same format family), curve (${platformLabel('facebook')}: the share of 3-second views still playing, with Meta’s own average watch time per view, which for a Reel includes replays) or skip_rate (${platformLabel('instagram')} Reels, as Meta reports it, with the average watch time). Kinds are not comparable with each other.`,
       trend:
         'Each video’s trend is the report day and the six before it: platform figures by the platform’s data day, comments by the day in the report’s zone. Comment tone and topic shares need 20 labelled comments that day; below that, counts only.',
     },

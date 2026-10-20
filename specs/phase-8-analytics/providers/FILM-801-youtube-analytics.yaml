@@ -54,7 +54,7 @@ acceptance_criteria:
     evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:305`"
   - text: "Fetches audience retention curve"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:417`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:527`"
   - text: "Fetches demographic data (age/gender)"
     met: true
     evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:446`"

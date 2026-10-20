@@ -35,6 +35,7 @@ import {
   formatNumber,
   formatPercent,
 } from '../lib/format';
+import { platformLabel } from '../lib/platform-labels';
 import type { RevenueAccessNote } from '../lib/revenue-access';
 import { type ViewsScope, viewsNotMeasuredReason } from '../lib/views';
 import type { AnalyticsTotals } from '../types';
@@ -85,6 +86,25 @@ interface MetricCardsProps {
    * Shown only when the revenue figure is not measured.
    */
   revenueAccess?: readonly RevenueAccessNote[];
+  /** A line under the watch-time figure: what it is made of (KB-212). */
+  watchTimeDetail?: string;
+}
+
+/**
+ * "YouTube 41m · Facebook 56m": the platforms an episode's total watch time
+ * is made of (KB-212), or nothing when no platform measured any.
+ */
+export function watchTimeSplit(
+  byPlatform: readonly { platform: string; seconds: number }[],
+): string | undefined {
+  if (byPlatform.length === 0) return undefined;
+
+  return byPlatform
+    .map(
+      ({ platform, seconds }) =>
+        `${platformLabel(platform)} ${formatDuration(seconds)}`,
+    )
+    .join(' · ');
 }
 
 export function MetricCards({
@@ -95,6 +115,7 @@ export function MetricCards({
   viewsScope,
   noFigureReason,
   revenueAccess = [],
+  watchTimeDetail,
 }: MetricCardsProps) {
   // The chip needs the page's coverage. Outside the analytics page — the
   // project, season and episode dashboards mount no provider — the cards
@@ -165,6 +186,7 @@ export function MetricCards({
       description: 'Total time viewers spent watching',
       icon: Clock,
       metricFamily: 'watch_time',
+      detail: watchTimeDetail,
     },
     {
       key: 'subscribers',
@@ -286,6 +308,8 @@ export interface MetricConfig {
   metricFamily: MetricFamily;
   /** This figure's own reason when null, over the cards' shared one. */
   notMeasuredReason?: string;
+  /** A line under the figure, shown only with one. */
+  detail?: string;
 }
 
 /**
@@ -429,6 +453,14 @@ export function MetricCard({
             <span className="sr-only">No previous period to compare</span>
           )}
         </div>
+        {metric.detail && value !== null && unmeasured === null ? (
+          <p
+            className="mt-1 text-xs text-muted-foreground"
+            data-test="metric-detail"
+          >
+            {metric.detail}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

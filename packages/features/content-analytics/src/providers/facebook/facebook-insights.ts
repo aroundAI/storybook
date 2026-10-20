@@ -40,13 +40,18 @@ import type {
  * Meta answers them only to the admin of a Page that runs ad breaks, and a
  * refusal there must cost those four figures and nothing else.
  *
- * Not requested: Meta's own averages (`total_video_avg_time_watched`,
- * `post_video_avg_time_watched` — the Reels one counts replay time over first
- * plays and can exceed the video's length), and anything Graph v25.0 retired
- * (the reference's forbidden block).
+ * Watch time and its average each come from one metric, chosen by what the
+ * publish is (KB-212): a Reel's from the Reels read (`post_video_view_time`,
+ * `post_video_avg_time_watched`, replays included), any other video's from
+ * the video read (`total_video_view_total_time`,
+ * `total_video_avg_time_watched`). When the chosen metric is missing, the
+ * figure is not measured: falling back to the other metric made one day's
+ * delta the difference between two different figures.
  *
- * Shipped dark: no connection holds `read_insights` until the owner turns the
- * `facebook` analytics scope switch on, so the sync never calls this.
+ * Meta's averages are its own per-view figures, stored as reported. The
+ * Reels one counts replay time over first plays, so it can exceed the
+ * video's length. Anything Graph v25.0 retired is not requested (the
+ * reference's forbidden block).
  */
 
 /** Video metrics: every Facebook video. */
@@ -59,6 +64,7 @@ const videoInsightMetrics = [
   'total_video_15s_views',
   'total_video_complete_views',
   'total_video_view_total_time',
+  'total_video_avg_time_watched',
   'total_video_retention_graph',
   'total_video_reactions_by_type_total',
 ];
@@ -68,6 +74,7 @@ const reelsInsightMetrics = [
   'blue_reels_play_count',
   'fb_reels_replay_count',
   'post_video_view_time',
+  'post_video_avg_time_watched',
   'post_video_followers',
   'post_video_likes_by_reaction_type',
 ];
@@ -146,7 +153,7 @@ export class FacebookInsightsProvider {
   async getVideoInsights(
     input: FacebookInsightsInput,
   ): Promise<FacebookInsightsResult> {
-    const { videoId } = input;
+    const { videoId, reel } = input;
 
     const { accessToken: token } = this;
 
@@ -243,9 +250,13 @@ export class FacebookInsightsProvider {
       ),
       fifteenSecondViews: count(video, 'total_video_15s_views'),
       completeViews: count(video, 'total_video_complete_views'),
-      viewTimeMs:
-        count(reels, 'post_video_view_time') ??
-        count(video, 'total_video_view_total_time'),
+      // One metric per kind of publish, never the other as a fallback (KB-212).
+      viewTimeMs: reel
+        ? count(reels, 'post_video_view_time')
+        : count(video, 'total_video_view_total_time'),
+      avgWatchTimeMs: reel
+        ? count(reels, 'post_video_avg_time_watched')
+        : count(video, 'total_video_avg_time_watched'),
       follows: count(reels, 'post_video_followers'),
     };
 

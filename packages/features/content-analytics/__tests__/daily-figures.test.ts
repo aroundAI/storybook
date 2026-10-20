@@ -45,6 +45,7 @@ const NULL_FIGURES = {
   impressionCtr: null,
   reelsAvgWatchTimeMs: null,
   reelsSkipRate: null,
+  fbAvgWatchTimeMs: null,
   fbViews3s: null,
   fbViewsOrganic: null,
   fbViewsComplete: null,
@@ -94,6 +95,7 @@ const snapshot = (over: Record<string, unknown>) => ({
   accountsReached: null,
   profileVisits: null,
   reelsAvgWatchTimeMs: null,
+  fbAvgWatchTimeMs: null,
   reelsSkipRate: null,
   views3s: null,
   views3sOrganic: null,
@@ -435,6 +437,36 @@ describe('getVideoLifetimeFigures', () => {
     expect(rows[0]).toMatchObject({
       avgViewDurationSeconds: 30,
       impressions: null,
+    });
+  });
+
+  // KB-212: Meta’s own average, its own figure, not comparable (FILM-1720).
+  it('a Facebook video’s average is Meta’s own figure, never its average view duration', async () => {
+    const FB = '77777777-7777-4777-8777-777777777777';
+    state.tables.publishes!.push(publishRow(FB, 'facebook', IG_CHANNEL));
+    state.latest = [
+      snapshot({
+        videoId: FB,
+        platform: 'facebook',
+        source: 'graph_api',
+        views: null,
+        watchTimeSeconds: 7_000,
+        fbAvgWatchTimeMs: 7_780,
+      }),
+    ];
+
+    const rows = await getVideoLifetimeFigures(client, {
+      publishIds: [FB],
+      asOf: '2026-10-12T06:00:00.000Z',
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      platform: 'facebook',
+      views: null,
+      watchTimeSeconds: 7_000,
+      fbAvgWatchTimeMs: 7_780,
+      avgViewDurationSeconds: null,
     });
   });
 });

@@ -60,11 +60,13 @@ const VIDEO_METRICS = new Set([
   'total_video_15s_views',
   'total_video_complete_views',
   'total_video_view_total_time',
+  'total_video_avg_time_watched',
   'total_video_retention_graph',
   'total_video_reactions_by_type_total',
   'blue_reels_play_count',
   'fb_reels_replay_count',
   'post_video_view_time',
+  'post_video_avg_time_watched',
   'post_video_followers',
   'post_video_likes_by_reaction_type',
   'total_video_views_by_age_bucket_and_gender',
@@ -167,6 +169,12 @@ function videoMetric(
       return Math.floor(views3s * object.profile.ratios.completion);
     case 'total_video_view_total_time':
       return watchedMs;
+    // Meta's own averages: per 3-second view, and for a Reel replay time
+    // over first plays, so it can exceed the video's length.
+    case 'total_video_avg_time_watched':
+      return views3s > 0 ? Math.round(watchedMs / views3s) : 0;
+    case 'post_video_avg_time_watched':
+      return plays > 0 ? Math.round((watchedMs + replayMs) / plays) : 0;
     case 'total_video_retention_graph':
       return retentionGraph(object);
     case 'total_video_reactions_by_type_total':

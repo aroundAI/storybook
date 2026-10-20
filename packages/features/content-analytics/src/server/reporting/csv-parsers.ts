@@ -122,6 +122,14 @@ function numberAt(row: string[], index: number): number {
   return Number.isFinite(value) ? value : 0;
 }
 
+/** A cell's number, or null when the column is absent or the cell is not one. */
+function measuredAt(row: string[], index: number): number | null {
+  const cell = index < 0 ? undefined : row[index]?.trim();
+  if (!cell) return null;
+  const value = Number(cell);
+  return Number.isFinite(value) ? value : null;
+}
+
 function stringAt(row: string[], index: number): string {
   return index >= 0 ? (row[index] ?? '') : '';
 }
@@ -271,7 +279,13 @@ export function parseTrafficSourceReport(
 
 /**
  * Parse channel_reach_*_a1: thumbnail impressions and CTR per video/day.
- * CTR is view-weighted when rows span extra dimensions.
+ * CTR is impression-weighted when rows span extra dimensions.
+ *
+ * Both figures are measured or the video/day is left out (KB-212):
+ * `video_reach_daily` holds no NULL, and a missing CTR read as 0 stored a
+ * 0 % click-through YouTube never reported. A file without the CTR column
+ * parses to nothing, which the ingest logs with the file's header; a
+ * video/day with a blank or non-numeric cell is not written.
  */
 export function parseReachReport(csv: string): ReachReportRow[] {
   const { headers, rows } = parseCsv(csv);
@@ -282,21 +296,28 @@ export function parseReachReport(csv: string): ReachReportRow[] {
   const videoIdx = columnIndex(headers, 'video_id');
   const impressionsIdx = columnIndex(headers, 'video_thumbnail_impressions');
 
-  if (dateIdx < 0 || videoIdx < 0 || impressionsIdx < 0) return [];
-
   const ctrIdx = columnIndex(headers, 'video_thumbnail_impressions_ctr');
 
+  if (dateIdx < 0 || videoIdx < 0 || impressionsIdx < 0 || ctrIdx < 0) {
+    return [];
+  }
+
   const byKey = new Map<string, ReachReportRow & { ctrWeightedSum: number }>();
+  const unmeasured = new Set<string>();
 
   for (const row of rows) {
     const date = normalizeDate(stringAt(row, dateIdx));
     const videoId = stringAt(row, videoIdx);
     if (!date || !videoId) continue;
 
-    const impressions = numberAt(row, impressionsIdx);
-    const ctr = numberAt(row, ctrIdx);
+    const impressions = measuredAt(row, impressionsIdx);
+    const ctr = measuredAt(row, ctrIdx);
 
     const key = `${videoId}:${date}`;
+    if (impressions === null || ctr === null) {
+      unmeasured.add(key);
+      continue;
+    }
     const existing = byKey.get(key) ?? {
       date,
       youtubeVideoId: videoId,
@@ -311,10 +332,13 @@ export function parseReachReport(csv: string): ReachReportRow[] {
     byKey.set(key, existing);
   }
 
-  return Array.from(byKey.values()).map(({ ctrWeightedSum, ...row }) => ({
-    ...row,
-    impressionsCtr: row.impressions > 0 ? ctrWeightedSum / row.impressions : 0,
-  }));
+  return Array.from(byKey)
+    .filter(([key]) => !unmeasured.has(key))
+    .map(([, { ctrWeightedSum, ...row }]) => ({
+      ...row,
+      impressionsCtr:
+        row.impressions > 0 ? ctrWeightedSum / row.impressions : 0,
+    }));
 }
 
 /**

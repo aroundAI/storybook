@@ -64,7 +64,7 @@ describe('Facebook ad-break earnings (FILM-1726)', () => {
     );
 
     const result = await new FacebookInsightsProvider('token').getVideoInsights(
-      { videoId: 'v1' },
+      { videoId: 'v1', reel: false },
     );
 
     const adBreakReads = metaFetch.mock.calls
@@ -89,7 +89,7 @@ describe('Facebook ad-break earnings (FILM-1726)', () => {
     answer(() => json({ error: { code: 200, message: 'Admins only' } }, 403));
 
     const result = await new FacebookInsightsProvider('token').getVideoInsights(
-      { videoId: 'v1' },
+      { videoId: 'v1', reel: false },
     );
 
     expect(result.adBreaks).toEqual({
@@ -109,7 +109,7 @@ describe('Facebook ad-break earnings (FILM-1726)', () => {
     );
 
     const result = await new FacebookInsightsProvider('token').getVideoInsights(
-      { videoId: 'v1' },
+      { videoId: 'v1', reel: false },
     );
 
     expect(result.adBreaks.access).toBe('unavailable');

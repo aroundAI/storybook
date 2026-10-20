@@ -230,9 +230,18 @@ export class YouTubeAnalyticsProvider {
   async getVideoAnalytics(
     input: YouTubeAnalyticsInput,
   ): Promise<YouTubeAnalyticsResult> {
-    const { videoId, startDate, endDate, includeRevenue = false } = input;
+    const {
+      videoId,
+      startDate,
+      endDate,
+      publishedAt,
+      includeRevenue = false,
+    } = input;
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
+    // The audience breakdowns are stored as the video's audience, so they
+    // cover its lifetime, not the sync's few-day window (KB-212).
+    const audienceFrom = formatDate(publishedAt);
 
     try {
       // Fetch metrics in parallel for optimal performance
@@ -252,18 +261,30 @@ export class YouTubeAnalyticsProvider {
           ? this.fetchRevenue(videoId, startDateStr, endDateStr)
           : Promise.resolve(noRevenue('scope_missing')),
         this.fetchDailyMetrics(videoId, startDateStr, endDateStr),
-        this.fetchRetention(videoId),
-        this.fetchDemographics(videoId, startDateStr, endDateStr),
+        // Every optional query logs a refusal and rethrows a missing scope
+        // or quota, rather than swallowing either (KB-212).
+        this.optionalQuery('retention', () => this.fetchRetention(videoId)),
+        this.optionalQuery('demographics', () =>
+          this.fetchDemographics(videoId, audienceFrom, endDateStr),
+        ),
         this.optionalQuery('traffic-sources', () =>
           this.fetchDailyTrafficSources(videoId, startDateStr, endDateStr),
         ),
         this.optionalQuery('geography', () =>
-          this.fetchGeography(videoId, startDateStr, endDateStr),
+          this.fetchGeography(videoId, audienceFrom, endDateStr),
         ),
-        this.fetchDeviceBreakdown(videoId, startDateStr, endDateStr),
-        this.fetchOperatingSystemBreakdown(videoId, startDateStr, endDateStr),
-        this.fetchCityGeography(videoId, startDateStr, endDateStr),
-        this.fetchSubscribedStatus(videoId, startDateStr, endDateStr),
+        this.optionalQuery('device-type', () =>
+          this.fetchDeviceBreakdown(videoId, audienceFrom, endDateStr),
+        ),
+        this.optionalQuery('operating-system', () =>
+          this.fetchOperatingSystemBreakdown(videoId, audienceFrom, endDateStr),
+        ),
+        this.optionalQuery('city', () =>
+          this.fetchCityGeography(videoId, audienceFrom, endDateStr),
+        ),
+        this.optionalQuery('subscribed-status', () =>
+          this.fetchSubscribedStatus(videoId, audienceFrom, endDateStr),
+        ),
       ]);
 
       return {
@@ -280,11 +301,9 @@ export class YouTubeAnalyticsProvider {
           : undefined,
         dailyTrafficSources,
         geography,
-        deviceBreakdown:
-          deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
-        operatingSystem:
-          operatingSystem.length > 0 ? operatingSystem : undefined,
-        cityGeography: cityGeography.length > 0 ? cityGeography : undefined,
+        deviceBreakdown: deviceBreakdown?.length ? deviceBreakdown : undefined,
+        operatingSystem: operatingSystem?.length ? operatingSystem : undefined,
+        cityGeography: cityGeography?.length ? cityGeography : undefined,
         subscribedStatus,
       };
     } catch (error) {
@@ -505,79 +524,67 @@ export class YouTubeAnalyticsProvider {
    * Uses lifetime data (from 2020-01-01 to today) as retention
    * is calculated across all views.
    */
-  private async fetchRetention(
-    videoId: string,
-  ): Promise<RetentionData | undefined> {
-    try {
-      const response = await this.youtubeAnalytics.reports.query({
-        ids: 'channel==MINE',
-        startDate: '2020-01-01', // Lifetime
-        endDate: formatDate(new Date()),
-        metrics: 'audienceWatchRatio',
-        dimensions: 'elapsedVideoTimeRatio',
-        filters: `video==${videoId}`,
-        sort: 'elapsedVideoTimeRatio',
-      });
+  private async fetchRetention(videoId: string): Promise<RetentionData> {
+    const response = await this.runQuery('retention', {
+      ids: 'channel==MINE',
+      startDate: '2020-01-01', // Lifetime
+      endDate: formatDate(new Date()),
+      metrics: 'audienceWatchRatio',
+      dimensions: 'elapsedVideoTimeRatio',
+      filters: `video==${videoId}`,
+      sort: 'elapsedVideoTimeRatio',
+    });
 
-      return {
-        points: ((response.data.rows as number[][]) ?? []).map((row) => ({
-          elapsedVideoTimeRatio: row[0]!,
-          audienceWatchRatio: row[1]!,
-        })),
-      };
-    } catch {
-      // Retention data may not be available for all videos
-      return undefined;
-    }
+    return {
+      points: ((response.data.rows as number[][]) ?? []).map((row) => ({
+        elapsedVideoTimeRatio: row[0]!,
+        audienceWatchRatio: row[1]!,
+      })),
+    };
   }
 
   /**
-   * Fetches demographic breakdown (age and gender)
+   * Fetches demographic breakdown (age and gender), over the video's
+   * lifetime: `startDate` is its publish date (KB-212).
    */
   private async fetchDemographics(
     videoId: string,
     startDate: string,
     endDate: string,
-  ): Promise<DemographicData | undefined> {
-    try {
-      const [ageResponse, genderResponse] = await Promise.all([
-        this.youtubeAnalytics.reports.query({
-          ids: 'channel==MINE',
-          startDate,
-          endDate,
-          metrics: 'viewerPercentage',
-          dimensions: 'ageGroup',
-          filters: `video==${videoId}`,
-        }),
-        this.youtubeAnalytics.reports.query({
-          ids: 'channel==MINE',
-          startDate,
-          endDate,
-          metrics: 'viewerPercentage',
-          dimensions: 'gender',
-          filters: `video==${videoId}`,
-        }),
-      ]);
+  ): Promise<DemographicData> {
+    const [ageResponse, genderResponse] = await Promise.all([
+      this.runQuery('demographics-age', {
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'viewerPercentage',
+        dimensions: 'ageGroup',
+        filters: `video==${videoId}`,
+      }),
+      this.runQuery('demographics-gender', {
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'viewerPercentage',
+        dimensions: 'gender',
+        filters: `video==${videoId}`,
+      }),
+    ]);
 
-      return {
-        ageGroups: ((ageResponse.data.rows as [string, number][]) ?? []).map(
-          (row) => ({
-            ageGroup:
-              row[0] as DemographicData['ageGroups'][number]['ageGroup'],
-            viewPercentage: row[1],
-          }),
-        ),
-        genders: ((genderResponse.data.rows as [string, number][]) ?? []).map(
-          (row) => ({
-            gender: row[0] as DemographicData['genders'][number]['gender'],
-            viewPercentage: row[1],
-          }),
-        ),
-      };
-    } catch {
-      // Demographics may not be available for all videos (requires sufficient views)
-      return undefined;
-    }
+    return {
+      ageGroups: ((ageResponse.data.rows as [string, number][]) ?? []).map(
+        (row) => ({
+          ageGroup: row[0] as DemographicData['ageGroups'][number]['ageGroup'],
+          viewPercentage: row[1],
+        }),
+      ),
+      genders: ((genderResponse.data.rows as [string, number][]) ?? []).map(
+        (row) => ({
+          gender: row[0] as DemographicData['genders'][number]['gender'],
+          viewPercentage: row[1],
+        }),
+      ),
+    };
   }
 
   /**
@@ -651,28 +658,23 @@ export class YouTubeAnalyticsProvider {
     startDate: string,
     endDate: string,
   ): Promise<DeviceBreakdownData[]> {
-    try {
-      const response = await this.youtubeAnalytics.reports.query({
-        ids: 'channel==MINE',
-        startDate,
-        endDate,
-        metrics: 'views,estimatedMinutesWatched',
-        dimensions: 'deviceType',
-        filters: `video==${videoId}`,
-        sort: '-views',
-      });
+    const response = await this.runQuery('device-type', {
+      ids: 'channel==MINE',
+      startDate,
+      endDate,
+      metrics: 'views,estimatedMinutesWatched',
+      dimensions: 'deviceType',
+      filters: `video==${videoId}`,
+      sort: '-views',
+    });
 
-      return ((response.data.rows as [string, number, number][]) ?? []).map(
-        (row) => ({
-          deviceType: row[0] as DeviceBreakdownData['deviceType'],
-          views: row[1] ?? 0,
-          watchTimeMinutes: row[2] ?? 0,
-        }),
-      );
-    } catch {
-      // Device breakdown may not be available for all videos
-      return [];
-    }
+    return ((response.data.rows as [string, number, number][]) ?? []).map(
+      (row) => ({
+        deviceType: row[0] as DeviceBreakdownData['deviceType'],
+        views: row[1] ?? 0,
+        watchTimeMinutes: row[2] ?? 0,
+      }),
+    );
   }
 
   /**
@@ -683,26 +685,21 @@ export class YouTubeAnalyticsProvider {
     startDate: string,
     endDate: string,
   ): Promise<OperatingSystemData[]> {
-    try {
-      const response = await this.youtubeAnalytics.reports.query({
-        ids: 'channel==MINE',
-        startDate,
-        endDate,
-        metrics: 'views',
-        dimensions: 'operatingSystem',
-        filters: `video==${videoId}`,
-        sort: '-views',
-        maxResults: 20,
-      });
+    const response = await this.runQuery('operating-system', {
+      ids: 'channel==MINE',
+      startDate,
+      endDate,
+      metrics: 'views',
+      dimensions: 'operatingSystem',
+      filters: `video==${videoId}`,
+      sort: '-views',
+      maxResults: 20,
+    });
 
-      return ((response.data.rows as [string, number][]) ?? []).map((row) => ({
-        operatingSystem: row[0],
-        views: row[1] ?? 0,
-      }));
-    } catch {
-      // Operating system breakdown may not be available for all videos
-      return [];
-    }
+    return ((response.data.rows as [string, number][]) ?? []).map((row) => ({
+      operatingSystem: row[0],
+      views: row[1] ?? 0,
+    }));
   }
 
   /**
@@ -713,26 +710,21 @@ export class YouTubeAnalyticsProvider {
     startDate: string,
     endDate: string,
   ): Promise<CityGeographyData[]> {
-    try {
-      const response = await this.youtubeAnalytics.reports.query({
-        ids: 'channel==MINE',
-        startDate,
-        endDate,
-        metrics: 'views',
-        dimensions: 'city',
-        filters: `video==${videoId}`,
-        sort: '-views',
-        maxResults: 50,
-      });
+    const response = await this.runQuery('city', {
+      ids: 'channel==MINE',
+      startDate,
+      endDate,
+      metrics: 'views',
+      dimensions: 'city',
+      filters: `video==${videoId}`,
+      sort: '-views',
+      maxResults: 50,
+    });
 
-      return ((response.data.rows as [string, number][]) ?? []).map((row) => ({
-        city: row[0],
-        views: row[1] ?? 0,
-      }));
-    } catch {
-      // City geography may not be available for all videos
-      return [];
-    }
+    return ((response.data.rows as [string, number][]) ?? []).map((row) => ({
+      city: row[0],
+      views: row[1] ?? 0,
+    }));
   }
 
   /**
@@ -742,29 +734,24 @@ export class YouTubeAnalyticsProvider {
     videoId: string,
     startDate: string,
     endDate: string,
-  ): Promise<SubscribedStatusData | undefined> {
-    try {
-      const response = await this.youtubeAnalytics.reports.query({
-        ids: 'channel==MINE',
-        startDate,
-        endDate,
-        metrics: 'views',
-        dimensions: 'subscribedStatus',
-        filters: `video==${videoId}`,
-      });
+  ): Promise<SubscribedStatusData> {
+    const response = await this.runQuery('subscribed-status', {
+      ids: 'channel==MINE',
+      startDate,
+      endDate,
+      metrics: 'views',
+      dimensions: 'subscribedStatus',
+      filters: `video==${videoId}`,
+    });
 
-      const rows = (response.data.rows as [string, number][]) ?? [];
-      const subscribedRow = rows.find((r) => r[0] === 'SUBSCRIBED');
-      const unsubscribedRow = rows.find((r) => r[0] === 'UNSUBSCRIBED');
+    const rows = (response.data.rows as [string, number][]) ?? [];
+    const subscribedRow = rows.find((r) => r[0] === 'SUBSCRIBED');
+    const unsubscribedRow = rows.find((r) => r[0] === 'UNSUBSCRIBED');
 
-      return {
-        subscribed: subscribedRow?.[1] ?? 0,
-        notSubscribed: unsubscribedRow?.[1] ?? 0,
-      };
-    } catch {
-      // Subscribed status may not be available for all videos
-      return undefined;
-    }
+    return {
+      subscribed: subscribedRow?.[1] ?? 0,
+      notSubscribed: unsubscribedRow?.[1] ?? 0,
+    };
   }
 
   /**

@@ -254,6 +254,9 @@ function snapshotFigures(row: VideoSnapshotRow): VideoFigures {
     profileVisits: row.profileVisits,
     reelsAvgWatchTimeMs: row.reelsAvgWatchTimeMs,
     reelsSkipRate: row.reelsSkipRate,
+    // Meta's own per-view average, as reported (KB-212): its own figure,
+    // not an average view duration (FILM-1720).
+    fbAvgWatchTimeMs: row.fbAvgWatchTimeMs,
     fbViews3s: row.views3s,
     fbViewsOrganic: row.views3sOrganic,
     fbViewsComplete: row.completeViews,

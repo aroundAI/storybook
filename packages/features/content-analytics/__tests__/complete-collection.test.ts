@@ -301,6 +301,7 @@ describe('YouTube snapshots and traffic, as stored', () => {
       videoId: 'v1',
       startDate: new Date('2026-10-08T00:00:00Z'),
       endDate: new Date('2026-10-11T00:00:00Z'),
+      publishedAt: new Date('2024-06-01'),
     });
 
     const traffic = analytics.reports.query.mock.calls

@@ -152,7 +152,10 @@ describe('Facebook video insights, dark until the switch is on', () => {
     );
 
     await expect(
-      (await provider(page.token)).getVideoInsights({ videoId: SEEDED_VIDEO }),
+      (await provider(page.token)).getVideoInsights({
+        videoId: SEEDED_VIDEO,
+        reel: true,
+      }),
     ).rejects.toBeInstanceOf(FacebookInsightsScopeError);
   });
 });
@@ -236,6 +239,7 @@ describe('Facebook video insights, through the app provider', () => {
       await provider(page.token)
     ).getVideoInsights({
       videoId: SEEDED_VIDEO,
+      reel: true,
     });
     const t = result.totals;
 
@@ -274,13 +278,18 @@ describe('Facebook video insights, through the app provider', () => {
       now = at;
       return (await provider(page.token)).getVideoInsights({
         videoId: SEEDED_VIDEO,
+        reel: true,
       });
     };
 
     const earlier = (await read(T0 + 6 * DAY)).totals;
     const later = (await read(T0 + 9 * DAY)).totals;
 
-    for (const name of Object.keys(earlier) as (keyof typeof earlier)[]) {
+    // Meta's average is a quotient, not a counter: it may fall (KB-212).
+    const counters = (Object.keys(earlier) as (keyof typeof earlier)[]).filter(
+      (name) => name !== 'avgWatchTimeMs',
+    );
+    for (const name of counters) {
       expect(later[name]!, name).toBeGreaterThanOrEqual(earlier[name]!);
     }
   });
@@ -292,7 +301,7 @@ describe("a Page's other figures (FILM-1720)", () => {
     const page = await pageToken(await requested('meta,facebook'));
     const result = await (
       await provider(page.token)
-    ).getVideoInsights({ videoId: SEEDED_VIDEO });
+    ).getVideoInsights({ videoId: SEEDED_VIDEO, reel: true });
     const audience = result.audience!;
     const total = (rows: { views: number }[]) =>
       rows.reduce((sum, row) => sum + row.views, 0);

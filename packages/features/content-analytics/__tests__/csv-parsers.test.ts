@@ -126,6 +126,37 @@ describe('parseReachReport', () => {
       [],
     );
   });
+
+  // KB-212: a missing CTR read as 0, and a 0 % click-through YouTube never
+  // reported was stored beside real impressions.
+  it('writes nothing for a file without the CTR column, not a CTR of 0', () => {
+    expect(
+      parseReachReport(
+        'date,video_id,video_thumbnail_impressions\n20260610,vidA,1000',
+      ),
+    ).toEqual([]);
+  });
+
+  it('leaves out a video/day whose CTR or impressions cell is blank', () => {
+    const rows = parseReachReport(
+      [
+        'date,video_id,video_thumbnail_impressions,video_thumbnail_impressions_ctr',
+        '20260610,vidA,1000,0.05',
+        '20260610,vidA,3000,',
+        '20260610,vidB,,0.04',
+        '20260610,vidC,200,0.1',
+      ].join('\n'),
+    );
+
+    expect(rows).toEqual([
+      {
+        date: '2026-06-10',
+        youtubeVideoId: 'vidC',
+        impressions: 200,
+        impressionsCtr: 0.1,
+      },
+    ]);
+  });
 });
 
 describe('traffic source code lookup', () => {

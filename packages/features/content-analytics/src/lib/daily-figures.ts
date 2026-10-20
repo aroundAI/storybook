@@ -67,6 +67,12 @@ export interface VideoFigures {
   reelsAvgWatchTimeMs: Figure;
   /** Instagram Reels skip rate, as Meta reports it (unscaled). Lifetime only. */
   reelsSkipRate: Figure;
+  /**
+   * Facebook's own average watch time per view, milliseconds (KB-212). A
+   * Reel's counts replays, so it can exceed the video's length: its own
+   * figure, never YouTube's average view duration (FILM-1720). Lifetime only.
+   */
+  fbAvgWatchTimeMs: Figure;
   /** Facebook 3-second views. */
   fbViews3s: Figure;
   /** Facebook organic 3-second views. */
@@ -179,6 +185,7 @@ export const NO_VIDEO_FIGURES: VideoFigures = {
   impressionCtr: null,
   reelsAvgWatchTimeMs: null,
   reelsSkipRate: null,
+  fbAvgWatchTimeMs: null,
   fbViews3s: null,
   fbViewsOrganic: null,
   fbViewsComplete: null,

@@ -84,6 +84,7 @@ const publish = (id: string, connection: string): PublishForSync => ({
   platform_content_id: `yt-${id}`,
   published_at: '2026-10-01T00:00:00Z',
   duration_seconds: null,
+  content_type: 'full',
   metadata: null,
 });
 

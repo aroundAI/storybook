@@ -114,7 +114,7 @@ notes: |
 
   | Read | Site |
   |---|---|
-  | getEpisodeAnalytics | packages/features/content-analytics/src/server/aggregation-queries.ts:337 |
+  | getEpisodeAnalytics | packages/features/content-analytics/src/server/aggregation-queries.ts:384 |
   | getSeasonAnalytics | aggregation-queries.ts:453 |
   | getContentList (per row) | aggregation-queries.ts:1003 |
   | buildTopContent (account dashboard) | packages/features/content-analytics/src/server/account-dashboard-actions.ts:383 |

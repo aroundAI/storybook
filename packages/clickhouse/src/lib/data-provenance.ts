@@ -783,19 +783,25 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['ig_reels_video_view_total_time'],
       },
     },
-    // Total time only. Meta's own averages (`total_video_avg_time_watched`,
-    // `post_video_avg_time_watched`) are not requested: the Reels one counts
-    // replay time over initial plays and can exceed the video's length.
+    // One metric per publish (KB-212): a Reel's `post_video_view_time`,
+    // any other video's `total_video_view_total_time`, never one standing in
+    // for the other. Meta's own averages are on video_snapshots
+    // (migration 026), as reported.
     facebook: {
       level: 'derived',
       table: 'video_metrics',
       method: 'snapshot_delta_fetch_day',
       ...FACEBOOK_VIDEO,
-      note: 'Facebook reports total time watched so far, replays included, so each day shows the minutes added since we last checked, dated to the day we checked.',
+      note: 'Facebook reports total time watched so far, so each day shows the minutes added since we last checked, dated to the day we checked; the average is Meta’s own per view, and for a Reel both include replays, so its average can be longer than the video.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/video-insights',
-        fields: ['total_video_view_total_time', 'post_video_view_time'],
+        fields: [
+          'total_video_view_total_time',
+          'post_video_view_time',
+          'total_video_avg_time_watched',
+          'post_video_avg_time_watched',
+        ],
       },
     },
     twitter: {
