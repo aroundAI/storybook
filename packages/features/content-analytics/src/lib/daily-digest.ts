@@ -1271,8 +1271,8 @@ function publishingSection(inputs: DigestInputs) {
       ...post(p),
       note: `${p.youtube!.alert ? 'Held over 6 hours: ' : ''}${
         p.youtube!.goLiveWhenReady
-          ? 'uploaded private; goes public as soon as YouTube has HD'
-          : `waiting for YouTube's HD, held ${p.youtube!.delays.length} time${p.youtube!.delays.length === 1 ? '' : 's'}; now public at ${p.youtube!.publishAt}`
+          ? `uploaded private; goes public as soon as ${platformLabel('youtube')} has HD`
+          : `waiting for ${platformLabel('youtube')}'s HD, held ${p.youtube!.delays.length} time${p.youtube!.delays.length === 1 ? '' : 's'}; now public at ${p.youtube!.publishAt}`
       }.`,
     }));
 

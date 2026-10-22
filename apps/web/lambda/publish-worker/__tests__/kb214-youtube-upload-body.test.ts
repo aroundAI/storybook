@@ -100,7 +100,7 @@ async function upload(staged?: PublishJobMessage['staged']) {
   const insert = bodies.find((b) =>
     b.url.startsWith('/upload/youtube/v3/videos'),
   );
-  const json = insert!.body.match(/\{"snippet".*?\}\}/s)![0];
+  const json = insert!.body.match(/\{"snippet"[\s\S]*?\}\}/)![0];
   return JSON.parse(json) as { status: Record<string, unknown> };
 }
 

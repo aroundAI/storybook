@@ -58,7 +58,7 @@ import {
 import { checkStagedYouTube } from '@kit/publishing/lib/youtube-staged-check';
 import type { YouTubeStaging } from '@kit/publishing/lib/youtube-staging';
 import { awsClientOptions } from '@kit/shared/vendors';
-import type { Database } from '@kit/supabase/database';
+import type { Database, Json } from '@kit/supabase/database';
 
 import { mergeFailureMetadata } from './failure-metadata';
 import {
@@ -376,7 +376,7 @@ async function recordStaged(
       status: 'scheduled',
       platform_content_id: videoId,
       platform_url: result.url,
-      metadata: { ...base, youtube: { ...youtube } },
+      metadata: { ...base, youtube: { ...youtube } } as unknown as Json,
     })
     .eq('id', publishId);
 
