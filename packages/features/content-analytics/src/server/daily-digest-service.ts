@@ -8,6 +8,7 @@ import {
 } from '@kit/clickhouse/server';
 import {
   readPublishCalendar,
+  readRecentlyMovedPosts,
   readScheduledThrough,
 } from '@kit/publishing/server/publish-calendar';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
@@ -326,10 +327,11 @@ export async function getDailyDigestService(
     traffic,
     comments,
     reactions,
-    posts,
+    calendarPosts,
     scheduledThrough,
     revenueRows,
     revenueAccess,
+    movedPosts,
   ] = await Promise.all([
     publishIds.length
       ? getVideoLifetimeFigures(client, { publishIds, asOf: day.end })
@@ -386,7 +388,18 @@ export async function getDailyDigestService(
     }),
     publishIds.length ? dayRevenue(client, publishIds, input.date) : [],
     readAccountRevenueAccess(client, accountId),
+    // FILM-2213: posts moved in the day's last 24 hours, wherever they fall
+    readRecentlyMovedPosts(client, {
+      projectId: input.projectId,
+      since: new Date(Date.parse(day.end) - DAY_MS),
+    }),
   ]);
+
+  const seen = new Set(calendarPosts.map((post) => post.publishId));
+  const posts = [
+    ...calendarPosts,
+    ...movedPosts.filter((post) => !seen.has(post.publishId)),
+  ];
 
   const digest = assembleDigest({
     ...base,

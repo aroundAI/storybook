@@ -74,6 +74,59 @@ export async function deleteStagedYouTubeVideo(
 }
 
 /**
+ * FILM-2213. Moves one staged post's publish time on YouTube, before its
+ * row is moved, so the old, earlier time can never fire. A refusal, or
+ * null when YouTube has the new time (or the post is not staged there).
+ */
+export async function moveStagedPublishAt(
+  publish: StagedRowLike,
+  publishAt: string,
+): Promise<string | null> {
+  const staging = youtubeStagingOf(publish.metadata);
+
+  if (
+    publish.platform !== 'youtube' ||
+    !staging ||
+    staging.goLiveWhenReady ||
+    Math.abs(Date.parse(staging.publishAt) - Date.parse(publishAt)) < 1000
+  ) {
+    return null;
+  }
+
+  if (staging.wentPublicAt) {
+    return 'It is already public on YouTube, so its time cannot change.';
+  }
+
+  if (!publish.platform_connection_id) {
+    return 'It is uploaded to YouTube ahead of its time, and its channel is gone, so its time cannot change there. Change it in YouTube Studio.';
+  }
+
+  const access = await providerFor(publish.platform_connection_id);
+
+  if (!access.provider) {
+    return `It is uploaded to YouTube, private until its time, and its time could not be changed there: ${access.refusal}`;
+  }
+
+  try {
+    const outcome = await access.provider.updatePublishAt(
+      staging.videoId,
+      publishAt,
+    );
+
+    if (outcome === 'public') {
+      return 'It is already public on YouTube, so its time cannot change.';
+    }
+    if (outcome === 'gone') {
+      return 'Its video is no longer on YouTube, so its time cannot change. Cancel it and schedule it again.';
+    }
+
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+/**
  * Moves YouTube's publish time of every staged post among `publishIds`
  * whose `scheduled_at` no longer matches it. Returns YouTube's refusals.
  */

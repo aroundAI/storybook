@@ -4,6 +4,10 @@ import { z } from 'zod';
 
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
 import { markPublishRemoved } from '@kit/publishing/lib/publish-removal';
+import {
+  manualTimeOf,
+  scheduleHistoryOf,
+} from '@kit/publishing/lib/schedule-history';
 import { youtubeStagingView } from '@kit/publishing/lib/youtube-staging';
 import {
   cancelScheduledPublish,
@@ -146,7 +150,7 @@ export const cancelScheduledPublishTool = defineTool({
   name: 'cancel_scheduled_publish',
   title: 'Cancel a scheduled publish',
   description:
-    'Cancels a scheduled publish before it goes out, removing it, including one of a deleted episode. One that has started or gone out is refused: take a published video down on the Publish screen. Project owners and admins.',
+    'Cancels a scheduled publish before it goes out, removing it, including one of a deleted episode. One that has started or gone out is refused: take a published video down on the Publish screen. Project owners and admins. To change its time, use reschedule_publish instead: cancelling and scheduling again loses its history.',
   inputSchema: {
     publishId: z
       .string()
@@ -223,7 +227,7 @@ export const listEpisodePublishesTool = defineTool({
   name: 'list_episode_publishes',
   title: 'List an episode’s publishes',
   description:
-    "An episode's Shorts groups (id, name, the title, description and tags its shorts post with, the platforms each goes to, where none means every Shorts platform, and its languages) and its publishes: each with its platform, channel, content type, language, status (scheduled, queued, publishing, published, failed, …), scheduled time and platform URL, and for YouTube `youtube` (null, or a post uploaded ahead of its time: staged, publishAt, each HD delay, and alert 'held_over_6h'). The ids are what schedule_publish and cancel_scheduled_publish take.",
+    "An episode's Shorts groups (id, name, the title, description and tags its shorts post with, the platforms each goes to, where none means every Shorts platform, and its languages) and its publishes: each with its platform, channel, content type, language, status (scheduled, queued, publishing, published, failed, …), scheduled time and platform URL, and for YouTube `youtube` (null, or a post uploaded ahead of its time: staged, publishAt, each HD delay, and alert 'held_over_6h'), scheduleHistory (every change of its time) and manualTime (a time chosen past the posting rules). The ids are what schedule_publish, reschedule_publish and cancel_scheduled_publish take.",
   inputSchema: { episodeId: z.string().uuid() },
   scope: 'studio:read',
   annotations: {
@@ -297,6 +301,9 @@ export const listEpisodePublishesTool = defineTool({
       // KB-214: uploaded ahead of its time, private until YouTube has HD
       youtube:
         row.platform === 'youtube' ? youtubeStagingView(row.metadata) : null,
+      // FILM-2213: each change of its time, and a time chosen past the rules
+      scheduleHistory: scheduleHistoryOf(row.metadata),
+      manualTime: manualTimeOf(row.metadata),
     }));
 
     const scheduled = rows.filter((row) => row.status === 'scheduled').length;

@@ -21,6 +21,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { loadTeamWorkspace } from '../../../_lib/server/team-account-workspace.loader';
 import { PostingRulesSection } from './_components/posting-rules-section';
+import { ReplanButton } from './_components/replan-button';
 import { ScheduleFilters } from './_components/schedule-filters';
 import { ScheduleTable } from './_components/schedule-table';
 
@@ -149,6 +150,12 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
             liveDeleted={liveDeleted}
             clamped={filters.clamped}
           />
+
+          {channels.length > 0 && (
+            <div className="flex justify-end">
+              <ReplanButton projectId={project.id} />
+            </div>
+          )}
 
           <ScheduleTable
             rows={rows}

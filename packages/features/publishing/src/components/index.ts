@@ -28,6 +28,12 @@ export {
   type ChannelCadenceState,
 } from './channel-cadence-dialog';
 export { ChannelPostingRulesDialog } from './channel-posting-rules-dialog';
+export {
+  ScheduleMovesTable,
+  formatMoveTime,
+  type ScheduleMove,
+  type ScheduleNotMoved,
+} from './schedule-moves-table';
 
 // Re-export types
 export type {

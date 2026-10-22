@@ -61,6 +61,14 @@ export type CadenceConflict =
       /** The local day of the long video it is too close to */
       nearestDay: string;
       minDaysBetween: number;
+    }
+  | {
+      /** FILM-2213, only when asked: a day the channel does not post on */
+      rule: 'weekday';
+      key: string;
+      connectionId: string;
+      day: string;
+      contentType: CadenceContentType;
     };
 
 export function cadenceConflicts(input: {
@@ -70,6 +78,8 @@ export function cadenceConflicts(input: {
     connectionId: string,
     contentType: CadenceContentType,
   ) => ChannelCadence;
+  /** FILM-2213: also refuse a day outside the channel's weekdays */
+  weekdays?: boolean;
 }): CadenceConflict[] {
   const posts = [...input.posts];
   const conflicts: CadenceConflict[] = [];
@@ -80,6 +90,21 @@ export function cadenceConflicts(input: {
       candidate.contentType,
     );
     const day = localDate(candidate.at, cadence.timezone);
+
+    if (
+      input.weekdays &&
+      !cadence.daysOfWeek.includes(new Date(`${day}T00:00:00Z`).getUTCDay())
+    ) {
+      conflicts.push({
+        rule: 'weekday',
+        key: candidate.key,
+        connectionId: candidate.connectionId,
+        day,
+        contentType: candidate.contentType,
+      });
+      continue;
+    }
+
     const sameKind = posts.filter(
       (post) =>
         post.connectionId === candidate.connectionId &&
@@ -135,6 +160,15 @@ export function cadenceConflicts(input: {
 
 /** What a conflict means, in words; `name` is the channel's */
 export function describeConflict(conflict: CadenceConflict, name: string) {
+  if (conflict.rule === 'weekday') {
+    const weekday = new Date(`${conflict.day}T00:00:00Z`).toLocaleDateString(
+      'en-US',
+      { weekday: 'long', timeZone: 'UTC' },
+    );
+
+    return `${name}'s posting rules do not post ${conflict.contentType === 'short' ? 'Shorts' : 'long videos'} on ${weekday}s (${conflict.day}).`;
+  }
+
   if (conflict.rule === 'shorts-per-day') {
     return `${name} already has ${conflict.posted} Short${conflict.posted === 1 ? '' : 's'} on ${conflict.day}, and its posting rules allow ${conflict.cap} a day.`;
   }

@@ -1,0 +1,128 @@
+spec_id: "FILM-2213"
+title: "Reschedule and re-plan: a scheduled post's time changes in place, and new posting rules re-plan everything already scheduled"
+phase: 22
+phase_name: "Flexible Production"
+category: feature
+status: DONE
+effort: M
+dependencies:
+  - spec_id: "FILM-2208"
+    note: "set_channel_cadence, get_publish_calendar"
+  - spec_id: "FILM-2209"
+    note: "the Shorts queue the re-plan lays again"
+  - spec_id: "FILM-2210"
+    note: "reschedule_publishes, the all-or-nothing move"
+  - spec_id: "FILM-2211"
+    note: "the Schedule page and the posting-rules dialog"
+  - spec_id: "FILM-1735"
+    note: "the morning digest"
+summary: >
+  The owner experiments with posting times and had bulk-scheduled many
+  episodes, and there was no way to change a scheduled post's time: MCP had
+  cancel_scheduled_publish and the schedule tools, the Schedule tab only
+  Cancel. Moving meant cancelling and scheduling again, which lost the
+  post's tags and needed a risky cancel. New posting rules applied only to
+  episodes scheduled after them.
+
+  The owner, 2026-10-22: "I am going to change everything that's scheduled
+  from now on. I did a bulk schedule before." So a post's time now changes
+  in place (Change time on the Schedule tab, reschedule_publish over MCP),
+  with the posting rules checked and an override for an experiment; an
+  episode's long video moves on every platform together and its Shorts
+  follow. Saving posting rules, on the Schedule page, in Settings →
+  Platforms, on the Publish screen or with set_channel_cadence, re-plans
+  everything already scheduled on that channel in the same request; Re-plan
+  to posting rules and replan_schedule do it for a whole project. Every
+  move is kept in the post's history, shown on the tab and in the morning
+  digest.
+acceptance_criteria:
+  - text: "reschedulePublishes moves one post (publishId), or every scheduled long-video post of an episode (episodeId + contentType full) together, to a chosen time in place: the same rows, title, description, tags, thumbnail and Shorts group kept"
+    met: true
+    evidence: "Met (#694): packages/features/publishing/src/server/reschedule.service.ts reschedulePublishes. Test: reschedule.service.test.ts 'moves both platform rows in place, keeping title, tags and thumbnail, with history' (the YouTube and Facebook rows of Ep 3, 12 rows before and after, one reschedule_publishes call)"
+  - text: "Only scheduled posts move: a published, queued, publishing or failed post, a time in the past or within 15 minutes, a post already public on YouTube and a breaking post that goes public when ready are refused in plain words"
+    met: true
+    evidence: "Met (#694): reschedule.service.ts notScheduledRefusal, SETTLED_WITHIN_MS. Tests: reschedule.service.test.ts 'a %s post is refused in plain words' (published, publishing, queued, failed), 'a time %s is refused' (past, ten minutes from now)"
+  - text: "The posting rules are checked first (a day the channel posts on, the long-video spacing, Shorts a day), not counting the moving posts against themselves; ignoreCadence posts past them and marks the post metadata.manualTime with no cadence slot, so the scheduled job's gate and later re-plans leave it where it is"
+    met: true
+    evidence: "Met (#694): cadence-guard.service.ts cadenceRefusal gains exclude and weekdays; lib/cadence/cadence-guard.ts adds the weekday rule (only when asked, so KB-204's callers are unchanged). Tests: reschedule.service.test.ts 'refuse a time past them, saying why, and nothing moves', 'refuse a day the channel does not post on', 'with ignoreCadence, accept it, mark it manualTime, and give it no cadence slot'. MCP schedule_publish with ignoreCadence now marks manualTime too: schedule-publishes.test.ts 'schedules nothing past the channel’s posting rules (KB-204)'"
+  - text: "When a long video moves, its pending Shorts are laid again behind its new time through the FILM-2209 queue on the current rules, and the Shorts of other episodes behind them move back in order"
+    met: true
+    evidence: "Met (#694): packages/features/publishing/src/lib/cadence/plan-replan.ts planReplan (moveLongs false, the moved long pinned); reschedule.service.ts shortsBehind. Tests: reschedule.service.test.ts 'lays its Shorts behind the new time, and moves the Shorts queued behind them back in order' (Ep 3's three Shorts to the day after its new time, Ep 5's two behind them, Ep 4's left); plan-replan.test.ts 'lays its Shorts behind the new time, and moves the next episode’s back in order'"
+  - text: "All moves are written by one reschedule_publishes call, retried once when the calendar changed; the function now takes a null slot (a time past the rules) and merges each move's metadata, so the history, manualTime and YouTube's new publishAt are written in the same transaction"
+    met: true
+    evidence: "Met (#694): apps/web/supabase/migrations/20261022133139_film-2213-reschedule-in-place.sql (same signature: the generated types do not change); reschedule.service.ts applyMoves. pgTAP: apps/web/supabase/tests/database/reschedule-publishes-in-place.test.sql (a null slot, the metadata merged with the post's own keys kept, the same row, non-object metadata and a non-scheduled post refused)"
+  - text: "A post uploaded to YouTube ahead of its time (KB-214) is moved on YouTube before the database, so its old, earlier publishAt cannot fire; a YouTube refusal moves nothing and returns the refusal; a write that fails after YouTube moved puts YouTube's time back"
+    met: true
+    evidence: "Met (#694): youtube-staged.service.ts moveStagedPublishAt (the web app's own token path, getAccessToken, as KB-214's cancel uses); reschedule.service.ts applyMoves. Tests: reschedule.service.test.ts 'is moved on YouTube before the database, and records the new publishAt' (the call order: YouTube, then the write), 'a YouTube refusal moves nothing, here or there, and says why', 'a write that fails after YouTube moved puts YouTube’s time back'"
+  - text: "Every move appends metadata.scheduleHistory {from, to, at, by, via: ui | mcp | replan, note}"
+    met: true
+    evidence: "Met (#694): packages/features/publishing/src/lib/schedule-history.ts; reschedule.service.ts applyMoves. Tests: reschedule.service.test.ts (the history entry asserted whole; via replan for a re-plan)"
+  - text: "replanSchedule(projectId, {from, dryRun}) lays every post not yet due on the project's channels again: long videos in their scheduled order on the next allowed long slots, then every Short through the FILM-2209 queue on the new times; publishing posts, manualTime posts, breaking posts and posts due within 15 minutes (a staged YouTube post among them) stay; it returns [{publishId, episode, platform, kind, from, to}] and applies atomically"
+    met: true
+    evidence: "Met (#694): plan-replan.ts planReplan; reschedule.service.ts replanChannels, replanSchedule. Tests: plan-replan.test.ts, the owner's Ep 2–4 shape (old rules a long every 3 days at 22:15 IST, one on a Wednesday, 3 Shorts a day; new rules long videos Thu–Mon 16:00 America/New_York, Shorts 13:00, 17:00, 20:30, 23:00, the first an hour after the long): 'moves the Wednesday long video to an allowed day, and every long to 16:00 New York time, in order', 'lays the Shorts at the four new times, at most four a day, the first an hour after its long video', 'leaves a time chosen past the rules where it is, and counts it toward its day', 'keeps a long video’s spacing from one that stays, and from one already out', 'moves nothing that is already where the rules put it'; reschedule.service.test.ts 'replan_schedule lays a project’s channels again, the same plan as a save'"
+  - text: "Saving posting rules re-plans the channel in the same request: the posting-rules dialog (Schedule page, Settings → Platforms, the Publish screen) and MCP set_channel_cadence. set_channel_cadence gains dryRun (preview, nothing saved); the dialog asks 'Saving moves N scheduled posts' with the preview table, then shows the result. A re-plan that fails leaves the rules saved and says which posts did not move and why; a post YouTube refuses stays and the rest are planned around it"
+    met: true
+    evidence: "Met (#694): reschedule.service.ts saveCadenceAndReplan; schedule-release-actions.ts saveChannelCadenceAction, previewChannelCadenceAction; components/channel-cadence-dialog.tsx (cadence-replan-confirm, cadence-replan-result); studio-mcp release.ts setChannelCadenceTool. Tests: reschedule.service.test.ts 'saves the rules, then moves the channel’s Shorts onto them, leaving a manualTime post', 'a dry run saves nothing and moves nothing, and shows what saving would move', 'a re-plan that fails still saves the rules, and says why nothing moved', 'a post YouTube refuses to move stays, and the rest move around it'; release-tools.test.ts 're-plans what is scheduled on the channel in the same call', 'dryRun saves nothing and says what would move', 'says the rules are saved when the re-plan fails'; apps/web …/schedule/_components/__tests__/posting-rules-replan.test.tsx (confirm, save on confirm, result; nothing to move saves at once; the refusal shown). The E2E schedule-page.spec.ts saveRules confirms the new step"
+  - text: "MCP reschedule_publish({publishId | episodeId + contentType, scheduledAt, ignoreCadence, note, preview}) and replan_schedule({projectId, from, dryRun = true}), studio:publish, beside set_channel_cadence, returning the services' results; get_publish_calendar and list_episode_publishes carry scheduleHistory and manualTime; the workflow guide says to change a time with reschedule_publish, never cancel and schedule again, and that changing rules re-plans everything scheduled"
+    met: true
+    evidence: "Met (#694): studio-mcp src/server/tools/publish/release.ts reschedulePublishTool, replanScheduleTool; publish/index.ts list_episode_publishes; publish-calendar.service.ts CalendarPost.scheduleHistory, manualTime; workflow-guide.ts 'Changing scheduled times'. Tests: release-tools.test.ts 'reschedule_publish (FILM-2213)' (the service's result returned as it is, an episode's long video previewed, another team's post refused before the service is asked, a refusal in its words, post or episode not both), 'replan_schedule (FILM-2213)'; publish-tools.test.ts, tool-annotations.test.ts, workflow-guide.test.ts list the two tools"
+  - text: "Schedule tab: Change time on every scheduled row opens a form (react-hook-form, @kit/ui/form, enhanceAction, refusals as values) with a time in the tab's zone, the move previewed (its Shorts and the displaced ones), the posting rules' refusal with 'Override posting rules for this experiment', every-platform for a long video, and a note; Re-plan to posting rules above the table previews, then applies; a moved row shows 'Moved from <time>' with its history in a tooltip"
+    met: true
+    evidence: "Met (#694): apps/web/app/home/[account]/studio/[projectSlug]/schedule/_components/change-time-dialog.tsx, replan-button.tsx, schedule-table.tsx MovedFrom; packages/features/publishing/src/components/schedule-moves-table.tsx. Tests: change-time-dialog.test.tsx 'shows the rules’ refusal and what moves, then moves with the override and note', 'a second change of the moved post starts from its new time, with the override off', 'moves only this post when every platform is unticked, and says a refusal in its words'. The browser screenshot is pending: the local stack was down (see notes)"
+  - text: "The morning digest lists posts moved in the last 24 hours, from → to, with the note and how (via)"
+    met: true
+    evidence: "Met (#694): packages/features/content-analytics/src/lib/daily-digest.ts publishingSection moved; daily-digest-service.ts reads readRecentlyMovedPosts, so a post moved to beyond the digest's three days is listed too. Tests: daily-digest.test.ts 'lists each change from → to, with its note and how it was made', 'says nothing when nothing moved'"
+open_questions: []
+notes: >
+  Decisions the brief left open. A re-plan lays the posts on the channels'
+  next allowed slots from now, so a bulk schedule on sparse old rules can
+  move earlier as well as later under denser new ones; long videos keep the
+  order they were scheduled in, and their spacing from any long video that
+  stays, published ones in the last 35 days included. Each post keeps its
+  own jitter, cut to the channel's current jitter, so a preview and the
+  write give the same times. A post within 15 minutes of going out is not
+  moved by a re-plan and cannot be moved by hand: it may already be on its
+  way. A time moved within the rules holds that time as its slot; one moved
+  past them holds none, as a post scheduled by hand never did, and is
+  marked manualTime. MCP schedule_publish with ignoreCadence marks its posts
+  manualTime too, so a re-plan never undoes an explicit override.
+
+  Saving one channel's rules re-plans every post on that channel, whichever
+  project it belongs to: a channel's calendar is one queue. Shorts on other
+  channels that wait for a long video moved here are not re-planned (they
+  still wait for it at the scheduled job's gate); Re-plan to posting rules
+  re-plans all of a project's channels together. A history entry's `by` is
+  the user who made the change, or who saved the rules for a re-plan.
+
+  YouTube is called from the web app as KB-214's cancel calls it
+  (getAccessToken through the connection's stored token), before the
+  database write. A re-plan in which YouTube refuses one post keeps that
+  post where it is and plans the rest around it, up to four times, and says
+  which stayed and why; a reschedule by hand refuses as a whole.
+
+  Verification. Unit and integration tests run against an in-memory
+  PostgREST that keeps the slot index and runs reschedule_publishes all or
+  nothing, with the real youtube-staged.service against a fake YouTube.
+  Red before green: with the re-plan removed from saveCadenceAndReplan (the
+  behaviour on main) four of reschedule.service.test.ts's re-plan tests
+  fail, and with the dialog's preview step removed two of
+  posting-rules-replan.test.tsx's fail. The local Supabase and the browser
+  were not running while this was built, so the pgTAP file runs in the
+  merge queue's Supabase DB job, and the Schedule tab's screenshots are
+  pending; the UI is covered by React Testing Library instead of
+  Playwright, including the second change of a moved post.
+feature:
+  database: "20261022133139_film-2213-reschedule-in-place.sql"
+  queries:
+    - name: "readRecentlyMovedPosts"
+      purpose: "the project's posts moved since a time, for the morning digest"
+      file: "packages/features/publishing/src/server/publish-calendar.service.ts"
+  actions:
+    - name: "previewReschedulePublishAction, reschedulePublishAction, replanScheduleAction, previewChannelCadenceAction, saveChannelCadenceAction"
+      file: "packages/features/publishing/src/server/schedule-release-actions.ts"
+  ui:
+    - component: "ChangeTimeDialog, ReplanButton, ScheduleTable MovedFrom"
+      file: "apps/web/app/home/[account]/studio/[projectSlug]/schedule/_components/change-time-dialog.tsx"
+    - component: "ChannelCadenceDialog (the re-plan confirm and result), ScheduleMovesTable"
+      file: "packages/features/publishing/src/components/channel-cadence-dialog.tsx"
+  provider_integration: null

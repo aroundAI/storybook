@@ -2,6 +2,7 @@
 
 import { ExternalLink, Zap } from 'lucide-react';
 
+import type { ScheduleHistoryEntry } from '@kit/publishing/lib/schedule-history';
 import {
   scheduleStatusOf,
   youtubeStagingLine,
@@ -35,6 +36,10 @@ export interface ScheduleRow {
     alert: string | null;
     error: string | null;
   } | null;
+  /** FILM-2213: each change of its time, oldest first */
+  scheduleHistory?: ScheduleHistoryEntry[];
+  /** FILM-2213: a time chosen past the posting rules */
+  manualTime?: boolean;
 }
 
 const TONES = {

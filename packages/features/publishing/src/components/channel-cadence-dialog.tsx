@@ -36,8 +36,19 @@ import {
   DEFAULT_CADENCE,
 } from '../lib/cadence/cadence';
 import { takesVideo } from '../lib/constants';
-import { ChannelCadenceSchema } from '../lib/schemas/schedule-release.schema';
-import { saveChannelCadenceAction } from '../server/schedule-release-actions';
+import {
+  type ChannelCadenceInput,
+  ChannelCadenceSchema,
+} from '../lib/schemas/schedule-release.schema';
+import {
+  previewChannelCadenceAction,
+  saveChannelCadenceAction,
+} from '../server/schedule-release-actions';
+import {
+  type ScheduleMove,
+  ScheduleMovesTable,
+  type ScheduleNotMoved,
+} from './schedule-moves-table';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -152,18 +163,139 @@ function CadenceForm(props: {
     },
   });
 
+  // FILM-2213: saving re-plans what is scheduled; it is shown first
+  const [step, setStep] = useState<
+    | { kind: 'form' }
+    | { kind: 'confirm'; values: ChannelCadenceInput; moves: ScheduleMove[] }
+    | {
+        kind: 'result';
+        moves: ScheduleMove[];
+        notMoved: ScheduleNotMoved[];
+        refusal: string | null;
+      }
+  >({ kind: 'form' });
+  const [applying, setApplying] = useState(false);
+
+  const save = async (values: ChannelCadenceInput) => {
+    const saved = await unwrap(saveChannelCadenceAction(values));
+    const moves = saved.replan?.moves ?? [];
+    const notMoved = saved.replan?.notMoved ?? [];
+
+    if (moves.length === 0 && notMoved.length === 0 && !saved.replanRefusal) {
+      props.onSaved();
+      return;
+    }
+
+    setStep({
+      kind: 'result',
+      moves,
+      notMoved,
+      refusal: saved.replanRefusal,
+    });
+  };
+
   const onSubmit = form.handleSubmit(async (values) => {
     setSaveError(null);
 
     try {
-      await unwrap(saveChannelCadenceAction(values));
-      props.onSaved();
+      const preview = await unwrap(previewChannelCadenceAction(values));
+      const moves = preview.replan?.moves ?? [];
+
+      if (moves.length > 0) {
+        setStep({ kind: 'confirm', values, moves });
+        return;
+      }
+
+      await save(values);
     } catch (error) {
       setSaveError(refusalMessage(error, 'Could not save. Try again.'));
     }
   });
 
+  const apply = async (values: ChannelCadenceInput) => {
+    setApplying(true);
+    setSaveError(null);
+
+    try {
+      await save(values);
+    } catch (error) {
+      setSaveError(refusalMessage(error, 'Could not save. Try again.'));
+      setStep({ kind: 'form' });
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const saving = form.formState.isSubmitting;
+
+  if (step.kind === 'confirm') {
+    const count = step.moves.length;
+
+    return (
+      <div className="space-y-4" data-test="cadence-replan-confirm">
+        <p className="text-sm font-medium">
+          Saving moves {count} scheduled post{count === 1 ? '' : 's'}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Everything scheduled on this channel is laid again on the new rules:
+          long videos in their order, then the Shorts queue. Posts due within 15
+          minutes, breaking posts and times chosen past the rules stay.
+        </p>
+        <ScheduleMovesTable moves={step.moves} />
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={applying}
+            onClick={() => setStep({ kind: 'form' })}
+            data-test="cadence-replan-back"
+          >
+            Back
+          </Button>
+          <Button
+            type="button"
+            disabled={applying}
+            onClick={() => apply(step.values)}
+            data-test="cadence-replan-apply"
+          >
+            {applying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save and move {count} post{count === 1 ? '' : 's'}
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
+
+  if (step.kind === 'result') {
+    return (
+      <div className="space-y-4" data-test="cadence-replan-result">
+        <p className="text-sm font-medium">
+          Posting rules saved.{' '}
+          {step.refusal
+            ? 'The scheduled posts did not move.'
+            : `${step.moves.length} scheduled post${step.moves.length === 1 ? '' : 's'} moved.`}
+        </p>
+        {step.refusal && (
+          <p
+            className="text-sm text-destructive"
+            data-test="cadence-replan-refusal"
+          >
+            {step.refusal}
+          </p>
+        )}
+        <ScheduleMovesTable moves={step.moves} notMoved={step.notMoved} />
+        <DialogFooter>
+          <Button
+            type="button"
+            onClick={props.onSaved}
+            data-test="cadence-replan-done"
+          >
+            Done
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>

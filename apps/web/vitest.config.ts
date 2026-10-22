@@ -562,6 +562,10 @@ export default defineConfig({
         __dirname,
         '../../packages/ui/src/makerkit/page.tsx',
       ),
+      '@kit/ui/table': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/table.tsx',
+      ),
       '@kit/ui/textarea': path.resolve(
         __dirname,
         '../../packages/ui/src/shadcn/textarea.tsx',
@@ -626,6 +630,11 @@ export default defineConfig({
         __dirname,
         '../../packages/features/publishing/src/oauth/twitter/index.ts',
       ),
+      // FILM-2213: the Schedule tab's Change time form; above the lib prefix
+      '@kit/publishing/lib/schemas/schedule-release': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/lib/schemas/schedule-release.schema.ts',
+      ),
       // The publish worker imports these by their package paths (FILM-717's
       // worker test drives its handler).
       '@kit/publishing/lib': path.resolve(
@@ -635,6 +644,11 @@ export default defineConfig({
       '@kit/publishing/server/oauth-app-credentials': path.resolve(
         __dirname,
         '../../packages/features/publishing/src/server/oauth-app-credentials.ts',
+      ),
+      // FILM-2213: the Schedule tab's actions barrel; after the paths under it
+      '@kit/publishing/server': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/server/index.ts',
       ),
       '@kit/audit-logs/server': path.resolve(
         __dirname,

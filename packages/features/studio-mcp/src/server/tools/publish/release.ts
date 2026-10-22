@@ -16,12 +16,18 @@ import { MAX_CALENDAR_DAYS } from '@kit/publishing/lib/schedule-view';
 import { ChannelCadenceSchema } from '@kit/publishing/lib/schemas/schedule-release';
 import { readPublishCalendar } from '@kit/publishing/server/publish-calendar';
 import {
+  type NotMoved,
+  type ScheduleMoveView,
+  replanSchedule,
+  reschedulePublishes,
+  saveCadenceAndReplan,
+} from '@kit/publishing/server/reschedule';
+import {
   discardHeldShorts,
   previewBreakingRelease,
   previewCadenceRelease,
   readChannelCadences,
   requeueHeldShorts,
-  saveChannelCadence,
   scheduleBreakingRelease,
   scheduleCadenceRelease,
 } from '@kit/publishing/server/schedule-release';
@@ -32,6 +38,7 @@ import { type McpToolDefinition, defineTool } from '../../../registry';
 import {
   requireEpisodeInAccount,
   requireProjectInAccount,
+  requirePublishInAccount,
 } from '../read/scope';
 import { refused } from '../validation';
 
@@ -461,11 +468,22 @@ export const getChannelCadenceTool = defineTool({
   },
 });
 
+/** FILM-2213: a move, one line */
+function moveLine(move: ScheduleMoveView) {
+  return `- ${move.episode} ${move.platform} ${move.kind}: ${move.from} → ${move.to} (publish ${move.publishId})`;
+}
+
+function notMovedLines(notMoved: NotMoved[]) {
+  return notMoved.length
+    ? `\nNot moved:\n${notMoved.map((n) => `- publish ${n.publishId}: ${n.reason}`).join('\n')}`
+    : '';
+}
+
 export const setChannelCadenceTool = defineTool({
   name: 'set_channel_cadence',
   title: 'Set a channel’s posting cadence',
   description:
-    "Sets one channel's posting cadence for long videos (full) or Shorts (short), as the Publish screen's cadence dialog does. It applies to releases scheduled after it (schedule_release); posts already scheduled keep their times.",
+    "Sets one channel's posting cadence for long videos (full) or Shorts (short), as the Publish screen's cadence dialog does, then re-plans everything already scheduled on the channel onto it in the same call (FILM-2213): long videos in their order on the next allowed long slots, then every Short through the channel's Shorts queue on the new times. Posts due within 15 minutes, breaking posts and times chosen past the rules (manualTime) stay. dryRun: true saves nothing and returns what would move. If the re-plan fails, the cadence is still saved and replanRefusal says why nothing moved.",
   inputSchema: {
     connectionId: z.string().uuid(),
     contentType: z.enum(['full', 'short']),
@@ -517,9 +535,16 @@ export const setChannelCadenceTool = defineTool({
       .default(15)
       .describe('± this many random minutes on each post.'),
     enabled: z.boolean().default(true),
+    dryRun: z
+      .boolean()
+      .default(false)
+      .describe(
+        'true: save nothing, and return what saving would move (FILM-2213).',
+      ),
   },
   scope: 'studio:publish',
-  annotations: { ...PUBLISH, idempotentHint: true, openWorldHint: false },
+  // Moving a post uploaded to YouTube ahead of its time moves it there too
+  annotations: { ...PUBLISH, idempotentHint: true },
   async handler(input, context) {
     const client = context.principal.supabase;
     await requireChannelsInAccount(client, context.accountId, [
@@ -527,7 +552,8 @@ export const setChannelCadenceTool = defineTool({
     ]);
 
     // The dialog's own rules: slot format, a valid zone, each time once
-    const parsed = ChannelCadenceSchema.safeParse(input);
+    const { dryRun, ...cadence } = input;
+    const parsed = ChannelCadenceSchema.safeParse(cadence);
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
       throw refused(
@@ -536,12 +562,142 @@ export const setChannelCadenceTool = defineTool({
       );
     }
 
-    const result = await saveChannelCadence(client, parsed.data);
+    const result = await saveCadenceAndReplan(
+      client,
+      { userId: context.principal.userId, via: 'mcp' },
+      parsed.data,
+      { dryRun: dryRun === true },
+    );
     if (!result.ok) throw refused(result.refusal, 'connectionId');
 
+    const { replan, replanRefusal } = result.data;
+    const rules = `${parsed.data.slotTimes.join(', ')} (${parsed.data.timezone})${input.contentType === 'full' ? `, every ${parsed.data.minDaysBetween} days` : `, every ${parsed.data.everyNDays === 1 ? 'day' : `${parsed.data.everyNDays} days`}`}`;
+    const kind = input.contentType === 'full' ? 'long-video' : 'Shorts';
+    const moves = replan?.moves ?? [];
+
     return {
-      text: `The channel's ${input.contentType === 'full' ? 'long-video' : 'Shorts'} cadence is ${parsed.data.slotTimes.join(', ')} (${parsed.data.timezone})${input.contentType === 'full' ? `, every ${parsed.data.minDaysBetween} days` : `, every ${parsed.data.everyNDays === 1 ? 'day' : `${parsed.data.everyNDays} days`}`}.`,
+      text: `${
+        dryRun
+          ? `Preview, nothing saved: with a ${kind} cadence of ${rules}, ${moves.length} scheduled post${moves.length === 1 ? '' : 's'} would move.`
+          : `The channel's ${kind} cadence is ${rules}. ${replanRefusal ? `The scheduled posts did not move: ${replanRefusal}` : `${moves.length} scheduled post${moves.length === 1 ? '' : 's'} moved onto it.`}`
+      }${moves.length ? `\n${moves.map(moveLine).join('\n')}` : ''}${notMovedLines(replan?.notMoved ?? [])}`,
       structuredContent: { ...result.data, cadence: parsed.data },
+    };
+  },
+});
+
+export const reschedulePublishTool = defineTool({
+  name: 'reschedule_publish',
+  title: 'Change a scheduled post’s time',
+  description:
+    "Moves a scheduled post to a new time in place (FILM-2213): its title, description, tags, thumbnail and Shorts group stay, and the move is recorded in its scheduleHistory. Name the post (publishId), or the episode with contentType full to move its long video on every channel it is scheduled to. The channel's posting rules (days, spacing, Shorts a day) are checked: pass ignoreCadence: true to post past them for an experiment, which marks it manualTime so later re-plans leave it there. A long video's Shorts, and the Shorts queued behind them, are laid again behind its new time. A post uploaded to YouTube ahead of its time is moved on YouTube first; if YouTube refuses, nothing moves. Only scheduled posts move, to a time at least 15 minutes ahead. preview: true returns what would move and the posting rules' refusal, writing nothing. Never cancel and schedule again to change a time.",
+  inputSchema: {
+    publishId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe('From list_episode_publishes or get_publish_calendar.'),
+    episodeId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(
+        'Instead of publishId, with contentType full: the episode’s long video on every channel.',
+      ),
+    contentType: z.literal('full').optional(),
+    scheduledAt: z
+      .string()
+      .datetime({ offset: true })
+      .describe('The new time, ISO 8601 with an offset.'),
+    ignoreCadence: z.boolean().default(false),
+    note: z
+      .string()
+      .max(500)
+      .optional()
+      .describe('Why, kept in the post’s scheduleHistory.'),
+    preview: z.boolean().default(false),
+  },
+  scope: 'studio:publish',
+  annotations: PUBLISH,
+  async handler(input, context) {
+    const client = context.principal.supabase;
+
+    if (!!input.publishId === !!input.episodeId) {
+      throw refused(
+        'Name the post (publishId) or the episode, not both.',
+        'publishId',
+      );
+    }
+    if (input.episodeId && input.contentType !== 'full') {
+      throw refused(
+        'An episode moves its long video: pass contentType full.',
+        'contentType',
+      );
+    }
+
+    if (input.publishId) {
+      await requirePublishInAccount(client, context.accountId, input.publishId);
+    } else {
+      await requireEpisodeInAccount(
+        client,
+        context.accountId,
+        input.episodeId!,
+        'id',
+      );
+    }
+
+    const { preview, note, ...target } = input;
+    const result = await reschedulePublishes(
+      client,
+      { userId: context.principal.userId, via: 'mcp', note },
+      target,
+      { dryRun: preview === true },
+    );
+    if (!result.ok) throw refused(result.refusal, 'scheduledAt');
+
+    const { moves, cadenceRefusal } = result.data;
+
+    return {
+      text: `${preview ? 'Preview, nothing moved' : `Moved ${moves.length} post${moves.length === 1 ? '' : 's'}`}${result.data.manualTime ? ' (manualTime: re-plans leave it)' : ''}:\n${moves.map(moveLine).join('\n')}${preview && cadenceRefusal ? `\nThe posting rules refuse this time: ${cadenceRefusal}` : ''}`,
+      structuredContent: { preview, ...result.data },
+    };
+  },
+});
+
+export const replanScheduleTool = defineTool({
+  name: 'replan_schedule',
+  title: 'Re-plan a project’s schedule to its posting rules',
+  description:
+    "Lays every post not yet due on the project's channels again on the channels' current posting rules (FILM-2213): long videos in their order on the next allowed long slots, then every Short through each channel's Shorts queue on the new times, never more a day than its Short times. Posts due within 15 minutes, breaking posts, and times chosen past the rules (manualTime) stay. dryRun defaults to true: it returns [{publishId, episode, platform, kind, from, to}] and writes nothing; dryRun: false applies it, YouTube first for a post uploaded ahead of its time. set_channel_cadence already re-plans the channel it changes.",
+  inputSchema: {
+    projectId: z.string().uuid(),
+    from: z
+      .string()
+      .datetime({ offset: true })
+      .optional()
+      .describe(
+        'Only posts from this time on move, and none earlier; now when left out.',
+      ),
+    dryRun: z.boolean().default(true),
+  },
+  scope: 'studio:publish',
+  annotations: PUBLISH,
+  async handler(input, context) {
+    const client = context.principal.supabase;
+    await requireProjectInAccount(client, context.accountId, input.projectId);
+
+    const result = await replanSchedule(
+      client,
+      { userId: context.principal.userId, via: 'mcp' },
+      input,
+    );
+    if (!result.ok) throw refused(result.refusal, 'projectId');
+
+    const { moves, notMoved } = result.data;
+
+    return {
+      text: `${input.dryRun ? 'Preview, nothing moved' : 'Re-planned'}: ${moves.length} post${moves.length === 1 ? '' : 's'}${input.dryRun ? ' would move' : ' moved'}.${moves.length ? `\n${moves.map(moveLine).join('\n')}` : ''}${notMovedLines(notMoved)}`,
+      structuredContent: { projectId: input.projectId, ...result.data },
     };
   },
 });
@@ -628,7 +784,7 @@ export const getPublishCalendarTool = defineTool({
   name: 'get_publish_calendar',
   title: 'Read a project’s publishing calendar',
   description:
-    'Every post of one project between from and to (at most 62 days), across its episodes and channels, in time order: what went out (with its link), what is scheduled, what failed and why, and any Shorts an earlier release held (status held, with the reason; requeue_held_shorts or discard_held_shorts). For a daily report, ask for yesterday to a few days ahead.',
+    'Every post of one project between from and to (at most 62 days), across its episodes and channels, in time order: what went out (with its link), what is scheduled, what failed and why, and any Shorts an earlier release held (status held, with the reason; requeue_held_shorts or discard_held_shorts). Each post carries scheduleHistory (every change of its time: from, to, at, by, via, note) and manualTime (a time chosen past the posting rules, which re-plans leave). For a daily report, ask for yesterday to a few days ahead.',
   inputSchema: {
     projectId: z.string().uuid(),
     from: z.string().datetime({ offset: true }),
@@ -671,6 +827,8 @@ export const releaseTools = [
   scheduleReleaseTool,
   getChannelCadenceTool,
   setChannelCadenceTool,
+  reschedulePublishTool,
+  replanScheduleTool,
   requeueHeldShortsTool,
   discardHeldShortsTool,
   getPublishCalendarTool,
