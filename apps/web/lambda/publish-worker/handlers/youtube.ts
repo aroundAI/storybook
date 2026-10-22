@@ -11,7 +11,38 @@ import {
   type YouTubeChannelDeclaration,
   resolveYouTubeDeclaration,
 } from '@kit/publishing/lib/youtube-declaration';
+import type { YouTubeStagingApi } from '@kit/publishing/lib/youtube-staged-check';
+import {
+  deleteVideoIfPresent,
+  setVideoPublic,
+  setVideoPublishAt,
+  videoReadiness,
+} from '@kit/publishing/lib/youtube-video-api';
 import { vendorUrl } from '@kit/shared/vendors';
+
+function youtubeClient(accessToken: string) {
+  const oauth2Client = new OAuth2Client();
+  oauth2Client.setCredentials({ access_token: accessToken });
+
+  return youtubeApi({
+    version: 'v3',
+    auth: oauth2Client,
+    rootUrl: vendorUrl('youtube-data'),
+  });
+}
+
+/** KB-214: the calls the staged-upload check makes, on this channel's token */
+export function youtubeStagingApi(accessToken: string): YouTubeStagingApi {
+  const youtube = youtubeClient(accessToken);
+
+  return {
+    readiness: (videoIds) => videoReadiness(youtube, videoIds),
+    updatePublishAt: (videoId, publishAt) =>
+      setVideoPublishAt(youtube, videoId, publishAt),
+    makePublic: (videoId) => setVideoPublic(youtube, videoId),
+    deleteVideo: (videoId) => deleteVideoIfPresent(youtube, videoId),
+  };
+}
 
 export async function uploadToYouTube(
   accessToken: string,
@@ -22,13 +53,7 @@ export async function uploadToYouTube(
   // publish row or the channel, nothing uploads.
   const declaration = resolveYouTubeDeclaration(job.metadata, channel);
 
-  const oauth2Client = new OAuth2Client();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  const youtube = youtubeApi({
-    version: 'v3',
-    auth: oauth2Client,
-    rootUrl: vendorUrl('youtube-data'),
-  });
+  const youtube = youtubeClient(accessToken);
 
   // 1. Get video file as stream
   const videoStream = await getVideoStream(job.videoUrl);
@@ -47,8 +72,20 @@ export async function uploadToYouTube(
       categoryId: declaration.categoryId,
     },
     status: {
-      privacyStatus:
-        (job.metadata.privacy as 'private' | 'unlisted' | 'public') ?? 'public',
+      // KB-214: a staged upload stays private until YouTube publishes it at
+      // the post's time, or (breaking) until StoryBook does once it is HD
+      ...(job.staged
+        ? {
+            privacyStatus: 'private',
+            ...(!job.staged.goLiveWhenReady && {
+              publishAt: job.staged.publishAt,
+            }),
+          }
+        : {
+            privacyStatus:
+              (job.metadata.privacy as 'private' | 'unlisted' | 'public') ??
+              'public',
+          }),
       madeForKids: declaration.madeForKids,
       selfDeclaredMadeForKids: declaration.madeForKids,
       // FILM-1731: only a declared publish carries the field
@@ -119,13 +156,7 @@ export async function deleteFromYouTube(
   accessToken: string,
   videoId: string,
 ): Promise<void> {
-  const oauth2Client = new OAuth2Client();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  const youtube = youtubeApi({
-    version: 'v3',
-    auth: oauth2Client,
-    rootUrl: vendorUrl('youtube-data'),
-  });
+  const youtube = youtubeClient(accessToken);
 
   console.log(`[YouTube] Deleting video: ${videoId}`);
 

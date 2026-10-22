@@ -24,6 +24,21 @@ vi.mock('../src/server/project-channels', () => ({
   assertConnectionOfProject: async () => undefined,
 }));
 
+// KB-214: what reaches YouTube when a staged upload is cancelled
+const youtube = vi.hoisted(() => ({
+  deleted: [] as string[],
+  refuse: null as string | null,
+}));
+vi.mock('../src/providers/youtube/youtube-provider', () => ({
+  YouTubeProvider: class {
+    async deleteVideoIfPresent(videoId: string) {
+      if (youtube.refuse) throw new Error(youtube.refuse);
+      youtube.deleted.push(videoId);
+      return 'deleted';
+    }
+  },
+}));
+
 const getAccessToken = vi.fn();
 vi.mock('../src/server/connection-tokens', () => ({
   getAccessToken: (id: string) => getAccessToken(id),
@@ -40,7 +55,12 @@ const inserted: Array<Record<string, unknown>> = [];
 /** KB-213: the episode's posts already on its channels */
 let earlierPosts: Array<Record<string, unknown>>;
 const deleted: string[] = [];
-let publishRow: { status: string } | null;
+let publishRow: {
+  status: string;
+  platform?: string;
+  platform_connection_id?: string;
+  metadata?: unknown;
+} | null;
 /** The row's status when the delete runs; the scheduled job may have moved it */
 let statusAtDelete: string;
 let role: string | null;
@@ -132,7 +152,10 @@ function query(name: string) {
           ? {
               id: 'pub-1',
               episode_id: EPISODE,
-              status: publishRow.status,
+              platform: 'facebook',
+              platform_connection_id: YT,
+              metadata: {},
+              ...publishRow,
               episodes: { project_id: 'p1' },
             }
           : null,
@@ -215,6 +238,8 @@ beforeEach(() => {
   vi.unstubAllEnvs();
   getAccessToken.mockReset();
   getAccessToken.mockResolvedValue({ accessToken: 'token' });
+  youtube.deleted.length = 0;
+  youtube.refuse = null;
 });
 
 describe('scheduling a publish over MCP', () => {
@@ -459,6 +484,47 @@ describe('cancelling a scheduled publish', () => {
       refusal: expect.stringContaining('published, not scheduled'),
     });
     expect(deleted).toHaveLength(0);
+  });
+
+  // KB-214: a YouTube post uploaded ahead of its time is a private video
+  // on the channel; cancelling only the row would have left it there
+  const staged = {
+    status: 'scheduled',
+    platform: 'youtube',
+    metadata: {
+      youtube: {
+        videoId: 'yt-staged',
+        stagedAt: '2026-10-10T10:00:00Z',
+        publishAt: '2026-10-10T12:00:00Z',
+        delays: [],
+      },
+    },
+  };
+
+  it('deletes a staged YouTube upload on YouTube, then the post', async () => {
+    publishRow = staged;
+
+    expect((await cancel()).ok).toBe(true);
+    expect(youtube.deleted).toEqual(['yt-staged']);
+    expect(deleted).toEqual(['pub-1']);
+  });
+
+  it('keeps the post and says why when YouTube refuses the delete', async () => {
+    publishRow = staged;
+    youtube.refuse = 'YouTube refused to delete the video: forbidden';
+
+    expect(await cancel()).toEqual({
+      ok: false,
+      refusal: 'YouTube refused to delete the video: forbidden',
+    });
+    expect(deleted).toHaveLength(0);
+  });
+
+  it('touches YouTube for no post that was not staged', async () => {
+    publishRow = { status: 'scheduled', platform: 'youtube', metadata: {} };
+
+    expect((await cancel()).ok).toBe(true);
+    expect(youtube.deleted).toEqual([]);
   });
 
   it('refuses one the scheduled job claimed after it was read, and deletes nothing', async () => {

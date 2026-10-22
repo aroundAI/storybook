@@ -50,28 +50,28 @@ provider:
 acceptance_criteria:
   - text: "Videos upload successfully with progress reporting"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:79`; upload run through the real SDK against a local stand-in in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:94`; upload run through the real SDK against a local stand-in in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
   - text: "Metadata (title, description, tags) is set correctly"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:51`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:65`"
   - text: "Custom thumbnails can be uploaded"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:128`; asserted in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:143`; asserted in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
   - text: "Videos can be added to playlists"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:150`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:165`"
   - text: "Scheduled publishing works"
-    met: false
-    reason: "unverified — provider no longer sets `publishAt` (`packages/features/publishing/src/providers/youtube/youtube-provider.ts:60`); due rows go cron → `apps/web/lambda/scheduled-publish` → publish-worker; no test drives one"
+    met: true
+    evidence: "KB-214 (#693): a scheduled YouTube post is uploaded ahead of its time, private, with `status.publishAt` at its slot (`apps/web/lambda/publish-worker/handlers/youtube.ts:81`; the provider takes it too, `packages/features/publishing/src/providers/youtube/youtube-provider.ts:75`), and held until YouTube has HD. Tests: `apps/web/lambda/publish-worker/__tests__/kb214-youtube-upload-body.test.ts` (the real SDK: private with publishAt), `apps/web/lambda/scheduled-publish/__tests__/index.test.ts` (KB-214 cases), `packages/features/publishing/__tests__/youtube-staged-check.test.ts`"
   - text: "Channel info can be retrieved"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:168`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:183`"
   - text: "Playlists can be listed and created"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:238`, `packages/features/publishing/src/providers/youtube/youtube-provider.ts:255`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:313`, `packages/features/publishing/src/providers/youtube/youtube-provider.ts:330`"
   - text: "Categories can be fetched"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:278`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:353`"
 test_plan:
   unit:
     - text: "Test metadata formatting"

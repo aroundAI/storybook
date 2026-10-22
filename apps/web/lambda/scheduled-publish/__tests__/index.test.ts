@@ -24,7 +24,15 @@ const rows = new Map<string, Row>();
 /** `platform_connections`, by id: only their metadata is read (KB-213) */
 const connections = new Map<string, { id: string; metadata: unknown }>();
 const sent: string[] = [];
-const messages: Array<{ publishId: string; thumbnailUrl?: string }> = [];
+/** KB-214: channels whose staged uploads the worker was asked to check */
+const checks: string[] = [];
+const messages: Array<{
+  type?: string;
+  publishId: string;
+  thumbnailUrl?: string;
+  staged?: { publishAt: string; goLiveWhenReady?: boolean };
+  platformConnectionId?: string;
+}> = [];
 const gateOutcomes = new Map<string, string>();
 
 /** An in-memory `publishes`: selects see what updates left behind */
@@ -32,6 +40,9 @@ function from(table: string) {
   const filters: Array<[string, unknown]> = [];
   const lists: Array<[string, unknown[]]> = [];
   const nulls: string[] = [];
+  /** KB-214: `metadata->youtube` null or not */
+  const jsonNull: Array<[string, boolean]> = [];
+  const times: Array<[string, 'lte' | 'gt', string]> = [];
   let update: Record<string, unknown> | null = null;
   let window: [number, number] | null = null;
 
@@ -44,6 +55,17 @@ function from(table: string) {
           const [embed, column] = path.split('.') as [string, string];
           const parent = row[embed] as Record<string, unknown> | undefined;
           return (parent?.[column] ?? null) === null;
+        }) &&
+        lists.every(([column, values]) => values.includes(row[column])) &&
+        jsonNull.every(([path, isNull]) => {
+          const [column, key] = path.split('->') as [string, string];
+          const value = (row[column] as Record<string, unknown> | null)?.[key];
+          return (value == null) === isNull;
+        }) &&
+        times.every(([column, op, at]) => {
+          const value = row[column];
+          if (typeof value !== 'string') return false;
+          return op === 'lte' ? value <= at : value > at;
         }),
     );
 
@@ -92,10 +114,23 @@ function from(table: string) {
       return q;
     },
     is: (path: string, value: null) => {
-      if (value === null) nulls.push(path);
+      if (path.includes('->')) jsonNull.push([path, true]);
+      else if (value === null) nulls.push(path);
       return q;
     },
-    lte: () => q,
+    not: (path: string) => {
+      jsonNull.push([path, false]);
+      return q;
+    },
+    // ISO instants of one form compare as strings
+    lte: (column: string, at: string) => {
+      times.push([column, 'lte', new Date(at).toISOString()]);
+      return q;
+    },
+    gt: (column: string, at: string) => {
+      times.push([column, 'gt', new Date(at).toISOString()]);
+      return q;
+    },
     order: () => q,
     limit: () => q,
     range: (from: number, to: number) => {
@@ -118,6 +153,10 @@ vi.mock('@aws-sdk/client-sqs', () => ({
   SQSClient: class {
     send(command: { input: { MessageBody: string } }) {
       const message = JSON.parse(command.input.MessageBody);
+      if (message.type === 'youtube-staged-check') {
+        checks.push(message.platformConnectionId);
+        return Promise.resolve({});
+      }
       sent.push(message.publishId);
       messages.push(message);
       return Promise.resolve({});
@@ -161,8 +200,8 @@ function due(id: string): Row {
     content_type: 'short',
     language: 'en',
     ai_generated: false,
-    scheduled_at: '2026-11-05T12:00:00Z',
-    slot_at: '2026-11-05T12:00:00Z',
+    scheduled_at: '2026-11-05T12:00:00.000Z',
+    slot_at: '2026-11-05T12:00:00.000Z',
     after_episode_full: true,
     episodes: {
       project_id: 'p1',
@@ -176,9 +215,12 @@ function due(id: string): Row {
 }
 
 beforeEach(() => {
+  // Every fixture is due at 12:00 on 5 Nov; the job runs five minutes later
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-05T12:05:00Z') });
   rows.clear();
   connections.clear();
   sent.length = 0;
+  checks.length = 0;
   messages.length = 0;
   gateOutcomes.clear();
 });
@@ -320,5 +362,135 @@ describe('the scheduled job', () => {
     await handler();
 
     expect(sent).toEqual(['yt-short', 'fb-short']);
+  });
+
+  // KB-214: uploaded public at the slot, YouTube served 360p to launch viewers
+  describe('YouTube posts uploaded ahead of their time (KB-214)', () => {
+    const upcoming = (
+      id: string,
+      at: string,
+      extra: Partial<Row> = {},
+    ): Row => ({
+      ...due(id),
+      content_type: 'full',
+      after_episode_full: false,
+      scheduled_at: at,
+      slot_at: at,
+      ...extra,
+    });
+
+    it('uploads one due within the lead time, private until its slot', async () => {
+      rows.set('soon', upcoming('soon', '2026-11-05T13:30:00.000Z'));
+      rows.set('later', upcoming('later', '2026-11-05T15:00:00.000Z'));
+
+      const result = await handler();
+
+      expect(sent).toEqual(['soon']);
+      expect(messages[0]!.staged).toEqual({
+        publishAt: '2026-11-05T13:30:00.000Z',
+      });
+      expect(rows.get('soon')!.status).toBe('queued');
+      expect(rows.get('later')!.status).toBe('scheduled');
+      expect(result.staged).toBe(1);
+    });
+
+    it('uploads public, at its time, one due within two minutes', async () => {
+      rows.set('now', upcoming('now', '2026-11-05T12:06:00.000Z'));
+
+      await handler();
+      expect(sent).toEqual([]);
+
+      vi.setSystemTime(new Date('2026-11-05T12:10:00Z'));
+      await handler();
+
+      expect(sent).toEqual(['now']);
+      expect(messages[0]!.staged).toBeUndefined();
+    });
+
+    it('honours the project’s lead time, and 0 turns it off', async () => {
+      const withLead = (id: string, minutes: number): Row => {
+        const row = upcoming(id, '2026-11-05T12:45:00.000Z');
+        const episodes = row.episodes as Record<string, unknown>;
+        return {
+          ...row,
+          episodes: {
+            ...episodes,
+            projects: {
+              account_id: 'a1',
+              metadata: { youtubeLeadMinutes: minutes },
+            },
+          },
+        };
+      };
+      rows.set('short-lead', withLead('short-lead', 30));
+      rows.set('off', withLead('off', 0));
+      rows.set('long-lead', withLead('long-lead', 60));
+
+      await handler();
+
+      expect(sent).toEqual(['long-lead']);
+    });
+
+    it('never sends a staged upload again, and asks the worker to check its channel', async () => {
+      rows.set(
+        'staged',
+        upcoming('staged', '2026-11-05T12:00:00.000Z', {
+          metadata: {
+            youtube: {
+              videoId: 'v1',
+              publishAt: '2026-11-05T12:00:00.000Z',
+              delays: [],
+            },
+          },
+        }),
+      );
+
+      await handler();
+      await handler();
+
+      expect(sent).toEqual([]);
+      expect(rows.get('staged')!.status).toBe('scheduled');
+      expect(checks).toEqual(['yt', 'yt']);
+    });
+
+    it('stages a post once when two runs overlap', async () => {
+      rows.set('soon', upcoming('soon', '2026-11-05T13:00:00.000Z'));
+
+      await Promise.all([handler(), handler()]);
+
+      expect(sent).toEqual(['soon']);
+    });
+
+    // Owner, 2026-10-22: a breaking release waits for HD too
+    it('uploads a due breaking post private, to go public once YouTube has HD', async () => {
+      rows.set(
+        'breaking',
+        upcoming('breaking', '2026-11-05T12:01:00.000Z', {
+          release_priority: 'breaking',
+        }),
+      );
+
+      await handler();
+
+      expect(sent).toEqual(['breaking']);
+      expect(messages[0]!.staged).toEqual({
+        publishAt: '2026-11-05T12:01:00.000Z',
+        goLiveWhenReady: true,
+      });
+    });
+
+    it('still uploads a due Facebook post as before', async () => {
+      rows.set(
+        'fb',
+        upcoming('fb', '2026-11-05T12:00:00.000Z', {
+          platform: 'facebook',
+          release_priority: 'breaking',
+        }),
+      );
+
+      await handler();
+
+      expect(messages[0]!.staged).toBeUndefined();
+    });
   });
 });

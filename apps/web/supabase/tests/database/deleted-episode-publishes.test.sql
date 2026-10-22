@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(6);
+select plan(8);
 
 -- KB-207. Deleting an episode (episodes.deleted_at) cancels its posts that
 -- have not started; the ones that started or finished stay as history.
@@ -113,6 +113,42 @@ select is(
     where episode_id = '20700000-0000-4000-8000-0000000000e2'),
   1,
   'the live episode keeps its post'
+);
+
+-- KB-214: a YouTube video uploaded ahead of its time (staged) is kept as
+-- 'deleting', for the scheduled job to delete it on YouTube; SQL cannot
+insert into public.episodes (id, project_id, number, title, status)
+  values ('20700000-0000-4000-8000-0000000000e3',
+          '20700000-0000-4000-8000-0000000000a1', 3, 'Staged', 'draft');
+
+insert into public.publishes
+  (id, episode_id, platform_connection_id, platform, content_type, status, scheduled_at, metadata)
+values ('20700000-0000-4000-8000-0000000000f3',
+        '20700000-0000-4000-8000-0000000000e3',
+        '20700000-0000-4000-8000-000000000001', 'youtube', 'full', 'scheduled',
+        timestamptz '2026-11-22 12:00+00',
+        jsonb_build_object('youtube', jsonb_build_object(
+          'videoId', 'staged-video', 'publishAt', '2026-11-22T12:00:00Z', 'delays', '[]'::jsonb))),
+       ('20700000-0000-4000-8000-0000000000f4',
+        '20700000-0000-4000-8000-0000000000e3',
+        '20700000-0000-4000-8000-000000000001', 'youtube', 'short', 'scheduled',
+        timestamptz '2026-11-23 12:00+00', '{}'::jsonb);
+
+update public.episodes set deleted_at = now()
+ where id = '20700000-0000-4000-8000-0000000000e3';
+
+select is(
+  (select status::text || ' ' || (metadata->'youtube'->>'videoId')
+          || ' ' || (metadata->'youtube'->>'orphanedAt' is not null)::text
+     from public.publishes where id = '20700000-0000-4000-8000-0000000000f3'),
+  'deleting staged-video true',
+  'a staged YouTube post is marked deleting, with its video, for the job to delete on YouTube'
+);
+
+select is(
+  (select count(*)::int from public.publishes where id = '20700000-0000-4000-8000-0000000000f4'),
+  0,
+  'a post not yet uploaded is still deleted'
 );
 
 select * from finish();

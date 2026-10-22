@@ -96,6 +96,7 @@ const {
   language,
   recurringElements,
   projectAestheticStyle,
+  youtubeLeadMinutes,
 } = UpdateStudioSettingsSchema.shape;
 
 const SETTINGS_KEYS = [
@@ -108,6 +109,7 @@ const SETTINGS_KEYS = [
   'language',
   'recurringElements',
   'projectAestheticStyle',
+  'youtubeLeadMinutes',
 ] as const;
 
 /**
@@ -136,7 +138,7 @@ export const updateProjectTool = defineTool({
   name: 'update_project',
   title: 'Update project',
   description:
-    'Changes a project: its name, description, slug or status (active, archived), and the series settings the studio settings page keeps (target audience, genre, video style, content style, default episode duration 60-7200s, content rating, language, recurring elements, aesthetic style), and the brand and edit policy the StorybookStudio editor follows (FILM-2004). Only the fields given change; settings merge into the existing ones, and brand and editPolicy merge group by group (colors.captionText alone changes only that colour). get_project returns both with every default applied.',
+    'Changes a project: its name, description, slug or status (active, archived), and the series settings the studio settings page keeps (target audience, genre, video style, content style, default episode duration 60-7200s, content rating, language, recurring elements, aesthetic style, and youtubeLeadMinutes 0-1440: how long before its time a YouTube post is uploaded private so YouTube has HD at launch, default 120, KB-214), and the brand and edit policy the StorybookStudio editor follows (FILM-2004). Only the fields given change; settings merge into the existing ones, and brand and editPolicy merge group by group (colors.captionText alone changes only that colour). get_project returns both with every default applied.',
   inputSchema: {
     projectId: z
       .string()
@@ -155,6 +157,7 @@ export const updateProjectTool = defineTool({
     language,
     recurringElements,
     projectAestheticStyle,
+    youtubeLeadMinutes,
     brand: BrandPatchSchema.optional().describe(
       'Brand fields to change: fonts {heading, body}; colors {primary, secondary, background, captionText, captionBackground} as #RRGGBB or #RRGGBBAA; captionStyle {fontSize 12-200, position top|center|bottom, maxCharsPerLine 10-80, background none|box|outline, emphasis none|color|scale}; logo {assetId, position, opacity 0-1}; introAssetId; outroAssetId; transitionStyle cut|dissolve|dip; musicStyle tags.',
     ),

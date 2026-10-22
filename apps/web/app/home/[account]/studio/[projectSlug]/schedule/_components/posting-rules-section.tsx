@@ -23,6 +23,8 @@ import {
 } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
 
+import { YouTubeLeadForm } from './youtube-lead-form';
+
 export interface PostingRulesChannel {
   id: string;
   name: string;
@@ -37,6 +39,8 @@ export interface PostingRulesChannel {
 export function PostingRulesSection(props: {
   channels: PostingRulesChannel[];
   platformsHref: string;
+  /** KB-214: the project's YouTube upload lead time, for its form */
+  youtubeLead: { projectId: string; minutes: number } | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<PostingRulesChannel | null>(null);
@@ -105,6 +109,14 @@ export function PostingRulesSection(props: {
             ))}
           </ul>
         )}
+
+        {props.youtubeLead &&
+          props.channels.some((channel) => channel.platform === 'youtube') && (
+            <YouTubeLeadForm
+              projectId={props.youtubeLead.projectId}
+              youtubeLeadMinutes={props.youtubeLead.minutes}
+            />
+          )}
       </CardContent>
 
       {editing && (

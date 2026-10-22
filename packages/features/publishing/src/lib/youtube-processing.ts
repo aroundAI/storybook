@@ -9,6 +9,9 @@ import { YOUTUBE_VERIFY_URL } from './youtube-long-uploads';
  * a video too long for an unverified channel.
  */
 
+/** `publishes.metadata` key of a settled verdict */
+export const YOUTUBE_PROCESSING_KEY = 'youtube_processing';
+
 export interface YouTubeVideoState {
   status?: {
     uploadStatus?: string | null;

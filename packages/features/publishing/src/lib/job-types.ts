@@ -22,6 +22,11 @@ export interface PublishJobMessage extends BaseJobMessage {
    * declared.
    */
   aiGenerated?: boolean;
+  /**
+   * KB-214: upload now, private, and let YouTube make it public at
+   * `publishAt` (the post's time). The row stays `scheduled`.
+   */
+  staged?: { publishAt: string; goLiveWhenReady?: boolean };
 }
 
 export interface DeleteJobMessage extends BaseJobMessage {
@@ -32,4 +37,18 @@ export interface DeleteJobMessage extends BaseJobMessage {
   platformAccountId?: string;
 }
 
-export type JobMessage = PublishJobMessage | DeleteJobMessage;
+/**
+ * KB-214: the scheduled job's request that the worker look after one
+ * YouTube channel's staged uploads: HD gate, publish times, the ones gone
+ * public and the ones to delete. A pointer: the worker reads the rows.
+ */
+export interface YouTubeStagedCheckMessage {
+  type: 'youtube-staged-check';
+  platform: 'youtube';
+  platformConnectionId: string;
+}
+
+export type JobMessage =
+  | PublishJobMessage
+  | DeleteJobMessage
+  | YouTubeStagedCheckMessage;

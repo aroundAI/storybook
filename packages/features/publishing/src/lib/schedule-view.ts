@@ -217,3 +217,54 @@ const STATUS_LABELS: Record<string, { label: string; tone: StatusTone }> = {
 export function scheduleStatusOf(status: string) {
   return STATUS_LABELS[status] ?? { label: status, tone: 'neutral' as const };
 }
+
+/**
+ * KB-214. What the Schedule tab says of a YouTube post uploaded ahead of
+ * its time: staged until its time, held while YouTube makes its HD version,
+ * or (breaking) public as soon as it has. `formatAt` writes a time in the
+ * viewer's zone. Null for any other post.
+ */
+export function youtubeStagingLine(
+  youtube: {
+    staged: boolean;
+    goLiveWhenReady: boolean;
+    publishAt: string;
+    delays: readonly unknown[];
+    alert: string | null;
+    error: string | null;
+  } | null,
+  formatAt: (at: string) => string,
+): { text: string; alert: boolean } | null {
+  if (!youtube?.staged) return null;
+
+  const alert = youtube.alert !== null;
+  const prefix = alert ? 'Held over 6 hours. ' : '';
+  const error = youtube.error
+    ? ` YouTube refused a change: ${youtube.error}`
+    : '';
+
+  if (youtube.goLiveWhenReady) {
+    return {
+      text: `${prefix}Uploaded, private: goes public as soon as YouTube has HD (often about 30 min).${error}`,
+      alert,
+    };
+  }
+
+  const count = youtube.delays.length;
+
+  if (count === 0) {
+    return {
+      text: `Uploaded, goes public at ${formatAt(youtube.publishAt)}.${error}`,
+      alert,
+    };
+  }
+
+  return {
+    text: `${prefix}Held: HD not ready, now ${formatAt(youtube.publishAt)} (held ${count} time${count === 1 ? '' : 's'}).${error}`,
+    alert,
+  };
+}
+
+/** KB-214: what the page says of YouTube's HD gate, and its 4K limit */
+export const YOUTUBE_HD_NOTE =
+  'YouTube posts are uploaded ahead of their time, private, and go public only once YouTube has made them HD. YouTube’s API does not report 4K, so 4K may still be processing at launch.';

@@ -24,8 +24,8 @@
     {
       "name": "K3 the scheduled job sends a stored Short thumbnail",
       "file": "apps/web/lambda/scheduled-publish/index.ts",
-      "find": "        publishThumbnail(\n          publish.content_type,\n",
-      "replace": "        publishThumbnail(\n          'full',\n",
+      "find": "      publishThumbnail(\n        publish.content_type,\n",
+      "replace": "      publishThumbnail(\n        'full',\n",
       "pattern": "sends a Short no thumbnail",
       "kind": "unit",
       "cwd": "apps/web",

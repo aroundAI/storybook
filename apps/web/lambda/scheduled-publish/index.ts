@@ -18,13 +18,23 @@ import {
   SCHEDULED_LAMBDA_PRECEDENCE,
   resolveEpisodeVideo,
 } from '@kit/publishing/lib/episode-video';
-import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+import type {
+  PublishJobMessage,
+  YouTubeStagedCheckMessage,
+} from '@kit/publishing/lib/job-types';
 import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
 import { pausedConnectionIds } from '@kit/publishing/lib/publish-block';
 import { publishThumbnail } from '@kit/publishing/lib/publish-thumbnail';
+import {
+  MAX_YOUTUBE_LEAD_MINUTES,
+  goesLiveWhenReady,
+  shouldStage,
+  youtubeLeadMinutesOf,
+} from '@kit/publishing/lib/youtube-staging';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database, Json } from '@kit/supabase/database';
 
@@ -68,6 +78,10 @@ interface ScheduledPublishResult {
   deferred?: number;
   /** KB-213: posts of a connection Meta has paused, left scheduled */
   paused?: number;
+  /** KB-214: YouTube posts sent to upload ahead of their time */
+  staged?: number;
+  /** KB-214: YouTube channels whose staged uploads the worker checks */
+  checks?: number;
   error?: string;
 }
 
@@ -99,6 +113,8 @@ interface ScheduledPublish {
     }> | null;
     projects: {
       account_id: string;
+      /** KB-214: `youtubeLeadMinutes` */
+      metadata?: unknown;
     } | null;
   } | null;
 }
@@ -154,28 +170,7 @@ async function markFailed(publish: ScheduledPublish, error: string) {
     .eq('status', 'scheduled');
 }
 
-/**
- * Lambda handler for scheduled publish cron job
- */
-export async function handler(): Promise<ScheduledPublishResult> {
-  console.log(`[Cron] Starting scheduled publish check...`);
-
-  const now = new Date();
-
-  // KB-206: an upload that stopped without an answer is failed, not left
-  // 'publishing' for good. Never stops the run.
-  try {
-    const failed = await failStalePublishing(supabase, now);
-    if (failed) console.log(`[Cron] Failed ${failed} stale publishing rows`);
-  } catch (sweepError) {
-    console.error(`[Cron] Stale publishing sweep failed:`, sweepError);
-  }
-
-  // Query for due publishes - join with episodes and projects to get account_id
-  const { data: duePublishes, error } = await supabase
-    .from('publishes')
-    .select(
-      `
+const DUE_COLUMNS = `
       id,
       episode_id,
       platform_connection_id,
@@ -198,13 +193,321 @@ export async function handler(): Promise<ScheduledPublishResult> {
         thumbnail_url,
         localized_videos,
         shorts_groups,
-        projects(account_id)
+        projects(account_id, metadata)
       )
-    `,
-    )
+    `;
+
+type Outcome = 'queued' | 'skipped';
+
+/**
+ * KB-214: how a post is uploaded. 'public' as before; 'staged' private with
+ * YouTube's `publishAt` at its time; 'when-ready' private, made public by
+ * the worker's check as soon as YouTube has it in HD.
+ */
+type DispatchMode = 'public' | 'staged' | 'when-ready';
+
+/**
+ * Sends one post to the publish worker: checks its video, claims the row
+ * (only a row still 'scheduled' moves to 'queued', so two overlapping runs
+ * cannot both send it, FILM-719) and queues the job.
+ */
+async function dispatch(
+  publish: ScheduledPublish,
+  mode: DispatchMode,
+): Promise<Outcome> {
+  const staged = mode !== 'public';
+  // Resolve video URL based on language
+  const videoUrl = resolveVideoUrl(publish);
+
+  if (!videoUrl) {
+    console.error(`[Cron] No video URL for publish ${publish.id}, skipping`);
+    return 'skipped';
+  }
+
+  // Only a file of this episode's own project is sent (KB-123). Marked
+  // failed rather than skipped, so it is not picked up again every run.
+  const projectId = publish.episodes?.project_id;
+  const ownedVideoUrl = projectId
+    ? await ownedEpisodeVideo(
+        videoUrl,
+        { episodeId: publish.episode_id, projectId },
+        async (episodeId) => {
+          const { data } = await supabase
+            .from('episodes')
+            .select('project_id')
+            .eq('id', episodeId)
+            .maybeSingle();
+
+          return data?.project_id ?? null;
+        },
+      )
+    : null;
+
+  if (!ownedVideoUrl) {
+    console.error(
+      `[Cron] Refused a video that is not a file of publish ${publish.id}'s project`,
+    );
+    await markFailed(publish, EPISODE_VIDEO_PUBLISH_REFUSAL);
+    return 'skipped';
+  }
+
+  // Get user/account ID from episode → project → account_id
+  const accountId = publish.episodes?.projects?.account_id;
+  if (!accountId) {
+    console.error(`[Cron] No account ID for publish ${publish.id}, skipping`);
+    return 'skipped';
+  }
+
+  const { data: claimed, error: updateError } = await supabase
+    .from('publishes')
+    .update({ status: 'queued' })
+    .eq('id', publish.id)
+    .eq('status', 'scheduled')
+    .select('id');
+
+  if (updateError) {
+    console.error(
+      `[Cron] Failed to update status for ${publish.id}:`,
+      updateError,
+    );
+    return 'skipped';
+  }
+
+  if (!claimed?.length) {
+    console.log(`[Cron] ${publish.id} was claimed by another run`);
+    return 'skipped';
+  }
+
+  // Get language from metadata
+  const language = (publish.metadata?.language as string) || 'en';
+
+  // Get user ID for notifications
+  // Prefer createdBy from metadata (scheduled by user)
+  // Fallback to accountId (Team ID) for legacy records - notifications might miss if user subscribes to user-channel
+  const userId = (publish.metadata?.createdBy as string) || accountId;
+
+  // Build the job message
+  const message: PublishJobMessage = {
+    type: 'publish',
+    publishId: publish.id,
+    userId,
+    platform: publish.platform as PublishJobMessage['platform'],
+    platformConnectionId: publish.platform_connection_id,
+    episodeId: publish.episode_id,
+    videoUrl,
+    title: publish.title || '',
+    description: publish.description || '',
+    tags: publish.tags || [],
+    thumbnailUrl:
+      publishThumbnail(
+        publish.content_type,
+        publish.thumbnail_url,
+        publish.episodes?.thumbnail_url,
+      ) ?? undefined,
+    metadata: publish.metadata || {},
+    aiGenerated: publish.ai_generated,
+    ...(mode === 'staged' &&
+      publish.scheduled_at && {
+        staged: { publishAt: new Date(publish.scheduled_at).toISOString() },
+      }),
+    ...(mode === 'when-ready' && {
+      staged: {
+        publishAt: new Date(publish.scheduled_at ?? Date.now()).toISOString(),
+        goLiveWhenReady: true,
+      },
+    }),
+  };
+
+  // Send to SQS
+  try {
+    await sqsClient.send(
+      new SendMessageCommand({
+        QueueUrl: PUBLISH_QUEUE_URL,
+        MessageBody: JSON.stringify(message),
+      }),
+    );
+
+    console.log(
+      `[Cron] Queued ${staged ? 'staged upload' : 'publish'} ${publish.id} for ${publish.platform} (${language})`,
+    );
+    return 'queued';
+  } catch (sqsError) {
+    console.error(`[Cron] Failed to queue ${publish.id}:`, sqsError);
+
+    // Revert status back to scheduled
+    await supabase
+      .from('publishes')
+      .update({ status: 'scheduled' })
+      .eq('id', publish.id)
+      .eq('status', 'queued');
+
+    return 'skipped';
+  }
+}
+
+/**
+ * KB-214. YouTube posts due within their project's lead time (default two
+ * hours), not yet uploaded: sent to upload now, private, with YouTube's
+ * `publishAt` at their time. The cadence rules are asked as they would be
+ * at that time; a Short whose long video is not public yet is staged too,
+ * and the HD gate holds it until the long video is.
+ */
+async function stageUpcomingYouTube(now: Date) {
+  const until = new Date(now.getTime() + MAX_YOUTUBE_LEAD_MINUTES * 60_000);
+
+  const { data, error } = await supabase
+    .from('publishes')
+    .select(DUE_COLUMNS)
+    .eq('status', 'scheduled')
+    .eq('platform', 'youtube')
+    // KB-207: a deleted episode's post is never sent
+    .is('episodes.deleted_at', null)
+    .is('metadata->youtube', null)
+    .gt('scheduled_at', now.toISOString())
+    .lte('scheduled_at', until.toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(50)
+    .overrideTypes<ScheduledPublish[], { merge: false }>();
+
+  if (error) {
+    console.error(`[Cron] Could not read upcoming YouTube posts:`, error);
+    return 0;
+  }
+
+  const upcoming = (data ?? []).filter((publish) =>
+    shouldStage(
+      publish,
+      now,
+      youtubeLeadMinutesOf(publish.episodes?.projects?.metadata),
+    ),
+  );
+
+  if (!upcoming.length) return 0;
+
+  const paused = await pausedConnectionIds(
+    supabase,
+    upcoming.map((publish) => publish.platform_connection_id),
+  );
+
+  // A Short whose long video is on its way is staged; the gate holds it
+  const longVideos = new Map(
+    [...(await longVideoStates(supabase, upcoming))].map(([id, state]) => [
+      id,
+      state === 'waiting' ? ('live' as const) : state,
+    ]),
+  );
+
+  let staged = 0;
+
+  for (const publish of upcoming) {
+    if (paused.has(publish.platform_connection_id)) continue;
+
+    const gate = await cadenceGate(
+      supabase,
+      publish,
+      longVideos,
+      new Date(publish.scheduled_at!),
+    );
+
+    if (gate !== 'go') continue;
+
+    if ((await dispatch(publish, 'staged')) === 'queued') staged++;
+  }
+
+  return staged;
+}
+
+/**
+ * KB-214. Every YouTube channel with a staged upload not yet public gets a
+ * check from the worker, which holds the channel's token: the HD gate,
+ * moved times, the uploads gone public and the ones to delete.
+ */
+async function queueStagedChecks() {
+  let rows: Array<{ platform_connection_id: string | null }>;
+
+  try {
+    rows = await fetchAllRows<{
+      id: string;
+      platform_connection_id: string | null;
+    }>(
+      (from, to) =>
+        supabase
+          .from('publishes')
+          .select('id, platform_connection_id')
+          .eq('platform', 'youtube')
+          .in('status', ['scheduled', 'deleting'])
+          .not('metadata->youtube', 'is', null)
+          .order('id')
+          .range(from, to),
+      'staged YouTube uploads',
+    );
+  } catch (readError) {
+    console.error(`[Cron] Could not read staged YouTube uploads:`, readError);
+    return 0;
+  }
+
+  const connectionIds = [
+    ...new Set(
+      rows.flatMap((row) =>
+        row.platform_connection_id ? [row.platform_connection_id] : [],
+      ),
+    ),
+  ];
+
+  let queued = 0;
+
+  for (const platformConnectionId of connectionIds) {
+    const message: YouTubeStagedCheckMessage = {
+      type: 'youtube-staged-check',
+      platform: 'youtube',
+      platformConnectionId,
+    };
+
+    try {
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: PUBLISH_QUEUE_URL,
+          MessageBody: JSON.stringify(message),
+        }),
+      );
+      queued++;
+    } catch (sqsError) {
+      console.error(
+        `[Cron] Could not queue the staged YouTube check for ${platformConnectionId}:`,
+        sqsError,
+      );
+    }
+  }
+
+  return queued;
+}
+
+/**
+ * Lambda handler for scheduled publish cron job
+ */
+export async function handler(): Promise<ScheduledPublishResult> {
+  console.log(`[Cron] Starting scheduled publish check...`);
+
+  const now = new Date();
+
+  // KB-206: an upload that stopped without an answer is failed, not left
+  // 'publishing' for good. Never stops the run.
+  try {
+    const failed = await failStalePublishing(supabase, now);
+    if (failed) console.log(`[Cron] Failed ${failed} stale publishing rows`);
+  } catch (sweepError) {
+    console.error(`[Cron] Stale publishing sweep failed:`, sweepError);
+  }
+
+  // Query for due publishes - join with episodes and projects to get account_id
+  const { data: duePublishes, error } = await supabase
+    .from('publishes')
+    .select(DUE_COLUMNS)
     .eq('status', 'scheduled')
     // KB-207: a deleted episode's post is never sent
     .is('episodes.deleted_at', null)
+    // KB-214: a staged upload is on YouTube already; YouTube publishes it
+    .is('metadata->youtube', null)
     .lte('scheduled_at', now.toISOString())
     .order('scheduled_at', { ascending: true })
     .limit(50)
@@ -217,12 +520,8 @@ export async function handler(): Promise<ScheduledPublishResult> {
     return { success: false, queued: 0, skipped: 0, error: error.message };
   }
 
-  if (!duePublishes?.length) {
-    console.log(`[Cron] No due publishes`);
-    return { success: true, queued: 0, skipped: 0 };
-  }
-
-  console.log(`[Cron] Found ${duePublishes.length} due publishes`);
+  const due = duePublishes ?? [];
+  console.log(`[Cron] Found ${due.length} due publishes`);
 
   let queued = 0;
   let skipped = 0;
@@ -230,15 +529,15 @@ export async function handler(): Promise<ScheduledPublishResult> {
   let deferred = 0;
   let paused = 0;
 
-  const longVideos = await longVideoStates(supabase, duePublishes);
+  const longVideos = await longVideoStates(supabase, due);
 
   // KB-213: a connection Meta has paused sends nothing until it is cleared
   const pausedConnections = await pausedConnectionIds(
     supabase,
-    duePublishes.map((publish) => publish.platform_connection_id),
+    due.map((publish) => publish.platform_connection_id),
   );
 
-  for (const publish of duePublishes) {
+  for (const publish of due) {
     if (pausedConnections.has(publish.platform_connection_id)) {
       paused++;
       continue;
@@ -264,135 +563,36 @@ export async function handler(): Promise<ScheduledPublishResult> {
       continue;
     }
 
-    // Resolve video URL based on language
-    const videoUrl = resolveVideoUrl(publish);
+    // KB-214: a breaking YouTube post uploads now, private, and goes public
+    // as soon as YouTube has it in HD
+    const mode = goesLiveWhenReady(publish) ? 'when-ready' : 'public';
 
-    if (!videoUrl) {
-      console.error(`[Cron] No video URL for publish ${publish.id}, skipping`);
-      skipped++;
-      continue;
-    }
+    if ((await dispatch(publish, mode)) === 'queued') queued++;
+    else skipped++;
+  }
 
-    // Only a file of this episode's own project is sent (KB-123). Marked
-    // failed rather than skipped, so it is not picked up again every run.
-    const projectId = publish.episodes?.project_id;
-    const ownedVideoUrl = projectId
-      ? await ownedEpisodeVideo(
-          videoUrl,
-          { episodeId: publish.episode_id, projectId },
-          async (episodeId) => {
-            const { data } = await supabase
-              .from('episodes')
-              .select('project_id')
-              .eq('id', episodeId)
-              .maybeSingle();
-
-            return data?.project_id ?? null;
-          },
-        )
-      : null;
-
-    if (!ownedVideoUrl) {
-      console.error(
-        `[Cron] Refused a video that is not a file of publish ${publish.id}'s project`,
-      );
-      await markFailed(publish, EPISODE_VIDEO_PUBLISH_REFUSAL);
-      skipped++;
-      continue;
-    }
-
-    // Get user/account ID from episode → project → account_id
-    const accountId = publish.episodes?.projects?.account_id;
-    if (!accountId) {
-      console.error(`[Cron] No account ID for publish ${publish.id}, skipping`);
-      skipped++;
-      continue;
-    }
-
-    // Claim it: only a row still 'scheduled' moves to 'queued', so two
-    // overlapping runs cannot both send it (FILM-719)
-    const { data: claimed, error: updateError } = await supabase
-      .from('publishes')
-      .update({ status: 'queued' })
-      .eq('id', publish.id)
-      .eq('status', 'scheduled')
-      .select('id');
-
-    if (updateError) {
-      console.error(
-        `[Cron] Failed to update status for ${publish.id}:`,
-        updateError,
-      );
-      skipped++;
-      continue;
-    }
-
-    if (!claimed?.length) {
-      console.log(`[Cron] ${publish.id} was claimed by another run`);
-      skipped++;
-      continue;
-    }
-
-    // Get language from metadata
-    const language = (publish.metadata?.language as string) || 'en';
-
-    // Get user ID for notifications
-    // Prefer createdBy from metadata (scheduled by user)
-    // Fallback to accountId (Team ID) for legacy records - notifications might miss if user subscribes to user-channel
-    const userId = (publish.metadata?.createdBy as string) || accountId;
-
-    // Build the job message
-    const message: PublishJobMessage = {
-      type: 'publish',
-      publishId: publish.id,
-      userId,
-      platform: publish.platform as PublishJobMessage['platform'],
-      platformConnectionId: publish.platform_connection_id,
-      episodeId: publish.episode_id,
-      videoUrl,
-      title: publish.title || '',
-      description: publish.description || '',
-      tags: publish.tags || [],
-      thumbnailUrl:
-        publishThumbnail(
-          publish.content_type,
-          publish.thumbnail_url,
-          publish.episodes?.thumbnail_url,
-        ) ?? undefined,
-      metadata: publish.metadata || {},
-      aiGenerated: publish.ai_generated,
-    };
-
-    // Send to SQS
-    try {
-      await sqsClient.send(
-        new SendMessageCommand({
-          QueueUrl: PUBLISH_QUEUE_URL,
-          MessageBody: JSON.stringify(message),
-        }),
-      );
-
-      queued++;
-      console.log(
-        `[Cron] Queued publish ${publish.id} for ${publish.platform} (${language})`,
-      );
-    } catch (sqsError) {
-      console.error(`[Cron] Failed to queue ${publish.id}:`, sqsError);
-
-      // Revert status back to scheduled
-      await supabase
-        .from('publishes')
-        .update({ status: 'scheduled' })
-        .eq('id', publish.id)
-        .eq('status', 'queued');
-
-      skipped++;
-    }
+  // KB-214: never stops the run
+  let staged = 0;
+  let checks = 0;
+  try {
+    staged = await stageUpcomingYouTube(now);
+    checks = await queueStagedChecks();
+  } catch (stagingError) {
+    console.error(`[Cron] YouTube staging failed:`, stagingError);
   }
 
   console.log(
-    `[Cron] Complete: ${queued} queued, ${skipped} skipped, ${waiting} waiting, ${deferred} deferred, ${paused} paused`,
+    `[Cron] Complete: ${queued} queued, ${skipped} skipped, ${waiting} waiting, ${deferred} deferred, ${paused} paused, ${staged} staged, ${checks} YouTube checks`,
   );
 
-  return { success: true, queued, skipped, waiting, deferred, paused };
+  return {
+    success: true,
+    queued,
+    skipped,
+    waiting,
+    deferred,
+    paused,
+    staged,
+    checks,
+  };
 }

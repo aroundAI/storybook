@@ -25,6 +25,10 @@ const CASCADE =
 const KNOWN: Record<string, [number, string]> = {
   // Service role / admin client
   'apps/web/lambda/publish-worker/index.ts | publishes | delete': [1, ADMIN],
+  // KB-214: the publish worker removes a post whose staged YouTube upload it
+  // deleted with its episode; guarded by the row's status, errors thrown
+  'packages/features/publishing/src/lib/youtube-staged-check.ts | publishes | delete':
+    [1, ADMIN],
   'packages/billing/gateway/src/server/services/billing-event-handler/billing-event-handler.service.ts | subscriptions | delete':
     [1, ADMIN],
   'packages/features/admin/src/lib/server/services/admin-accounts.service.ts | accounts | delete':

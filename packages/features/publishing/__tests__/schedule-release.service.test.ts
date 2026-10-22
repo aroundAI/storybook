@@ -20,6 +20,10 @@ import {
  * Preparing a row (the Publish screen's checks) is its own tests' subject.
  */
 
+// KB-214: a moved post already on YouTube; youtube-staged-check.test.ts's subject
+vi.mock('../src/server/youtube-staged.service', () => ({
+  syncStagedPublishTimes: async () => [],
+}));
 vi.mock('server-only', () => ({}));
 vi.mock('../src/server/connection-tokens', () => ({
   getAccessToken: async () => 'token',

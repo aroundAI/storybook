@@ -5,6 +5,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 
+import {
+  type YouTubeStagingView,
+  youtubeStagingView,
+} from '../lib/youtube-staging';
+
 /**
  * A project's publishing calendar (FILM-2208's get_publish_calendar), as a
  * service so the morning digest (FILM-1735) reads the same posts the tool
@@ -70,6 +75,11 @@ export interface CalendarPost {
   episodeDeleted: boolean;
   /** KB-207: why a `deleted` post was marked removed */
   removedReason: string | null;
+  /**
+   * KB-214: a YouTube post uploaded ahead of its time: when it goes public,
+   * each time the HD gate held it, and whether it was flagged
+   */
+  youtube: YouTubeStagingView | null;
 }
 
 /** When a post goes, or went, out; else when it was made (a failed Publish Now, a held draft) */
@@ -154,6 +164,8 @@ export async function readPublishCalendar(
       episodeDeleted: row.episodes.deleted_at !== null,
       removedReason:
         row.status === 'deleted' ? (metadata.removedReason ?? null) : null,
+      youtube:
+        row.platform === 'youtube' ? youtubeStagingView(row.metadata) : null,
     };
   });
 

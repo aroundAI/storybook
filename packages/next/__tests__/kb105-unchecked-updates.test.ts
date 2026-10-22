@@ -51,7 +51,8 @@ const KNOWN: Record<string, [number, string]> = {
     [3, ADMIN],
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | external_api_keys | update':
     [1, LAST_USED],
-  'apps/web/lambda/publish-worker/index.ts | publishes | update': [3, ADMIN],
+  // KB-214: the fourth records a staged YouTube upload, its error thrown
+  'apps/web/lambda/publish-worker/index.ts | publishes | update': [4, ADMIN],
   // KB-213: a paused connection's post goes back to scheduled
   'apps/web/lambda/publish-worker/job-guard.ts | publishes | update': [
     1,
@@ -130,6 +131,14 @@ const KNOWN: Record<string, [number, string]> = {
   // KB-213: the publish worker pauses a connection Meta refused with 368
   'packages/features/publishing/src/lib/publish-block.ts | platform_connections | update':
     [1, ADMIN],
+  // KB-214: the HD gate's writes on a staged YouTube upload, from the
+  // publish worker, each guarded by the row's status and errors thrown
+  'packages/features/publishing/src/lib/youtube-staged-check.ts | publishes | update':
+    [1, ADMIN],
+  // KB-214: a moved staged post's new YouTube time, after the RPC that moved
+  // it; a failed write is returned to the person as a refusal
+  'packages/features/publishing/src/server/youtube-staged.service.ts | publishes | update':
+    [1, RECORDS_RESULT],
   'packages/features/publishing/src/lib/uploaded-file-duration.ts | publishes | update':
     [1, ADMIN],
   'packages/features/publishing/src/server/publish-actions.ts | episodes | update':

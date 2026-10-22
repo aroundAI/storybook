@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { SUPPORTED_LANGUAGES } from '@kit/publishing/lib/constants';
 import { markPublishRemoved } from '@kit/publishing/lib/publish-removal';
+import { youtubeStagingView } from '@kit/publishing/lib/youtube-staging';
 import {
   cancelScheduledPublish,
   schedulePublishes,
@@ -222,7 +223,7 @@ export const listEpisodePublishesTool = defineTool({
   name: 'list_episode_publishes',
   title: 'List an episode’s publishes',
   description:
-    "An episode's Shorts groups (id, name, the title, description and tags its shorts post with, the platforms each goes to, where none means every Shorts platform, and its languages) and its publishes: each with its platform, channel, content type, language, status (scheduled, queued, publishing, published, failed, …), scheduled time and platform URL. The ids are what schedule_publish and cancel_scheduled_publish take.",
+    "An episode's Shorts groups (id, name, the title, description and tags its shorts post with, the platforms each goes to, where none means every Shorts platform, and its languages) and its publishes: each with its platform, channel, content type, language, status (scheduled, queued, publishing, published, failed, …), scheduled time and platform URL, and for YouTube `youtube` (null, or a post uploaded ahead of its time: staged, publishAt, each HD delay, and alert 'held_over_6h'). The ids are what schedule_publish and cancel_scheduled_publish take.",
   inputSchema: { episodeId: z.string().uuid() },
   scope: 'studio:read',
   annotations: {
@@ -293,6 +294,9 @@ export const listEpisodePublishesTool = defineTool({
       scheduledAt: row.scheduled_at,
       publishedAt: row.published_at,
       platformUrl: row.platform_url,
+      // KB-214: uploaded ahead of its time, private until YouTube has HD
+      youtube:
+        row.platform === 'youtube' ? youtubeStagingView(row.metadata) : null,
     }));
 
     const scheduled = rows.filter((row) => row.status === 'scheduled').length;

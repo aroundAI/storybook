@@ -26,6 +26,11 @@ export interface YouTubeUploadInput {
   defaultLanguage?: string;
   /** The creator declared it AI-generated: realistic altered or synthetic content (FILM-1731) */
   containsSyntheticMedia?: boolean;
+  /**
+   * KB-214: ISO time YouTube makes it public. The upload is then private
+   * until that time, whatever `privacy` says.
+   */
+  publishAt?: string;
 }
 
 export interface YouTubeUploadResult {
