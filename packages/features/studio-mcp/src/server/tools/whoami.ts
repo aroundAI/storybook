@@ -8,6 +8,8 @@ import { hasScope } from '../../scopes';
  * The first tool every client calls: who it is acting as, in which team,
  * with which scopes, and what that means for generation. `mode.generation`
  * is `'external'` for every MCP call and is reported, not chosen.
+ * `serverTools` counts what the server lists: a client keeps the tool list
+ * from when it connected, and whoami is in every such list (FILM-2213).
  */
 export const whoamiTool = defineTool({
   name: 'whoami',
@@ -50,7 +52,15 @@ export const whoamiTool = defineTool({
       throw new McpToolError('FORBIDDEN', 'The team is not visible to you.');
     }
 
+    const names = context.serverToolNames;
+    const serverTools = names
+      ? { count: names.length, names: [...names] }
+      : undefined;
+
     return {
+      ...(serverTools && {
+        text: `This server has ${serverTools.count} tools. If your tool list has fewer, disconnect and reconnect StoryBook in your client's connector settings, then start a new chat: a client keeps the tool list from when it connected.`,
+      }),
       structuredContent: {
         user: {
           id: principal.userId,
@@ -70,6 +80,7 @@ export const whoamiTool = defineTool({
           canRender: hasScope(principal.scopes, 'studio:render'),
           canSchedulePublishes: hasScope(principal.scopes, 'studio:publish'),
         },
+        ...(serverTools && { serverTools }),
       },
     };
   },

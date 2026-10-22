@@ -13,6 +13,8 @@ export const WORKFLOW_GUIDE_TEXT = [
   '',
   'StoryBook is the system of record, the validator and the analyzer. Over MCP you write the creative work yourself; the app makes no model call of its own for it.',
   '',
+  "A client keeps the tool list from when it connected. `whoami` says how many tools this server has (serverTools); if your list has fewer, disconnect and reconnect StoryBook in your client's connector settings, then start a new chat.",
+  '',
   '## Orientation',
   '',
   '1. `whoami`: the user, the team this connection is bound to, and your scopes (studio:read, studio:write, studio:render, studio:publish).',
