@@ -186,6 +186,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
     `,
         )
         .eq('status', 'scheduled')
+        // KB-214: a staged upload is on YouTube already; this in-process
+        // job does not stage (the scheduled Lambda does), it only skips them
+        .is('metadata->youtube', null)
         .lte('scheduled_at', now.toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(10);

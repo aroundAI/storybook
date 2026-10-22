@@ -286,6 +286,37 @@ describe('the day', () => {
     const publishing = assembleDigest(inputs()).publishing;
 
     expect(publishing.wentOut.map((p) => p.publishId)).toEqual(['p-in-day']);
+    expect('youtubeHeld' in publishing).toBe(false);
+  });
+
+  // KB-214: a video the HD gate is holding is said in a line
+  it('notes a YouTube video waiting for HD, and one held over six hours', () => {
+    const base = inputs();
+    const held = {
+      ...base.posts[0]!,
+      publishId: 'p-held',
+      status: 'scheduled',
+      at: '2026-10-18T09:20:00.000Z',
+      youtube: {
+        staged: true,
+        goLiveWhenReady: false,
+        publishAt: '2026-10-18T09:20:00.000Z',
+        delays: [{}, {}],
+        alert: 'held_over_6h',
+      },
+    };
+
+    const publishing = assembleDigest({
+      ...base,
+      posts: [...base.posts, held],
+    }).publishing;
+
+    expect(publishing.youtubeHeld).toEqual([
+      expect.objectContaining({
+        publishId: 'p-held',
+        note: "Held over 6 hours: waiting for YouTube's HD, held 2 times; now public at 2026-10-18T09:20:00.000Z.",
+      }),
+    ]);
   });
 });
 

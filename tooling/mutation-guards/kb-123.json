@@ -115,8 +115,8 @@
       "name": "KB-123 the scheduled Lambda queues its video unchecked",
       "kind": "unit",
       "file": "apps/web/lambda/scheduled-publish/index.ts",
-      "find": "      ? await ownedEpisodeVideo(\n          videoUrl,",
-      "replace": "      ? await (async (url: string | null, ..._rest: unknown[]) => url)(\n          videoUrl,",
+      "find": "    ? await ownedEpisodeVideo(\n        videoUrl,",
+      "replace": "    ? await (async (url: string | null, ..._rest: unknown[]) => url)(\n        videoUrl,",
       "cwd": "packages/features/publishing",
       "test": "__tests__/episode-video-paths.test.ts",
       "pattern": "scheduled-publish"

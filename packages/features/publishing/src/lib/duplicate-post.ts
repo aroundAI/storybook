@@ -15,7 +15,9 @@
  * title or the same file: for a Short its Shorts group in the same
  * language, for a long video the episode's video in the same language. A
  * `deleted` row (marked removed) is not counted, so a video taken down on
- * the platform can be posted again.
+ * the platform can be posted again. A YouTube video uploaded ahead of its
+ * time (KB-214: `scheduled`, with `metadata.youtube.videoId`) is on the
+ * account already, and counts as posted.
  *
  * Pure apart from one read, so the worker lambda and the web actions share
  * it (no `server-only`).
@@ -84,7 +86,16 @@ function sameFile(candidate: PostCandidate, other: OtherPost) {
  * (the same SQS batch) are ordered by start time, then id, so exactly one
  * of them goes.
  */
+function stagedVideo(other: { status: string; metadata?: unknown }) {
+  const youtube = record(record(other.metadata).youtube);
+  return other.status === 'scheduled' && typeof youtube.videoId === 'string'
+    ? youtube
+    : null;
+}
+
 function aheadOf(candidate: PostCandidate, other: OtherPost, now: Date) {
+  if (other.status === 'scheduled') return !!stagedVideo(other);
+
   if (other.status === 'published') {
     const at = Date.parse(other.published_at ?? other.created_at);
     return now.getTime() - at <= PUBLISHED_WINDOW_MS;
@@ -115,6 +126,17 @@ export function duplicateMessage(other: {
     return `Already posted to this account${where} on ${date}; not posted again. If it was taken down there, mark it as removed on the Schedule tab first.`;
   }
 
+  const staged = stagedVideo(other);
+  if (staged) {
+    const where = other.platform_url ? ` as ${other.platform_url}` : '';
+    const at =
+      typeof staged.publishAt === 'string'
+        ? `, public at ${staged.publishAt}`
+        : '';
+
+    return `Already uploaded to this account${where} (private until its time${at}); not posted again. Cancel that post first to send this one.`;
+  }
+
   const started = record(other.metadata).publishingStartedAt;
   const since = typeof started === 'string' ? ` (started ${started})` : '';
 
@@ -135,7 +157,7 @@ export async function duplicatePostRefusal(
     .eq('episode_id', candidate.episodeId)
     .eq('platform_connection_id', candidate.connectionId)
     .eq('content_type', candidate.contentType)
-    .in('status', ['published', 'publishing']);
+    .in('status', ['published', 'publishing', 'scheduled']);
 
   if (error) {
     throw new Error(

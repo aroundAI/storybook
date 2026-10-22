@@ -64,8 +64,8 @@
     {
       "name": "L1 two overlapping runs both claim a post",
       "file": "apps/web/lambda/scheduled-publish/index.ts",
-      "find": "      .update({ status: 'queued' })\n      .eq('id', publish.id)\n      .eq('status', 'scheduled')\n",
-      "replace": "      .update({ status: 'queued' })\n      .eq('id', publish.id)\n",
+      "find": "    .update({ status: 'queued' })\n    .eq('id', publish.id)\n    .eq('status', 'scheduled')\n",
+      "replace": "    .update({ status: 'queued' })\n    .eq('id', publish.id)\n",
       "pattern": "sends a post once when two runs overlap",
       "kind": "unit",
       "cwd": "apps/web",

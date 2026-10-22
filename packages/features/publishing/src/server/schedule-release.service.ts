@@ -54,6 +54,7 @@ import {
   insertScheduledRows,
   prepareScheduledRows,
 } from './schedule-publishes.service';
+import { syncStagedPublishTimes } from './youtube-staged.service';
 
 /**
  * FILM-719, FILM-2209. A release scheduled on its channels' cadence: the
@@ -645,6 +646,8 @@ export interface ScheduledBreakingRelease {
   moves: BreakingMove[];
   shortsQueue: BreakingPreview['shortsQueue'];
   quota: QuotaDay[];
+  /** KB-214: YouTube's refusals to move a staged post's time */
+  youtubeRefusals: string[];
 }
 
 /** The calendar changed between planning and writing: a slot was taken, or a post claimed */
@@ -740,6 +743,11 @@ export async function scheduleBreakingRelease(
           moves: preview.moves,
           shortsQueue: preview.shortsQueue,
           quota: preview.quota,
+          // KB-214: a moved post already on YouTube moves there too
+          youtubeRefusals: await syncStagedPublishTimes(
+            client,
+            plan.moves.map((m) => m.publishId),
+          ),
         },
       };
     }

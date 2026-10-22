@@ -51,6 +51,11 @@ export const UpdateStudioSettingsSchema = z.object({
    * Example: "Noir-inspired with saturated colors, dramatic shadows, and whimsical undertones"
    */
   projectAestheticStyle: z.string().max(1500).optional(),
+  /**
+   * KB-214: how many minutes before its time a YouTube post is uploaded,
+   * private until YouTube has made it HD. 0 uploads at the time, public.
+   */
+  youtubeLeadMinutes: z.number().int().min(0).max(1440).optional(),
 });
 
 export type UpdateStudioSettingsInput = z.infer<

@@ -158,8 +158,9 @@ export function BreakingReleaseForm(props: {
                 </RadioGroup>
               </FormControl>
               <FormDescription>
-                Now: the next scheduler run, about 5 minutes away. Long videos
-                already scheduled keep their times.
+                Now: the next scheduler run, about 5 minutes away. On YouTube it
+                uploads private and goes public as soon as YouTube has HD (often
+                ~30 min). Long videos already scheduled keep their times.
               </FormDescription>
             </FormItem>
           )}

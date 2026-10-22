@@ -77,7 +77,11 @@
     "./lib/publish-removal": "./src/lib/publish-removal.ts",
     "./lib/duplicate-post": "./src/lib/duplicate-post.ts",
     "./lib/publish-block": "./src/lib/publish-block.ts",
-    "./lib/uploaded-file-duration": "./src/lib/uploaded-file-duration.ts"
+    "./lib/uploaded-file-duration": "./src/lib/uploaded-file-duration.ts",
+    "./lib/mp4-facts": "./src/lib/mp4-facts.ts",
+    "./lib/youtube-staging": "./src/lib/youtube-staging.ts",
+    "./lib/youtube-staged-check": "./src/lib/youtube-staged-check.ts",
+    "./lib/youtube-video-api": "./src/lib/youtube-video-api.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.968.0",

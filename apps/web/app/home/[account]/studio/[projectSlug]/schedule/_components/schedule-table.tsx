@@ -5,11 +5,10 @@ import { useState, useSyncExternalStore, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { CalendarX, ExternalLink, Loader2, Zap } from 'lucide-react';
+import { CalendarX, Loader2 } from 'lucide-react';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { PLATFORM_NAMES, isPlatform } from '@kit/publishing/lib/platforms';
-import { scheduleStatusOf } from '@kit/publishing/lib/schedule-view';
 import { timeZoneLabel } from '@kit/publishing/lib/time-zone-label';
 import {
   cancelScheduledPublishAction,
@@ -38,32 +37,9 @@ import {
   TableRow,
 } from '@kit/ui/table';
 
-export interface ScheduleRow {
-  publishId: string;
-  episodeId: string;
-  episodeTitle: string | null;
-  episodeNumber: number | null;
-  episodeSlug: string | null;
-  platform: string;
-  channelName: string | null;
-  contentType: string;
-  title: string | null;
-  status: string;
-  at: string | null;
-  platformUrl: string | null;
-  error: string | null;
-  heldReason: string | null;
-  breaking: boolean;
-  episodeDeleted: boolean;
-  removedReason: string | null;
-}
+import { type ScheduleRow, StatusCell, formatAt } from './schedule-status-cell';
 
-const TONES = {
-  neutral: 'outline',
-  success: 'success',
-  danger: 'destructive',
-  warning: 'warning',
-} as const;
+export type { ScheduleRow };
 
 const noSubscription = () => () => {};
 
@@ -74,18 +50,6 @@ function useViewerTimeZone() {
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     () => null,
   );
-}
-
-function formatAt(at: string, timeZone: string) {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(at));
 }
 
 /**
@@ -146,6 +110,12 @@ export function ScheduleTable(props: {
               data-platform={row.platform}
               data-at={row.at ?? ''}
               data-episode-deleted={row.episodeDeleted}
+              data-youtube-alert={row.youtube?.alert ?? undefined}
+              className={
+                row.youtube?.staged && row.youtube.alert
+                  ? 'bg-amber-50 dark:bg-amber-950/30'
+                  : undefined
+              }
             >
               <TableCell className="whitespace-nowrap tabular-nums">
                 {row.at ? (
@@ -189,7 +159,7 @@ export function ScheduleTable(props: {
                 {row.title ?? '—'}
               </TableCell>
               <TableCell>
-                <StatusCell row={row} />
+                <StatusCell row={row} timeZone={timeZone} />
               </TableCell>
               <TableCell className="text-right">
                 <RowActions row={row} />
@@ -198,46 +168,6 @@ export function ScheduleTable(props: {
           ))}
         </TableBody>
       </Table>
-    </div>
-  );
-}
-
-function StatusCell({ row }: { row: ScheduleRow }) {
-  const status = scheduleStatusOf(row.status);
-
-  return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap items-center gap-1">
-        <Badge variant={TONES[status.tone]} data-test="schedule-row-status">
-          {status.label}
-        </Badge>
-        {row.breaking && (
-          <Badge variant="info" data-test="schedule-row-breaking">
-            <Zap className="mr-0.5 h-3 w-3" />
-            Breaking
-          </Badge>
-        )}
-        {row.status === 'published' && row.platformUrl && (
-          <a
-            href={row.platformUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-0.5 text-xs underline-offset-4 hover:underline"
-            data-test="schedule-row-link"
-          >
-            View
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-      </div>
-      {(row.error ?? row.heldReason ?? row.removedReason) && (
-        <p
-          className="max-w-64 text-xs text-muted-foreground"
-          data-test="schedule-row-reason"
-        >
-          {row.error ?? row.heldReason ?? `Removed: ${row.removedReason}`}
-        </p>
-      )}
     </div>
   );
 }

@@ -151,6 +151,9 @@ export function mergeStudioSettings(
   if (data.projectAestheticStyle !== undefined) {
     updatedMetadata.projectAestheticStyle = data.projectAestheticStyle;
   }
+  if (data.youtubeLeadMinutes !== undefined) {
+    updatedMetadata.youtubeLeadMinutes = data.youtubeLeadMinutes;
+  }
 
   return updatedMetadata;
 }
@@ -166,4 +169,5 @@ export const STUDIO_SETTINGS_KEYS = [
   'language',
   'recurringElements',
   'projectAestheticStyle',
+  'youtubeLeadMinutes',
 ] as const;

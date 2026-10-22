@@ -311,6 +311,14 @@ export interface DigestPost {
   platformUrl: string | null;
   error: string | null;
   heldReason: string | null;
+  /** KB-214: a YouTube post uploaded ahead of its time, and its HD holds */
+  youtube?: {
+    staged: boolean;
+    goLiveWhenReady: boolean;
+    publishAt: string;
+    delays: readonly unknown[];
+    alert: string | null;
+  } | null;
 }
 
 /** A comment of the trend's seven days: when, and its label */
@@ -1249,7 +1257,27 @@ function publishingSection(inputs: DigestInputs) {
   });
   const posts = [...inputs.posts].sort(inOrder);
 
+  // KB-214: YouTube videos waiting for HD, said in a line each
+  const youtubeHeld = posts
+    .filter(
+      (p) =>
+        p.status === 'scheduled' &&
+        p.youtube?.staged &&
+        (p.youtube.delays.length > 0 ||
+          p.youtube.alert ||
+          p.youtube.goLiveWhenReady),
+    )
+    .map((p) => ({
+      ...post(p),
+      note: `${p.youtube!.alert ? 'Held over 6 hours: ' : ''}${
+        p.youtube!.goLiveWhenReady
+          ? 'uploaded private; goes public as soon as YouTube has HD'
+          : `waiting for YouTube's HD, held ${p.youtube!.delays.length} time${p.youtube!.delays.length === 1 ? '' : 's'}; now public at ${p.youtube!.publishAt}`
+      }.`,
+    }));
+
   return {
+    ...(youtubeHeld.length > 0 && { youtubeHeld }),
     wentOut: posts
       .filter((p) => p.status === 'published' && within(p.at, start, end))
       .map(post),

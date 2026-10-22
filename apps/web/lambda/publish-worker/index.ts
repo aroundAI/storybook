@@ -29,7 +29,9 @@ import type {
   DeleteJobMessage,
   JobMessage,
   PublishJobMessage,
+  YouTubeStagedCheckMessage,
 } from '@kit/publishing/lib/job-types';
+import { readMp4Facts } from '@kit/publishing/lib/mp4-facts';
 import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   ownedEpisodeVideo,
@@ -49,6 +51,12 @@ import {
 } from '@kit/publishing/lib/token-errors';
 import { recordUploadedFileDuration } from '@kit/publishing/lib/uploaded-file-duration';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
+import {
+  longUploadsStatusOf,
+  youtubeLengthRefusal,
+} from '@kit/publishing/lib/youtube-long-uploads';
+import { checkStagedYouTube } from '@kit/publishing/lib/youtube-staged-check';
+import type { YouTubeStaging } from '@kit/publishing/lib/youtube-staging';
 import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
@@ -331,6 +339,82 @@ async function recordThumbnailError(
 }
 
 /**
+ * KB-214: a staged upload is on YouTube, private until `publishAt`. The row
+ * goes back to `scheduled` with the video's id, so the scheduled job's HD
+ * gate looks after it and no publish path sends it again.
+ */
+async function recordStaged(
+  publishId: string,
+  result: { contentId: string; url: string },
+  staged: { publishAt: string; goLiveWhenReady?: boolean },
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from('publishes')
+    .select('metadata')
+    .eq('id', publishId)
+    .single();
+
+  const base =
+    existing?.metadata &&
+    typeof existing.metadata === 'object' &&
+    !Array.isArray(existing.metadata)
+      ? existing.metadata
+      : {};
+
+  const videoId = result.contentId;
+  const youtube: YouTubeStaging = {
+    videoId,
+    stagedAt: new Date().toISOString(),
+    publishAt: staged.publishAt,
+    delays: [],
+    ...(staged.goLiveWhenReady && { goLiveWhenReady: true }),
+  };
+
+  const { error } = await supabase
+    .from('publishes')
+    .update({
+      status: 'scheduled',
+      platform_content_id: videoId,
+      platform_url: result.url,
+      metadata: { ...base, youtube: { ...youtube } },
+    })
+    .eq('id', publishId);
+
+  if (error) {
+    throw new Error(
+      `Uploaded to YouTube as ${result.url}, but could not record it: ${error.message}`,
+    );
+  }
+}
+
+/**
+ * KB-205 at staging: a video over 15 minutes for a channel not known to be
+ * verified is refused before its bytes go, as the Publish screen refuses it
+ */
+async function refuseTooLongForChannel(job: PublishJobMessage) {
+  const { data: channel, error } = await supabase
+    .from('platform_connections')
+    .select('platform_account_name, metadata')
+    .eq('id', job.platformConnectionId)
+    .single();
+
+  if (error) {
+    throw new Error(`Could not read the YouTube channel: ${error.message}`);
+  }
+
+  const status = longUploadsStatusOf(channel?.metadata);
+  if (status === 'allowed') return;
+
+  const refusal = youtubeLengthRefusal(
+    channel?.platform_account_name ?? 'this YouTube channel',
+    status,
+    (await readMp4Facts(job.videoUrl)).durationSeconds,
+  );
+
+  if (refusal) throw new PublishJobRefused(refusal);
+}
+
+/**
  * KB-206: the row says an upload is under way, and since when. An attempt cut
  * off without an answer stays 'publishing', and the scheduled job fails it
  * once it is older than any upload runs. A row being taken down is left alone.
@@ -419,7 +503,7 @@ async function uploadOrPause(job: PublishJobMessage, accessToken: string) {
  */
 async function processPublish(
   job: PublishJobMessage,
-): Promise<'published' | 'held'> {
+): Promise<'published' | 'held' | 'staged'> {
   console.log(
     `[Publish Worker] Processing publish ${job.publishId} to ${job.platform}`,
   );
@@ -487,15 +571,24 @@ async function processPublish(
     }
   }
 
+  // KB-214: only a YouTube post is staged
+  const staged = job.platform === 'youtube' ? job.staged : undefined;
+  job.staged = staged;
+  if (staged) await refuseTooLongForChannel(job);
+
   // 2. Upload to platform
   const result = await uploadOrPause(job, tokenResult.accessToken!);
 
-  // 3. Update DB status to published
-  await updatePublishStatus(job.publishId, 'published', {
-    platform_content_id: result.contentId,
-    platform_url: result.url,
-    published_at: new Date().toISOString(),
-  });
+  // 3. Update DB status: published, or staged until its time (KB-214)
+  if (staged) {
+    await recordStaged(job.publishId, result, staged);
+  } else {
+    await updatePublishStatus(job.publishId, 'published', {
+      platform_content_id: result.contentId,
+      platform_url: result.url,
+      published_at: new Date().toISOString(),
+    });
+  }
 
   // KB-210: the video is up without its thumbnail; the row says why
   if (result.thumbnailError) {
@@ -512,7 +605,7 @@ async function processPublish(
 
   // 4. Notify user via WebSocket
   await sendToUser(job.userId, {
-    type: 'publish-success',
+    type: staged ? 'publish-staged' : 'publish-success',
     jobType: 'publish-status',
     publishId: job.publishId,
     platform: job.platform,
@@ -520,9 +613,44 @@ async function processPublish(
     timestamp: new Date().toISOString(),
   });
 
-  console.log(`[Publish Worker] SUCCESS: ${job.publishId} → ${result.url}`);
+  console.log(
+    `[Publish Worker] ${staged ? `STAGED (${staged.goLiveWhenReady ? 'public when HD' : staged.publishAt})` : 'SUCCESS'}: ${job.publishId} → ${result.url}`,
+  );
 
-  return 'published';
+  return staged ? 'staged' : 'published';
+}
+
+/**
+ * KB-214: one YouTube channel's staged uploads, looked after on the
+ * channel's token. A token not usable yet waits for the next run; every
+ * refusal YouTube gives is logged, and kept on its row.
+ */
+async function processYouTubeStagedCheck(
+  job: YouTubeStagedCheckMessage,
+): Promise<void> {
+  const token = await checkConnectionToken(job.platformConnectionId, supabase);
+
+  if (!token.valid || !token.accessToken) {
+    console.warn(
+      `[Publish Worker] Staged YouTube check for ${job.platformConnectionId} waits: ${token.error}`,
+    );
+    return;
+  }
+
+  const { youtubeStagingApi } = await import('./handlers/youtube');
+  const result = await checkStagedYouTube(
+    supabase,
+    job.platformConnectionId,
+    youtubeStagingApi(token.accessToken),
+  );
+
+  for (const error of result.errors) {
+    console.error(`[Publish Worker] YouTube refused (KB-214): ${error}`);
+  }
+
+  console.log(
+    `[Publish Worker] Staged YouTube check ${job.platformConnectionId}: ${JSON.stringify({ ...result, errors: result.errors.length })}`,
+  );
 }
 
 /**
@@ -626,6 +754,8 @@ async function recordJobFailure(job: JobMessage, failure: JobFailure) {
     failedAt: new Date().toISOString(),
   };
 
+  if (job.type === 'youtube-staged-check') return;
+
   try {
     if (job.type === 'publish') {
       await updatePublishStatus(job.publishId, 'failed', stored);
@@ -683,7 +813,9 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           return { itemIdentifier: record.messageId, status: 'refused' };
         }
 
-        if (job.type === 'delete') {
+        if (job.type === 'youtube-staged-check') {
+          await processYouTubeStagedCheck(job);
+        } else if (job.type === 'delete') {
           await processDelete(job);
         } else {
           await processPublish(job);

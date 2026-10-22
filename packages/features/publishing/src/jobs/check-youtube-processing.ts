@@ -9,6 +9,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { ensureValidToken } from '../lib/token-refresh';
 import {
+  YOUTUBE_PROCESSING_KEY,
   type YouTubeVideoState,
   youtubeProcessingVerdict,
 } from '../lib/youtube-processing';
@@ -27,7 +28,7 @@ import { YouTubeProvider } from '../providers/youtube/youtube-provider';
 
 const WINDOW_MS = 48 * 60 * 60 * 1000;
 
-export const YOUTUBE_PROCESSING_KEY = 'youtube_processing';
+export { YOUTUBE_PROCESSING_KEY };
 
 export interface YouTubeProcessingResult {
   checked: number;

@@ -18,6 +18,7 @@ import { TokenRefusal } from '../lib/token-errors';
 import { cadenceRefusal } from './cadence-guard.service';
 import { getAccessToken } from './connection-tokens';
 import { type PublishPlatformInput, preparePublish } from './publish-preflight';
+import { deleteStagedYouTubeVideo } from './youtube-staged.service';
 
 /**
  * Scheduling a publish from outside the Publish screen: the MCP
@@ -347,7 +348,9 @@ export async function cancelScheduledPublish(
 ): Promise<Result<{ publishId: string; episodeId: string }>> {
   const { data: publish, error } = await client
     .from('publishes')
-    .select('id, episode_id, status, episodes!inner(project_id)')
+    .select(
+      'id, episode_id, status, platform, platform_connection_id, metadata, episodes!inner(project_id)',
+    )
     .eq('id', publishId)
     .maybeSingle();
 
@@ -370,6 +373,13 @@ export async function cancelScheduledPublish(
 
   if (!canTakeDown(role)) {
     return { ok: false, refusal: CANCEL_REFUSAL };
+  }
+
+  // KB-214: one already on YouTube, private until its time, is deleted
+  // there first; if YouTube refuses, the post stays and says why
+  const youtubeRefusal = await deleteStagedYouTubeVideo(publish);
+  if (youtubeRefusal) {
+    return { ok: false, refusal: youtubeRefusal };
   }
 
   const { data: deleted, error: deleteError } = await client

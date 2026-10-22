@@ -6,6 +6,7 @@ import {
   matchesScheduleFilters,
   parseScheduleFilters,
 } from '@kit/publishing/lib/schedule-view';
+import { youtubeLeadMinutesOf } from '@kit/publishing/lib/youtube-staging';
 import { readPublishCalendar } from '@kit/publishing/server/publish-calendar';
 import {
   getAccountPlatformConnections,
@@ -67,7 +68,7 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
   // Slugs are unique per account, so the lookup is scoped to it
   const { data: project } = await client
     .from('projects')
-    .select('id, slug')
+    .select('id, slug, metadata')
     .eq('slug', projectSlug)
     .eq('account_id', workspace.account.id)
     .maybeSingle();
@@ -136,6 +137,10 @@ async function SchedulePage({ params, searchParams }: SchedulePageProps) {
               cadences: cadences.filter((c) => c.connectionId === channel.id),
             }))}
             platformsHref={`${basePath}/platforms`}
+            youtubeLead={{
+              projectId: project.id,
+              minutes: youtubeLeadMinutesOf(project.metadata),
+            }}
           />
 
           <ScheduleFilters

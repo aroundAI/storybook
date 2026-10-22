@@ -13,6 +13,15 @@ import {
   parseLongUploadsStatus,
 } from '../../lib/youtube-long-uploads';
 import type { YouTubeVideoState } from '../../lib/youtube-processing';
+import type { YouTubeReadiness } from '../../lib/youtube-staging';
+import {
+  type PublishAtResult,
+  deleteVideoIfPresent,
+  listVideos,
+  setVideoPublic,
+  setVideoPublishAt,
+  videoReadiness,
+} from '../../lib/youtube-video-api';
 import type {
   YouTubeCategory,
   YouTubeChannel,
@@ -61,8 +70,9 @@ export class YouTubeProvider {
         defaultLanguage: input.defaultLanguage,
       },
       status: {
-        privacyStatus: input.privacy,
-        // publishAt removed - scheduling handled server-side by cron job
+        // KB-214: a staged upload is private until YouTube publishes it
+        privacyStatus: input.publishAt ? 'private' : input.privacy,
+        ...(input.publishAt && { publishAt: input.publishAt }),
         madeForKids: input.madeForKids,
         selfDeclaredMadeForKids: input.madeForKids,
         // FILM-1731: only a declared publish carries the field
@@ -122,7 +132,7 @@ export class YouTubeProvider {
     return {
       videoId,
       videoUrl,
-      status: 'published', // Always published - scheduling handled server-side
+      status: input.publishAt ? 'uploaded' : 'published',
       thumbnailUrl,
     };
   }
@@ -262,21 +272,39 @@ export class YouTubeProvider {
   async getProcessingStates(
     videoIds: string[],
   ): Promise<Map<string, YouTubeVideoState>> {
-    const states = new Map<string, YouTubeVideoState>();
+    return listVideos(this.youtube, videoIds, ['processingDetails', 'status']);
+  }
 
-    for (let at = 0; at < videoIds.length; at += 50) {
-      const response = await this.youtube.videos.list({
-        part: ['processingDetails', 'status'],
-        id: videoIds.slice(at, at + 50),
-        maxResults: 50,
-      });
+  /**
+   * KB-214. Whether each video is public, processed and in HD
+   * (`contentDetails.definition`; the API says nothing of 4K). 1 quota unit
+   * per 50; a video YouTube no longer has is absent.
+   */
+  async getReadiness(
+    videoIds: string[],
+  ): Promise<Map<string, YouTubeReadiness>> {
+    return videoReadiness(this.youtube, videoIds);
+  }
 
-      for (const item of response.data.items ?? []) {
-        if (item.id) states.set(item.id, item);
-      }
-    }
+  /**
+   * KB-214. Moves a staged (private) video's publish time; a video already
+   * public is left as it is. A refusal throws with YouTube's words.
+   */
+  async updatePublishAt(
+    videoId: string,
+    publishAt: string,
+  ): Promise<PublishAtResult> {
+    return setVideoPublishAt(this.youtube, videoId, publishAt);
+  }
 
-    return states;
+  /** KB-214. Makes a private video public now; one already public is left */
+  async makePublic(videoId: string): Promise<'set' | 'public' | 'gone'> {
+    return setVideoPublic(this.youtube, videoId);
+  }
+
+  /** KB-214. Deletes a video; 'gone' when YouTube no longer had it */
+  async deleteVideoIfPresent(videoId: string): Promise<'deleted' | 'gone'> {
+    return deleteVideoIfPresent(this.youtube, videoId);
   }
 
   /**
