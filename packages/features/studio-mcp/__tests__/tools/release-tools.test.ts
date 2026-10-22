@@ -14,7 +14,9 @@ import {
   discardHeldShortsTool,
   getChannelCadenceTool,
   getPublishCalendarTool,
+  replanScheduleTool,
   requeueHeldShortsTool,
+  reschedulePublishTool,
   scheduleReleaseTool,
   setChannelCadenceTool,
 } from '../../src/server/tools/publish/release';
@@ -37,7 +39,9 @@ const service = vi.hoisted(() => ({
   previewBreakingRelease: vi.fn(),
   scheduleBreakingRelease: vi.fn(),
   readChannelCadences: vi.fn(),
-  saveChannelCadence: vi.fn(),
+  saveCadenceAndReplan: vi.fn(),
+  reschedulePublishes: vi.fn(),
+  replanSchedule: vi.fn(),
   requeueHeldShorts: vi.fn(),
   discardHeldShorts: vi.fn(),
   saveEpisodeThumbnail: vi.fn(),
@@ -49,9 +53,15 @@ vi.mock('@kit/publishing/server/schedule-release', () => ({
   previewBreakingRelease: service.previewBreakingRelease,
   scheduleBreakingRelease: service.scheduleBreakingRelease,
   readChannelCadences: service.readChannelCadences,
-  saveChannelCadence: service.saveChannelCadence,
   requeueHeldShorts: service.requeueHeldShorts,
   discardHeldShorts: service.discardHeldShorts,
+}));
+
+// FILM-2213: saving the cadence re-plans; moving a post in place
+vi.mock('@kit/publishing/server/reschedule', () => ({
+  saveCadenceAndReplan: service.saveCadenceAndReplan,
+  reschedulePublishes: service.reschedulePublishes,
+  replanSchedule: service.replanSchedule,
 }));
 
 vi.mock('@kit/episodes/server/episode-thumbnail-service', () => ({
@@ -471,6 +481,26 @@ describe('schedule_release', () => {
   });
 });
 
+const SAVED = {
+  connectionId: YT,
+  contentType: 'short',
+  saved: true,
+  replan: { dryRun: false, moves: [], notMoved: [] },
+  replanRefusal: null,
+};
+
+const MOVED = {
+  publishId: 'p-short-1',
+  episodeId: EPISODE,
+  episode: 'Ep 3 · Fallen Unicorns',
+  platform: 'youtube',
+  connectionId: YT,
+  kind: 'short',
+  title: 'Short 1',
+  from: '2026-10-25T05:30:00.000Z',
+  to: '2026-10-25T21:00:00.000Z',
+};
+
 describe('the channel cadence', () => {
   const CADENCE = {
     connectionId: YT,
@@ -487,23 +517,25 @@ describe('the channel cadence', () => {
   };
 
   it('sets a channel of the team through the dialog’s save', async () => {
-    service.saveChannelCadence.mockResolvedValue({
+    service.saveCadenceAndReplan.mockResolvedValue({
       ok: true,
-      data: { connectionId: YT, contentType: 'short' },
+      data: SAVED,
     });
 
     await run(setChannelCadenceTool, CADENCE, client());
 
-    expect(service.saveChannelCadence).toHaveBeenCalledWith(
+    expect(service.saveCadenceAndReplan).toHaveBeenCalledWith(
       expect.anything(),
+      expect.objectContaining({ via: 'mcp' }),
       expect.objectContaining({ connectionId: YT, startAfterHours: 2 }),
+      { dryRun: false },
     );
   });
 
   it('sets Shorts every N days, and refuses it for long videos', async () => {
-    service.saveChannelCadence.mockResolvedValue({
+    service.saveCadenceAndReplan.mockResolvedValue({
       ok: true,
-      data: { connectionId: YT, contentType: 'short' },
+      data: SAVED,
     });
 
     const set = await run(
@@ -512,12 +544,14 @@ describe('the channel cadence', () => {
       client(),
     );
     expect(set.text).toContain('every 2 days');
-    expect(service.saveChannelCadence).toHaveBeenCalledWith(
+    expect(service.saveCadenceAndReplan).toHaveBeenCalledWith(
+      expect.anything(),
       expect.anything(),
       expect.objectContaining({ everyNDays: 2 }),
+      { dryRun: false },
     );
 
-    service.saveChannelCadence.mockClear();
+    service.saveCadenceAndReplan.mockClear();
     const error = await rejection(
       run(
         setChannelCadenceTool,
@@ -527,7 +561,7 @@ describe('the channel cadence', () => {
     );
     expect(error.code).toBe('VALIDATION_FAILED');
     expect(error.message).toContain('days between them');
-    expect(service.saveChannelCadence).not.toHaveBeenCalled();
+    expect(service.saveCadenceAndReplan).not.toHaveBeenCalled();
   });
 
   it('refuses another team’s channel, even one the person can see', async () => {
@@ -540,7 +574,7 @@ describe('the channel cadence', () => {
     );
 
     expect(error.code).toBe('NOT_FOUND');
-    expect(service.saveChannelCadence).not.toHaveBeenCalled();
+    expect(service.saveCadenceAndReplan).not.toHaveBeenCalled();
   });
 
   it('refuses a posting time the dialog would refuse', async () => {
@@ -554,7 +588,72 @@ describe('the channel cadence', () => {
 
     expect(error.code).toBe('VALIDATION_FAILED');
     expect(error.message).toContain('18:00');
-    expect(service.saveChannelCadence).not.toHaveBeenCalled();
+    expect(service.saveCadenceAndReplan).not.toHaveBeenCalled();
+  });
+
+  it('re-plans what is scheduled on the channel in the same call, and says what moved (FILM-2213)', async () => {
+    service.saveCadenceAndReplan.mockResolvedValue({
+      ok: true,
+      data: {
+        ...SAVED,
+        replan: { dryRun: false, moves: [MOVED], notMoved: [] },
+      },
+    });
+
+    const result = await run(setChannelCadenceTool, CADENCE, client());
+
+    expect(result.text).toContain('1 scheduled post moved onto it');
+    expect(result.text).toContain(`${MOVED.from} → ${MOVED.to}`);
+    expect(result.structuredContent.replan).toEqual({
+      dryRun: false,
+      moves: [MOVED],
+      notMoved: [],
+    });
+  });
+
+  it('dryRun saves nothing and says what would move (FILM-2213)', async () => {
+    service.saveCadenceAndReplan.mockResolvedValue({
+      ok: true,
+      data: {
+        ...SAVED,
+        saved: false,
+        replan: { dryRun: true, moves: [MOVED], notMoved: [] },
+      },
+    });
+
+    const result = await run(
+      setChannelCadenceTool,
+      { ...CADENCE, dryRun: true },
+      client(),
+    );
+
+    expect(service.saveCadenceAndReplan).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.not.objectContaining({ dryRun: expect.anything() }),
+      { dryRun: true },
+    );
+    expect(result.text).toContain('nothing saved');
+    expect(result.text).toContain('1 scheduled post would move');
+    expect(result.structuredContent.saved).toBe(false);
+  });
+
+  it('says the rules are saved when the re-plan fails, and why nothing moved (FILM-2213)', async () => {
+    service.saveCadenceAndReplan.mockResolvedValue({
+      ok: true,
+      data: {
+        ...SAVED,
+        replan: null,
+        replanRefusal: 'YouTube refused to move the video.',
+      },
+    });
+
+    const result = await run(setChannelCadenceTool, CADENCE, client());
+
+    expect(result.text).toContain("The channel's Shorts cadence is");
+    expect(result.text).toContain(
+      'The scheduled posts did not move: YouTube refused to move the video.',
+    );
   });
 
   it('reads each channel’s cadence with its name and platform', async () => {
@@ -577,6 +676,167 @@ describe('the channel cadence', () => {
     expect(result.structuredContent.cadences).toEqual([
       expect.objectContaining({ name: 'Ledger YT', platform: 'youtube' }),
     ]);
+  });
+});
+
+describe('reschedule_publish (FILM-2213)', () => {
+  const PUBLISH_ID = '00000000-0000-4000-8000-0000000000b1';
+  const AT = '2026-10-26T16:00:00-04:00';
+  const ofTeam = (inTeam: boolean) =>
+    client({
+      publishes: () => ({
+        data: inTeam ? { id: PUBLISH_ID, episode_id: EPISODE } : null,
+      }),
+    });
+
+  it('moves the post through the service and returns its result as it is', async () => {
+    const data = {
+      dryRun: false,
+      moves: [MOVED],
+      cadenceRefusal: null,
+      manualTime: true,
+    };
+    service.reschedulePublishes.mockResolvedValue({ ok: true, data });
+
+    const result = await run(
+      reschedulePublishTool,
+      {
+        publishId: PUBLISH_ID,
+        scheduledAt: AT,
+        ignoreCadence: true,
+        note: 'testing 4 pm',
+        preview: false,
+      },
+      ofTeam(true),
+    );
+
+    expect(service.reschedulePublishes).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ via: 'mcp', note: 'testing 4 pm' }),
+      { publishId: PUBLISH_ID, scheduledAt: AT, ignoreCadence: true },
+      { dryRun: false },
+    );
+    expect(result.structuredContent).toEqual({ preview: false, ...data });
+    expect(result.text).toContain('manualTime');
+  });
+
+  it('moves an episode’s long video by its episode, previewed', async () => {
+    service.reschedulePublishes.mockResolvedValue({
+      ok: true,
+      data: {
+        dryRun: true,
+        moves: [],
+        cadenceRefusal: 'Story YT has a long video on 2026-10-25.',
+        manualTime: false,
+      },
+    });
+
+    const result = await run(
+      reschedulePublishTool,
+      {
+        episodeId: EPISODE,
+        contentType: 'full',
+        scheduledAt: AT,
+        preview: true,
+      },
+      client(),
+    );
+
+    expect(service.reschedulePublishes).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { episodeId: EPISODE, contentType: 'full', scheduledAt: AT },
+      { dryRun: true },
+    );
+    expect(result.text).toContain('The posting rules refuse this time');
+  });
+
+  it('refuses another team’s post before the service is asked', async () => {
+    const error = await rejection(
+      run(
+        reschedulePublishTool,
+        { publishId: PUBLISH_ID, scheduledAt: AT, preview: false },
+        ofTeam(false),
+      ),
+    );
+
+    expect(error.code).toBe('NOT_FOUND');
+    expect(service.reschedulePublishes).not.toHaveBeenCalled();
+  });
+
+  it('says the service’s refusal in its words', async () => {
+    service.reschedulePublishes.mockResolvedValue({
+      ok: false,
+      refusal: 'It has already gone out, so its time cannot change.',
+    });
+
+    const error = await rejection(
+      run(
+        reschedulePublishTool,
+        { publishId: PUBLISH_ID, scheduledAt: AT, preview: false },
+        ofTeam(true),
+      ),
+    );
+
+    expect(error.message).toContain('already gone out');
+  });
+
+  it('wants a post or an episode, not both', async () => {
+    const error = await rejection(
+      run(
+        reschedulePublishTool,
+        {
+          publishId: PUBLISH_ID,
+          episodeId: EPISODE,
+          contentType: 'full',
+          scheduledAt: AT,
+          preview: false,
+        },
+        ofTeam(true),
+      ),
+    );
+
+    expect(error.code).toBe('VALIDATION_FAILED');
+    expect(service.reschedulePublishes).not.toHaveBeenCalled();
+  });
+});
+
+describe('replan_schedule (FILM-2213)', () => {
+  it('previews by default and returns the moves as the service gives them', async () => {
+    const data = {
+      dryRun: true,
+      moves: [MOVED],
+      notMoved: [{ publishId: 'p-x', reason: 'No free slot.' }],
+    };
+    service.replanSchedule.mockResolvedValue({ ok: true, data });
+
+    const result = await run(
+      replanScheduleTool,
+      { projectId: PROJECT, dryRun: true },
+      client(),
+    );
+
+    expect(service.replanSchedule).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ via: 'mcp' }),
+      { projectId: PROJECT, dryRun: true },
+    );
+    expect(result.structuredContent).toEqual({ projectId: PROJECT, ...data });
+    expect(result.text).toContain('1 post would move');
+    expect(result.text).toContain('Not moved');
+  });
+
+  it('refuses another team’s project', async () => {
+    const error = await rejection(
+      run(
+        replanScheduleTool,
+        { projectId: PROJECT, dryRun: false },
+        createFakeClient({ projects: () => ({ data: null }) }),
+      ),
+    );
+
+    expect(error.code).toBe('NOT_FOUND');
+    expect(service.replanSchedule).not.toHaveBeenCalled();
   });
 });
 

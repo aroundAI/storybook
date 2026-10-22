@@ -214,7 +214,7 @@ function target(overrides: Partial<ScheduleTarget> = {}): ScheduleTarget {
   };
 }
 
-async function schedule(targets: ScheduleTarget[]) {
+async function schedule(targets: ScheduleTarget[], ignoreCadence = false) {
   const { schedulePublishes } = await import(
     '../src/server/schedule-publishes.service'
   );
@@ -223,6 +223,7 @@ async function schedule(targets: ScheduleTarget[]) {
     targets,
     aiGenerated: false,
     now: NOW,
+    ignoreCadence,
   });
 }
 
@@ -295,6 +296,11 @@ describe('scheduling a publish over MCP', () => {
         refusal: 'Story YT has a long video on 2026-10-10.',
       });
       expect(inserted).toEqual([]);
+
+      // FILM-2213: past them on purpose, marked so a re-plan leaves it
+      const chosen = await schedule([target()], true);
+      expect(chosen.ok).toBe(true);
+      expect(inserted[0]!.metadata).toMatchObject({ manualTime: true });
     } finally {
       cadence.refusal = null;
     }

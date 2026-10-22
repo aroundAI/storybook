@@ -319,6 +319,14 @@ export interface DigestPost {
     delays: readonly unknown[];
     alert: string | null;
   } | null;
+  /** FILM-2213: each change of its time, oldest first */
+  scheduleHistory?: ReadonlyArray<{
+    from: string;
+    to: string;
+    at: string;
+    via: string;
+    note: string | null;
+  }>;
 }
 
 /** A comment of the trend's seven days: when, and its label */
@@ -1276,8 +1284,34 @@ function publishingSection(inputs: DigestInputs) {
       }.`,
     }));
 
+  // FILM-2213: posts whose time changed in the 24 hours to the day's end
+  const movedSince = Date.parse(end) - DAY_MS;
+  const moved = posts.flatMap((p) =>
+    (p.scheduleHistory ?? [])
+      .filter((entry) =>
+        within(entry.at, new Date(movedSince).toISOString(), end),
+      )
+      .map((entry) => ({
+        publishId: p.publishId,
+        episodeTitle: p.episodeTitle,
+        title: p.title,
+        platform: p.platform,
+        connectionId: p.connectionId,
+        contentType: p.contentType,
+        from: entry.from,
+        to: entry.to,
+        movedAt: entry.at,
+        via: entry.via,
+        ...(entry.note ? { note: entry.note } : {}),
+      })),
+  );
+  moved.sort(
+    (a, b) => byText(a.movedAt, b.movedAt) || byText(a.publishId, b.publishId),
+  );
+
   return {
     ...(youtubeHeld.length > 0 && { youtubeHeld }),
+    ...(moved.length > 0 && { moved }),
     wentOut: posts
       .filter((p) => p.status === 'published' && within(p.at, start, end))
       .map(post),

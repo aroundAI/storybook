@@ -36,7 +36,7 @@ summary: >
   planner and the scheduled job; and a late post moves the queue behind it
   on a slot each instead of a flat 24 hours.
 acceptance_criteria:
-  - text: "Each channel has one Shorts queue, oldest first: a release's Shorts go after every Short already queued on the channel, in the order listed, and nothing already scheduled moves"
+  - text: "Each channel has one Shorts queue, oldest first: a release's Shorts go after every Short already queued on the channel, in the order listed, and nothing already scheduled moves (a release moves nothing; since FILM-2213, #694, changing a channel's posting rules re-plans what is scheduled on it, owner 2026-10-22)"
     met: true
     evidence: "Met (#670): packages/features/publishing/src/lib/cadence/plan-release.ts (planRelease, step 3). Tests: plan-release.test.ts 'never puts a Short ahead of one already queued on the channel', 'appends a later batch: 5 episodes released 2 days after 4…'; schedule-release.service.test.ts 'appends a later batch and never writes to an earlier episode’s posts'; E2E apps/e2e/tests/mcp/cadence-release.spec.ts 'nine episodes of eight Shorts…' and apps/e2e/tests/publishing/cadence-release.spec.ts. Guards C2 (film-719-cadence.json), Q13, E2E C5"
   - text: "An episode's Shorts keep posting after the next episode's long video, sharing its day, never more a local day than the channel's Short times"

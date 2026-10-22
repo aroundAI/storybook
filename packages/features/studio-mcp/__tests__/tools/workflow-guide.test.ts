@@ -65,6 +65,9 @@ describe('get_workflow_guide', () => {
       'request_episode_thumbnail_upload',
       'finalize_episode_thumbnail',
       'get_publish_calendar',
+      // FILM-2213
+      'reschedule_publish',
+      'replan_schedule',
       // FILM-1735
       'get_project_report',
       'get_daily_digest',
@@ -188,6 +191,9 @@ describe('the default tool list', () => {
         'get_publish_calendar',
         'request_episode_thumbnail_upload',
         'finalize_episode_thumbnail',
+        // FILM-2213: a scheduled time changed in place, and a re-plan
+        'reschedule_publish',
+        'replan_schedule',
       ].sort(),
     );
   });

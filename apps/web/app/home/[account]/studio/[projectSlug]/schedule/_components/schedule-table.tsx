@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { CalendarX, Loader2 } from 'lucide-react';
+import { CalendarX, History, Loader2 } from 'lucide-react';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { PLATFORM_NAMES, isPlatform } from '@kit/publishing/lib/platforms';
@@ -36,7 +36,14 @@ import {
   TableHeader,
   TableRow,
 } from '@kit/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@kit/ui/tooltip';
 
+import { ChangeTimeDialog } from './change-time-dialog';
 import { type ScheduleRow, StatusCell, formatAt } from './schedule-status-cell';
 
 export type { ScheduleRow };
@@ -54,7 +61,8 @@ function useViewerTimeZone() {
 
 /**
  * FILM-2211. Every post of the project in the range, in time order, in the
- * viewer's timezone. A scheduled post can be cancelled, and a held Short
+ * viewer's timezone. A scheduled post's time can be changed in place
+ * (FILM-2213) or it can be cancelled, and a held Short
  * re-queued or discarded, through the actions the Publish screen uses. A
  * published video taken down on its platform can be marked removed
  * (KB-207), which frees its place in the channel's posting rules.
@@ -125,6 +133,7 @@ export function ScheduleTable(props: {
                 ) : (
                   <span className="text-muted-foreground">No time yet</span>
                 )}
+                <MovedFrom row={row} timeZone={timeZone} />
               </TableCell>
               <TableCell>
                 {isPlatform(row.platform)
@@ -172,6 +181,47 @@ export function ScheduleTable(props: {
   );
 }
 
+const VIA = { ui: 'on this page', mcp: 'over MCP', replan: 'by a re-plan' };
+
+/** FILM-2213: "Moved from <time>", every change in its tooltip */
+function MovedFrom(props: { row: ScheduleRow; timeZone: string | null }) {
+  const history = props.row.scheduleHistory ?? [];
+  const first = history[0];
+  const { timeZone } = props;
+
+  if (!first || !timeZone) return null;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            data-test="schedule-row-moved"
+            data-moves={history.length}
+            tabIndex={0}
+          >
+            <History className="h-3 w-3" />
+            Moved from {formatAt(first.from, timeZone)}
+            {props.row.manualTime ? ' · outside the rules' : ''}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent data-test="schedule-row-history">
+          <ul className="space-y-1 text-xs">
+            {history.map((entry) => (
+              <li key={entry.at}>
+                {formatAt(entry.from, timeZone)} →{' '}
+                {formatAt(entry.to, timeZone)}, {VIA[entry.via]}
+                {entry.note ? `: ${entry.note}` : ''}
+              </li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 type Pending = 'cancel' | 'requeue' | 'discard' | 'remove';
 
 const CONFIRM: Record<
@@ -214,6 +264,7 @@ const LABELS: Record<Pending, string> = {
 function RowActions({ row }: { row: ScheduleRow }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState<Pending | null>(null);
+  const [changingTime, setChangingTime] = useState(false);
   const [running, startTransition] = useTransition();
 
   const actions: Pending[] =
@@ -259,6 +310,20 @@ function RowActions({ row }: { row: ScheduleRow }) {
 
   return (
     <div className="flex justify-end gap-1">
+      {row.status === 'scheduled' && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={running}
+          onClick={() => setChangingTime(true)}
+          data-test="schedule-row-change-time"
+        >
+          Change time
+        </Button>
+      )}
+      {changingTime && (
+        <ChangeTimeDialog row={row} onClose={() => setChangingTime(false)} />
+      )}
       {actions.map((action) => (
         <Button
           key={action}

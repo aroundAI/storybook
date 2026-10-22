@@ -27,6 +27,9 @@ describe('the publish tools', () => {
       'set_channel_cadence',
       'requeue_held_shorts',
       'discard_held_shorts',
+      // FILM-2213
+      'reschedule_publish',
+      'replan_schedule',
     ]) {
       expect(scopeOf(name), name).toBe('studio:publish');
     }
@@ -44,7 +47,9 @@ describe('the publish tools', () => {
       'cancel_scheduled_publish',
       'discard_held_shorts',
       'mark_publish_removed',
+      'replan_schedule',
       'requeue_held_shorts',
+      'reschedule_publish',
       'schedule_publish',
       'schedule_release',
       'set_channel_cadence',

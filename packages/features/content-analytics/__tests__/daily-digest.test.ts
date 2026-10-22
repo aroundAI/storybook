@@ -320,6 +320,53 @@ describe('the day', () => {
   });
 });
 
+// FILM-2213: a post whose time changed in the last 24 hours, said with why
+describe('posts moved in the last 24 hours', () => {
+  it('lists each change from → to, with its note and how it was made', () => {
+    const base = inputs();
+    const entry = (at: string, via: string, note: string | null) => ({
+      from: '2026-10-19T14:30:00.000Z',
+      to: '2026-10-20T10:30:00.000Z',
+      at,
+      via,
+      note,
+    });
+    const moved = {
+      ...base.posts[0]!,
+      publishId: 'p-moved',
+      status: 'scheduled',
+      at: '2026-10-20T10:30:00.000Z',
+      scheduleHistory: [
+        // Two days before the day's end: not listed
+        entry('2026-10-15T18:30:00.000Z', 'ui', 'older'),
+        entry('2026-10-17T06:00:00.000Z', 'mcp', 'testing 4 pm'),
+        entry('2026-10-17T07:00:00.000Z', 'replan', null),
+      ],
+    };
+
+    const publishing = assembleDigest({
+      ...base,
+      posts: [...base.posts, moved],
+    }).publishing;
+
+    expect(publishing.moved).toEqual([
+      expect.objectContaining({
+        publishId: 'p-moved',
+        from: '2026-10-19T14:30:00.000Z',
+        to: '2026-10-20T10:30:00.000Z',
+        via: 'mcp',
+        note: 'testing 4 pm',
+      }),
+      expect.objectContaining({ publishId: 'p-moved', via: 'replan' }),
+    ]);
+    expect(publishing.moved![1]).not.toHaveProperty('note');
+  });
+
+  it('says nothing when nothing moved', () => {
+    expect('moved' in assembleDigest(inputs()).publishing).toBe(false);
+  });
+});
+
 describe('the same facts give the same digest', () => {
   it('twice, to the byte and the hash', () => {
     const first = assembleDigest(inputs());

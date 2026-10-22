@@ -125,7 +125,19 @@ async function schedule(
     if (refusal) throw new ActionRefusal(refusal);
   }
 
-  return insertScheduledRows(client, rows);
+  // FILM-2213: a time posted past the rules on purpose; re-plans keep it
+  return insertScheduledRows(
+    client,
+    input.ignoreCadence
+      ? rows.map((row) => ({
+          ...row,
+          metadata: {
+            ...(row.metadata as Record<string, unknown>),
+            manualTime: true,
+          } as PublishInsert['metadata'],
+        }))
+      : rows,
+  );
 }
 
 /**

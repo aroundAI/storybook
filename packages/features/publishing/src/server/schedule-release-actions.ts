@@ -14,8 +14,15 @@ import {
   ChannelCadenceSchema,
   ChannelCadencesQuerySchema,
   HeldShortsSchema,
+  ReplanScheduleSchema,
+  ReschedulePublishSchema,
   ScheduleReleaseSchema,
 } from '../lib/schemas/schedule-release.schema';
+import {
+  replanSchedule,
+  reschedulePublishes,
+  saveCadenceAndReplan,
+} from './reschedule.service';
 import { cancelScheduledPublish } from './schedule-publishes.service';
 import {
   discardHeldShorts,
@@ -23,7 +30,6 @@ import {
   previewCadenceRelease,
   readChannelCadences,
   requeueHeldShorts,
-  saveChannelCadence,
   scheduleBreakingRelease,
   scheduleCadenceRelease,
 } from './schedule-release.service';
@@ -120,11 +126,83 @@ export const getChannelCadencesAction = enhanceAction(
   { schema: ChannelCadencesQuerySchema, auth: true },
 );
 
+/**
+ * FILM-2213: saving a channel's posting rules re-plans everything scheduled
+ * on it, in the same request; the result says what moved and what did not
+ */
 export const saveChannelCadenceAction = returnRefusals(
   enhanceAction(
-    async (input) =>
-      unwrapResult(await saveChannelCadence(getSupabaseServerClient(), input)),
+    async (input, user) =>
+      unwrapResult(
+        await saveCadenceAndReplan(
+          getSupabaseServerClient(),
+          { userId: user.id, via: 'ui' },
+          input,
+        ),
+      ),
     { schema: ChannelCadenceSchema, auth: true },
+  ),
+);
+
+/** FILM-2213: what saving these rules would move, saving nothing */
+export const previewChannelCadenceAction = returnRefusals(
+  enhanceAction(
+    async (input, user) =>
+      unwrapResult(
+        await saveCadenceAndReplan(
+          getSupabaseServerClient(),
+          { userId: user.id, via: 'ui' },
+          input,
+          { dryRun: true },
+        ),
+      ),
+    { schema: ChannelCadenceSchema, auth: true },
+  ),
+);
+
+/** FILM-2213: the Schedule page's Change time, previewed */
+export const previewReschedulePublishAction = returnRefusals(
+  enhanceAction(
+    async ({ note, ...input }, user) =>
+      unwrapResult(
+        await reschedulePublishes(
+          getSupabaseServerClient(),
+          { userId: user.id, via: 'ui', note },
+          input,
+          { dryRun: true },
+        ),
+      ),
+    { schema: ReschedulePublishSchema, auth: true },
+  ),
+);
+
+/** FILM-2213: the Schedule page's Change time: the post moves in place */
+export const reschedulePublishAction = returnRefusals(
+  enhanceAction(
+    async ({ note, ...input }, user) =>
+      unwrapResult(
+        await reschedulePublishes(
+          getSupabaseServerClient(),
+          { userId: user.id, via: 'ui', note },
+          input,
+        ),
+      ),
+    { schema: ReschedulePublishSchema, auth: true },
+  ),
+);
+
+/** FILM-2213: the Schedule page's Re-plan to posting rules, preview or apply */
+export const replanScheduleAction = returnRefusals(
+  enhanceAction(
+    async (input, user) =>
+      unwrapResult(
+        await replanSchedule(
+          getSupabaseServerClient(),
+          { userId: user.id, via: 'ui' },
+          input,
+        ),
+      ),
+    { schema: ReplanScheduleSchema, auth: true },
   ),
 );
 

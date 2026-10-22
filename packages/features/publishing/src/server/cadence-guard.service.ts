@@ -27,7 +27,15 @@ type Client = SupabaseClient<Database>;
 export async function cadenceRefusal(
   client: Client,
   candidates: ReadonlyArray<Omit<CadenceCandidate, 'key'>>,
-  options: { timezone?: string; now?: Date; hint: string },
+  options: {
+    timezone?: string;
+    now?: Date;
+    hint: string;
+    /** FILM-2213: posts being moved, which do not count against themselves */
+    exclude?: readonly string[];
+    /** FILM-2213: also refuse a day outside the channel's weekdays */
+    weekdays?: boolean;
+  },
 ): Promise<string | null> {
   if (candidates.length === 0) return null;
 
@@ -52,8 +60,11 @@ export async function cadenceRefusal(
       ...candidate,
       key: String(index),
     })),
-    posts,
+    posts: options.exclude?.length
+      ? posts.filter((post) => !options.exclude!.includes(post.publishId))
+      : posts,
     cadenceOf: cadenceOfRows(cadences, timezone),
+    weekdays: options.weekdays,
   });
 
   if (conflicts.length === 0) return null;

@@ -6,6 +6,11 @@ import { fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 
 import {
+  type ScheduleHistoryEntry,
+  manualTimeOf,
+  scheduleHistoryOf,
+} from '../lib/schedule-history';
+import {
   type YouTubeStagingView,
   youtubeStagingView,
 } from '../lib/youtube-staging';
@@ -80,6 +85,10 @@ export interface CalendarPost {
    * each time the HD gate held it, and whether it was flagged
    */
   youtube: YouTubeStagingView | null;
+  /** FILM-2213: each change of its time, oldest first */
+  scheduleHistory: ScheduleHistoryEntry[];
+  /** FILM-2213: a time chosen past the posting rules, which re-plans keep */
+  manualTime: boolean;
 }
 
 /** When a post goes, or went, out; else when it was made (a failed Publish Now, a held draft) */
@@ -135,7 +144,48 @@ export async function readPublishCalendar(
   // A held draft made in the range comes back from both reads
   const byId = new Map([...dated, ...held].map((row) => [row.id, row]));
 
-  const posts = [...byId.values()].map((row): CalendarPost => {
+  const posts = [...byId.values()].map(calendarPostOf);
+
+  // Ties by id, so the same posts always come back in the same order
+  return posts.sort(
+    (a, b) =>
+      (a.at ?? '9').localeCompare(b.at ?? '9') ||
+      a.publishId.localeCompare(b.publishId),
+  );
+}
+
+/**
+ * FILM-2213. The project's posts whose time was changed since `since`,
+ * wherever they now fall: the morning digest lists them
+ */
+export async function readRecentlyMovedPosts(
+  client: Client,
+  input: { projectId: string; since: Date },
+): Promise<CalendarPost[]> {
+  const rows = await fetchAllRows<CalendarPublish>(
+    (start, end) =>
+      client
+        .from('publishes')
+        .select(CALENDAR_COLUMNS)
+        .eq('episodes.project_id', input.projectId)
+        .neq('status', 'deleted')
+        .not('metadata->scheduleHistory', 'is', null)
+        .order('id')
+        .range(start, end) as unknown as CalendarPage,
+    'moved posts',
+  );
+
+  return rows
+    .map(calendarPostOf)
+    .filter((post) =>
+      post.scheduleHistory.some(
+        (entry) => Date.parse(entry.at) >= input.since.getTime(),
+      ),
+    );
+}
+
+function calendarPostOf(row: CalendarPublish): CalendarPost {
+  {
     const metadata = (row.metadata ?? {}) as {
       heldReason?: string;
       error?: string;
@@ -166,15 +216,10 @@ export async function readPublishCalendar(
         row.status === 'deleted' ? (metadata.removedReason ?? null) : null,
       youtube:
         row.platform === 'youtube' ? youtubeStagingView(row.metadata) : null,
+      scheduleHistory: scheduleHistoryOf(row.metadata),
+      manualTime: manualTimeOf(row.metadata),
     };
-  });
-
-  // Ties by id, so the same posts always come back in the same order
-  return posts.sort(
-    (a, b) =>
-      (a.at ?? '9').localeCompare(b.at ?? '9') ||
-      a.publishId.localeCompare(b.publishId),
-  );
+  }
 }
 
 export interface ScheduledThrough {

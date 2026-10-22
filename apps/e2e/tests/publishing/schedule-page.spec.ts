@@ -175,14 +175,26 @@ async function choose(page: Page, filter: string, option: string) {
     .click();
 }
 
-/** Saves the open posting-rules form and waits for the dialog to close */
+/**
+ * Saves the open posting-rules form and waits for the dialog to close.
+ * FILM-2213: a save that moves scheduled posts asks first, then says what
+ * moved; both are confirmed.
+ */
 async function saveRules(page: Page) {
   const save = byTest(page, 'cadence-save');
+  const dialog = byTest(page, 'channel-cadence-dialog');
+  const apply = byTest(page, 'cadence-replan-apply');
   await expect(save).toBeEnabled();
   await save.click();
-  await expect(byTest(page, 'channel-cadence-dialog')).toBeHidden({
-    timeout: 15_000,
-  });
+  await Promise.race([
+    apply.waitFor({ state: 'visible', timeout: 15_000 }),
+    dialog.waitFor({ state: 'hidden', timeout: 15_000 }),
+  ]);
+  if (await apply.isVisible()) {
+    await apply.click();
+    await byTest(page, 'cadence-replan-done').click();
+  }
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
 }
 
 function summaryOf(page: Page, connectionId: string) {

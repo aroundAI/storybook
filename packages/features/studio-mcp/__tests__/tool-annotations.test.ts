@@ -21,6 +21,10 @@ const REACHES_OUTSIDE_STORYBOOK = [
   'schedule_release',
   'requeue_held_shorts',
   'discard_held_shorts',
+  // FILM-2213: a move reaches YouTube for a post uploaded ahead of its time
+  'set_channel_cadence',
+  'reschedule_publish',
+  'replan_schedule',
 ];
 
 describe('the annotations every tool sends', () => {
