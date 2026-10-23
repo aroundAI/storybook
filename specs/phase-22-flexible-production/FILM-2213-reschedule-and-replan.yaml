@@ -72,6 +72,9 @@ acceptance_criteria:
   - text: "The morning digest lists posts moved in the last 24 hours, from → to, with the note and how (via)"
     met: true
     evidence: "Met (#694): packages/features/content-analytics/src/lib/daily-digest.ts publishingSection moved; daily-digest-service.ts reads readRecentlyMovedPosts, so a post moved to beyond the digest's three days is listed too. Tests: daily-digest.test.ts 'lists each change from → to, with its note and how it was made', 'says nothing when nothing moved'"
+  - text: "A client that connected before these tools were added can tell: whoami returns serverTools (the count and names of every tool the server lists) and says to reconnect StoryBook and start a new chat if its list has fewer, and the workflow guide says the same near the top. Claude.ai keeps the tool list from when a connector was connected, so after #694 deployed one client had no reschedule_publish or replan_schedule"
+    met: true
+    evidence: "Met (#695): studio-mcp build-server.ts passes the names of the tools it registers to every call (McpToolContext.serverToolNames); tools/whoami.ts returns serverTools and the reconnect line; workflow-guide.ts. Tests: whoami-server-tools.test.ts 'counts every tool the server lists, so a stale client can tell' (through buildMcpServer with defaultTools: the count equals the listed tools, the names include reschedule_publish and replan_schedule; red with the names left out of the context), 'the workflow guide says the same near the top'; build-server.test.ts whoami"
 open_questions: []
 notes: >
   Decisions the brief left open. A re-plan lays the posts on the channels'

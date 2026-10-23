@@ -183,6 +183,7 @@ describe('buildMcpServer', () => {
         canRender: false,
         canSchedulePublishes: false,
       },
+      serverTools: { count: 3, names: ['whoami', 'echo', 'fail'] },
     });
     expect(records).toEqual([
       expect.objectContaining({

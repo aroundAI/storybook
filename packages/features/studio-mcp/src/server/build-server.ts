@@ -53,6 +53,7 @@ export function buildMcpServer(
   prompts: McpPromptDefinition[] = defaultPrompts,
 ) {
   const server = new McpServer(SERVER_INFO);
+  const toolNames = tools.map((tool) => tool.name);
 
   // Prompts carry no data of the caller's and no scope: today only the
   // workflow guide (FILM-1905), the same text get_workflow_guide returns.
@@ -80,6 +81,7 @@ export function buildMcpServer(
           principal,
           runtime,
           requestId,
+          toolNames,
         ),
     );
   }
@@ -93,6 +95,7 @@ async function runTool(
   principal: McpPrincipal,
   runtime: ToolRuntime,
   requestId: string,
+  serverToolNames: readonly string[],
 ): Promise<CallToolResult> {
   const started = performance.now();
   let runId: string | null = null;
@@ -140,6 +143,7 @@ async function runTool(
       setRunId(id) {
         runId = id;
       },
+      serverToolNames,
     };
 
     const result = await runWithMcpRequestContext(

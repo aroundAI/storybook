@@ -29,6 +29,8 @@ export interface McpToolContext {
   requestId: string;
   /** Attach a generation run id to this call's audit row (FILM-1903+). */
   setRunId(runId: string): void;
+  /** Every tool this server lists, in order; `whoami` counts them (FILM-2213). */
+  serverToolNames?: readonly string[];
 }
 
 export interface McpToolResult {
