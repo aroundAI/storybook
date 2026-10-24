@@ -14,6 +14,7 @@ import { Share2 } from 'lucide-react';
 
 import {
   batchTranslateMetadataAction,
+  savePublishDetailsAction,
   updatePublishedVideoAction,
   updateShortsGroupsAction,
 } from '@kit/episodes/server';
@@ -272,12 +273,41 @@ export function PublishScreen({
     // Results come via WebSocket
   };
 
-  // Metadata state
+  // Metadata state; Save stores it on the episode (KB-215)
   const [metadata, setMetadata] = useState({
     title: episode.title || '',
     description: episode.description || '',
-    tags: '',
+    tags: episode.metadata?.tags?.join(', ') ?? '',
   });
+  const [savedMetadata, setSavedMetadata] = useState(metadata);
+  const [isSavingDetails, startSavingDetails] = useTransition();
+  const detailsChanged =
+    metadata.title.trim() !== savedMetadata.title.trim() ||
+    metadata.description !== savedMetadata.description ||
+    parseTags(metadata.tags).join(',') !==
+      parseTags(savedMetadata.tags).join(',');
+
+  const saveDetails = () => {
+    const details = { ...metadata, title: metadata.title.trim() };
+
+    startSavingDetails(async () => {
+      try {
+        await unwrap(
+          savePublishDetailsAction({
+            episodeId: episode.id,
+            title: details.title,
+            description: details.description,
+            tags: parseTags(details.tags),
+          }),
+        );
+        setSavedMetadata(details);
+        toast.success('Saved');
+        refetchEpisode();
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to save'));
+      }
+    });
+  };
   // FILM-1731: the creator's AI declaration, off until they turn it on
   const [aiGenerated, setAiGenerated] = useState(false);
 
@@ -1788,6 +1818,9 @@ export function PublishScreen({
             <PublishSettingsSidebar
               metadata={metadata}
               onMetadataChange={setMetadata}
+              onSaveMetadata={saveDetails}
+              metadataChanged={detailsChanged}
+              savingMetadata={isSavingDetails}
               channelsByLanguage={channelsByLanguage}
               loadingConnections={loadingConnections}
               connectionsCount={connections?.length ?? 0}

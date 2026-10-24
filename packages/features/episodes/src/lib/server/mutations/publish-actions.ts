@@ -5,13 +5,16 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
+import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { saveEpisodeVideo } from '../../../server/episode-video.service';
+import { saveEpisodePublishDetails } from '../../../server/episode.service';
 import { saveShortsGroups } from '../../../server/shorts-groups.service';
 
 const PublishVideoSchema = z.object({
@@ -92,6 +95,66 @@ const updateShortsGroups = enhanceAction(
 );
 
 export const updateShortsGroupsAction = returnRefusals(updateShortsGroups);
+
+const PublishDetailsSchema = z.object({
+  episodeId: z.string().uuid(),
+  title: z.string().trim().min(1, 'A title is required').max(255),
+  // YouTube's limit; the episode form's 2000 would refuse real descriptions
+  description: z.string().max(5000),
+  tags: z.array(z.string().trim().min(1).max(100)).max(100),
+});
+
+/**
+ * Saves the Publish screen's title, description and tags (KB-215). The
+ * title and description rename the episode itself.
+ */
+const savePublishDetails = enhanceAction(
+  async ({ episodeId, title, description, tags }) => {
+    const client = getSupabaseServerClient();
+    const saved = await saveEpisodePublishDetails(client, {
+      episodeId,
+      title,
+      description,
+      tags,
+    });
+
+    if (!saved.ok) {
+      throw new ActionRefusal(saved.message);
+    }
+
+    const accountId = saved.before.project?.account_id;
+    const { data: user } = await requireUser(client);
+
+    if (accountId && user) {
+      await createAuditLog({
+        accountId,
+        userId: user.id,
+        action: 'update',
+        objectType: 'episode',
+        objectId: saved.data.id,
+        objectName: saved.data.title,
+        before: saved.before,
+        after: saved.data,
+        scopes: [
+          { type: 'account', id: accountId },
+          { type: 'project', id: saved.data.project_id },
+          { type: 'episode', id: saved.data.id },
+        ],
+        ...(await extractNetworkContext()),
+      });
+    }
+
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'layout',
+    );
+
+    return { success: true };
+  },
+  { schema: PublishDetailsSchema },
+);
+
+export const savePublishDetailsAction = returnRefusals(savePublishDetails);
 
 /**
  * Item to be translated in a batch
