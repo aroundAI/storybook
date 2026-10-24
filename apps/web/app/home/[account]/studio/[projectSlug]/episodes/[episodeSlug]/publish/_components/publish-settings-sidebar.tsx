@@ -27,6 +27,10 @@ interface PublishSettingsSidebarProps {
     description: string;
     tags: string;
   }) => void;
+  /** Stores the title, description and tags on the episode (KB-215) */
+  onSaveMetadata: () => void;
+  metadataChanged: boolean;
+  savingMetadata: boolean;
   channelsByLanguage: Record<string, PlatformConnection[]>;
   loadingConnections: boolean;
   connectionsCount: number;
@@ -42,6 +46,9 @@ interface PublishSettingsSidebarProps {
 export function PublishSettingsSidebar({
   metadata,
   onMetadataChange,
+  onSaveMetadata,
+  metadataChanged,
+  savingMetadata,
   channelsByLanguage,
   loadingConnections,
   connectionsCount,
@@ -70,6 +77,14 @@ export function PublishSettingsSidebar({
               }
               placeholder="Episode title"
             />
+            {!metadata.title.trim() && (
+              <p
+                className="mt-1 text-xs text-destructive"
+                data-test="publish-details-title-required"
+              >
+                A title is required
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="description">Description</Label>
@@ -94,6 +109,29 @@ export function PublishSettingsSidebar({
               placeholder="episode, series, topic"
             />
             <p className="mt-1 text-xs text-gray-500">Comma-separated</p>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            {metadataChanged && (
+              <span
+                className="text-xs text-muted-foreground"
+                data-test="publish-details-unsaved"
+              >
+                Unsaved changes
+              </span>
+            )}
+            <Button
+              size="sm"
+              onClick={onSaveMetadata}
+              disabled={
+                !metadataChanged || !metadata.title.trim() || savingMetadata
+              }
+              data-test="publish-details-save"
+            >
+              {savingMetadata && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Save
+            </Button>
           </div>
           <AiLabelDeclaration
             aiGenerated={aiGenerated}

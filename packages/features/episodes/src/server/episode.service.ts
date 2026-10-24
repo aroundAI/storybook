@@ -338,6 +338,54 @@ export async function updateEpisodeRow(
   };
 }
 
+/**
+ * Saves what the Publish screen's settings hold (KB-215): the title and
+ * description rename the episode, the tags go to `metadata.tags`. The
+ * version is read here rather than sent by the screen, whose copy goes
+ * stale whenever a Shorts group is saved beside it; a write that lands in
+ * between is re-read and retried.
+ */
+export async function saveEpisodePublishDetails(
+  client: Client,
+  input: {
+    episodeId: string;
+    title: string;
+    description: string;
+    tags: string[];
+  },
+): Promise<UpdateEpisodeResult> {
+  for (let attempt = 1; ; attempt++) {
+    const { data: episode, error } = await client
+      .from('episodes')
+      .select('version')
+      .eq('id', input.episodeId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (error || !episode) {
+      return {
+        ok: false,
+        code: 'not_found',
+        message: whyNoRow(error, 'Episode not found'),
+      };
+    }
+
+    try {
+      return await updateEpisodeRow(client, {
+        episodeId: input.episodeId,
+        version: episode.version,
+        title: input.title,
+        description: input.description,
+        metadataPatch: { tags: input.tags },
+      });
+    } catch (error) {
+      if (!(error instanceof OptimisticLockError) || attempt >= MAX_RETRIES) {
+        throw error;
+      }
+    }
+  }
+}
+
 export interface LinkedAsset {
   id: string;
   name: string;
